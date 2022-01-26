@@ -36,9 +36,30 @@ typedef union {double f; unsigned long u;} b64u64_u;
 typedef unsigned __int128 u128;
 typedef unsigned long u64;
 
+#if defined(__GNUC__) && __GNUC__ >= 11
+#define roundeven __builtin_roundeven
+#else
+/* round x to nearest integer, breaking ties to even */
+static inline double
+roundeven (double x)
+{
+  double y = round (x); /* nearest, away from 0 */
+  if (fabs (y - x) == 0.5)
+  {
+    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    union { double f; uint64_t n; } u, v;
+    u.f = y;
+    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
+      y = v.f;
+  }
+  return y;
+}
+#endif
+
 static inline double rltl(float z, int *q){
   double x = z;
-  double idl = -0x1.b1bbead603d8bp-32*x, idh = 0x1.45f306ep-1*x, id = __builtin_roundeven(idh);
+  double idl = -0x1.b1bbead603d8bp-32*x, idh = 0x1.45f306ep-1*x, id = roundeven(idh);
   *q = (long)id;
   return (idh - id) + idl;
 }
