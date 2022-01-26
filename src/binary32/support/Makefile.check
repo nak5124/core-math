@@ -1,0 +1,15 @@
+# -*- makefile -*-
+
+CFLAGS += -std=c99 -W -Wall
+
+check: check.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
+	$(CC) -fopenmp -o $@ $^ -lmpfr -lm
+
+%.o: %.c
+	$(CC) $(CFLAGS) -I ../support -c -o $@ $<
+
+check.o: ../support/check.c
+	$(CC) $(CFLAGS) -I . -c -fopenmp -o $@ $<
+
+clean:
+	rm -f *.o check
