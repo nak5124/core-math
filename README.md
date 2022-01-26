@@ -13,7 +13,7 @@ Homepage: https://core-math.gitlabpages.inria.fr/
 To run an exhaustive check of a single-precision single-argument
 function, run:
 
-    ./check.sh --exhaustive $FUN [rounding_mode]
+    ./check.sh --exhaustive [rounding_mode] $FUN
 
 where:
 - `$FUN` can be `acosf`, `asinf`, etc.

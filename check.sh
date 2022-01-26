@@ -1,11 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
 MAKE=make
 
 KIND="$1"
 shift
-FUN="$1"
-shift
+
+FUN="${!#}"
+ARGS=("${@:1:$#-1}")
 
 FILE="$(echo src/*/*/"$FUN".c)"
 DIR="$(dirname "$FILE")"
@@ -19,7 +20,7 @@ case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
         "$MAKE" --quiet -C "$DIR" check
-        "$DIR/check" "$@"
+        "$DIR/check" "${ARGS[@]}"
         ;;
     *)
         echo "Unrecognized command"
