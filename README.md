@@ -17,11 +17,16 @@ function, run:
 
 where:
 - `$FUN` can be `acosf`, `asinf`, etc.
-- `[rounding_mode]` can be `-rndn`, `-rndz`, `-rndu`, `-rndd`
+- `[rounding_mode]` can be `-rndn` (round to nearest), `-rndz` (toward
+  zero), `-rndu` (upwards), `-rndd` (downwards). The default is round
+  to nearest.
 
 This command is sensitive to the following environment variables:
 - `CC`
 - `CFLAGS`
+- OpenMP variables such as `OMP_NUM_THREADS`
+
+Note: on Debian, you need the libomp-dev package to use clang.
 
 
 ## Layout
