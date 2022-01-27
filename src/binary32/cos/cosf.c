@@ -29,19 +29,22 @@ Tested on x86_64-linux with and without FMA (-march=native).
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
-#include <math.h>
 
 typedef union {float f; unsigned u;} b32u32_u;
 typedef union {double f; unsigned long u;} b64u64_u;
 typedef unsigned __int128 u128;
 typedef unsigned long u64;
 
-#if defined(__GNUC__) && __GNUC__ >= 11
-#define roundeven __builtin_roundeven
-#else
+/* __builtin_roundeven was introduced in gcc 10 */
+#if defined(__GNUC__) && __GNUC__ >= 10
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#ifndef HAS_BUILTIN_ROUNDEVEN
+#include <math.h>
 /* round x to nearest integer, breaking ties to even */
-static inline double
-roundeven (double x)
+inline double
+__builtin_roundeven (double x)
 {
   double y = round (x); /* nearest, away from 0 */
   if (fabs (y - x) == 0.5)
@@ -59,7 +62,7 @@ roundeven (double x)
 
 static inline double rltl(float z, int *q){
   double x = z;
-  double idl = -0x1.b1bbead603d8bp-32*x, idh = 0x1.45f306ep-1*x, id = roundeven(idh);
+  double idl = -0x1.b1bbead603d8bp-32*x, idh = 0x1.45f306ep-1*x, id = __builtin_roundeven(idh);
   *q = (long)id;
   return (idh - id) + idl;
 }

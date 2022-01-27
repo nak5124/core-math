@@ -29,6 +29,31 @@ Tested on x86_64-linux with and without FMA (-march=native).
 #include <fenv.h>
 #include <errno.h>
 
+/* __builtin_roundeven was introduced in gcc 10 */
+#if defined(__GNUC__) && __GNUC__ >= 10
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#ifndef HAS_BUILTIN_ROUNDEVEN
+#include <math.h>
+/* round x to nearest integer, breaking ties to even */
+inline double
+__builtin_roundeven (double x)
+{
+  double y = round (x); /* nearest, away from 0 */
+  if (fabs (y - x) == 0.5)
+  {
+    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    union { double f; uint64_t n; } u, v;
+    u.f = y;
+    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
+      y = v.f;
+  }
+  return y;
+}
+#endif
+
 typedef union {float f; unsigned u;} b32u32_u;
 typedef union {double f; unsigned long u;} b64u64_u;
 typedef unsigned __int128 u128;
