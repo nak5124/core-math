@@ -24,8 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+#include <stdint.h>
+
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_sinhf(float x){
   static const double c[] =
@@ -36,13 +38,13 @@ float cr_sinhf(float x){
      0x1.306fe0a31b715p+0, 0x1.3dea64c123422p+0, 0x1.4bfdad5362a27p+0, 0x1.5ab07dd485429p+0,
      0x1.6a09e667f3bcdp+0, 0x1.7a11473eb0187p+0, 0x1.8ace5422aa0dbp+0, 0x1.9c49182a3f09p+0,
      0x1.ae89f995ad3adp+0, 0x1.c199bdd85529cp+0, 0x1.d5818dcfba487p+0, 0x1.ea4afa2a490dap+0};
-  static const struct {union{float arg; unsigned uarg;}; float rh, rl;} st[] = {
+  static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
     {{0x1.250bfep-11}, 0x1.250bfep-11f, 0x1.fffffep-36f}
   };
   const double iln2h = 0x1.7154765p+0*16, iln2l = 0x1.5c17f0bbbe88p-31*16;
   b32u32_u t = {.f = x};
   double z = x;
-  unsigned ux = t.u, ex = (ux>>23)&0xff;
+  uint32_t ux = t.u, ex = (ux>>23)&0xff;
   if (__builtin_expect(ex>127+7, 0)){
     static const float ir[] = {__builtin_inff(),-__builtin_inff()};
     if(ex==0xff) {

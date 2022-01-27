@@ -28,9 +28,9 @@ Tested on x86_64-linux with and without FMA (-march=native).
 
 #include <stdint.h>
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
-typedef unsigned long u64;
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
+typedef uint64_t u64;
 
 float cr_atanf(float x){
   const double pi2 = 0x1.921fb54442d18p+0;
@@ -45,7 +45,7 @@ float cr_atanf(float x){
       return __builtin_fmaf(-x, __builtin_fabsf(x), x);
     return __builtin_fmaf(-0x1.5555555555555p-2f*x, x*x, x);
   }
-  unsigned ax = t.u&(~0u>>1);
+  uint32_t ax = t.u&(~0u>>1);
   double z = x;
   if(gt) z = 1/z;
   double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
@@ -75,7 +75,7 @@ float cr_atanf(float x){
   b64u64_u tr = {.f = r};
   u64 tail = (tr.u + 6)&(~0ul>>36);
   if(__builtin_expect(tail<=12, 0)){
-    static const struct {union{float arg; unsigned uarg;}; float rh, rl;} st[] = {
+    static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
       {{0x1.1ad646p-4f}, 0x1.1a6386p-4f, -0x1.fffffep-29f},
       {{0x1.f51a68p-11f}, 0x1.f51a5ep-11f, 0x1.ac7824p-62f},
       {{0x1.fc5d82p+0f}, 0x1.1ab2fp+0f, 0x1.0db9cap-52f},

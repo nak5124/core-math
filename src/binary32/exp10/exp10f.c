@@ -24,8 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+#include <stdint.h>
+
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_exp10f(float x){
   static const double c[] =
@@ -39,7 +41,7 @@ float cr_exp10f(float x){
   const double iln2h = 0x1.a934f098p+1*16, iln2l = -0x1.9723a81p-33*16;
   b32u32_u t = {.f = x};
   double z = x;
-  unsigned ux = t.u, ex = (ux>>23)&0xff;
+  uint32_t ux = t.u, ex = (ux>>23)&0xff;
   if (__builtin_expect(ex>(127+6), 0)){
     if(ex==0xff) {
       if(ux<<9) return x; // nan
@@ -52,7 +54,7 @@ float cr_exp10f(float x){
   if (__builtin_expect(ex<(127-27), 0)){
     return 1.0f + x;
   } else {
-    static const struct {union{float arg; unsigned uarg;}; float rh, rl;} st[] = {
+    static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
       {{-0x1.4de862p+3}, 0x1.435996p-35f, -0x1.fffffep-60f},
     };
     if(__builtin_expect(ux == st[0].uarg, 0)) return st[0].rh + st[0].rl;

@@ -26,6 +26,7 @@ SOFTWARE.
 Tested on x86_64-linux with and without FMA (-march=native).
 */
 
+#include <stdint.h>
 #include <fenv.h>
 #include <errno.h>
 
@@ -54,12 +55,12 @@ __builtin_roundeven (double x)
 }
 #endif
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 typedef unsigned __int128 u128;
-typedef unsigned long u64;
+typedef uint64_t u64;
 
-static double __attribute__((noinline)) rbig(unsigned u, int *q){
+static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   static const u64 ipi[] = {0xfe5163abdebbc562, 0xdb6295993c439041, 0xfc2757d1f534ddc0, 0xa2f9836e4e441529};
   int e = (u>>23)&0xff, i;
   u64 m = (u&(~0u>>9))|1<<23;
@@ -112,7 +113,7 @@ float cr_sinf(float x){
       0x1.e1f4fb610f151p-11, -0x1.a6c9c224d18abp-16, 0x1.f3dbf0909677fp-22},
     q[] = {1.0, 0, -1.0, 0};
   static const float tb[] = {1, -1};
-  static const struct {union{float arg; unsigned uarg;}; float rh, rl;} st[] = {
+  static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
     {{0x1.fbd9c8p+22f}, -0x1.ff6dc2p-1f, 0x1.c23274p-57f},
     {{0x1.728fecp+37f}, -0x1.24f23cp-1f, 0x1.206be8p-54f},
     {{0x1.33333p+13f}, -0x1.63f4bap-2f,-0x1.fffffep-27f},
@@ -120,7 +121,7 @@ float cr_sinf(float x){
 
   b32u32_u t = {.f = x};
   int e = (t.u>>23)&0xff, i;
-  unsigned ax = t.u&(~0u>>1), sgn = t.u>>31;
+  uint32_t ax = t.u&(~0u>>1), sgn = t.u>>31;
   double z;
   if (__builtin_expect(e<127+28, 1)){
     if (__builtin_expect(e<115, 0)){

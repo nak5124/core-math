@@ -24,8 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-typedef union {float f; unsigned int u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+#include <stdint.h>
+
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_log2f(float x) {
   static const double ix[] = {
@@ -98,12 +100,12 @@ float cr_log2f(float x) {
     0x1.82448a3d8a2aap-7, 0x1.010157586de71p-7, 0x1.0080559488b35p-8, 0x0p+0 };
 
   b32u32_u t = {.f = x};
-  unsigned ux = t.u;
-  unsigned long m = ux&(~0u>>9); m <<= 52-23;
+  uint32_t ux = t.u;
+  uint64_t m = ux&(~0u>>9); m <<= 52-23;
   int e = (ux>>23) - 0x7f;
   if (__builtin_expect(ux < 1u<<23 || ux >= 0xffu<<23, 0)) {
     if (ux==0||ux==(1u<<31)) return -__builtin_inff(); // +0.0 || -0.0
-    unsigned inf_or_nan = ((ux>>23)&0xff) == 0xff, nan = inf_or_nan && (ux<<9);
+    uint32_t inf_or_nan = ((ux>>23)&0xff) == 0xff, nan = inf_or_nan && (ux<<9);
     if (ux>>31 && !nan) return __builtin_nanf("-");
     if (inf_or_nan) return x;
     // denormal

@@ -24,8 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-typedef union {float f; unsigned int u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+#include <stdint.h>
+
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_log1pf(float x) {
   static const double ix[] = {
@@ -97,7 +99,7 @@ float cr_log1pf(float x) {
     0x1.c63d2ec16aaf2p-6, 0x1.8492528ddcabfp-6, 0x1.432a925ca0cc1p-6, 0x1.0205658d15847p-6,
     0x1.82448a3d8a2aap-7, 0x1.010157586de71p-7, 0x1.0080559488b35p-8, 0x0p+0 };
 
-  static const struct {union{float arg; unsigned uarg;}; float rh, rl;} st[] = {
+  static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
     {{ 0x1.800006p-21f },  0x1.7ffffep-21f, -0x1.fffffep-46f},
     {{ 0x1.200036p-17f },  0x1.1fffe6p-17f, -0x1.fffffep-42f},
     {{-0x1.7ffffap-21f }, -0x1.800002p-21f, -0x1.fffffep-46f},
@@ -114,10 +116,10 @@ float cr_log1pf(float x) {
 
   double z = x;
   b32u32_u t = {.f = x};
-  unsigned ux = t.u, ax = ux&(~0u>>1);
-  if (__builtin_expect(ux >= (unsigned) 0x17f<<23, 0)) { // x <= -1
-    if (ux==(unsigned)(0x17f<<23)) return -__builtin_inff(); // -1.0
-    if (ux>(unsigned)(0x1ff<<23)) return x; // nan
+  uint32_t ux = t.u, ax = ux&(~0u>>1);
+  if (__builtin_expect(ux >= (uint32_t) 0x17f<<23, 0)) { // x <= -1
+    if (ux==(uint32_t)(0x17f<<23)) return -__builtin_inff(); // -1.0
+    if (ux>(uint32_t)(0x1ff<<23)) return x; // nan
     return __builtin_nanf("-"); // x < -1
   } else if(__builtin_expect(ax >= (0xff<<23), 0)){ // +inf, nan
     if(ax > (0xff<<23)) return x;
@@ -160,7 +162,7 @@ float cr_log1pf(float x) {
       if(__builtin_expect(ux == st[11].uarg, 0)) return st[11].rh + st[11].rl;
     }
     b64u64_u t = {.f = z}; t.f += 1;
-    unsigned long m = t.u&(~0ul>>12);
+    uint64_t m = t.u&(~0ul>>12);
     int e = (t.u>>52) - 0x3ff;
     int j = (m + (1l<<(52-8)))>>(52-7), k = j>53;
     e += k;

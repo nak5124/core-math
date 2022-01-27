@@ -24,21 +24,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <stdint.h>
+
 #define INEXACTFLAG 0
 #if INEXACTFLAG!=0
 #  include <x86intrin.h> /* for the x86 architecture with SSE to rise the inexact flag only when the root is indeed inexact */
 #endif
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_cbrtf (float x){
   static const double escale[3] = {1.0, 0x1.428a2f98d728bp+0/* 2^(1/3) */, 0x1.965fea53d6e3dp+0/* 2^(2/3) */};
 #if INEXACTFLAG!=0
-  volatile unsigned flag = _mm_getcsr(); /* store MXCSR Control/Status Register */
+  volatile uint32_t flag = _mm_getcsr(); /* store MXCSR Control/Status Register */
 #endif
   b32u32_u cvt0 = {.f = x};
-  unsigned hx = cvt0.u, ix = 0x7fffffff&hx, e = ix>>23, mant = hx&0x7fffff;
+  uint32_t hx = cvt0.u, ix = 0x7fffffff&hx, e = ix>>23, mant = hx&0x7fffff;
   long sign = hx>>31;
   if(__builtin_expect(((e+1)&0xff)<2, 0)){
     if(e==0xff||ix==0) return x + x; /* 0, inf, nan */
@@ -48,9 +50,9 @@ float cr_cbrtf (float x){
     e -= nz - 1;
   }
   e += 899;
-  b64u64_u cvt1 = {.u = (unsigned long)mant<<29|(0x3fful<<52)};
-  unsigned et = e/3, it = e%3;
-  unsigned long isc = ((const unsigned long*)escale)[it];
+  b64u64_u cvt1 = {.u = (uint64_t)mant<<29|(0x3fful<<52)};
+  uint32_t et = e/3, it = e%3;
+  uint64_t isc = ((const uint64_t*)escale)[it];
   isc += (long)(et - 342)<<52;
   isc |= sign<<63;
   b64u64_u cvt2 = {.u = isc};

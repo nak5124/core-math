@@ -30,10 +30,10 @@ Tested on x86_64-linux with and without FMA (-march=native).
 #include <errno.h>
 #include <fenv.h>
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 typedef unsigned __int128 u128;
-typedef unsigned long u64;
+typedef uint64_t u64;
 
 /* __builtin_roundeven was introduced in gcc 10 */
 #if defined(__GNUC__) && __GNUC__ >= 10
@@ -67,7 +67,7 @@ static inline double rltl(float z, int *q){
   return (idh - id) + idl;
 }
 
-static double __attribute__((noinline)) rbig(unsigned u, int *q){
+static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   static const u64 ipi[] = {0xfe5163abdebbc562, 0xdb6295993c439041, 0xfc2757d1f534ddc0, 0xa2f9836e4e441529};
   int e = (u>>23)&0xff, i;
   u64 m = (u&(~0u>>9))|1<<23;
@@ -151,7 +151,7 @@ float cr_cosf(float x){
   float or = r;
   b64u64_u tr = {.f = r}; u64 tail = (tr.u + 6)&(~0ul>>36);
   if(__builtin_expect(tail<=12, 0)){
-    static const struct {union{float arg; unsigned uarg;}; float rh, rl;} st[] = {
+    static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
       {{0x1.4555p+51f}, 0x1.115d7ep-1f, -0x1.fffffep-26f},
       {{0x1.3170fp+63f}, 0x1.fe2976p-1f, 0x1.fffffep-26f},
       {{0x1.119ae6p+115f}, 0x1.f3176ap-1f, 0x1.fffffep-26f},
@@ -167,7 +167,7 @@ float cr_cosf(float x){
       {{0x1.0a1f74p+58f}, -0x1.404ecep-2f, 0x1.58808ap-54f},
       {{0x1.ea56e2p+73f}, -0x1.d74dfap-3f, 0x1.7fa9c2p-55f},
     };
-    unsigned ax = t.u&(~0u>>1);
+    uint32_t ax = t.u&(~0u>>1);
     for(int i=0;i<14;i++) {
       if(__builtin_expect(st[i].uarg == ax, 0))
 	return st[i].rh + st[i].rl;

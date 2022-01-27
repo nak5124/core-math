@@ -24,8 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+#include <stdint.h>
+
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_expf(float x){
   static const double c[] =
@@ -39,7 +41,7 @@ float cr_expf(float x){
   const double iln2h = 0x1.7154765p+0*16, iln2l = 0x1.5c17f0bbbe88p-31*16;
   b32u32_u t = {.f = x};
   double z = x;
-  unsigned ux = t.u, ex = (ux>>23)&0xff;
+  uint32_t ux = t.u, ex = (ux>>23)&0xff;
   if (__builtin_expect(ex>127+7, 0)){
     if(ex==0xff) {
       if(ux<<9) return x; // nan

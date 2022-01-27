@@ -24,8 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+#include <stdint.h>
+
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_exp2f(float x){
   static const double c[] =
@@ -38,7 +40,7 @@ float cr_exp2f(float x){
      0x1.ae89f995ad3adp+0, 0x1.c199bdd85529cp+0, 0x1.d5818dcfba487p+0, 0x1.ea4afa2a490dap+0};
   b32u32_u t = {.f = x};
   double z = x;
-  unsigned ux = t.u, ex = (ux>>23)&0xff;
+  uint32_t ux = t.u, ex = (ux>>23)&0xff;
   if (__builtin_expect(ex>127+7, 0)){
     if(ex==0xff) {
       if(ux<<9) return x; // nan
@@ -51,7 +53,7 @@ float cr_exp2f(float x){
   if (__builtin_expect(ex<127-25, 0)){
     return 1.0f + x;
   } else {
-    static const struct {union{float arg; unsigned uarg;}; float rh, rl;} st[] = {
+    static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
       {{ 0x1.853a6ep-9 }, 0x1.00870ap+0f, -0x1.fffffep-25f},
       {{-0x1.e7526ep-6f}, 0x1.f58d62p-1f, -0x1.fffffep-26f},
       {{-0x1.a7a04cp-14}, 0x1.fff6d2p-1f,  0x1.fffffep-26f}
