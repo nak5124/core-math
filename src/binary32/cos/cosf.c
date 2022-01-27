@@ -40,10 +40,23 @@ typedef uint64_t u64;
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
 
+#if defined(__clang__) && (defined(__AVX__) || defined(__SSE4_1__))
+inline double __builtin_roundeven(double x){
+   double ix;
+#if defined __AVX__
+   asm("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#else /* __SSE4_1__ */
+   asm("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#endif
+   return ix;
+}
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
 #ifndef HAS_BUILTIN_ROUNDEVEN
 #include <math.h>
 /* round x to nearest integer, breaking ties to even */
-inline double
+static double
 __builtin_roundeven (double x)
 {
   double y = round (x); /* nearest, away from 0 */
