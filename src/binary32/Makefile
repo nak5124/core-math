@@ -1,4 +1,4 @@
-FUNCTIONS := acos acosh asin asinh atan atanh
+FUNCTIONS := $(basename $(dir $(wildcard */Makefile)))
 
 all: $(addprefix check-,$(FUNCTIONS))
 
