@@ -127,7 +127,7 @@ cr_erff (float x)
 
   /* now xx <= 0x1.f5a888p1 ~ 3.91921 */
   int i = SAMPLE * xx; /* i < 64 */
-  static const double *p;
+  const double *p;
   p = P[i];
   y = p[8];
   y = p[7] + y * xx;

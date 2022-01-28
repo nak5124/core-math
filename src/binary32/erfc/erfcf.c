@@ -231,7 +231,7 @@ cr_erfcf (float x)
   int i = SAMPLE * xx;
   if (i >= PSIZE)
     return cr_erfcf_asympt (x);
-  static const double *p;
+  const double *p;
   if (i >= THRESHOLD) /* the polynomial approximates erfc(1/x) */
     {
       double x1 = (double) SAMPLE / (double) i;
