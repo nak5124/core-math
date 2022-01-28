@@ -1,6 +1,6 @@
 # -*- makefile -*-
 
-CFLAGS += -std=c99 -W -Wall
+CFLAGS += -std=c99 -W -Wall -frounding-math
 
 check: check.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) -fopenmp -o $@ $^ -lmpfr -lm
