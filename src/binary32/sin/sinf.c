@@ -98,9 +98,9 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   } else if(s==64) {
     i = p3l;
     a = p2l;
-  } else {
-    i = p3l<<s|p2l>>(64-s);
-    a = p2l<<s|p1l>>(64-s);
+  } else { /* s > 64 */
+    i = p3l<<s|p2l>>(128-s);
+    a = p2l<<s|p1l>>(128-s);
   }
   int sgn = u; sgn >>= 31;
   long sm = a>>63;
