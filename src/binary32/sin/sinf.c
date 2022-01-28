@@ -85,20 +85,22 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   long a;
   int k = e-127, s = k-23;
   if(s<0){
-    i =        p3h>>-s;
-    a = p3h<<s|p3l>>-s;
+    /* Negative shifts are undefined behaviour: p3l>>-s seems to work
+       with gcc, but does not with clang. */
+    i =        p3h>>(64-s);
+    a = p3h<<s|p3l>>(64-s);
   } else if(s==0) {
     i = p3h;
     a = p3l;
   } else if(s<64) {
-    i = p3h<<s|p3l>>-s;
-    a = p3l<<s|p2l>>-s;
+    i = p3h<<s|p3l>>(64-s);
+    a = p3l<<s|p2l>>(64-s);
   } else if(s==64) {
     i = p3l;
     a = p2l;
   } else {
-    i = p3l<<s|p2l>>-s;
-    a = p2l<<s|p1l>>-s;
+    i = p3l<<s|p2l>>(64-s);
+    a = p2l<<s|p1l>>(64-s);
   }
   int sgn = u; sgn >>= 31;
   long sm = a>>63;
