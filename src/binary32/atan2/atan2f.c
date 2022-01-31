@@ -32,9 +32,11 @@ SOFTWARE.
 
 */
 
-typedef union {float f; unsigned u;} b32u32_u;
-typedef union {double f; unsigned long u;} b64u64_u;
-typedef unsigned long u64;
+#include <stdint.h>
+
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
+typedef uint64_t u64;
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
@@ -70,11 +72,11 @@ float cr_atan2f(float y, float x){
   static const double offl[] = {0.0f, pi2l, 2*pi2l, pi2l, -0.0f, -pi2l, -2*pi2l, -pi2l};
   static const double sgn[] = {1,-1};
   b32u32_u tx = {.f = x}, ty = {.f = y};
-  unsigned ux = tx.u, uy = ty.u, ax = ux&(~0u>>1), ay = uy&(~0u>>1);
+  uint32_t ux = tx.u, uy = ty.u, ax = ux&(~0u>>1), ay = uy&(~0u>>1);
   if(__builtin_expect(ay >= (0xff<<23)||ax >= (0xff<<23), 0)){
     if(ay > (0xff<<23)) return y; // nan
     if(ax > (0xff<<23)) return x; // nan
-    unsigned yinf = ay==(0xff<<23), xinf = ax==(0xff<<23);
+    uint32_t yinf = ay==(0xff<<23), xinf = ax==(0xff<<23);
     if(yinf&xinf){
       if(ux>>31)
 	return 0x1.2d97c7f3321d2p+1*sgn[uy>>31];
@@ -93,7 +95,7 @@ float cr_atan2f(float y, float x){
   }
   if(__builtin_expect(ay==0, 0)){
     if(__builtin_expect(!(ay|ax),0)){
-      unsigned i = (uy>>31)*4 + (ux>>31)*2;
+      uint32_t i = (uy>>31)*4 + (ux>>31)*2;
       if(ux>>31)
 	return off[i] + offl[i];
       else
@@ -101,7 +103,7 @@ float cr_atan2f(float y, float x){
     }
     if(!(ux>>31)) return 0.0f*sgn[uy>>31];
   }
-  unsigned gt = ay>ax, i = (uy>>31)*4 + (ux>>31)*2 + gt;
+  uint32_t gt = ay>ax, i = (uy>>31)*4 + (ux>>31)*2 + gt;
   
   double zx = x, zy = y;
   double z = (m[gt]*zx + m[1-gt]*zy)/(m[gt]*zy + m[1-gt]*zx);
