@@ -36,7 +36,6 @@ SOFTWARE.
 
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
-typedef uint64_t u64;
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
@@ -126,7 +125,7 @@ float cr_atan2f(float y, float x){
   double r = cn0/cd0;
   r = z*r + off[i];
   b64u64_u res = {.f = r};
-  if(__builtin_expect(((res.u + 5)&0xfffffff) <= 10, 0)){
+  if(__builtin_expect(((res.u + 8)&0xfffffff) <= 16, 0)){
     double zh,zl;
     if(!gt){
       zh = zy/zx;
