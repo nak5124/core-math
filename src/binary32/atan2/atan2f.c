@@ -66,7 +66,9 @@ float cr_atan2f(float y, float x){
     {0x1p+0, 0x1.6b8b143a3f6dap+1, 0x1.8421201d18ed5p+1, 0x1.8221d086914ebp+0, 0x1.670657e3a07bap-2,
      0x1.0f4951fd1e72dp-5, 0x1.b3874b8798286p-11};
   static const double m[] = {0, 1};
-  const double pi = 0x1.921fb54442d18p+1, pi2 = 0x1.921fb54442d18p+0, pi2l = 0x1.1a62633145c07p-54;
+#define pi 0x1.921fb54442d18p+1
+#define pi2 0x1.921fb54442d18p+0
+#define pi2l 0x1.1a62633145c07p-54
   static const double off[] = {0.0f, pi2, pi, pi2, -0.0f, -pi2, -pi, -pi2};
   static const double offl[] = {0.0f, pi2l, 2*pi2l, pi2l, -0.0f, -pi2l, -2*pi2l, -pi2l};
   static const double sgn[] = {1,-1};
@@ -160,8 +162,8 @@ float cr_atan2f(float y, float x){
     double th = rf, dh = sh - th, tm = dh + sl;
     b64u64_u tth = {.f = th};
     if(th + th*0x1p-60 == th - th*0x1p-60){
-      tth.u &= 0x7fful<<52;
-      tth.u -= 24l<<52;
+      tth.u &= (uint64_t) 0x7ff<<52;
+      tth.u -= (uint64_t) 24<<52;
       if(__builtin_fabs(tm)>tth.f)
 	tm *= 1.25;
       else
