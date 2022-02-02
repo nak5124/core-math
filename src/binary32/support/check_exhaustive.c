@@ -89,25 +89,25 @@ main (int argc, char *argv[])
 {
   while (argc >= 2)
     {
-      if (strcmp (argv[1], "-rndn") == 0)
+      if (strcmp (argv[1], "--rndn") == 0)
         {
           rnd = 0;
           argc --;
           argv ++;
         }
-      else if (strcmp (argv[1], "-rndz") == 0)
+      else if (strcmp (argv[1], "--rndz") == 0)
         {
           rnd = 1;
           argc --;
           argv ++;
         }
-      else if (strcmp (argv[1], "-rndu") == 0)
+      else if (strcmp (argv[1], "--rndu") == 0)
         {
           rnd = 2;
           argc --;
           argv ++;
         }
-      else if (strcmp (argv[1], "-rndd") == 0)
+      else if (strcmp (argv[1], "--rndd") == 0)
         {
           rnd = 3;
           argc --;
