@@ -47,12 +47,12 @@ static inline double muldd(double xh, double xl, double ch, double cl, double *l
 
 static double polydd(double xh, double xl, int n, const double c[][2], double *l){
   int i = n-1;
-  double ch = c[i][1], cl = c[i][0];
+  double ch = c[i][0], cl = c[i][1];
   while(--i>=0){
     ch = muldd(xh,xl,ch,cl,&cl);
-    double th = ch + c[i][1], tl = (c[i][1] - th) + ch;
+    double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
     ch = th;
-    cl += tl + c[i][0];
+    cl += tl + c[i][1];
   }
   *l = cl;
   return ch;
@@ -137,23 +137,24 @@ float cr_atan2f(float y, float x){
       zl = __builtin_fma(zh,-zy,zx)/zy;
     }
     double z2l, z2h = muldd(zh,zl,zh,zl,&z2l);
-    static const double c[30][2] =
-      {{-0x1.bfdf6472p-82, 0x1p+0}, {-0x1.55522cf051bb7p-56, -0x1.5555555555555p-2},
-       {-0x1.a13119a775722p-57, 0x1.999999999999ap-3}, {-0x1.80dd3b0eb53dap-57, -0x1.2492492492491p-3},
-       {0x1.961c71122022fp-58, 0x1.c71c71c71c6a5p-4}, {0x1.d8873ae6474bfp-58, -0x1.745d1745d047ap-4},
-       {0x1.47bd8f2f1877p-58, 0x1.3b13b13af39a1p-4}, {0x1.e7bda3f460852p-61, -0x1.1111110e9c5bbp-4},
-       {0x1.0c07246705383p-59, 0x1.e1e1e199dd2adp-5}, {0x1.ae1ccf560cc5cp-60, -0x1.af28689a8395cp-5},
-       {0x1.f3c877ef088b2p-60, 0x1.861844f9bb71fp-5}, {0x1.d686cb108e152p-59, -0x1.642bb7467eb59p-5},
-       {-0x1.c8628a6b73a35p-61, 0x1.47a9501596294p-5}, {-0x1.c0c8a2f7773c8p-60, -0x1.2f50ec063dcc2p-5},
-       {0x1.feb7021a2783cp-59, 0x1.1a1ba245d6116p-5}, {-0x1.95760e5ea6ff6p-60, -0x1.06f580c2b3b3cp-5},
-       {-0x1.bac06658805ddp-62, 0x1.e8d3b0aa7e342p-6}, {-0x1.81be614231dep-61, -0x1.c0cba92af0035p-6},
-       {-0x1.54e9ec905c7dcp-64, 0x1.90d85bf533d6p-6}, {-0x1.1dd5347f9d701p-63, -0x1.551ce2de13b14p-6},
-       {0x1.5490a51372d33p-60, 0x1.0ddbdd787f62fp-6}, {-0x1.c766eb3ed3487p-62, -0x1.82b28ae9a24bbp-7},
-       {0x1.e0282c6640316p-62, 0x1.e8c90da74be8dp-8}, {0x1.ec23b693ec582p-63, -0x1.094c35a3c5f4ap-8},
-       {0x1.1bd48d253a2d1p-64, 0x1.e0ab2f3b33e79p-10}, {-0x1.c23a6acda6b24p-66, -0x1.5f500b1b46c96p-11},
-       {0x1.2292eb52e1fd9p-67, 0x1.8c46d90303f2p-13}, {-0x1.1b39adf3ea87ap-69, -0x1.42a057ec505f1p-15},
-       {0x1.a1f8c235de9f8p-72, 0x1.50986e7b11a12p-18}, {0x1.05f04cb8b6abfp-82, -0x1.514e4943fe90dp-22}};
-    double pl, ph = polydd(z2h, z2l, 30, c, &pl);
+    static const double c[32][2] =
+      {{0x1p+0, -0x1.8c1dac5492248p-87}, {-0x1.5555555555555p-2, -0x1.55553bf3a2abep-56},
+       {0x1.999999999999ap-3, -0x1.99deed1ec9071p-57}, {-0x1.2492492492492p-3, -0x1.fd99c8d18269ap-58},
+       {0x1.c71c71c71c717p-4, -0x1.651eee4c4d9dp-61}, {-0x1.745d1745d1649p-4, -0x1.632683d6c44a6p-58},
+       {0x1.3b13b13b11c63p-4, 0x1.bf69c1f8af41dp-58}, {-0x1.11111110e6338p-4, 0x1.3c3e431e8bb68p-61},
+       {0x1.e1e1e1dc45c4ap-5, -0x1.be2db05c77bbfp-59}, {-0x1.af286b8164b4fp-5, 0x1.a4673491f0942p-61},
+       {0x1.86185e9ad4846p-5, 0x1.e12e32d79fceep-59}, {-0x1.642c6d5161faep-5, 0x1.3ce76c1ca03fp-59},
+       {0x1.47ad6f277e5bfp-5, -0x1.abd8d85bdb714p-60}, {-0x1.2f64a2ee8896dp-5, 0x1.ef87d4b615323p-61},
+       {0x1.1a6a2b31741b5p-5, 0x1.a5d9d973547eep-62}, {-0x1.07fbdad65e0a6p-5, -0x1.65ac07f5d35f4p-61},
+       {0x1.ee9932a9a5f8bp-6, 0x1.f8b9623f6f55ap-61}, {-0x1.ce8b5b9584dc6p-6, 0x1.fe5af96e8ea2dp-61},
+       {0x1.ac9cb288087b7p-6, -0x1.450cdfceaf5cap-60}, {-0x1.84b025351f3e6p-6, 0x1.579561b0d73dap-61},
+       {0x1.52f5b8ecdd52bp-6, 0x1.036bd2c6fba47p-60}, {-0x1.163a8c44909dcp-6, 0x1.18f735ffb9f16p-60},
+       {0x1.a400dce3eea6fp-7, -0x1.c90569c0c1b5cp-61}, {-0x1.1caa78ae6db3ap-7, -0x1.4c60f8161ea09p-61},
+       {0x1.52672453c0731p-8, 0x1.834efb598c338p-62}, {-0x1.5850c5be137cfp-9, -0x1.445fc150ca7f5p-63},
+       {0x1.23eb98d22e1cap-10, -0x1.388fbaf1d783p-64}, {-0x1.8f4e974a40741p-12, 0x1.271198a97da34p-66},
+       {0x1.a5cf2e9cf76e5p-14, -0x1.887eb4a63b665p-68}, {-0x1.420c270719e32p-16, 0x1.efd595b27888bp-71},
+       {0x1.3ba2d69b51677p-19, -0x1.4fb06829cdfc7p-73}, {-0x1.29b7e6f676385p-23, -0x1.a783b6de718fbp-77}};
+    double pl, ph = polydd(z2h, z2l, 32, c, &pl);
     zh *= sgn[gt];
     zl *= sgn[gt];
     ph = muldd(zh,zl,ph,pl,&pl);
