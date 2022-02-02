@@ -2,14 +2,16 @@
 
 CFLAGS += -std=c99 -W -Wall -frounding-math
 
-check: check.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
+all: check_exhaustive
+
+check_exhaustive: check_exhaustive.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) -fopenmp -o $@ $^ -lmpfr -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -I ../support -c -o $@ $<
 
-check.o: ../support/check.c
+check_exhaustive.o: ../support/check_exhaustive.c
 	$(CC) $(CFLAGS) -I . -c -fopenmp -o $@ $<
 
 clean:
-	rm -f *.o check
+	rm -f *.o check_exhaustive

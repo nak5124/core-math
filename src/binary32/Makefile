@@ -1,9 +1,11 @@
-FUNCTIONS := $(basename $(dir $(wildcard */Makefile)))
+FUNCTIONS := $(patsubst %/,%,$(dir $(wildcard */Makefile)))
 
-all: $(addprefix check-,$(FUNCTIONS))
+all: $(addprefix all-,$(FUNCTIONS))
 
-check-%:
-	$(MAKE) -C $* check
+clean: $(addprefix clean-,$(FUNCTIONS))
 
-clean:
-	for u in $(FUNCTIONS); do $(MAKE) -C $$u clean; done
+all-%:
+	$(MAKE) -C $* all
+
+clean-%:
+	$(MAKE) -C $* clean

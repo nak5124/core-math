@@ -19,8 +19,8 @@ fi
 case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" --quiet -C "$DIR" check
-        "$DIR/check" "${ARGS[@]}"
+        "$MAKE" --quiet -C "$DIR" check_exhaustive
+        "$DIR/check_exhaustive" "${ARGS[@]}"
         ;;
     *)
         echo "Unrecognized command"
