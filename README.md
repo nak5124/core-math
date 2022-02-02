@@ -13,13 +13,13 @@ Homepage: https://core-math.gitlabpages.inria.fr/
 To run an exhaustive check of a single-precision single-argument
 function, run:
 
-    ./check.sh --exhaustive [rounding_mode] $FUN
+    ./check.sh --exhaustive [rounding_modes] $FUN
 
 where:
 - `$FUN` can be `acosf`, `asinf`, etc.
-- `[rounding_mode]` can be `-rndn` (round to nearest), `-rndz` (toward
-  zero), `-rndu` (upwards), `-rndd` (downwards). The default is round
-  to nearest.
+- `[rounding_modes]` can be a selection of `--rndn` (round to
+  nearest), `--rndz` (toward zero), `--rndu` (upwards), `--rndd`
+  (downwards). The default is all four.
 
 This command is sensitive to the following environment variables:
 - `CC`

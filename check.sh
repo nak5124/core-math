@@ -20,7 +20,15 @@ case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
         "$MAKE" --quiet -C "$DIR" check_exhaustive
-        "$DIR/check_exhaustive" "${ARGS[@]}"
+        if [ "${#ARGS[@]}" -eq 0 ]; then
+            MODES=("--rndn" "--rndz" "--rndu" "--rndd")
+        else
+            MODES=("${ARGS[@]}")
+        fi
+        for MODE in "${MODES[@]}"; do
+            echo "Running exhaustive check in $MODE mode..."
+            "$DIR/check_exhaustive" "$MODE"
+        done
         ;;
     *)
         echo "Unrecognized command"
