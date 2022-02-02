@@ -1,3 +1,3 @@
 FUNCTION_UNDER_TEST := exp10f
 
-include ../support/Makefile.check
+include ../support/Makefile.univariate

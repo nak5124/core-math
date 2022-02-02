@@ -1,3 +1,3 @@
 FUNCTION_UNDER_TEST := log1pf
 
-include ../support/Makefile.check
+include ../support/Makefile.univariate

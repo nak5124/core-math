@@ -1,3 +1,3 @@
 FUNCTION_UNDER_TEST := cbrtf
 
-include ../support/Makefile.check
+include ../support/Makefile.univariate
