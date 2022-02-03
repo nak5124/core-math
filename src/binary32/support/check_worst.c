@@ -62,7 +62,7 @@ doloop(void)
       fesetround(rnd1[rnd]);
       z2 = cr_function_under_test(x, y);
       if (z1 != z2) {
-        printf("FAIL x=%a y=%a ref=%a y=%a\n", x, y, z1, z2);
+        printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
         fflush(stdout);
         exit(1);
       }
