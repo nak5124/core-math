@@ -1,6 +1,6 @@
 /* Correctly-rounded arctangent function of two binary32 values.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2022 Alexei Sibidanov and Paul Zimmermann.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -56,6 +56,32 @@ static double polydd(double xh, double xl, int n, const double c[][2], double *l
   }
   *l = cl;
   return ch;
+}
+
+/* for y/x tiny, use Taylor approximation z - z^3/3 where z=y/x */
+static float
+cr_atan2f_tiny (float y, float x)
+{
+  double dy = y, dx = x;
+  double z = dy / dx;
+  double e = __builtin_fma (-z, x, y);
+  /* z * x + e = y thus y/x = z + e/x */
+  static const double c = -0x1.5555555555555p-2; /* -1/3 rounded to nearest */
+  double zz = z * z;
+  double cz = c * z;
+  e = e / x + cz * zz;
+  b64u64_u t = {.f = z};
+  if ((t.u & 0xffffffful) == 0) /* boundary case */
+  {
+    /* If z and e are of same sign (resp. of different signs), we increase
+       (resp. decrease) the significant of t by 1 to avoid a double-rounding
+       issue when rounding t.f to binary32. */
+    if (z * e > 0)
+      t.u += 1;
+    else
+      t.u -= 1;
+  }
+  return t.f;
 }
 
 float cr_atan2f(float y, float x){
@@ -128,6 +154,9 @@ float cr_atan2f(float y, float x){
   r = z*r + off[i];
   b64u64_u res = {.f = r};
   if(__builtin_expect(((res.u + 8)&0xfffffff) <= 16, 0)){
+    /* check tiny y/x */
+    if (ay < ax && ((ax - ay) >> 23 >= 25))
+      return cr_atan2f_tiny (y, x);
     double zh,zl;
     if(!gt){
       zh = zy/zx;
