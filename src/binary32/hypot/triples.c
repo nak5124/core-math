@@ -38,6 +38,7 @@ void ref_init (void);
 
 extern int rnd1[];
 extern int rnd;
+extern int verbose;
 
 static void
 doit (float x, float y)
@@ -161,14 +162,17 @@ check_pythagorean_triples (int k)
   uint64_t p, q;
   unsigned long count1 = 0, count2 = 0;
 
-  fprintf (stderr, "# k=%d\n", k);
+  if (verbose)
+    fprintf (stderr, "# k=%d\n", k);
 
   /* Type 1: x = p^2-q^2, y = 2pq, z = p^2+q^2 */
   /* since y = 2pq < 2^24 and q < p, this gives q <= 2895 */
   for (q = 1; q <= 2895; q++)
     for (p = q + 1; 2 * p * q < 0x1000000ul; p+=2)
       count1 += generate1 (p, q, k);
-  fprintf (stderr, "# Type 1: %lu\n", count1);
+
+  if (verbose)
+    fprintf (stderr, "# Type 1: %lu\n", count1);
 
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^24, this gives p <= 2^23 */
@@ -191,8 +195,10 @@ check_pythagorean_triples (int k)
     for (q = qmin; q < p; q += 2)
       count2 += generate2 (p, q, k);
   }
-  fprintf (stderr, "# Type 2: %lu\n", count2);
-  fprintf (stderr, "# Total: %lu\n", count1 + count2);
+  if (verbose) {
+    fprintf (stderr, "# Type 2: %lu\n", count2);
+    fprintf (stderr, "# Total: %lu\n", count1 + count2);
+  }
 }
 
 void

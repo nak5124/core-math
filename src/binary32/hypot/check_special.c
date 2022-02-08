@@ -34,6 +34,7 @@ void doloop (int, int);
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
+int verbose = 0;
 
 int
 main (int argc, char *argv[])
@@ -61,6 +62,12 @@ main (int argc, char *argv[])
       else if (strcmp (argv[1], "--rndd") == 0)
         {
           rnd = 3;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--verbose") == 0)
+        {
+          verbose = 1;
           argc --;
           argv ++;
         }
