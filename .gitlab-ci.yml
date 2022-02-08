@@ -1,0 +1,9 @@
+stages:
+  - test
+
+check:
+  stage: test
+  image: debian:11
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - ./ci.sh
