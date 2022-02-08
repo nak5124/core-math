@@ -30,6 +30,7 @@ SOFTWARE.
 #include <math.h>
 #include <fenv.h>
 #include <assert.h>
+#include <omp.h>
 
 float cr_hypotf (float, float);
 float ref_hypot (float, float);
@@ -167,6 +168,7 @@ check_pythagorean_triples (int k)
 
   /* Type 1: x = p^2-q^2, y = 2pq, z = p^2+q^2 */
   /* since y = 2pq < 2^24 and q < p, this gives q <= 2895 */
+#pragma omp parallel for
   for (q = 1; q <= 2895; q++)
     for (p = q + 1; 2 * p * q < 0x1000000ul; p+=2)
       count1 += generate1 (p, q, k);
@@ -176,6 +178,7 @@ check_pythagorean_triples (int k)
 
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^24, this gives p <= 2^23 */
+#pragma omp parallel for
   for (p = 2; p <= 0x800000; p++)
   {
     /* we want y < 2^24, thus p^2-q^2 < 2^24 thus p^2 - 2^24 < q^2 */
@@ -206,6 +209,7 @@ doloop (int k0, int k1)
 {
   ref_init ();
   ref_fesetround (rnd);
+#pragma omp parallel for
   for (int k = k0; k <= k1; k++)
     check_pythagorean_triples (k);
 }
