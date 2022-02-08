@@ -43,6 +43,19 @@ case "$KIND" in
             "$DIR/check_worst" "$MODE" < "${FILE%.c}.wc"
         done
         ;;
+    --special)
+        "$MAKE" --quiet -C "$DIR" clean
+        "$MAKE" --quiet -C "$DIR" check_special
+        if [ "${#ARGS[@]}" -eq 0 ]; then
+            MODES=("--rndn" "--rndz" "--rndu" "--rndd")
+        else
+            MODES=("${ARGS[@]}")
+        fi
+        for MODE in "${MODES[@]}"; do
+            echo "Running special checks in $MODE mode..."
+            "$DIR/check_special" "$MODE"
+        done
+        ;;
     *)
         echo "Unrecognized command"
         exit 1

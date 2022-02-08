@@ -13,5 +13,5 @@ check_worst: check_worst.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.
 check_worst.o: ../support/check_worst.c
 	$(CC) $(CFLAGS) -I . -c -o $@ $<
 
-clean:
+clean::
 	rm -f *.o check_worst
