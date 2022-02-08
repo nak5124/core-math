@@ -118,7 +118,7 @@ static const double P[63][9] = {
 float
 cr_erff (float x)
 {
-  /* deal with NaN here */
+  /* Deal with NaN here */
 
   double xx = (x >= 0) ? x : -x, y;
 
