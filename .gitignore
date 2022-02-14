@@ -1,6 +1,6 @@
 *~
 *.o
 perf.data
-src/binary32/*/check_exhaustive
-src/binary32/*/check_worst
-src/binary32/*/check_special
+src/*/*/check_exhaustive
+src/*/*/check_worst
+src/*/*/check_special
