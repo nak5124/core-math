@@ -30,15 +30,15 @@ SOFTWARE.
 typedef union {double f; uint64_t u;} b64u64_u;
 
 double
-__cbrt (double x)
+cr_cbrt (double x)
 {
   static const double escale[3] = {1.0, 0x1.428a2f98d728bp+0/* 2^(1/3) */, 0x1.965fea53d6e3dp+0/* 2^(2/3) */};
   /* the polynomial c0+c1*x+c2*x^2+c3*x^3 approximates x^(1/3) on [1,2]
      with maximal error < 9.2e-5 (attained at x=2) */
-  const static double c[] = {0x1.1b0babccfef9cp-1, 0x1.2c9a3e94d1da5p-1, -0x1.4dc30b1a1ddbap-3, 0x1.7a8d3e4ec9b07p-6};
+  static const double c[] = {0x1.1b0babccfef9cp-1, 0x1.2c9a3e94d1da5p-1, -0x1.4dc30b1a1ddbap-3, 0x1.7a8d3e4ec9b07p-6};
   const double u0 = 0x1.5555555555555p-2, u1 = 0x1.c71c71c71c71cp-3;
   static const double rsc[] = { 1, -1, 0.5, -0.5, 0.25, -0.25};
-  const static double off[] = {0x1p-53, 0, 0, 0};
+  static const double off[] = {0x1p-53, 0, 0, 0};
   volatile unsigned flag = _mm_getcsr(); /* store MXCSR Control/Status Register */
   unsigned rm = (flag>>13)&3;
   /* rm=0 for rounding to nearest, and other values for directed roundings */
@@ -116,7 +116,7 @@ __cbrt (double x)
       if(azz == 0x1.a202bfc89ddffp+2) // ~ 0x1.de87aa837820e80000000000001c0f08p+0
 	y1 = __builtin_copysign(0x1.de87aa837820fp+0, zz);
       if(rm>0){
-	const static double wlist[][2] = {
+	static const double wlist[][2] = {
 	  {0x1.3a9ccd7f022dbp+0, 0x1.1236160ba9b93p+0},// ~ 0x1.1236160ba9b930000000000001e7e8fap+0
 	  {0x1.7845d2faac6fep+0, 0x1.23115e657e49cp+0},// ~ 0x1.23115e657e49c0000000000001d7a799p+0
 	  {0x1.d1ef81cbbbe71p+0, 0x1.388fb44cdcf5ap+0},// ~ 0x1.388fb44cdcf5a0000000000002202c55p+0
@@ -134,7 +134,7 @@ __cbrt (double x)
   }
   b64u64_u cvt3 = {.f = y1};
   cvt3.u += (long)(et - 342 - 1023)<<52;
-  long m0 = cvt3.u<<30, m1 = m0>>63;
+  uint64_t m0 = cvt3.u<<30, m1 = m0>>63;
   if(__builtin_expect((m0^m1)<=(1ul<<30),0)){
     b64u64_u cvt4 = {.f = y1};
     cvt4.u = (cvt4.u + (1ul<<15))&0xffffffffffff0000ul;
