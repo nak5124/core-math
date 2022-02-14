@@ -49,7 +49,7 @@ doloop(void)
   char *buf = NULL;
   size_t buflength = 0;
   ssize_t n;
-  float x, z1, z2;
+  double x, z1, z2;
   int count = 0;
 
   ref_init();
@@ -57,12 +57,12 @@ doloop(void)
 
   while ((n = getline(&buf, &buflength, stdin)) >= 0) {
     if (n > 0 && buf[0] == '#') continue;
-    if (sscanf(buf, "%a", &x) == 1) {
+    if (sscanf(buf, "%la", &x) == 1) {
       z1 = ref_function_under_test(x);
       fesetround(rnd1[rnd]);
       z2 = cr_function_under_test(x);
       if (z1 != z2) {
-        printf("FAIL x=%a ref=%a z=%a\n", x, z1, z2);
+        printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
         fflush(stdout);
         exit(1);
       }
