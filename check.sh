@@ -9,12 +9,20 @@ FUN="${!#}"
 ARGS=("${@:1:$#-1}")
 
 FILE="$(echo src/*/*/"$FUN".c)"
-DIR="$(dirname "$FILE")"
+ORIG_DIR="$(dirname "$FILE")"
 
-if ! [ -d "$DIR" ]; then
+if ! [ -d "$ORIG_DIR" ]; then
     echo "Could not find $FUN"
     exit 1
 fi
+
+TMP_DIR="$(mktemp -d --tmpdir core-math.XXXXXX)"
+
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+DIR="$TMP_DIR/$(basename "$ORIG_DIR")"
+
+cp -a "$ORIG_DIR" "$ORIG_DIR/../support" "$TMP_DIR"
 
 case "$KIND" in
     --exhaustive)
