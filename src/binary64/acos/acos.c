@@ -704,9 +704,9 @@ cr_acos (double x)
       fast_two_sum (&u, &zl, pi_hi, -u);
       v = pi_lo + zl - v;
     }
-    /* The value 0x1.6ep-62 is optimal: for 0x1.6dp-62 and RNDD it fails for
-       x=-0x1.7fe6e65a6a5aep-1 (i=191). */
-    static const double err = 0x1.6ep-62;
+    /* The value 0x1.5fp-61 is optimal among 9-bit values: with a smaller
+       9-bit value and RNDD it fails for x=-0x1.77e6d2adf19c3p-1 (i=187). */
+    static const double err = 0x1.5fp-61;
     // printf ("u=%la v=%la\n", u, v);
     // if (x == TRACEX) printf ("|x|<0.75: u=%la v=%la\n", u, v);
     double left  = u + (v - err), right = u + (v + err);
@@ -754,9 +754,9 @@ cr_acos (double x)
       v = zl + pi_lo - v;
     }
     // if (x == TRACEX) printf ("0.75<=|x|<1: u=%la v=%la\n", u, v);
-    /* The value of 'err' is optimal among 9-bit values, for
-       x=-0x1.95f84d64fce97p-1 (i=202) and RNDD it fails with 0x1.21p-65. */
-    static const double err = 0x1.22p-65;
+    /* The value of 'err' is optimal among 9-bit values, for RNDZ and
+       x=-0x1.95f84d64fce97p-1 (i=202) it fails with a smaller 9-bit value. */
+    static const double err = 0x1.afp-65;
     double left  = u + (v - err), right = u + (v + err);
     // if (x == TRACEX) printf ("left=%la right=%la\n", left, right);
     if (left != right)
