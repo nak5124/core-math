@@ -4,3 +4,5 @@ perf.data
 src/*/*/check_exhaustive
 src/*/*/check_worst
 src/*/*/check_special
+src/*/*/perf_throughput
+src/*/*/perf_latency

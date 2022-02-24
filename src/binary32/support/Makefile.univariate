@@ -2,10 +2,16 @@
 
 CFLAGS += -std=c99 -W -Wall -frounding-math
 
-all: check_exhaustive
+all: check_exhaustive perf_throughput perf_latency
 
 check_exhaustive: check_exhaustive.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) -fopenmp -o $@ $^ -lmpfr -lm
+
+perf_throughput: perf_throughput.o $(FUNCTION_UNDER_TEST).o
+	$(CC) -o $@ $^ -lm
+
+perf_latency: perf_latency.o $(FUNCTION_UNDER_TEST).o
+	$(CC) -o $@ $^ -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -I ../support -c -o $@ $<
@@ -13,5 +19,11 @@ check_exhaustive: check_exhaustive.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_T
 check_exhaustive.o: ../support/check_exhaustive.c
 	$(CC) $(CFLAGS) -I . -c -fopenmp -o $@ $<
 
+perf_throughput.o: ../support/perf_throughput_uni.c
+	$(CC) $(CFLAGS) -I . -c -o $@ $<
+
+perf_latency.o: ../support/perf_latency_uni.c
+	$(CC) $(CFLAGS) -I . -c -o $@ $<
+
 clean:
-	rm -f *.o check_exhaustive
+	rm -f *.o check_exhaustive perf_throughput perf_latency
