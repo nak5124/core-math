@@ -1,4 +1,4 @@
-/* Correctly-rounded cubic root of binary64 value.
+/* Correctly-rounded arc cosine of binary64 value.
 
 Copyright (c) 2021-2022 Paul Zimmermann.
 
@@ -27,7 +27,7 @@ SOFTWARE.
 #include <stdint.h>
 
 /* h + l <- a * b */
-static double
+static void
 dekker (double *h, double *l, double a, double b)
 {
   *h = a * b;
