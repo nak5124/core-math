@@ -2,9 +2,6 @@
 
 MAKE=make
 
-KIND="$1"
-shift
-
 FUN="${!#}"
 ARGS=("${@:1:$#-1}")
 
@@ -23,6 +20,21 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 DIR="$TMP_DIR/$(basename "$ORIG_DIR")"
 
 cp -a "$ORIG_DIR" "$ORIG_DIR/../support" "$TMP_DIR"
+
+if [ -n "${ARGS[0]}" ]; then
+    KIND="${ARGS[0]}"
+    ARGS=("${ARGS[@]:1}")
+else
+    SIZE=${FILE#src/binary}
+    SIZE=${SIZE%%/*}
+    case "$SIZE" in
+        32)
+            KIND=--exhaustive
+            ;;
+        *)
+            KIND=--worst
+    esac
+fi
 
 case "$KIND" in
     --exhaustive)
