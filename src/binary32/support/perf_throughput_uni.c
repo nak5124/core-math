@@ -43,6 +43,7 @@ int
 main (int argc, char *argv[])
 {
   int count = 1000000;
+  int reference = 0;
   while (argc >= 2)
     {
       if (strcmp (argv[1], "--rndn") == 0)
@@ -69,6 +70,12 @@ main (int argc, char *argv[])
           argc --;
           argv ++;
         }
+      else if (strcmp (argv[1], "--reference") == 0)
+        {
+          reference = 1;
+          argc --;
+          argv ++;
+        }
       else if (strcmp (argv[1], "--count") == 0)
         {
           argc --;
@@ -85,8 +92,14 @@ main (int argc, char *argv[])
     }
 
   fesetround(rnd1[rnd]);
-  for (int i = 0; i < count; i++) {
-    cr_function_under_test(random_under_test());
+  if (reference) {
+    for (int i = 0; i < count; i++) {
+      random_under_test();
+    }
+  } else {
+    for (int i = 0; i < count; i++) {
+      cr_function_under_test(random_under_test());
+    }
   }
 
   return 0;
