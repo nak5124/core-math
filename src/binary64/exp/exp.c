@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <math.h>
 #include <fenv.h>
+#include <assert.h>
 
 static int rnd = FE_TONEAREST;
 
@@ -283,6 +284,7 @@ algo72 (double x01, double *x11, double *x12, double *x13)
 {
   int n1 = R0 (x01 * 0x1p6);
   /* We should have -22 <= n1 <= 22.  */
+  assert (-22 <= n1 && n1 <= 22);
   const double *p = table1[22 + n1];
   *x11 = x01 - p[1];
   *x12 = -p[2];
@@ -369,6 +371,7 @@ algo73 (double x11, double *x21, double *x22, double *x23)
 {
   int n2 = R0 (x11 * 0x1p11);
   /* We should have -35 <= n2 <= 35.  */
+  assert (-35 <= n2 && n2 <= 35);
   const double *p = table2[35 + n2];
   *x21 = x11 - p[1];
   *x22 = -p[2];
@@ -437,6 +440,7 @@ algo74 (double x21, double *x31, double *x32, double *x33)
 {
   int n3 = R0 (x21 * 0x1p16);
   /* We should have -26 <= n3 <= 26.  */
+  assert (-26 <= n3 && n3 <= 26);
   const double *p = table3[26 + n3];
   *x31 = x21 - p[1];
   *x32 = -p[2];
@@ -462,6 +466,7 @@ algo75 (double x)
   int n;
   {
     /* We should have |x| < 745.2.  */
+    assert (-745.2 < x && x < 745.2);
     double t;
     double x01, x02, x03;
     algo71 (x, &m0, &x01, &x02, &x03);
