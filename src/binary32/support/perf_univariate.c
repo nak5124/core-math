@@ -36,6 +36,7 @@ SOFTWARE.
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <x86intrin.h>
 
 #include "random_under_test.h"
 
@@ -49,7 +50,7 @@ int
 main (int argc, char *argv[])
 {
   int count = 1000000, repeat = 1;
-  int reference = 0, latency = 0;
+  int reference = 0, latency = 0, show_rdtsc = 0;
   char *file = NULL;
 
   while (argc >= 2)
@@ -87,6 +88,12 @@ main (int argc, char *argv[])
       else if (strcmp (argv[1], "--latency") == 0)
         {
           latency = 1;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--rdtsc") == 0)
+        {
+          show_rdtsc = 1;
           argc --;
           argv ++;
         }
@@ -166,6 +173,7 @@ main (int argc, char *argv[])
       exit(3);
     }
     memcpy(randoms, mmaped_randoms, count * sizeof(float));
+    uint64_t start = __rdtsc();
     if (latency) {
       for (int r = 0; r < repeat; r++) {
         float accu = 0;
@@ -179,6 +187,10 @@ main (int argc, char *argv[])
           cr_function_under_test(randoms[i]);
         }
       }
+    }
+    uint64_t stop = __rdtsc();
+    if (show_rdtsc) {
+      printf("%.3f\n", (double) (stop - start) / (repeat * count));
     }
     munmap(mmaped_randoms, count * sizeof(float));
     close(fd);
