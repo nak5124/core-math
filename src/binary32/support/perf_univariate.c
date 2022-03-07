@@ -48,7 +48,7 @@ int rnd = 0;
 int
 main (int argc, char *argv[])
 {
-  int count = 1000000;
+  int count = 1000000, repeat = 1;
   int reference = 0, latency = 0;
   char *file = NULL;
 
@@ -106,6 +106,14 @@ main (int argc, char *argv[])
           argc --;
           argv ++;
         }
+      else if (strcmp (argv[1], "--repeat") == 0)
+        {
+          argc --;
+          argv ++;
+          repeat = atoi(argv[1]);
+          argc --;
+          argv ++;
+        }
       else
         {
           fprintf (stderr, "Error, unknown option %s\n", argv[1]);
@@ -147,22 +155,32 @@ main (int argc, char *argv[])
       perror("open");
       exit(3);
     }
-    float *randoms = mmap(NULL, count * sizeof(float), PROT_READ, MAP_SHARED, fd, 0);
-    if (randoms == MAP_FAILED) {
+    float *mmaped_randoms = mmap(NULL, count * sizeof(float), PROT_READ, MAP_SHARED, fd, 0);
+    if (mmaped_randoms == MAP_FAILED) {
       perror("mmap");
       exit(3);
     }
+    float *randoms = malloc(count * sizeof(float));
+    if (randoms == NULL) {
+      perror("malloc");
+      exit(3);
+    }
+    memcpy(randoms, mmaped_randoms, count * sizeof(float));
     if (latency) {
-      float accu = 0;
-      for (int i = 0; i < count; i++) {
-        accu = cr_function_under_test(randoms[i] + 0 * accu);
+      for (int r = 0; r < repeat; r++) {
+        float accu = 0;
+        for (int i = 0; i < count; i++) {
+          accu = cr_function_under_test(randoms[i] + 0 * accu);
+        }
       }
     } else {
-      for (int i = 0; i < count; i++) {
-        cr_function_under_test(randoms[i]);
+      for (int r = 0; r < repeat; r++) {
+        for (int i = 0; i < count; i++) {
+          cr_function_under_test(randoms[i]);
+        }
       }
     }
-    munmap(randoms, count * sizeof(float));
+    munmap(mmaped_randoms, count * sizeof(float));
     close(fd);
   }
 
