@@ -41,6 +41,7 @@ SOFTWARE.
 #include "random_under_test.h"
 
 float cr_function_under_test (float);
+float function_under_test (float);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
@@ -51,6 +52,7 @@ main (int argc, char *argv[])
 {
   int count = 1000000, repeat = 1;
   int reference = 0, latency = 0, show_rdtsc = 0;
+  float (*p_function_under_test)(float) = &cr_function_under_test;
   char *file = NULL;
 
   while (argc >= 2)
@@ -94,6 +96,12 @@ main (int argc, char *argv[])
       else if (strcmp (argv[1], "--rdtsc") == 0)
         {
           show_rdtsc = 1;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--libc") == 0)
+        {
+          p_function_under_test = &function_under_test;
           argc --;
           argv ++;
         }
@@ -178,13 +186,13 @@ main (int argc, char *argv[])
       for (int r = 0; r < repeat; r++) {
         float accu = 0;
         for (int i = 0; i < count; i++) {
-          accu = cr_function_under_test(randoms[i] + 0 * accu);
+          accu = p_function_under_test(randoms[i] + 0 * accu);
         }
       }
     } else {
       for (int r = 0; r < repeat; r++) {
         for (int i = 0; i < count; i++) {
-          cr_function_under_test(randoms[i]);
+          p_function_under_test(randoms[i]);
         }
       }
     }
