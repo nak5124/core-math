@@ -2,13 +2,12 @@
 
 CFLAGS += -std=c99 -W -Wall -frounding-math
 
-all: check_exhaustive perf
+TYPE_UNDER_TEST := float
+
+all:: check_exhaustive
 
 check_exhaustive: check_exhaustive.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) -fopenmp -o $@ $^ -lmpfr -lm
-
-perf: perf.o $(FUNCTION_UNDER_TEST).o
-	$(CC) -o $@ $^ -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -I ../support -c -o $@ $<
@@ -16,8 +15,7 @@ perf: perf.o $(FUNCTION_UNDER_TEST).o
 check_exhaustive.o: ../support/check_exhaustive.c
 	$(CC) $(CFLAGS) -I . -c -fopenmp -o $@ $<
 
-perf.o: ../support/perf_univariate.c
-	$(CC) $(CFLAGS) -I . -c -o $@ $<
+clean::
+	rm -f *.o check_exhaustive
 
-clean:
-	rm -f *.o check_exhaustive perf
+include ../../generic/support/Makefile.univariate

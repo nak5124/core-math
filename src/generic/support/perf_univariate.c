@@ -1,4 +1,4 @@
-/* Performance of binary32 univariate functions.
+/* Performance of univariate functions.
 
 Copyright (c) 2022 Stéphane Glondu, Inria.
 
@@ -40,8 +40,8 @@ SOFTWARE.
 
 #include "random_under_test.h"
 
-float cr_function_under_test (float);
-float function_under_test (float);
+TYPE_UNDER_TEST cr_function_under_test (TYPE_UNDER_TEST);
+TYPE_UNDER_TEST function_under_test (TYPE_UNDER_TEST);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
@@ -52,7 +52,7 @@ main (int argc, char *argv[])
 {
   int count = 1000000, repeat = 1;
   int reference = 0, latency = 0, show_rdtsc = 0;
-  float (*p_function_under_test)(float) = &cr_function_under_test;
+  TYPE_UNDER_TEST (*p_function_under_test)(TYPE_UNDER_TEST) = &cr_function_under_test;
   char *file = NULL;
 
   while (argc >= 2)
@@ -149,11 +149,11 @@ main (int argc, char *argv[])
       perror("open");
       exit(3);
     }
-    if (ftruncate(fd, count * sizeof(float)) < 0) {
+    if (ftruncate(fd, count * sizeof(TYPE_UNDER_TEST)) < 0) {
       perror("ftruncate");
       exit(3);
     }
-    float *randoms = mmap(NULL, count * sizeof(float), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    TYPE_UNDER_TEST *randoms = mmap(NULL, count * sizeof(TYPE_UNDER_TEST), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (randoms == MAP_FAILED) {
       perror("mmap");
       exit(3);
@@ -161,8 +161,8 @@ main (int argc, char *argv[])
     for (int i = 0; i < count; i++) {
       randoms[i] = random_under_test();
     }
-    msync(randoms, count * sizeof(float), MS_SYNC);
-    munmap(randoms, count * sizeof(float));
+    msync(randoms, count * sizeof(TYPE_UNDER_TEST), MS_SYNC);
+    munmap(randoms, count * sizeof(TYPE_UNDER_TEST));
     close(fd);
   } else {
     int fd = open(file, O_RDONLY);
@@ -170,21 +170,21 @@ main (int argc, char *argv[])
       perror("open");
       exit(3);
     }
-    float *mmaped_randoms = mmap(NULL, count * sizeof(float), PROT_READ, MAP_SHARED, fd, 0);
+    TYPE_UNDER_TEST *mmaped_randoms = mmap(NULL, count * sizeof(TYPE_UNDER_TEST), PROT_READ, MAP_SHARED, fd, 0);
     if (mmaped_randoms == MAP_FAILED) {
       perror("mmap");
       exit(3);
     }
-    float *randoms = malloc(count * sizeof(float));
+    TYPE_UNDER_TEST *randoms = malloc(count * sizeof(TYPE_UNDER_TEST));
     if (randoms == NULL) {
       perror("malloc");
       exit(3);
     }
-    memcpy(randoms, mmaped_randoms, count * sizeof(float));
+    memcpy(randoms, mmaped_randoms, count * sizeof(TYPE_UNDER_TEST));
     uint64_t start = __rdtsc();
     if (latency) {
       for (int r = 0; r < repeat; r++) {
-        float accu = 0;
+        TYPE_UNDER_TEST accu = 0;
         for (int i = 0; i < count; i++) {
           accu = p_function_under_test(randoms[i] + 0 * accu);
         }
@@ -200,7 +200,7 @@ main (int argc, char *argv[])
     if (show_rdtsc) {
       printf("%.3f\n", (double) (stop - start) / (repeat * count));
     }
-    munmap(mmaped_randoms, count * sizeof(float));
+    munmap(mmaped_randoms, count * sizeof(TYPE_UNDER_TEST));
     close(fd);
   }
 
