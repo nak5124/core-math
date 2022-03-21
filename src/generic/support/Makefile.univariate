@@ -5,10 +5,12 @@ PERF_DEFINES := \
   -Dcr_function_under_test=cr_$(FUNCTION_UNDER_TEST) \
   -Dfunction_under_test=$(FUNCTION_UNDER_TEST)
 
+LIBM ?= -lm
+
 all:: perf
 
 perf: perf.o $(FUNCTION_UNDER_TEST).o
-	$(CC) -o $@ $^ -lm
+	$(CC) -o $@ $^ $(LIBM)
 
 perf.o: ../../generic/support/perf_univariate.c
 	$(CC) $(CFLAGS) $(PERF_DEFINES) -I ../../generic/$(notdir $(CURDIR)) -c -o $@ $<
