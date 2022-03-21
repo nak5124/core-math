@@ -63,7 +63,7 @@ libc, in cycles/call. You can also evaluate the performance of some
 other libm (given by a static .a archive, typically llvmlibc), by
 setting the `LIBM` environment variable to the absolute path of the .a
 file. In the case, `./perf.sh` will output three numbers: the
-performances of core-math, given libm, standard libm.
+performances of core-math, standard libm, given libm.
 
 To evaluate performance of all supported functions, run:
 
