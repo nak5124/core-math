@@ -2,7 +2,9 @@
 
 CFLAGS += -std=c99 -W -Wall -frounding-math
 
-all: check_exhaustive
+TYPE_UNDER_TEST := float
+
+all:: check_exhaustive
 
 check_exhaustive: check_exhaustive.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) -fopenmp -o $@ $^ -lmpfr -lm
@@ -13,5 +15,7 @@ check_exhaustive: check_exhaustive.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_T
 check_exhaustive.o: ../support/check_exhaustive.c
 	$(CC) $(CFLAGS) -I . -c -fopenmp -o $@ $<
 
-clean:
+clean::
 	rm -f *.o check_exhaustive
+
+include ../../generic/support/Makefile.univariate
