@@ -2,7 +2,9 @@
 
 CFLAGS += -std=c99 -W -Wall -frounding-math
 
-all: check_worst
+TYPE_UNDER_TEST := float
+
+all:: check_worst
 
 check_worst: check_worst.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) -o $@ $^ -lmpfr -lm
@@ -15,3 +17,5 @@ check_worst.o: ../support/check_worst.c
 
 clean::
 	rm -f *.o check_worst
+
+include ../../generic/support/Makefile.bivariate
