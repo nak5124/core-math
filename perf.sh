@@ -11,7 +11,9 @@ else
     exit 2
 fi
 
-export CFLAGS="-O3 -march=native"
+if [ "$CFLAGS" == "" ]; then
+   export CFLAGS="-O3 -march=native"
+fi
 
 if [ -n "$LIBM" ]; then
     BACKUP_LIBM="$LIBM"

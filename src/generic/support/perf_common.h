@@ -28,6 +28,12 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 
+#ifdef WITH_ERRNO
+/* without this, Newlib says: undefined reference to `__errno' */
+int errno;
+int* __errno () { return &errno; }
+#endif
+
 int
 main (int argc, char *argv[])
 {
