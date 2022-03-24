@@ -5,7 +5,9 @@ PERF_DEFINES := \
   -Dcr_function_under_test=cr_$(FUNCTION_UNDER_TEST) \
   -Dfunction_under_test=$(FUNCTION_UNDER_TEST)
 
-LIBM ?= -lm
+# add -lm even if LIBM is defined, since some libraries do not define
+# fesetround
+LIBM += -lm
 
 all:: perf
 
