@@ -45,9 +45,10 @@ float cr_atanf(float x){
       return __builtin_fmaf(-x, __builtin_fabsf(x), x);
     return __builtin_fmaf(-0x1.5555555555555p-2f*x, x*x, x);
   }
+  /* now |x| >= 0x1p-13 */
   uint32_t ax = t.u&(~0u>>1);
   double z = x;
-  if(gt) z = 1/z;
+  if (gt) z = 1/z; /* gt is non-zero for |x| >= 1 */
   double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
   static const double cn[] =
     {0x1p+0, 0x1.40e0698f94c35p+1, 0x1.248c5da347f0dp+1, 0x1.d873386572976p-1, 0x1.46fa40b20f1dp-3,
