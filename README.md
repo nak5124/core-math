@@ -72,6 +72,15 @@ To evaluate performance of all supported functions, run:
 You can also set the `PERF_ARGS` environment variable to `--latency`
 to get latency instead of reciprocal throughput.
 
+When you run ./perf.sh acosf, it does the following:
+
+   $ cd src/binary32/acos
+   $ make clean
+   $ make CFLAGS="-O3 -march=native"
+   $ ./perf --file /tmp/randoms.dat --reference --count 1000000
+   $ perf stat ./perf --file /tmp/randoms.dat --count 1000000 --repeat 1000
+
+and it reports the number of cycles given by perf (divided by 10^9).
 
 ## Layout
 
