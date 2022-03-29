@@ -50,12 +50,19 @@ float cr_atanf(float x){
   double z = x;
   if (gt) z = 1/z; /* gt is non-zero for |x| >= 1 */
   double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
+  /* polynomials generated using rminimax
+     (https://gitlab.inria.fr/sfilip/rminimax) with the following command:
+     ./ratapprox --function="atan(x)" --dom=[0.000122070,1] --num=[x,x^3,x^5,x^7,x^9,x^11,x^13] --den=[1,x^2,x^4,x^6,x^8,x^10,x^12] --output=atanf.sollya --log
+     (see output atanf.sollya)
+  */
   static const double cn[] =
-    {0x1p+0, 0x1.40e0698f94c35p+1, 0x1.248c5da347f0dp+1, 0x1.d873386572976p-1, 0x1.46fa40b20f1dp-3,
-     0x1.33f5e041eed0fp-7, 0x1.546bbf28667c5p-14};
+    {0x1.51eccde075d67p-2, 0x1.a76bb5637f2f2p-1, 0x1.81e0eed20de88p-1,
+     0x1.376c8ca67d11dp-2, 0x1.aec7b69202ac6p-5, 0x1.9561899acc73ep-9,
+     0x1.bf9fa5b67e6p-16};
   static const double cd[] =
-    {0x1p+0, 0x1.6b8b143a3f6dap+1, 0x1.8421201d18ed5p+1, 0x1.8221d086914ebp+0, 0x1.670657e3a07bap-2,
-     0x1.0f4951fd1e72dp-5, 0x1.b3874b8798286p-11};
+    {0x1.51eccde075d67p-2, 0x1.dfbdd7b392d28p-1, 0x1p+0,
+     0x1.fd22bf0e89b54p-2, 0x1.d91ff8b576282p-4, 0x1.653ea99fc9bbp-7,
+     0x1.1e7fcc202340ap-12};
   double cn0 = cn[0] + z2*cn[1];
   double cn2 = cn[2] + z2*cn[3];
   double cn4 = cn[4] + z2*cn[5];
@@ -78,14 +85,11 @@ float cr_atanf(float x){
   if(__builtin_expect(tail<=12, 0)){
     static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
       {{0x1.1ad646p-4f}, 0x1.1a6386p-4f, -0x1.fffffep-29f},
-      {{0x1.f51a68p-11f}, 0x1.f51a5ep-11f, 0x1.ac7824p-62f},
-      {{0x1.fc5d82p+0f}, 0x1.1ab2fp+0f, 0x1.0db9cap-52f},
       {{0x1.ddf9f6p+0f}, 0x1.143ec4p+0f, 0x1.5e8582p-54f},
-      {{0x1.98c252p+12f}, 0x1.9215bp+0f, -0x1.069c58p-53f},
-      {{0x1.71b3f4p+16f}, 0x1.921f04p+0f, -0x1.4d3ffcp-53f},
+      {{0x1.fc5d82p+0f}, 0x1.1ab2fp+0f, 0x1.0db9cap-52f},
     };
     static const float q[] = {1.0f, -1.0f};
-    for(int i=0;i<6;i++) {
+    for(int i=0;i<3;i++) {
       if(__builtin_expect(st[i].uarg == ax, 0))
 	return  q[sgn]*st[i].rh + q[sgn]*st[i].rl;
     }
