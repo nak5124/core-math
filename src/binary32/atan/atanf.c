@@ -35,7 +35,7 @@ typedef uint64_t u64;
 float cr_atanf(float x){
   const double pi2 = 0x1.921fb54442d18p+0;
   b32u32_u t = {.f = x};
-  int e = (t.u>>23)&0xff, gt = e>=127, sgn = t.u>>31;
+  int e = (t.u>>23)&0xff, gt = e>=127;
   if(__builtin_expect(e==0xff, 0)) {
     if(t.u<<9) return x; // nan
     return __builtin_copysign(pi2,(double)x); // inf
@@ -46,7 +46,6 @@ float cr_atanf(float x){
     return __builtin_fmaf(-0x1.5555555555555p-2f*x, x*x, x);
   }
   /* now |x| >= 0x1p-13 */
-  uint32_t ax = t.u&(~0u>>1);
   double z = x;
   if (gt) z = 1/z; /* gt is non-zero for |x| >= 1 */
   double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
@@ -82,10 +81,15 @@ float cr_atanf(float x){
   cd4 += z4*cd6;
   cd0 += z8*cd4;
   double r = cn0/cd0;
-  if (gt) r = __builtin_copysign(pi2, z) - r;
+  if (!gt) return r; /* for |x| < 1, (float) r is correctly rounded */
+
+  /* now |x| >= 1 */
+  r = __builtin_copysign(pi2, z) - r;
   b64u64_u tr = {.f = r};
   u64 tail = (tr.u + 6)&(~0ul>>36);
   if(__builtin_expect(tail<=12, 0)){
+    int sgn = t.u>>31;
+    uint32_t ax = t.u&(~0u>>1);
     static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
       {{0x1.ddf9f6p+0f}, 0x1.143ec4p+0f, 0x1.5e8582p-54f},  /* rndz,29 */
       {{0x1.fc5d82p+0f}, 0x1.1ab2fp+0f, 0x1.0db9cap-52f},   /* rndz,27 */
