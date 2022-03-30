@@ -1,13 +1,13 @@
 rminimax (https://gitlab.inria.fr/sfilip/rminimax) is a tool to generate
-optimal Padé approximants with some constraints.
+minimax rational approximants with some constraints.
 
 To install it, it needs several dependencies (see README.md file).
 
-Once you have built rminimax, you can do for example:
+Once one has built rminimax, one can do for example:
 
 $ ./ratapprox --function="erf(x)" --dom=[0.5,1.769] --num=[x,x^3] --den=[1,x^2] --weight=1 --output=x1p.sollya --log
 
-and you get in the x1p.sollya file:
+and one gets in the x1p.sollya file:
 
 $ cat x1p.sollya
 Numerator = [|
@@ -18,7 +18,7 @@ Denominator = [|
 0.3854829083493149788353093754267320036888122558593750000000000000000000000000000000000000000000000000|];
 
 Useful tips for CORE-MATH:
-* with --weight=1 you minimize the absolute error, without any --weight option
+* with --weight=1 one minimizes the absolute error, without any --weight option
   the default is to take the inverse of the function, which minimizes the
   relative error.
-  
+* with --dispCoeff=[bin|dec|hex] one controls the output of coefficients
