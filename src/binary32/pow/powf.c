@@ -230,16 +230,17 @@ float as_powf_accurate2(float x0, float y0){
 	}
       }
     }
-  } else {
-    if((lh.u&0xfffffff) == 0){
-      if(__builtin_fabs(ll.f)>0x1p-83){
-	if(el<0){
-	  lh.u--;
-	  eh = lh.f;
-	} else {
-	  lh.u++;
-	  eh = lh.f;
-	}
+  }
+  ll.f = el;
+  lh.f = eh;
+  if((lh.u&0xfffffff) == 0){
+    if(__builtin_fabs(ll.f)>0x1p-91){
+      if(el<0){
+	lh.u--;
+	eh = lh.f;
+      } else {
+	lh.u++;
+	eh = lh.f;
       }
     }
   }
