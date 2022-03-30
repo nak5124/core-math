@@ -54,13 +54,16 @@ float cr_atanf(float x){
      (https://gitlab.inria.fr/sfilip/rminimax) with the following command:
      ./ratapprox --function="atan(x)" --dom=[0.000122070,1] --num=[x,x^3,x^5,x^7,x^9,x^11,x^13] --den=[1,x^2,x^4,x^6,x^8,x^10,x^12] --output=atanf.sollya --log
      (see output atanf.sollya)
+     The coefficient cd[0] was slightly reduced from the original value
+     0x1.51eccde075d67p-2 to avoid an exceptional case for |x| = 0x1.1ad646p-4
+     and rounding to nearest.
   */
   static const double cn[] =
     {0x1.51eccde075d67p-2, 0x1.a76bb5637f2f2p-1, 0x1.81e0eed20de88p-1,
      0x1.376c8ca67d11dp-2, 0x1.aec7b69202ac6p-5, 0x1.9561899acc73ep-9,
      0x1.bf9fa5b67e6p-16};
   static const double cd[] =
-    {0x1.51eccde075d67p-2, 0x1.dfbdd7b392d28p-1, 0x1p+0,
+    {0x1.51eccde075d66p-2, 0x1.dfbdd7b392d28p-1, 0x1p+0,
      0x1.fd22bf0e89b54p-2, 0x1.d91ff8b576282p-4, 0x1.653ea99fc9bbp-7,
      0x1.1e7fcc202340ap-12};
   double cn0 = cn[0] + z2*cn[1];
@@ -84,12 +87,11 @@ float cr_atanf(float x){
   u64 tail = (tr.u + 6)&(~0ul>>36);
   if(__builtin_expect(tail<=12, 0)){
     static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
-      {{0x1.1ad646p-4f}, 0x1.1a6386p-4f, -0x1.fffffep-29f},
-      {{0x1.ddf9f6p+0f}, 0x1.143ec4p+0f, 0x1.5e8582p-54f},
-      {{0x1.fc5d82p+0f}, 0x1.1ab2fp+0f, 0x1.0db9cap-52f},
+      {{0x1.ddf9f6p+0f}, 0x1.143ec4p+0f, 0x1.5e8582p-54f},  /* rndz,29 */
+      {{0x1.fc5d82p+0f}, 0x1.1ab2fp+0f, 0x1.0db9cap-52f},   /* rndz,27 */
     };
     static const float q[] = {1.0f, -1.0f};
-    for(int i=0;i<3;i++) {
+    for(int i=0;i<2;i++) {
       if(__builtin_expect(st[i].uarg == ax, 0))
 	return  q[sgn]*st[i].rh + q[sgn]*st[i].rl;
     }
