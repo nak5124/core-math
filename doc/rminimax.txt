@@ -1,7 +1,7 @@
 rminimax (https://gitlab.inria.fr/sfilip/rminimax) is a tool to generate
 optimal Padé approximants with some constraints.
 
-To install it, it nees several dependencies (see README.md file).
+To install it, it needs several dependencies (see README.md file).
 
 Once you have built rminimax, you can do for example:
 
