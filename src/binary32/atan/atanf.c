@@ -84,21 +84,6 @@ float cr_atanf(float x){
   if (!gt) return r; /* for |x| < 1, (float) r is correctly rounded */
 
   /* now |x| >= 1 */
-  r = __builtin_copysign(pi2, z) - r;
-  b64u64_u tr = {.f = r};
-  u64 tail = (tr.u + 6)&(~0ul>>36);
-  if(__builtin_expect(tail<=12, 0)){
-    int sgn = t.u>>31;
-    uint32_t ax = t.u&(~0u>>1);
-    static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
-      {{0x1.ddf9f6p+0f}, 0x1.143ec4p+0f, 0x1.5e8582p-54f},  /* rndz,29 */
-      {{0x1.fc5d82p+0f}, 0x1.1ab2fp+0f, 0x1.0db9cap-52f},   /* rndz,27 */
-    };
-    static const float q[] = {1.0f, -1.0f};
-    for(int i=0;i<2;i++) {
-      if(__builtin_expect(st[i].uarg == ax, 0))
-	return  q[sgn]*st[i].rh + q[sgn]*st[i].rl;
-    }
-  }
+  r = __builtin_copysign(0x1.0fdaa22168c23p-7, z) - r + __builtin_copysign(0x1.9p0, z);
   return r;
 }
