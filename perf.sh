@@ -11,6 +11,7 @@ else
     exit 2
 fi
 
+# for clang we might want to add -ffp-contract=on to enable FMA
 if [ "$CFLAGS" == "" ]; then
    export CFLAGS="-O3 -march=native"
 fi
