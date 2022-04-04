@@ -1,0 +1,6 @@
+# worst cases of pow in double precision
+# last number (if any) is the number of identical bits after the round bit
+0x1.ffffffffffffcp-1,0x1.fffffffffffffp-2 # 102
+0x1.ffffffffffffcp-1,-0x1.ffffffffffffdp-2 # 103
+0x1.ffffffffffffp-1,-0x1.ffffffffffff6p-3 # 149
+0x1.ffffffffffff8p-1,-0x1.ffffffffffffbp-3 # 153
