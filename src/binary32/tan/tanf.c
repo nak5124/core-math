@@ -39,9 +39,9 @@ Tested on x86_64-linux with and without FMA (-march=native).
 inline double __builtin_roundeven(double x){
    double ix;
 #if defined __AVX__
-   asm("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
 #else /* __SSE4_1__ */
-   asm("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
 #endif
    return ix;
 }

@@ -17,9 +17,11 @@ TMP_DIR="$(mktemp -d --tmpdir core-math.XXXXXX)"
 
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-DIR="$TMP_DIR/$(basename "$ORIG_DIR")"
+DIR="$TMP_DIR/toto/$(basename "$ORIG_DIR")"
 
-cp -a "$ORIG_DIR" "$ORIG_DIR/../support" "$TMP_DIR"
+mkdir "$TMP_DIR/toto"
+cp -a "$ORIG_DIR" "$ORIG_DIR/../support" "$TMP_DIR/toto"
+cp -a "$ORIG_DIR/../../generic" "$TMP_DIR"
 
 if [ -n "${ARGS[0]}" ]; then
     KIND="${ARGS[0]}"

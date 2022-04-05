@@ -1,3 +1,4 @@
+# worst cases for exp, with at least 46 identical bits after the round bit
 0x1.00091a4a0dae5p2
 0x1.005ae04256babp-1
 0x1.00687179e3f66p-2
