@@ -353,17 +353,25 @@ cr_exp (double x)
   /* first multiply x by a double-double approximation of 1/log(2) */
   static const double log2_h = 0x1.71547652b82fep+0;
   static const double log2_l = 0x1.777d0ffda0ep-56;
+  /* |1/log(2) - log2_h - log2_l| < 2^-100.2 */
   double h, l;
-  dekker (&h, &l, x, log2_h);
-  l += x * log2_l;
+  dekker (&h, &l, x, log2_h); /* l0 is the value of l here */
+  /* h + l0 = x * log2_h exactly */
+  l += x * log2_l; /* l1 is the value of l here */
+  /* |x * log2_l| < 2^-45 thus the error on x * log2_h (even without fma)
+     is bounded by 2^-98.
+     |h| < 2^11 thus |l0| < 2^-42 thus the rounding error on l1 is bounded
+     by 2^-95.
+     The total rounding error on l1 is bounded by 2^-98+2^-95 < 2^-94.83.
+     |x/log(2) - h - l1| < |x| * 2^-100.2 + 2^-94.83 < 2^-90.57. */
   
-  /* now x/log(2) ~ h + l thus exp(x) ~ 2^h * 2^l where |l| < 2^-42 */
+  /* now x/log(2) ~ h + l1 thus exp(x) ~ 2^h * 2^l1 where |l1| < 2^-42 */
   double t = __builtin_trunc (128.0 * h), u;
   h = h - t / 128.0; /* exact */
   e = t;
   int i = e % 128;
   e = (e - i) >> 7;
-  /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l where |h| < 1/128 and |l| < 2^-42,
+  /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l1 where |h| < 1/128 and |l1| < 2^-42,
      where -127 <= i <= 127 */
 
   /* p[i] are the coefficients of a degree-6 polynomial approximating 2^x
@@ -376,37 +384,106 @@ cr_exp (double x)
     0x1.430bba9c70dddp-13 };
   static const double p1l = 0x1.b2ca0bb577094p-56;
   double yh = p[6], yl;
+  /* yh = p[6] is exact */
   yh = p[5] + yh * h;
+  /* |yh * h| < 2^-12 * 2^-7 = 2^-19 thus the rounding error on yh * h is
+     bounded by 2^-72. After adding yh * h we stay in the same binade, thus
+     the error on yh is bounded by ulp(p5) + 2^-72 = 2^-62+2^-72 < 2^-61.99 */
   yh = p[4] + yh * h;
+  /* |yh * h| < 2^-9 * 2^-7 = 2^-16 thus the rounding error on yh * h is
+     bounded by 2^-69. After adding yh * h we stay in the same binade, thus
+     the error on yh is bounded by ulp(p4) + 2^-69 = 2^-59+2^-69 < 2^-58.99 */
   yh = p[3] + yh * h;
+  /* |yh * h| < 2^-6 * 2^-7 = 2^-13 thus the rounding error on yh * h is
+     bounded by 2^-66. After adding yh * h we stay in the same binade, thus
+     the error on yh is bounded by ulp(p3) + 2^-66 = 2^-57+2^-66 < 2^-56.99 */
   yh = p[2] + yh * h;
+  /* |yh * h| < 2^-4 * 2^-7 = 2^-11 thus the rounding error on yh * h is
+     bounded by 2^-64. After adding yh * h we stay in the same binade, thus
+     the error on yh is bounded by ulp(p2) + 2^-64 = 2^-55+2^-64 < 2^-54.99.
+     This error is multiplied by h^2 < 2^-14, thus contributes to at most
+     2^-68.99 in the final error. */
   /* add p[1] + p1l + yh * h */
-  fast_two_sum (&yh, &yl, p[1], yh * h);
+  fast_two_sum (&yh, &yl, p[1], yh * h); /* exact */
+  /* |yh * h| < 2^-2 * 2^-7 = 2^-9 thus the rounding error on yh * h is
+     bounded by 2^-62. This rounding error is multiplied by h < 2^-7 thus
+     contributes to < 2^-69 to the final error. */
   yl += p1l;
+  /* |yl| < 2^-53 and |p1l| < 2^-55 thus the rounding error in yl += p1l
+     is bounded by 2^-105 (we might have an exponent jump). This error is
+     multiplied by h below, thus contributes < 2^-112. */
   /* multiply (yh,yl) by h */
-  dekker (&yh, &t, yh, h);
+  dekker (&yh, &t, yh, h); /* always exact (FIXME: prove Lemma) */
   /* add yl*h */
   t += yl * h;
+  /* |yl| < 2^-52 here, thus |yl * h| < 2^-59, thus the rounding error on
+     yl * h is < 2^-112.
+     |yh| < 1 before the dekker() call, thus after we have |yh| < 2^-7
+     and |t| < 2^-60, thus |t+yl * h| < 2^-58, and the rounding error on
+     t += yl * h is < 2^-111. */
   /* add p[0] = 1 */
-  fast_two_sum (&yh, &yl, p[0], yh);
+  fast_two_sum (&yh, &yl, p[0], yh); /* exact */
   yl += t;
-  /* now (yh,yl) approximates 2^h to about 70 bits of accuracy */
+  /* now |yh| < 2 and |yl| < 2^-52, with |t| < 2^-58, thus |yl+t| < 2^-51
+     and the rounding error in yl += t is bounded by 2^-104. */
+  /* now (yh,yl) approximates 2^h to about 68 bits of accuracy:
+     2^-68.99 from the rounding errors for evaluating p[2] + ...
+     2^-69 from the rounding error in yh * h in the 1st fast_two_sum
+     2^-112 from the rounding error in yl += p1l
+     2^-112 from the rounding error in yl * h
+     2^-111 from the rounding error in t += yl * h
+     2^-104 from the rounding error in yl += t
+     Total absolute error < 2^-67.99 on yh+yl here (with respect to 2^h).
+  */
 
   /* FIXME: could we integrate the multiplication by 2^l above? */
   /* multiply (yh,yl) by 2^l. Since |l| < 2^-42, it suffices to multiply
-     by 1 + log(2)*l to get 70-bit accuracy */
+     by 1 + log(2)*l to get 70-bit accuracy: the maximal error while doing
+     this is 2^-86.05. */
   static const double l2 = 0x1.62e42fefa39efp-1;
+  /* error on l2 < 2^-55.25 */
   t = l2 * l * yh;
-  fast_two_sum (&yh, &u, yh, t);
+  /* we have |l2| < 0.70, |l| < 2^-42, |yh| < 1.01 thus |l2 * l * yh| < 2^-42
+     and the total rounding error is bounded by 3*2^-95 */
+  fast_two_sum (&yh, &u, yh, t); /* exact */
   u += yl;
-  /* now (yh,u) approximates 2^(h+l) to about 70 bits of accuracy */
+  /* |yh| < 2, |u| < 2^-52, |yl| < 2^-52 thus |u+yl| < 2^-51 and the rounding
+     error in u += yl is bounded by 2^-104. */
+  /* now (yh,u) approximates 2^(h+l) to about 68 bits of accuracy:
+     2^-67.99 from the approximation (yh,yl) for 2^h multiplied by 1+2^-42
+     1.01*2^-86.05 < 2^-86.03 for the error from l2
+     3*2^-95 < 2^-93.41 for the rounding error in l2 * l * yh
+     2^-104 for the rounding error in u += yl
+     Total absolute error < 2^-67.98 on yh+u here with respect to 2^(h+l).
+  */
 
   /* multiply (yh,u) by 2^(i/128) */
+  /* the maximal error |2^(i/128) - tab_i[127+i][0] - tab_i[127+i][1]|
+     is 1/2*max(ulp(tab_i[127+i][1])) = 2^-107.
+     Since we multiply by |2^(h+l)| < 1.006 this yields 2^-106.99.
   t = yh * tab_i[127+i][1];
-  dekker (&yh, &yl, yh, tab_i[127+i][0]);
+  /* |yh| < 1.006 and |tab_i[127+i][1]| < 0x1.fc6f89bd4f6bap-54 thus
+     |yh * tab_i[127+i][1]| < 2^-53 and the rounding error on t is
+     bounded by 2^-106 */
+  dekker (&yh, &yl, yh, tab_i[127+i][0]); /* exact */
+  /* now |yh| < 2 thus |yl| < 2^-52, |t| < 2^-53 */
   yl += t + u * tab_i[127+i][0];
+  /* |u| < 2^-52 and |tab_i[127+i][0]| < 2 thus |u * tab_i[127+i][0]| < 2^-51
+     and the rounding error on u * tab_i[127+i][0] is bounded by 2^-104.
+     |t + u * tab_i[127+i][0]| < 2^-50 thus the rounding error when adding t
+     is bounded by 2^-103.
+     |yl + t + u * tab_i[127+i][0]| < 2^-49 thus the rounding error in
+     yl += ,,, is bounded by 2^-102.
+     Total error:
+     2^-67.98 multiplied by 2^(i/128) < 2^-66.98
+     2^-106.99 for the error on 2^(i/128)
+     2^-106 for the rounding error on t
+     2^-104 for the rounding error on u * tab_i[127+i][0]
+     2^-103 for the rounding error on t + u * tab_i[127+i][0]
+     2^-102 for the rounding error on yl += ...
+     Total error < 2^-67.97 on yh + yl with respect to 2^(i/128+h+l). */
 
-  /* now (yh,yl) approximates 2^(i/128+h+l) to about 70 bits of accuracy */
+  /* now (yh,yl) approximates 2^(i/128+h+l) to about 68 bits of accuracy */
   v.x = yh + yl;
   /* multiply by 2^e */
   f = v.n >> 52; /* sign is always positive */
@@ -449,5 +526,6 @@ int main()
   }
   printf ("%d/%d failures (proba %e)\n", failures, tests,
           (double) failures / (double) tests);
+  /* 95e7cc2: 2257/1000000000 failures (proba 2.257000e-06) */
 }
 #endif
