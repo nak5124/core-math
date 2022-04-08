@@ -383,24 +383,30 @@ cr_exp (double x)
     0x1.c6b08d70484c1p-5, 0x1.3b2ab6fb663a2p-7, 0x1.5d881a764d899p-10,
     0x1.430bba9c70dddp-13 };
   static const double p1l = 0x1.b2ca0bb577094p-56;
-  double yh = p[6], yl;
-  /* yh = p[6] is exact */
-  yh = p[5] + yh * h;
-  /* |yh * h| < 2^-12 * 2^-7 = 2^-19 thus the rounding error on yh * h is
-     bounded by 2^-72. After adding yh * h we stay in the same binade, thus
-     the error on yh is bounded by ulp(p5) + 2^-72 = 2^-62+2^-72 < 2^-61.99 */
-  yh = p[4] + yh * h;
-  /* |yh * h| < 2^-9 * 2^-7 = 2^-16 thus the rounding error on yh * h is
-     bounded by 2^-69. After adding yh * h we stay in the same binade, thus
-     the error on yh is bounded by ulp(p4) + 2^-69 = 2^-59+2^-69 < 2^-58.99 */
-  yh = p[3] + yh * h;
-  /* |yh * h| < 2^-6 * 2^-7 = 2^-13 thus the rounding error on yh * h is
-     bounded by 2^-66. After adding yh * h we stay in the same binade, thus
-     the error on yh is bounded by ulp(p3) + 2^-66 = 2^-57+2^-66 < 2^-56.99 */
+  double hh = h * h;
+  /* |h| < 2^-7 thus hh < 2^-14, and the error on hh is bounded by 2^-67 */
+  double yl = p[5] + h * p[6];
+  /* |h * p[6]| < 2^-7 * 2^-12 = 2^-19 thus the rounding error on h * p[6] is
+     bounded by 2^-72. When adding to p[5] we stay in the same binade than p[5]
+     thus error(yl) < ulp(p[5]) + 2^-72 = 2^-62+2^-72 < 2^-61.99 */
+  double yh = p[3] + h * p[4];
+  /* |h * p[4]| < 2^-7 * 2^-6 = 2^-13 thus the rounding error on h * p[4] is
+     bounded by 2^-66. When adding to p[3] we stay in the same binade than p[3]
+     thus error(yh) < ulp(p[3]) + 2^-66 = 2^-57+2^-66 < 2^-56.99 */
+  yh = yh + hh * yl;
+  /* the error on yh is bounded by:
+     2^-56.99 : error on the previous value of yh
+     2^-67 * 2^-9 = 2^-76 : error on hh times maximal value of yl
+     2^-14 * 2^-61.99 = 2^-75.99 : maximal value of hh tomes error on yl
+     2^-76 : rounding error on hh * yl since hh * yl < 2^-23
+     2^-57 : rounding error on yh since we stay in the same binade as p[3]
+     Total: error(yh) < 2^-55.99 */
   yh = p[2] + yh * h;
   /* |yh * h| < 2^-4 * 2^-7 = 2^-11 thus the rounding error on yh * h is
      bounded by 2^-64. After adding yh * h we stay in the same binade, thus
      the error on yh is bounded by ulp(p2) + 2^-64 = 2^-55+2^-64 < 2^-54.99.
+     We need to add the error on yh multiplied by h, which is bounded by
+     2^-55.99 * 2^-7 < 2^-62.99, which gives 2^-55+2^-64+2^-62.99 < 2^-54.99.
      This error is multiplied by h^2 < 2^-14, thus contributes to at most
      2^-68.99 in the final error. */
   /* add p[1] + p1l + yh * h */
