@@ -460,7 +460,7 @@ cr_exp (double x)
   /* multiply (yh,u) by 2^(i/128) */
   /* the maximal error |2^(i/128) - tab_i[127+i][0] - tab_i[127+i][1]|
      is 1/2*max(ulp(tab_i[127+i][1])) = 2^-107.
-     Since we multiply by |2^(h+l)| < 1.006 this yields 2^-106.99.
+     Since we multiply by |2^(h+l)| < 1.006 this yields 2^-106.99. */
   t = yh * tab_i[127+i][1];
   /* |yh| < 1.006 and |tab_i[127+i][1]| < 0x1.fc6f89bd4f6bap-54 thus
      |yh * tab_i[127+i][1]| < 2^-53 and the rounding error on t is
