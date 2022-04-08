@@ -45,22 +45,15 @@ fast_two_sum (double *hi, double *lo, double a, double b)
   /* Now *hi + *lo = a + b exactly.  */
 }
 
-/* h + l <- a * b */
+/* h + l <- a * b
+   We have h + l = a + b exactly, whatever the rounding mode, when no
+   underflow happens (cf Section 4.4 of the Handbook of Floating-Point
+   Arithmetic, 2nd edition) */
 static void
 dekker (double *h, double *l, double a, double b)
 {
   *h = a * b;
-#ifdef __FP_FAST_FMA
   *l = __builtin_fma (a, b, -*h);
-#else /* use Dekker's algorithm */
-#define MAGIC 0x8000001
-  double ah = a * MAGIC, bh = b * MAGIC;
-  ah = (a - ah) + ah;
-  bh = (b - bh) + bh;
-  double al = a - ah;
-  double bl = b - bh;
-  *l = (((ah * bh - *h) + ah * bl) + al * bh) + al * bl;
-#endif
 }
 
 typedef union { double x; uint64_t n; } d64u64;
@@ -419,7 +412,7 @@ cr_exp (double x)
      is bounded by 2^-105 (we might have an exponent jump). This error is
      multiplied by h below, thus contributes < 2^-112. */
   /* multiply (yh,yl) by h */
-  dekker (&yh, &t, yh, h); /* always exact (FIXME: prove Lemma) */
+  dekker (&yh, &t, yh, h); /* exact */
   /* add yl*h */
   t += yl * h;
   /* |yl| < 2^-52 here, thus |yl * h| < 2^-59, thus the rounding error on
