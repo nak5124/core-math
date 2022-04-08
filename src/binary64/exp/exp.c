@@ -318,13 +318,86 @@ static const double tab_i[255][2] = {
 { 0x1.fd3c22b8f71f1p+0, 0x1.2eb74966579e7p-57 }, /* 127 */
 };
 
+static const double xmax = 0x1p1023;
+
+#define MAYBE_UNUSED __attribute__ ((unused))
+
+/* compute a double-double approximation of
+   exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l
+   where -127 <= i <= 127, |h| < 1/128, and |l| < 2^-42.
+   We use a degree-9 polynomial to approximate 2^h on [-1/128,1/128]
+   (cf exp2_acc.sollya) with 105.765 bits of relative precision.
+   Coefficients of degree 0-4 are double-double, 5-9 are doubles. */
+static double
+cr_exp_accurate (double x MAYBE_UNUSED, int e, int i, double h, double l)
+{
+  static const double p[14] = { 0x1p0,            /* p[0]: degree 0 */
+    0x1.62e42fefa39efp-1, 0x1.abc9e3b397ebp-56,   /* p[1,2]: degree 1 */
+    0x1.ebfbdff82c58fp-3, -0x1.5e43a5429b326p-57, /* p[3,4]: degree 2 */
+    0x1.c6b08d704a0cp-5, -0x1.d331600cee073p-59,  /* p[5,6]: degree 3 */
+    0x1.3b2ab6fba4e77p-7, 0x1.4fb30e5c2c8bcp-62,  /* p[7,8]: degree 4 */
+    0x1.5d87fe78a6731p-10,                        /* p[9]: degree 5 */
+    0x1.430912f86bfb8p-13,                        /* p[10]: degree 6 */
+    0x1.ffcbfc58b51c9p-17,                        /* p[11]: degree 7 */
+    0x1.62c034be4ffd9p-20,                        /* p[12]: degree 8 */
+    0x1.b523023e3d552p-24 };                      /* p[13]: degree 9 */
+  double t, u;
+  double yl = p[12] + h * p[13];
+  double yh = p[10] + h * p[11];
+  /* ulp(p6*h^6) <= 2^-107, thus we can compute h*yh in double,
+     but ulp(p5*h^5) <= 2^-97, so we need a double-double to store
+     p5 + h*yh */
+  fast_two_sum (&yh, &yl, p[9], h * yh);
+  /* multiply (yh,yl) by h and add p4=(p[7],p[8]) */
+  dekker (&t, &u, yh, h);
+  u += yl * h;
+  fast_two_sum (&yh, &yl, p[7], t);
+  yl += u + p[8];
+  /* multiply (yh,yl) by h and add p3=(p[5],p[6]) */
+  dekker (&t, &u, yh, h);
+  u += yl * h;
+  fast_two_sum (&yh, &yl, p[5], t);
+  yl += u + p[6];
+  /* multiply (yh,yl) by h and add p2=(p[3],p[4]) */
+  dekker (&t, &u, yh, h);
+  u += yl * h;
+  fast_two_sum (&yh, &yl, p[3], t);
+  yl += u + p[4];
+  /* multiply (yh,yl) by h and add p1=(p[1],p[2]) */
+  dekker (&t, &u, yh, h);
+  u += yl * h;
+  fast_two_sum (&yh, &yl, p[1], t);
+  yl += u + p[2];
+  /* multiply (yh,yl) by h and add p0=1 */
+  dekker (&t, &u, yh, h);
+  u += yl * h;
+  fast_two_sum (&yh, &yl, p[0], t);
+  yl += u;
+
+  /* multiply by 2^l */
+  static const double l2 = 0x1.62e42fefa39efp-1;
+  t = l2 * l * yh;
+  fast_two_sum (&yh, &u, yh, t);
+  u += yl;
+  t = yh * tab_i[127+i][1];
+  dekker (&yh, &yl, yh, tab_i[127+i][0]);
+  yl += t + u * tab_i[127+i][0];
+  d64u64 v;
+  v.x = yh + yl;
+  int f = v.n >> 52;
+  f += e;
+  if (__builtin_expect(f > 0x7ff, 0))
+    return xmax + xmax;
+  v.n += (int64_t) e << 52;
+  return v.x;
+}
+
 double
 cr_exp (double x)
 {
   d64u64 v;
   v.x = x;
   int e = ((v.n >> 52) & 0x7ff) - 0x3ff, f;
-  static const double xmax = 0x1p1023;
 
   if (e >= 9) /* potential underflow or overflow */
   {
@@ -364,8 +437,10 @@ cr_exp (double x)
   e = t;
   int i = e % 128;
   e = (e - i) >> 7;
-  /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l1 where |h| < 1/128 and |l1| < 2^-42,
+  /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l where |h| < 1/128 and |l| < 2^-42,
      where -127 <= i <= 127 */
+
+  return cr_exp_accurate (x, e, i, h, l);
 
   /* p[i] are the coefficients of a degree-6 polynomial approximating 2^x
      over [-1/128,1/128], with double coefficients, except p[1] which is
