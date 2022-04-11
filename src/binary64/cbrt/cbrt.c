@@ -134,8 +134,8 @@ cr_cbrt (double x)
   }
   b64u64_u cvt3 = {.f = y1};
   cvt3.u += (long)(et - 342 - 1023)<<52;
-  uint64_t m0 = cvt3.u<<30, m1 = m0>>63;
-  if(__builtin_expect((m0^m1)<=(1ul<<30),0)){
+  int64_t m0 = cvt3.u<<30, m1 = m0>>63;
+  if(__builtin_expect((uint64_t)(m0^m1)<=(1ul<<30),0)){
     b64u64_u cvt4 = {.f = y1};
     cvt4.u = (cvt4.u + (1ul<<15))&0xffffffffffff0000ul;
     if( __builtin_fabs((cvt4.f - y1) - dy) < 0x1p-60 || __builtin_fabs(zz) == 1.0 ){
