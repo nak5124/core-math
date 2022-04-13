@@ -12,8 +12,9 @@ else
 fi
 
 # for clang we might want to add -ffp-contract=on to enable FMA
+# -ffinite-math-only is needed to inline fmaxf and fminf
 if [ "$CFLAGS" == "" ]; then
-   export CFLAGS="-O3 -march=native"
+   export CFLAGS="-O3 -march=native -ffinite-math-only"
 fi
 
 if [ -n "$LIBM" ]; then
