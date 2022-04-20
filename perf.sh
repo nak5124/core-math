@@ -27,6 +27,12 @@ if [ -n "$LIBM" ]; then
     unset LIBM
 fi
 
+if [ -z "$CORE_MATH_QUIET" ]; then
+    make -s -C src/generic/support clean
+    make -s -C src/generic/support all
+    $CORE_MATH_LAUNCHER src/generic/support/glibc_version >&2
+fi
+
 cd $dir
 make -s clean
 make -s perf
