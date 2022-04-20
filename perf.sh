@@ -1,6 +1,9 @@
 #!/bin/bash
 # Usage: ./perf.sh acos
 
+RANDOMS_FILE="$(mktemp /tmp/core-math.XXXXXX)"
+trap "rm -f $RANDOMS_FILE" 0
+
 f=$1
 u="$(echo src/binary*/*/$f.c)"
 
@@ -36,14 +39,14 @@ fi
 cd $dir
 make -s clean
 make -s perf
-./perf --file /tmp/randoms.dat --reference --count 1000000
+./perf --file "$RANDOMS_FILE" --reference --count 1000000
 
 if [ "$CORE_MATH_PERF_MODE" = perf ]; then
-    perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file /tmp/randoms.dat --count 1000000 --repeat 1000 $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
-    perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file /tmp/randoms.dat --count 1000000 --repeat 1000 --libc $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
+    perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
+    perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
 elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
-    $CORE_MATH_LAUNCHER ./perf --file /tmp/randoms.dat --count 1000000 --repeat 1000 $PERF_ARGS --rdtsc
-    $CORE_MATH_LAUNCHER ./perf --file /tmp/randoms.dat --count 1000000 --repeat 1000 --libc $PERF_ARGS --rdtsc
+    $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 $PERF_ARGS --rdtsc
+    $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS --rdtsc
 fi
 
 if [ -n "$BACKUP_LIBM" ]; then
@@ -51,8 +54,8 @@ if [ -n "$BACKUP_LIBM" ]; then
     make -s clean
     make -s perf
     if [ "$CORE_MATH_PERF_MODE" = perf ]; then
-        perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file /tmp/randoms.dat --count 1000000 --repeat 1000 --libc $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
+        perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
     elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
-        $CORE_MATH_LAUNCHER ./perf --file /tmp/randoms.dat --count 1000000 --repeat 1000 --libc $PERF_ARGS --rdtsc
+        $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS --rdtsc
     fi
 fi
