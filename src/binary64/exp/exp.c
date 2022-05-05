@@ -440,7 +440,7 @@ cr_exp (double x)
   /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l where |h| < 1/128 and |l| < 2^-42,
      where -127 <= i <= 127 */
 
-  return cr_exp_accurate (x, e, i, h, l);
+  //  return cr_exp_accurate (x, e, i, h, l);
 
   /* p[i] are the coefficients of a degree-6 polynomial approximating 2^x
      over [-1/128,1/128], with double coefficients, except p[1] which is
