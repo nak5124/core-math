@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#define TRACEX -0x1.62c9fc0dcbdb5p+9
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpfr.h>
@@ -397,7 +399,7 @@ cr_exp (double x)
 {
   d64u64 v;
   v.x = x;
-  int e = ((v.n >> 52) & 0x7ff) - 0x3ff, f;
+  int e = ((v.n >> 52) & 0x7ff) - 0x3ff;
 
   if (e >= 9) /* potential underflow or overflow */
   {
@@ -420,18 +422,20 @@ cr_exp (double x)
   static const double log2_h = 0x1.71547652b82fep+0;
   static const double log2_l = 0x1.777d0ffda0ep-56;
   /* |1/log(2) - log2_h - log2_l| < 2^-100.2 */
-  double h, l;
-  dekker (&h, &l, x, log2_h); /* l0 is the value of l here */
+  double h, l, l0;
+  dekker (&h, &l0, x, log2_h);
   /* h + l0 = x * log2_h exactly */
-  l += x * log2_l; /* l1 is the value of l here */
+  l = l0 + x * log2_l;
   /* |x * log2_l| < 2^-45 thus the error on x * log2_h (even without fma)
      is bounded by 2^-98.
-     |h| < 2^11 thus |l0| < 2^-42 thus the rounding error on l1 is bounded
+     |h| < 2^11 thus |l0| < 2^-42 thus the rounding error on l is bounded
      by 2^-95.
-     The total rounding error on l1 is bounded by 2^-98+2^-95 < 2^-94.83.
-     |x/log(2) - h - l1| < |x| * 2^-100.2 + 2^-94.83 < 2^-90.57. */
+     The total rounding error on l is bounded by 2^-98+2^-95 < 2^-94.83.
+     |x/log(2) - h - l| < |x| * 2^-100.2 + 2^-94.83 < 2^-90.57. */
+  if (x == TRACEX)
+    printf ("h=%la l=%la\n", h, l);
   
-  /* now x/log(2) ~ h + l1 thus exp(x) ~ 2^h * 2^l1 where |l1| < 2^-42 */
+  /* now x/log(2) ~ h + l thus exp(x) ~ 2^h * 2^l where |l| < 2^-42 */
   double t = __builtin_trunc (128.0 * h), u;
   h = h - t / 128.0; /* exact */
   e = t;
@@ -439,8 +443,7 @@ cr_exp (double x)
   e = (e - i) >> 7;
   /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l where |h| < 1/128 and |l| < 2^-42,
      where -127 <= i <= 127 */
-
-  //  return cr_exp_accurate (x, e, i, h, l);
+  if (x == TRACEX) printf ("e=%d i=%d h=%la l=%la\n", e, i, h, l);
 
   /* p[i] are the coefficients of a degree-6 polynomial approximating 2^x
      over [-1/128,1/128], with double coefficients, except p[1] which is
@@ -509,6 +512,7 @@ cr_exp (double x)
      2^-104 from the rounding error in yl += t
      Total absolute error < 2^-67.99 on yh+yl here (with respect to 2^h).
   */
+  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
 
   /* FIXME: could we integrate the multiplication by 2^l above? */
   /* multiply (yh,yl) by 2^l. Since |l| < 2^-42, it suffices to multiply
@@ -530,6 +534,7 @@ cr_exp (double x)
      2^-104 for the rounding error in u += yl
      Total absolute error < 2^-67.98 on yh+u here with respect to 2^(h+l).
   */
+  if (x == TRACEX) printf ("yh=%la u=%la\n", yh, u);
 
   /* multiply (yh,u) by 2^(i/128) */
   /* the maximal error |2^(i/128) - tab_i[127+i][0] - tab_i[127+i][1]|
@@ -557,20 +562,36 @@ cr_exp (double x)
      2^-102 for the rounding error on yl += ...
      Total error < 2^-67.97 on yh + yl with respect to 2^(i/128+h+l). */
 
-  /* now (yh,yl) approximates 2^(i/128+h+l) to about 68 bits of accuracy */
-  v.x = yh + yl;
+  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-67.97 */
+  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
+
+  if (x == TRACEX)
+    printf ("e=%d yh=%la yl=%la\n", e, yh, yl);
+
+  /* rounding test */
+  double err = 0x1.05610cf8bb59ap-68; /* e = up(2^-67.97) */
+  v.x = yh + (yl - err);
+  double right = yh + (yl + err);
+  if (v.x != right)
+  {
+    if (x == TRACEX)
+      printf ("call cr_exp_accurate\n");
+    return cr_exp_accurate (x, e, i, h, l);
+    // return myref_exp (x);
+  }
+
   /* multiply by 2^e */
-  f = v.n >> 52; /* sign is always positive */
+  unsigned int f = v.n >> 52; /* sign is always positive */
   f += e;
-  if (__builtin_expect(f > 0x7ff, 0)) /* overflow */
-    return xmax + xmax;
+  if (__builtin_expect(f > 0x7ff, 0)) /* overflow or underflow */
+    return ldexp (v.x, e);
   v.n += (int64_t) e << 52;
   return v.x;
 }
 
 #ifdef MAIN
 double
-ref_exp (double x)
+myref_exp (double x)
 {
   mpfr_t z;
   mpfr_init2 (z, 53);
