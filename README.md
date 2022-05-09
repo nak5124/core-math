@@ -41,7 +41,7 @@ and double-precision functions.
 
 These checks are available for functions where some interesting worst
 cases can be automatically (and cheaply) computed (at the time of
-writing, only `hypot`).
+writing, only `hypotf` and `cbrt`).
 
     ./check.sh --special [rounding_modes] $FUN
 

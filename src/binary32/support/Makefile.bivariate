@@ -1,6 +1,6 @@
 # -*- makefile -*-
 
-CFLAGS += -std=c99 -W -Wall -frounding-math
+CFLAGS += -Wpedantic -W -Wall -frounding-math
 
 TYPE_UNDER_TEST := float
 

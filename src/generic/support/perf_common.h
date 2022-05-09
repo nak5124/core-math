@@ -145,7 +145,7 @@ main (int argc, char *argv[])
       perror("mmap");
       exit(3);
     }
-    for (int i = 0; i < count; i++) {
+    for (unsigned int i = 0; i < count * SAMPLE_SIZE / sizeof(TYPE_UNDER_TEST); i++) {
       randoms[i] = random_under_test();
     }
     msync(randoms, count * SAMPLE_SIZE, MS_SYNC);
