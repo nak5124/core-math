@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEX -0x1.62c9fc0dcbdb5p+9
+#define TRACEX 0x1.00091a4a0dae5p+2
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -432,8 +432,6 @@ cr_exp (double x)
      by 2^-95.
      The total rounding error on l is bounded by 2^-98+2^-95 < 2^-94.83.
      |x/log(2) - h - l| < |x| * 2^-100.2 + 2^-94.83 < 2^-90.57. */
-  if (x == TRACEX)
-    printf ("h=%la l=%la\n", h, l);
   
   /* now x/log(2) ~ h + l thus exp(x) ~ 2^h * 2^l where |l| < 2^-42 */
   double t = __builtin_trunc (128.0 * h), u;
@@ -443,7 +441,6 @@ cr_exp (double x)
   e = (e - i) >> 7;
   /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l where |h| < 1/128 and |l| < 2^-42,
      where -127 <= i <= 127 */
-  if (x == TRACEX) printf ("e=%d i=%d h=%la l=%la\n", e, i, h, l);
 
   /* p[i] are the coefficients of a degree-6 polynomial approximating 2^x
      over [-1/128,1/128], with double coefficients, except p[1] which is
@@ -512,7 +509,6 @@ cr_exp (double x)
      2^-104 from the rounding error in yl += t
      Total absolute error < 2^-67.99 on yh+yl here (with respect to 2^h).
   */
-  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
 
   /* FIXME: could we integrate the multiplication by 2^l above? */
   /* multiply (yh,yl) by 2^l. Since |l| < 2^-42, it suffices to multiply
@@ -534,7 +530,6 @@ cr_exp (double x)
      2^-104 for the rounding error in u += yl
      Total absolute error < 2^-67.98 on yh+u here with respect to 2^(h+l).
   */
-  if (x == TRACEX) printf ("yh=%la u=%la\n", yh, u);
 
   /* multiply (yh,u) by 2^(i/128) */
   /* the maximal error |2^(i/128) - tab_i[127+i][0] - tab_i[127+i][1]|
@@ -563,22 +558,13 @@ cr_exp (double x)
      Total error < 2^-67.97 on yh + yl with respect to 2^(i/128+h+l). */
 
   /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-67.97 */
-  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
-
-  if (x == TRACEX)
-    printf ("e=%d yh=%la yl=%la\n", e, yh, yl);
 
   /* rounding test */
   double err = 0x1.05610cf8bb59ap-68; /* e = up(2^-67.97) */
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
   if (v.x != right)
-  {
-    if (x == TRACEX)
-      printf ("call cr_exp_accurate\n");
     return cr_exp_accurate (x, e, i, h, l);
-    // return myref_exp (x);
-  }
 
   /* multiply by 2^e */
   unsigned int f = v.n >> 52; /* sign is always positive */
