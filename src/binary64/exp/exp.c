@@ -24,8 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEX 0x1.00091a4a0dae5p+2
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpfr.h>
@@ -331,8 +329,25 @@ static const double xmax = 0x1p1023;
    (cf exp2_acc.sollya) with 105.765 bits of relative precision.
    Coefficients of degree 0-4 are double-double, 5-9 are doubles. */
 static double
-cr_exp_accurate (double x MAYBE_UNUSED, int e, int i, double h, double l)
+cr_exp_accurate (double x, int e, int i)
 {
+  /* we recompute h, l such that x/log(2) = e + i/128 + h + l,
+     to get more accuracy on l (in the fast path we extract the high 8 bits
+     of h to go into i, thus we lose 8 bits on l) */
+  static const double log2_h = 0x1.71547652b82fep+0;
+  static const double log2_m = 0x1.777d0ffda0ep-56;
+  static const double log2_l = -0x1.b8b05dc52a215p-101;
+  double h, l, l1;
+  double ah, al, bh, bl;
+  dekker (&ah, &al, x, log2_h);
+  dekker (&bh, &bl, x, log2_m);
+  ah -= e + i / 128.0;
+  /* h + l = ah + (al + bh) + (bl + c) */
+  fast_two_sum (&h, &l, ah, al);
+  fast_two_sum (&h, &l1, h, bh);
+  /* h + (l+l1) = ah + (al + bh) */
+  l += l1 + (bl + x * log2_l);
+
   static const double p[14] = { 0x1p0,            /* p[0]: degree 0 */
     0x1.62e42fefa39efp-1, 0x1.abc9e3b397ebp-56,   /* p[1,2]: degree 1 */
     0x1.ebfbdff82c58fp-3, -0x1.5e43a5429b326p-57, /* p[3,4]: degree 2 */
@@ -343,9 +358,10 @@ cr_exp_accurate (double x MAYBE_UNUSED, int e, int i, double h, double l)
     0x1.ffcbfc58b51c9p-17,                        /* p[11]: degree 7 */
     0x1.62c034be4ffd9p-20,                        /* p[12]: degree 8 */
     0x1.b523023e3d552p-24 };                      /* p[13]: degree 9 */
-  double t, u;
-  double yl = p[12] + h * p[13];
-  double yh = p[10] + h * p[11];
+  double t, u, yh, yl;
+  yh = p[12] + h * p[13];
+  yh = p[11] + h * yh;
+  yh = p[10] + h * yh;
   /* ulp(p6*h^6) <= 2^-107, thus we can compute h*yh in double,
      but ulp(p5*h^5) <= 2^-97, so we need a double-double to store
      p5 + h*yh */
@@ -375,12 +391,15 @@ cr_exp_accurate (double x MAYBE_UNUSED, int e, int i, double h, double l)
   u += yl * h;
   fast_two_sum (&yh, &yl, p[0], t);
   yl += u;
+  /* yh+yl is an approximation of 2^h */
 
   /* multiply by 2^l */
   static const double l2 = 0x1.62e42fefa39efp-1;
   t = l2 * l * yh;
   fast_two_sum (&yh, &u, yh, t);
   u += yl;
+
+  /* multiply by 2^(i/128) */
   t = yh * tab_i[127+i][1];
   dekker (&yh, &yl, yh, tab_i[127+i][0]);
   yl += t + u * tab_i[127+i][0];
@@ -391,6 +410,45 @@ cr_exp_accurate (double x MAYBE_UNUSED, int e, int i, double h, double l)
   if (__builtin_expect(f > 0x7ff, 0))
     return xmax + xmax;
   v.n += (int64_t) e << 52;
+#define WORST 32
+  /* worst cases: (x, h, l) such that exp(x) ~ h + l */
+  static double T[WORST][3] = {
+    { 0x1.00091a4a0dae5p+2, 0x1.b50726fd1ccb3p+5, -0x1.ffffffffffffep-49 },
+    { 0x1.005ae04256babp-1, 0x1.a65d89abf3d1fp+0, -0x1.fffffffffffffp-54 },
+    { 0x1.273c188aa7b14p+2, 0x1.93295a96ec6ebp+6, -0x1.fffffffffffffp-48 },
+    { 0x1.282aae3169ee7p-20, 0x1.00001282ab8e7p+0, -0x1.fffffffffffffp-54 },
+    { 0x1.413f33fe6ce07p-31, 0x1.00000002827e7p+0, -0x1.fffffffffffffp-54 },
+    { 0x1.6b7fef325ada2p+2, 0x1.24db524842d71p+8, -0x1.ffffffffffffep-46 },
+    { 0x1.7d7fc2e4f5fccp-3, 0x1.346b07b6dd7f3p+0, -0x1.fffffffffffffp-54 },
+    { 0x1.aca7ae8da5a7bp+0, 0x1.557d4acd7e557p+2, -0x1.fffffffffffffp-52 },
+    { 0x1.accfbe46b4efp-1, 0x1.27c2e4bc1ee7p+1, 0x1p-52 },
+    { 0x1.ba07d73250de7p-14, 0x1.0006e83736f8dp+0, -0x1.fffffffffffffp-54 },
+    { 0x1.bcab27d05abdep-2, 0x1.8b367381d82f5p+0, -0x1.ffffffffffffep-54 },
+    { 0x1.e5ba92aa9b1efp-20, 0x1.00001e5baaf77p+0, 0x1.ffffffffffffep-54 },
+    { 0x1.ffff7fffe0001p-36, 0x1.000000001ffffp+0, 0x1.ffffffffffffep-54 },
+    { -0x1.02393d5976769p+1, 0x1.1064b2c103ddbp-3, -0x1.fffffffffffffp-57 },
+    { -0x1.0401ae48409b5p-28, 0x1.ffffffdf7fca3p-1, 0x1.fffffffffffffp-55 },
+    { -0x1.150dd1bf6ae1dp+3, 0x1.6c5d3ae7c88f7p-13, -0x1.ffffffffffffep-67 },
+    { -0x1.4bd46601ae1efp-31, 0x1.fffffffad0ae7p-1, -0x1.fffffffffffffp-55 },
+    { -0x1.54511e930898cp-7, 0x1.fab5c6e464e0dp-1, 0x1.ffffffffffffdp-55 },
+    { -0x1.59f038076039cp+6, 0x1.2c0fa76a0e15fp-125, 0x1.fffffffffffffp-179 },
+    { -0x1.62c9fc0dcbdb5p+9, 0x1.3a279f06cd328p-1024, 0 },
+    { -0x1.671e26a8abff2p+9, 0x1.bf4f057ca2395p-1037, 0 },
+    { -0x1.679ea41b51eaap+9, 0x1.47da918950b04p-1038, 0 },
+    { -0x1.7b69560232511p-31, 0x1.fffffffa125abp-1, -0x1.fffffffffffffp-55 },
+    { -0x1.7fb235d76cce7p-8, 0x1.fd02d98c24bbbp-1, -0x1.fffffffffffffp-55 },
+    { -0x1.85068c07fbbf6p-1, 0x1.defa8f4a8af21p-2, -0x1.ffffffffffffep-56 },
+    { -0x1.85e60704a3a9cp-30, 0x1.fffffff3d0cfdp-1, -0x1.fffffffffffffp-55 },
+    { -0x1.a4187f2ca71f9p-6, 0x1.f309f46111221p-1, -0x1.ffffffffffffep-55 },
+    { -0x1.ac026dccaa781p+5, 0x1.c219cd8029075p-78, -0x1.ffffffffffffdp-132 },
+    { -0x1.c794ddcbd661ap+3, 0x1.6040718b6b7cdp-21, -0x1.fffffffffffffp-75 },
+    { -0x1.d1d85a7f253d3p-15, 0x1.fff8b8abd4c21p-1, 0x1.fffffffffffffp-55 },
+    { -0x1.d3f3799439415p-3, 0x1.976a4c9985f5bp-1, 0x1.fffffffffffffp-55 },
+    { -0x1.ff171507f8ba5p-30, 0x1.fffffff007475p-1, 0x1.fffffffffffffp-55 },
+  };
+  for (int i = 0; i < WORST; i++)
+    if (x == T[i][0])
+      return T[i][1] + T[i][2];
   return v.x;
 }
 
@@ -564,7 +622,7 @@ cr_exp (double x)
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
   if (v.x != right)
-    return cr_exp_accurate (x, e, i, h, l);
+    return cr_exp_accurate (x, e, i);
 
   /* multiply by 2^e */
   unsigned int f = v.n >> 52; /* sign is always positive */
