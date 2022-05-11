@@ -409,8 +409,7 @@ cr_exp_accurate (double x, int e, int i)
   f += e;
   if (__builtin_expect(f > 0x7ff, 0))
     return xmax + xmax;
-  v.n += (int64_t) e << 52;
-#define WORST 32
+#define WORST 29
   /* worst cases: (x, h, l) such that exp(x) ~ h + l */
   static double T[WORST][3] = {
     { 0x1.00091a4a0dae5p+2, 0x1.b50726fd1ccb3p+5, -0x1.ffffffffffffep-49 },
@@ -432,9 +431,6 @@ cr_exp_accurate (double x, int e, int i)
     { -0x1.4bd46601ae1efp-31, 0x1.fffffffad0ae7p-1, -0x1.fffffffffffffp-55 },
     { -0x1.54511e930898cp-7, 0x1.fab5c6e464e0dp-1, 0x1.ffffffffffffdp-55 },
     { -0x1.59f038076039cp+6, 0x1.2c0fa76a0e15fp-125, 0x1.fffffffffffffp-179 },
-    { -0x1.62c9fc0dcbdb5p+9, 0x1.3a279f06cd328p-1024, 0 },
-    { -0x1.671e26a8abff2p+9, 0x1.bf4f057ca2395p-1037, 0 },
-    { -0x1.679ea41b51eaap+9, 0x1.47da918950b04p-1038, 0 },
     { -0x1.7b69560232511p-31, 0x1.fffffffa125abp-1, -0x1.fffffffffffffp-55 },
     { -0x1.7fb235d76cce7p-8, 0x1.fd02d98c24bbbp-1, -0x1.fffffffffffffp-55 },
     { -0x1.85068c07fbbf6p-1, 0x1.defa8f4a8af21p-2, -0x1.ffffffffffffep-56 },
@@ -449,7 +445,7 @@ cr_exp_accurate (double x, int e, int i)
   for (int i = 0; i < WORST; i++)
     if (x == T[i][0])
       return T[i][1] + T[i][2];
-  return v.x;
+  return ldexp (v.x, e);
 }
 
 double
@@ -473,7 +469,7 @@ cr_exp (double x)
     }
     /* otherwise go through the main path */
   }
-  
+
   /* now |x| < 746 */
 
   /* first multiply x by a double-double approximation of 1/log(2) */
@@ -490,7 +486,7 @@ cr_exp (double x)
      by 2^-95.
      The total rounding error on l is bounded by 2^-98+2^-95 < 2^-94.83.
      |x/log(2) - h - l| < |x| * 2^-100.2 + 2^-94.83 < 2^-90.57. */
-  
+
   /* now x/log(2) ~ h + l thus exp(x) ~ 2^h * 2^l where |l| < 2^-42 */
   double t = __builtin_trunc (128.0 * h), u;
   h = h - t / 128.0; /* exact */
@@ -600,25 +596,25 @@ cr_exp (double x)
   dekker (&yh, &yl, yh, tab_i[127+i][0]); /* exact */
   /* now |yh| < 2 thus |yl| < 2^-52, |t| < 2^-53 */
   yl += t + u * tab_i[127+i][0];
-  /* |u| < 2^-52 and |tab_i[127+i][0]| < 2 thus |u * tab_i[127+i][0]| < 2^-51
-     and the rounding error on u * tab_i[127+i][0] is bounded by 2^-104.
-     |t + u * tab_i[127+i][0]| < 2^-50 thus the rounding error when adding t
-     is bounded by 2^-103.
-     |yl + t + u * tab_i[127+i][0]| < 2^-49 thus the rounding error in
-     yl += ,,, is bounded by 2^-102.
-     Total error:
-     2^-67.98 multiplied by 2^(i/128) < 2^-66.98
+  /* |u| < 2^-51 and |tab_i[127+i][0]| < 2 thus |u * tab_i[127+i][0]| < 2^-50
+     and the rounding error on u * tab_i[127+i][0] is bounded by 2^-103.
+     |t + u * tab_i[127+i][0]| < 2^-49 thus the rounding error when adding t
+     is bounded by 2^-102.
+     |yl + t + u * tab_i[127+i][0]| < 2^-48 thus the rounding error in
+     yl += ,,, is bounded by 2^-101.
+     Total error bounded by:
+     2^-66.98 (2^-67.98 multiplied by 2^(i/128))
      2^-106.99 for the error on 2^(i/128)
      2^-106 for the rounding error on t
-     2^-104 for the rounding error on u * tab_i[127+i][0]
-     2^-103 for the rounding error on t + u * tab_i[127+i][0]
-     2^-102 for the rounding error on yl += ...
-     Total error < 2^-67.97 on yh + yl with respect to 2^(i/128+h+l). */
+     2^-103 for the rounding error on u * tab_i[127+i][0]
+     2^-102 for the rounding error on t + u * tab_i[127+i][0]
+     2^-101 for the rounding error on yl += ...
+     Total error < 2^-66.97 on yh + yl with respect to 2^(i/128+h+l). */
 
-  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-67.97 */
+  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-66.97 */
 
   /* rounding test */
-  double err = 0x1.05610cf8bb59ap-68; /* e = up(2^-67.97) */
+  double err = 0x1.05610cf8bb59ap-67; /* e = up(2^-66.97) */
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
   if (v.x != right)
