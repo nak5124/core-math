@@ -409,42 +409,162 @@ cr_exp_accurate (double x, int e, int i)
   f += e;
   if (__builtin_expect(f > 0x7ff, 0))
     return xmax + xmax;
-#define WORST 29
-  /* worst cases: (x, h, l) such that exp(x) ~ h + l */
-  static double T[WORST][3] = {
-    { 0x1.00091a4a0dae5p+2, 0x1.b50726fd1ccb3p+5, -0x1.ffffffffffffep-49 },
-    { 0x1.005ae04256babp-1, 0x1.a65d89abf3d1fp+0, -0x1.fffffffffffffp-54 },
-    { 0x1.273c188aa7b14p+2, 0x1.93295a96ec6ebp+6, -0x1.fffffffffffffp-48 },
-    { 0x1.282aae3169ee7p-20, 0x1.00001282ab8e7p+0, -0x1.fffffffffffffp-54 },
-    { 0x1.413f33fe6ce07p-31, 0x1.00000002827e7p+0, -0x1.fffffffffffffp-54 },
-    { 0x1.6b7fef325ada2p+2, 0x1.24db524842d71p+8, -0x1.ffffffffffffep-46 },
-    { 0x1.7d7fc2e4f5fccp-3, 0x1.346b07b6dd7f3p+0, -0x1.fffffffffffffp-54 },
-    { 0x1.aca7ae8da5a7bp+0, 0x1.557d4acd7e557p+2, -0x1.fffffffffffffp-52 },
-    { 0x1.accfbe46b4efp-1, 0x1.27c2e4bc1ee7p+1, 0x1p-52 },
-    { 0x1.ba07d73250de7p-14, 0x1.0006e83736f8dp+0, -0x1.fffffffffffffp-54 },
-    { 0x1.bcab27d05abdep-2, 0x1.8b367381d82f5p+0, -0x1.ffffffffffffep-54 },
-    { 0x1.e5ba92aa9b1efp-20, 0x1.00001e5baaf77p+0, 0x1.ffffffffffffep-54 },
-    { 0x1.ffff7fffe0001p-36, 0x1.000000001ffffp+0, 0x1.ffffffffffffep-54 },
-    { -0x1.02393d5976769p+1, 0x1.1064b2c103ddbp-3, -0x1.fffffffffffffp-57 },
-    { -0x1.0401ae48409b5p-28, 0x1.ffffffdf7fca3p-1, 0x1.fffffffffffffp-55 },
-    { -0x1.150dd1bf6ae1dp+3, 0x1.6c5d3ae7c88f7p-13, -0x1.ffffffffffffep-67 },
-    { -0x1.4bd46601ae1efp-31, 0x1.fffffffad0ae7p-1, -0x1.fffffffffffffp-55 },
-    { -0x1.54511e930898cp-7, 0x1.fab5c6e464e0dp-1, 0x1.ffffffffffffdp-55 },
-    { -0x1.59f038076039cp+6, 0x1.2c0fa76a0e15fp-125, 0x1.fffffffffffffp-179 },
-    { -0x1.7b69560232511p-31, 0x1.fffffffa125abp-1, -0x1.fffffffffffffp-55 },
-    { -0x1.7fb235d76cce7p-8, 0x1.fd02d98c24bbbp-1, -0x1.fffffffffffffp-55 },
-    { -0x1.85068c07fbbf6p-1, 0x1.defa8f4a8af21p-2, -0x1.ffffffffffffep-56 },
-    { -0x1.85e60704a3a9cp-30, 0x1.fffffff3d0cfdp-1, -0x1.fffffffffffffp-55 },
-    { -0x1.a4187f2ca71f9p-6, 0x1.f309f46111221p-1, -0x1.ffffffffffffep-55 },
-    { -0x1.ac026dccaa781p+5, 0x1.c219cd8029075p-78, -0x1.ffffffffffffdp-132 },
-    { -0x1.c794ddcbd661ap+3, 0x1.6040718b6b7cdp-21, -0x1.fffffffffffffp-75 },
-    { -0x1.d1d85a7f253d3p-15, 0x1.fff8b8abd4c21p-1, 0x1.fffffffffffffp-55 },
-    { -0x1.d3f3799439415p-3, 0x1.976a4c9985f5bp-1, 0x1.fffffffffffffp-55 },
-    { -0x1.ff171507f8ba5p-30, 0x1.fffffff007475p-1, 0x1.fffffffffffffp-55 },
+  switch (e) {
+    case 0:
+      if (x == 0x1.005ae04256babp-1)
+        return 0x1.a65d89abf3d1fp+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.282aae3169ee7p-20)
+        return 0x1.00001282ab8e7p+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.413f33fe6ce07p-31)
+        return 0x1.00000002827e7p+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.7d7fc2e4f5fccp-3)
+        return 0x1.346b07b6dd7f3p+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.ba07d73250de7p-14)
+        return 0x1.0006e83736f8dp+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.bcab27d05abdep-2)
+        return 0x1.8b367381d82f5p+0 - 0x1.ffffffffffffep-54;
+      if (x == 0x1.e5ba92aa9b1efp-20)
+        return 0x1.00001e5baaf77p+0 + 0x1.fffffffffffffp-54;
+      if (x == 0x1.ffff7fffe0001p-36)
+        return 0x1.000000001ffffp+0 + 0x1.fffffffffffffp-54;
+      if (x == -0x1.0401ae48409b5p-28)
+        return 0x1.ffffffdf7fca3p-1 + 0x1.fffffffffffffp-55;
+      if (x == -0x1.4bd46601ae1efp-31)
+        return 0x1.fffffffad0ae7p-1 - 0x1.fffffffffffffp-55;
+      if (x == -0x1.54511e930898cp-7)
+        return 0x1.fab5c6e464e0dp-1 + 0x1.ffffffffffffdp-55;
+      if (x == -0x1.7b69560232511p-31)
+        return 0x1.fffffffa125abp-1 - 0x1.fffffffffffffp-55;
+      if (x == -0x1.7fb235d76cce7p-8)
+        return 0x1.fd02d98c24bbbp-1 - 0x1.fffffffffffffp-55;
+      if (x == -0x1.85e60704a3a9cp-30)
+        return 0x1.fffffff3d0cfdp-1 - 0x1.fffffffffffffp-55;
+      if (x == -0x1.a4187f2ca71f9p-6)
+        return 0x1.f309f46111221p-1 - 0x1.ffffffffffffep-55;
+      if (x == -0x1.d1d85a7f253d3p-15)
+        return 0x1.fff8b8abd4c21p-1 + 0x1.fffffffffffffp-55;
+      if (x == -0x1.d3f3799439415p-3)
+        return 0x1.976a4c9985f5bp-1 + 0x1.fffffffffffffp-55;
+      if (x == -0x1.ff171507f8ba5p-30)
+        return 0x1.fffffff007475p-1 + 0x1.fffffffffffffp-55;
+      break;
+    case 1:
+      if (x == 0x1.accfbe46b4efp-1)
+        return 0x1.27c2e4bc1ee7p+1 + 0x1.fffffffffffffp-53;
+      if (x == 0x1.62f71c4656b61p-1)
+        return 0x1.000976581ce4ep+1 + 0x1.01dc6b104a893p-105;
+      if (x == 0x1.62f71c4656b61p-1)
+        return 0x1.000976581ce4ep+1 + 0x1.01dc6b104a893p-105;
+      break;
+    case 2:
+      if (x == 0x1.aca7ae8da5a7bp+0)
+        return 0x1.557d4acd7e557p+2 - 0x1.fffffffffffffp-52;
+      if (x == 0x1.d6336a88077aap+0)
+        return 0x1.91a8dff540ff7p+2 + 0x1.78f1982b593afp-105;
+      if (x == 0x1.d6336a88077aap+0)
+        return 0x1.91a8dff540ff7p+2 + 0x1.78f1982b593afp-105;
+      break;
+    case 5:
+      if (x == 0x1.00091a4a0dae5p+2)
+        return 0x1.b50726fd1ccb3p+5 - 0x1.ffffffffffffep-49;
+      break;
+    case 6:
+      if (x == 0x1.273c188aa7b14p+2)
+        return 0x1.93295a96ec6ebp+6 - 0x1.fffffffffffffp-48;
+      if (x == 0x1.333a83013057ep+2)
+        return 0x1.e642354c34a34p+6 + 0x1.3df4a4fb0b639p-99;
+      if (x == 0x1.333a83013057ep+2)
+        return 0x1.e642354c34a34p+6 + 0x1.3df4a4fb0b639p-99;
+      break;
+    case 8:
+      if (x == 0x1.6b7fef325ada2p+2)
+        return 0x1.24db524842d71p+8 - 0x1.ffffffffffffep-46;
+      if (x == 0x1.83d4bcdebb3f4p+2)
+        return 0x1.ac50b409c8aeep+8 + 0x1.16719fcede453p-103;
+      if (x == 0x1.83d4bcdebb3f4p+2)
+        return 0x1.ac50b409c8aeep+8 + 0x1.16719fcede453p-103;
+      break;
+    case -2:
+      if (x == -0x1.02393d5976769p+1)
+        return 0x1.1064b2c103ddbp-3 - 0x1.fffffffffffffp-57;
+      break;
+    case -12:
+      if (x == -0x1.150dd1bf6ae1dp+3)
+        return 0x1.6c5d3ae7c88f7p-13 - 0x1.ffffffffffffep-67;
+      break;
+    case -124:
+      if (x == -0x1.59f038076039cp+6)
+        return 0x1.2c0fa76a0e15fp-125 + 0x1.fffffffffffffp-179;
+      break;
+    case -1:
+      if (x == -0x1.85068c07fbbf6p-1)
+        return 0x1.defa8f4a8af21p-2 - 0x1.ffffffffffffep-56;
+      break;
+    case -77:
+      if (x == -0x1.ac026dccaa781p+5)
+        return 0x1.c219cd8029075p-78 - 0x1.ffffffffffffdp-132;
+      break;
+    case -20:
+      if (x == -0x1.c794ddcbd661ap+3)
+        return 0x1.6040718b6b7cdp-21 - 0x1.fffffffffffffp-75;
+      break;
+    case 9:
+      if (x == 0x1.b9d483946ef74p+2)
+        return 0x1.f1ecb20dbd6d9p+9 + 0x1.90a0f3bbcc087p-94;
+      if (x == 0x1.b9d483946ef74p+2)
+        return 0x1.f1ecb20dbd6d9p+9 + 0x1.90a0f3bbcc087p-94;
+      break;
+    case 23:
+      if (x == 0x1.08f51434652c3p+4)
+        return 0x1.daac459b157e5p+23 + 0x1.c6823badae774p-84;
+      if (x == 0x1.08f51434652c3p+4)
+        return 0x1.daac459b157e5p+23 + 0x1.c6823badae774p-84;
+      break;
+    case 56:
+      if (x == 0x1.39fc4d3bb711p+5)
+        return 0x1.8a4e90733b95ep+56 + 0x1.6fc2e81137fa9p-49;
+      if (x == 0x1.39fc4d3bb711p+5)
+        return 0x1.8a4e90733b95ep+56 + 0x1.6fc2e81137fa9p-49;
+      break;
+    case 60:
+      if (x == 0x1.51d0f4f0a901cp+5)
+        return 0x1.e4a01c9ddbc87p+60 + 0x1.676fbe202d089p-44;
+      if (x == 0x1.51d0f4f0a901cp+5)
+        return 0x1.e4a01c9ddbc87p+60 + 0x1.676fbe202d089p-44;
+      break;
+    case 86:
+      if (x == 0x1.e07e71bfcf06fp+5)
+        return 0x1.91ec4412c344fp+86 + 0x1.09d2b56d79a72p-23;
+      if (x == 0x1.e07e71bfcf06fp+5)
+        return 0x1.91ec4412c344fp+86 + 0x1.09d2b56d79a72p-23;
+      if (x == 0x1.e07e71bfcf06fp+5)
+        return 0x1.91ec4412c344fp+86 + 0x1.09d2b56d79a72p-23;
+      break;
+    case 136:
+      if (x == 0x1.7a60ee15e3e9dp+6)
+        return 0x1.62e4dc3bbf53fp+136 + 0x1.ae7c8eddb6bcbp+30;
+      if (x == 0x1.7a60ee15e3e9dp+6)
+        return 0x1.62e4dc3bbf53fp+136 + 0x1.ae7c8eddb6bcbp+30;
+      break;
+    case 245:
+      if (x == 0x1.54cd1fea7663ap+7)
+        return 0x1.c90810d354618p+245 + 0x1.2925a9627fb2cp+136;
+      if (x == 0x1.54cd1fea7663ap+7)
+        return 0x1.c90810d354618p+245 + 0x1.2925a9627fb2cp+136;
+      break;
+    case 25:
+      if (x == 0x1.1d5c2daebe367p+4)
+        return 0x1.a8c02e974c315p+25 - 0x1.de0fc9395bbd4p-83;
+      break;
+    case 128:
+      if (x == 0x1.6474c604cc0d7p+6)
+        return 0x1.7a8f65ad009bdp+128 - 0x1.0b611158ec877p+21;
+      break;
+    case 656:
+      if (x == 0x1.c7206c1b753e4p+8)
+        return 0x1.8670de0b68cadp+656 - 0x1.7599cebd802f7p+549;
+      break;
   };
-  for (int i = 0; i < WORST; i++)
-    if (x == T[i][0])
-      return T[i][1] + T[i][2];
   return ldexp (v.x, e);
 }
 
