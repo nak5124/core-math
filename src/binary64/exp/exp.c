@@ -834,22 +834,35 @@ cr_exp (double x)
   if (v.x != right)
     return cr_exp_accurate (x, e, i);
 
-  /* Multiply by 2^e. Warning: we can hit a double-rounding issue here if
-     exp(x) is subnormal. This can happen only for rounding to nearest,
-     and if v.x*2^e is exactly the middle of two (subnormal) binary64
-     numbers, i.e., an odd multiple of 2^-1075.
-     For exp(x) near 2^-1074, this is easy to check by exhautive search:
-     * compute the odd multiples y = (2*k+1)*2^-1075 in the binade
-     * for each one, compute the corresponding x = RN(log(y))
-     * check if RN(exp(x)) rounds to y, and similarly for the two neighbours
-       of x
-     For exp(x) betwee 2^-1023 and 2^-1022, this is harder since there are
-     a priori 2^51 odd multiples of 2^-1075 to check (2^51 <= k < 2^52). */
-
+  /* Multiply by 2^e. */
   unsigned int f = v.n >> 52; /* sign is always positive */
   f += e;
-  if (__builtin_expect(f > 0x7ff, 0)) /* overflow or underflow */
-    return ldexp (v.x, e);
+  if (__builtin_expect(f > 0x7ff, 0)) /* overflow or subnormal */
+  {
+    if (e >= -1022)
+      return ldexp (v.x, e);
+    /* For subnormal numbers we do a special treatment to avoid a double
+       rounding issue. For example when 2^-1023 <= exp(x) < 2^-1022,
+       with probability 1/2 v.x*2^e will be an odd multiple of 2^-1075,
+       and we'll have a double rounding issue, which means that with
+       probability 1/2 RN(v.x*2^e) will be wrong for rounding to nearest. */
+    double factor = ldexp (1.0, e + 1023);
+    e = -1023;
+    yh *= factor;
+    yl *= factor;
+    err *= factor;
+    double twoe = ldexp (1.0, e);
+    double yhe = yh * twoe;
+    double m = __builtin_fma (-yhe, ldexp (1.0, -e), yh); /* exact */
+    /* yh = yhe/2^e + m */
+    double left = m + (yl - err);
+    double right = m + (yl + err);
+    left = __builtin_fma (left, twoe, yhe);
+    right = __builtin_fma (right, twoe, yhe);
+    if (left != right)
+      return cr_exp_accurate (x, e, i);
+    return left;
+  }
   v.n += (int64_t) e << 52;
   return v.x;
 }
