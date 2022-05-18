@@ -834,7 +834,18 @@ cr_exp (double x)
   if (v.x != right)
     return cr_exp_accurate (x, e, i);
 
-  /* multiply by 2^e */
+  /* Multiply by 2^e. Warning: we can hit a double-rounding issue here if
+     exp(x) is subnormal. This can happen only for rounding to nearest,
+     and if v.x*2^e is exactly the middle of two (subnormal) binary64
+     numbers, i.e., an odd multiple of 2^-1075.
+     For exp(x) near 2^-1074, this is easy to check by exhautive search:
+     * compute the odd multiples y = (2*k+1)*2^-1075 in the binade
+     * for each one, compute the corresponding x = RN(log(y))
+     * check if RN(exp(x)) rounds to y, and similarly for the two neighbours
+       of x
+     For exp(x) betwee 2^-1023 and 2^-1022, this is harder since there are
+     a priori 2^51 odd multiples of 2^-1075 to check (2^51 <= k < 2^52). */
+
   unsigned int f = v.n >> 52; /* sign is always positive */
   f += e;
   if (__builtin_expect(f > 0x7ff, 0)) /* overflow or underflow */
