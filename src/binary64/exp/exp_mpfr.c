@@ -27,32 +27,19 @@ SOFTWARE.
 #include <mpfr.h>
 #include "fenv_mpfr.h"
 
-static void
-my_mpfr_subnormalize (mpfr_t y, int inex, mpfr_rnd_t rnd)
-{
-  /* mpfr_subnormalize assumes exp(y) >= emin */
-  if (mpfr_get_exp (y) >= mpfr_get_emin ())
-  {
-    mpfr_subnormalize (y, inex, rnd2[rnd]);
-    return;
-  }
-  double x = mpfr_get_d (y, rnd2[rnd]);
-  mpfr_set_d (y, x, MPFR_RNDN);
-}
-
 /* code from MPFR */
 double
 ref_exp (double x)
 {
   mpfr_t y;
+  mpfr_exp_t emin = mpfr_get_emin ();
+  mpfr_set_emin (-1073);
   mpfr_init2 (y, 53);
   mpfr_set_d (y, x, MPFR_RNDN);
   int inex = mpfr_exp (y, y, rnd2[rnd]);
-  mpfr_exp_t emin = mpfr_get_emin ();
-  mpfr_set_emin (-1073);
-  my_mpfr_subnormalize (y, inex, rnd2[rnd]);
-  mpfr_set_emin (emin);
+  mpfr_subnormalize (y, inex, rnd2[rnd]);
   double ret = mpfr_get_d (y, MPFR_RNDN);
   mpfr_clear (y);
+  mpfr_set_emin (emin);
   return ret;
 }
