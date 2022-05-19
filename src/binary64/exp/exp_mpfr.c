@@ -35,7 +35,10 @@ ref_exp (double x)
   mpfr_init2 (y, 53);
   mpfr_set_d (y, x, MPFR_RNDN);
   int inex = mpfr_exp (y, y, rnd2[rnd]);
+  mpfr_exp_t emin = mpfr_get_emin ();
+  mpfr_set_emin (-1073);
   mpfr_subnormalize (y, inex, rnd2[rnd]);
+  mpfr_set_emin (emin);
   double ret = mpfr_get_d (y, MPFR_RNDN);
   mpfr_clear (y);
   return ret;
