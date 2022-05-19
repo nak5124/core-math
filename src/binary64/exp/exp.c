@@ -32,6 +32,8 @@ SOFTWARE.
 #include <fenv.h>
 #include <assert.h>
 
+#define TRACEX -0x1.630f299171144p+9
+
 /* Add a + b exactly, such that *hi + *lo = a + b.
    Assumes |a| >= |b| and rounding to nearest.  */
 static void
@@ -407,10 +409,24 @@ cr_exp_accurate (double x, int e, int i)
   yl += t + u * tab_i[127+i][0];
   d64u64 v;
   v.x = yh + yl;
-  int f = v.n >> 52;
+  unsigned int f = v.n >> 52;
   f += e;
-  if (__builtin_expect(f > 0x7ff, 0))
-    return xmax + xmax;
+  if (x == TRACEX) printf ("acc: f=%x\n", f);
+  if (__builtin_expect(f > 0x7ff, 0)) /* overflow or subnormal */
+  {
+    if (e > 0) /* overflow */
+      return xmax + xmax;
+    /* in the subnormal case, same special code than in the fast path */
+    double factor = ldexp (1.0, e + 1023);
+    e = -1023;
+    yh *= factor;
+    yl *= factor;
+    double twoe = ldexp (1.0, e);
+    double yhe = yh * twoe;
+    double m = __builtin_fma (-yhe, ldexp (1.0, -e), yh); /* exact */
+    /* yh = yhe/2^e + m */
+    return __builtin_fma (m + yl, twoe, yhe);
+  }
 
   /* FIXME: switch on low bits of x (as uint64) to get more uniform sampling */
   switch (e) {
@@ -831,14 +847,18 @@ cr_exp (double x)
   double err = 0x1.05610cf8bb59ap-67; /* e = up(2^-66.97) */
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
+  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
   if (v.x != right)
     return cr_exp_accurate (x, e, i);
 
+  if (x == TRACEX) printf ("rounding test succeeded\n");
   /* Multiply by 2^e. */
   unsigned int f = v.n >> 52; /* sign is always positive */
   f += e;
+  if (x == TRACEX) printf ("f=%x\n", f);
   if (__builtin_expect(f > 0x7ff, 0)) /* overflow or subnormal */
   {
+    if (x == TRACEX) printf ("e=%d\n", e);
     if (e >= -1022)
       return ldexp (v.x, e);
     /* For subnormal numbers we do a special treatment to avoid a double
@@ -859,6 +879,7 @@ cr_exp (double x)
     double right = m + (yl + err);
     left = __builtin_fma (left, twoe, yhe);
     right = __builtin_fma (right, twoe, yhe);
+    if (x == TRACEX) printf ("left=%la right=%la\n", left, right);
     if (left != right)
       return cr_exp_accurate (x, e, i);
     return left;
@@ -866,39 +887,3 @@ cr_exp (double x)
   v.n += (int64_t) e << 52;
   return v.x;
 }
-
-#ifdef MAIN
-double
-myref_exp (double x)
-{
-  mpfr_t z;
-  mpfr_init2 (z, 53);
-  mpfr_set_d (z, x, MPFR_RNDN);
-  mpfr_exp (z, z, MPFR_RNDN);
-  double r = mpfr_get_d (z, MPFR_RNDN);
-  mpfr_clear (z);
-  return r;
-}
-
-int main()
-{
-  double x, y, z;
-  int failures = 0, tests = 1000000000;
-  for (int i = 0; i < tests; i++)
-  {
-    x = drand48 ();
-    y = ref_exp (x);
-    z = cr_exp (x);
-    if (y != z)
-    {
-      failures ++;
-      printf ("FAIL x=%la y=%la z=%la (%e)\n", x, y, z,
-              (double) failures / (double) (i+1));
-      //exit (1);
-    }
-  }
-  printf ("%d/%d failures (proba %e)\n", failures, tests,
-          (double) failures / (double) tests);
-  /* 95e7cc2: 2257/1000000000 failures (proba 2.257000e-06) */
-}
-#endif
