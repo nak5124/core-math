@@ -32,8 +32,6 @@ SOFTWARE.
 #include <fenv.h>
 #include <assert.h>
 
-#define TRACEX -0x1.630f299171144p+9
-
 /* Add a + b exactly, such that *hi + *lo = a + b.
    Assumes |a| >= |b| and rounding to nearest.  */
 static void
@@ -352,6 +350,8 @@ cr_exp_accurate (double x, int e, int i)
   /* h + (l+l1) = ah + (al + bh) */
   l += l1 + (bl + x * log2_l);
 
+  /* now x/log(2) ~ e + i/128 + h + l */
+
   static const double p[14] = { 0x1p0,            /* p[0]: degree 0 */
     0x1.62e42fefa39efp-1, 0x1.abc9e3b397ebp-56,   /* p[1,2]: degree 1 */
     0x1.ebfbdff82c58fp-3, -0x1.5e43a5429b326p-57, /* p[3,4]: degree 2 */
@@ -411,21 +411,16 @@ cr_exp_accurate (double x, int e, int i)
   v.x = yh + yl;
   unsigned int f = v.n >> 52;
   f += e;
-  if (x == TRACEX) printf ("acc: f=%x\n", f);
-  if (__builtin_expect(f > 0x7ff, 0)) /* overflow or subnormal */
+  if (__builtin_expect((f - 1) > 0x7ff, 0)) /* overflow or subnormal */
   {
     if (e > 0) /* overflow */
       return xmax + xmax;
-    /* in the subnormal case, same special code than in the fast path */
-    double factor = ldexp (1.0, e + 1023);
-    e = -1023;
-    yh *= factor;
-    yl *= factor;
-    double twoe = ldexp (1.0, e);
-    double yhe = yh * twoe;
-    double m = __builtin_fma (-yhe, ldexp (1.0, -e), yh); /* exact */
-    /* yh = yhe/2^e + m */
-    return __builtin_fma (m + yl, twoe, yhe);
+    /* Same method as in the fast path. */
+    double magic = ldexp (1.0, -1022 - e);
+    fast_two_sum (&t, &u, magic, yh);
+    t += u + yl; /* here comes the rounding */
+    t -= magic;
+    return ldexp (t, e);
   }
 
   /* FIXME: switch on low bits of x (as uint64) to get more uniform sampling */
@@ -847,42 +842,31 @@ cr_exp (double x)
   double err = 0x1.05610cf8bb59ap-67; /* e = up(2^-66.97) */
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
-  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
   if (v.x != right)
     return cr_exp_accurate (x, e, i);
 
-  if (x == TRACEX) printf ("rounding test succeeded\n");
   /* Multiply by 2^e. */
   unsigned int f = v.n >> 52; /* sign is always positive */
   f += e;
-  if (x == TRACEX) printf ("f=%x\n", f);
-  if (__builtin_expect(f > 0x7ff, 0)) /* overflow or subnormal */
+  if (__builtin_expect((f - 1) > 0x7ff, 0)) /* overflow or subnormal */
   {
-    if (x == TRACEX) printf ("e=%d\n", e);
-    if (e >= -1022)
+    if (e > 0)
       return ldexp (v.x, e);
-    /* For subnormal numbers we do a special treatment to avoid a double
-       rounding issue. For example when 2^-1023 <= exp(x) < 2^-1022,
-       with probability 1/2 v.x*2^e will be an odd multiple of 2^-1075,
-       and we'll have a double rounding issue, which means that with
-       probability 1/2 RN(v.x*2^e) will be wrong for rounding to nearest. */
-    double factor = ldexp (1.0, e + 1023);
-    e = -1023;
-    yh *= factor;
-    yl *= factor;
-    err *= factor;
-    double twoe = ldexp (1.0, e);
-    double yhe = yh * twoe;
-    double m = __builtin_fma (-yhe, ldexp (1.0, -e), yh); /* exact */
-    /* yh = yhe/2^e + m */
-    double left = m + (yl - err);
-    double right = m + (yl + err);
-    left = __builtin_fma (left, twoe, yhe);
-    right = __builtin_fma (right, twoe, yhe);
-    if (x == TRACEX) printf ("left=%la right=%la\n", left, right);
-    if (left != right)
-      return cr_exp_accurate (x, e, i);
-    return left;
+    /* In the subnormal case, we use the method mentioned by Godunov in his
+       IEEE Transactions on Computers article (2020): add 2^-1022, and then
+       subtract 2^-1022. Since we should multiply yh+yl by 2^e, to avoid
+       underflow before adding/subtracting 2^-1022, we do it directly on
+       yh+yl, where 2^-1022 is replaced by 2^(-1022-e). */
+    double magic = ldexp (1.0, -1022 - e), left;
+    fast_two_sum (&left, &u, magic, yh);
+    left += u + (yl - err); /* here comes the rounding */
+    left -= magic;
+    fast_two_sum (&right, &u, magic, yh);
+    right += u + (yl + err); /* here comes the rounding */
+    right -= magic;
+    if (left == right)
+      return ldexp (left, e);
+    return cr_exp_accurate (x, e, i);
   }
   v.n += (int64_t) e << 52;
   return v.x;
