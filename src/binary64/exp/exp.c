@@ -33,7 +33,7 @@ SOFTWARE.
 #include <assert.h>
 
 /* Add a + b exactly, such that *hi + *lo = a + b.
-   Assumes |a| >= |b| and rounding to nearest.  */
+   Assumes |a| >= |b|.  */
 static void
 fast_two_sum (double *hi, double *lo, double a, double b)
 {
@@ -42,7 +42,14 @@ fast_two_sum (double *hi, double *lo, double a, double b)
   *hi = a + b;
   e = *hi - a; /* exact */
   *lo = b - e; /* exact */
-  /* Now *hi + *lo = a + b exactly.  */
+  /* Now *hi + *lo = a + b exactly for rounding to nearest.
+     For directed rounding modes, a bound on the error is given
+     in "Tight interval inclusions with compensated algorithms"
+     by Stef Graillat and Fabienne Jézéquel,
+     IEEE Transactions on Computers, 2020. Proposition 3.2 says that
+     the difference between a+b and hi+lo is bounded by 4u^2|a+b|
+     and also by 4u^2|hi|. Here u=2^-53, thus we get:
+     |(a+b)-(hi+lo)| <= 2^-104 min(|a+b|,|hi|) */
 }
 
 /* h + l <- a * b
