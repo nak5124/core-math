@@ -457,6 +457,8 @@ cr_exp_accurate (double x, int e, int i)
     case 43:
       if (x == 0x1.005ae04256babp-1)
         return 0x1.a65d89abf3d1fp+0 - 0x1.fffffffffffffp-54;
+      if (x == -0x1.f31ed23cd212bp-27)
+        return 0x1.ffffff83384b8p-1 - 0x1.2af5c92c5a7e4p-107;
       break;
     case 41:
       if (x == -0x1.02393d5976769p+1)
@@ -505,6 +507,10 @@ cr_exp_accurate (double x, int e, int i)
         return 0x1.fffbea169bd8dp-1 + 0x1.da08d6f93c81ep-108;
       if (x == -0x1.8f80e06f3a04cp+4)
         return 0x1.f80aafa92b498p-37 - 0x1.191595b7e88edp-143;
+      if (x == -0x1.bb95d9aa3bf8cp-19)
+        return 0x1.ffff911a9597fp-1 + 0x1.d10cdb12393b4p-108;
+      if (x == -0x1.890143380b9ccp-19)
+        return 0x1.ffff9dbfb89f5p-1 + 0x1.8fdd717b3871ep-108;
       break;
     case 28:
       if (x == -0x1.59f038076039cp+6)
@@ -551,6 +557,8 @@ cr_exp_accurate (double x, int e, int i)
         return 0x1.534d4de870713p-3 + 0x1.e37dbca61347dp-110;
       if (x == -0x1.cc37ef7de7501p+0)
         return 0x1.534d4de870713p-3 + 0x1.e37dbca61347dp-110;
+      if (x == -0x1.04afe82cbae41p-24)
+        return 0x1.fffffdf6a030bp-1 + 0x1.21d616348b55p-109;
       break;
     case 59:
       if (x == 0x1.aca7ae8da5a7bp+0)
@@ -577,6 +585,8 @@ cr_exp_accurate (double x, int e, int i)
         return 0x1.468e956d45383p-1 - 0x1.05665296469fdp-106;
       if (x == 0x1.9c026d62f631ep-11)
         return 0x1.0033857c34f23p+0 + 0x1.1be674ce71eccp-107;
+      if (x == -0x1.81cc8afed1b1ep-22)
+        return 0x1.fffff3f19bcc6p-1 + 0x1.c6c88f346542ap-108;
       break;
     case 26:
       if (x == -0x1.c794ddcbd661ap+3)
@@ -613,10 +623,14 @@ cr_exp_accurate (double x, int e, int i)
         return 0x1.69cef05657108p-2 + 0x1.d81f352752164p-108;
       if (x == 0x1.e07e71bfcf06fp+5)
         return 0x1.91ec4412c344fp+86 + 0x1.09d2b56d79a72p-23;
+      if (x == -0x1.b57c0a7d7416fp-26)
+        return 0x1.ffffff2541fafp-1 - 0x1.888023336e54dp-108;
       break;
     case 55:
       if (x == 0x1.f8e165f8388f7p-30)
         return 0x1.00000007e3859p+0 + 0x1.fffffffffffffp-54;
+      if (x == -0x1.26bc462a6a9f7p-26)
+        return 0x1.ffffff6ca1ddp-1 + 0x1.5bcdd46a13504p-108;
       break;
     case 53:
       if (x == -0x1.0401ae48409b5p-28)
@@ -729,6 +743,8 @@ cr_exp_accurate (double x, int e, int i)
         return 0x1.ffe5d0bb7eabfp-1 + 0x1.81905a57d6a44p-112;
       if (x == -0x1.a2fefefd580dfp-13)
         return 0x1.ffe5d0bb7eabfp-1 + 0x1.81905a57d6a44p-112;
+      if (x == -0x1.ef25e4b7b671fp-26)
+        return 0x1.ffffff086d0dep-1 - 0x1.ec8bd8b42ad78p-110;
       break;
     case 45:
       if (x == -0x1.b604e4b77d96dp-5)
@@ -747,6 +763,8 @@ cr_exp_accurate (double x, int e, int i)
         return 0x1.91a8dff540ff7p+2 + 0x1.78f1982b593afp-105;
       if (x == 0x1.d6336a88077aap+0)
         return 0x1.91a8dff540ff7p+2 + 0x1.78f1982b593afp-105;
+      if (x == -0x1.ed318efb627eap-27)
+        return 0x1.ffffff84b39c5p-1 - 0x1.d017def75eee1p-114;
       break;
     case 50:
       if (x == 0x1.f6e4c3ced7c72p-3)
@@ -765,10 +783,14 @@ cr_exp_accurate (double x, int e, int i)
     case 46:
       if (x == 0x1.968d2004d83eep-6)
         return 0x1.066e8c9ca7589p+0 - 0x1.fc9cb62e1cf95p-105;
+      if (x == -0x1.c0f0018f48e2ep-23)
+        return 0x1.fffff8fc40061p-1 + 0x1.bbab72b038cb9p-108;
       break;
     case 17:
       if (x == -0x1.a2772020006d1p-12)
         return 0x1.ffcbb3c7edf17p-1 - 0x1.41d718c5b866ep-109;
+      if (x == -0x1.08f7dd6248051p-26)
+        return 0x1.ffffff7b84116p-1 + 0x1.edc9902906d23p-108;
       break;
     case 2:
       if (x == 0x1.dd2ae021a5cc2p-25)
@@ -785,6 +807,14 @@ cr_exp_accurate (double x, int e, int i)
     case 10:
       if (x == 0x1.1a0408712e00ap-2)
         return 0x1.512b3126454f3p+0 + 0x1.758d621c3b9dep-106;
+      break;
+    case 51:
+      if (x == -0x1.c6aa26f277ff3p-27)
+        return 0x1.ffffff8e55765p-1 + 0x1.535b0aa5cc65p-107;
+      break;
+    case 9:
+      if (x == -0x1.aa46a178b9e49p-26)
+        return 0x1.ffffff2adcaf7p-1 - 0x1.40324830f1dp-107;
       break;
   };
 
