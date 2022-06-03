@@ -924,10 +924,14 @@ cr_exp (double x)
      This error is multiplied by h^2 < 2^-14, thus contributes to at most
      2^-68.99 in the final error. */
   /* add p[1] + p1l + yh * h */
-  fast_two_sum (&yh, &yl, p[1], yh * h); /* exact */
+  fast_two_sum (&yh, &yl, p[1], yh * h);
   /* |yh * h| < 2^-2 * 2^-7 = 2^-9 thus the rounding error on yh * h is
      bounded by 2^-62. This rounding error is multiplied by h < 2^-7 thus
-     contributes to < 2^-69 to the final error. */
+     contributes to < 2^-69 to the final error.
+     The fast_two_sum error is bounded by 2^-104 |yh| (for the result yh),
+     thus since |yh| <= o(yh_in * p[1]) <= 2^-2, the fast_two_sum error is
+     bounded by 2^-106. Since this error is multiplied by h < 2^-7 it
+     contributes to < 2^-113 to the final error. */
   yl += p1l;
   /* |yl| < 2^-53 and |p1l| < 2^-55 thus the rounding error in yl += p1l
      is bounded by 2^-105 (we might have an exponent jump). This error is
@@ -942,17 +946,20 @@ cr_exp (double x)
      and |t| < 2^-60, thus |t+yl * h| < 2^-58, and the rounding error on
      t += yl * h is < 2^-111. */
   /* add p[0] = 1 */
-  fast_two_sum (&yh, &yl, p[0], yh); /* exact */
+  fast_two_sum (&yh, &yl, p[0], yh);
   yl += t;
   /* now |yh| < 2 and |yl| < 2^-52, with |t| < 2^-58, thus |yl+t| < 2^-51
-     and the rounding error in yl += t is bounded by 2^-104. */
+     and the rounding error in yl += t is bounded by 2^-104.
+     The error in fast_two_sum is bounded by 2^-104 |yh| <= 2^-103. */
   /* now (yh,yl) approximates 2^h to about 68 bits of accuracy:
      2^-68.99 from the rounding errors for evaluating p[2] + ...
      2^-69 from the rounding error in yh * h in the 1st fast_two_sum
+     2^-113 from the error in the 1st fast_two_sum
      2^-112 from the rounding error in yl += p1l
      2^-112 from the rounding error in yl * h
      2^-111 from the rounding error in t += yl * h
      2^-104 from the rounding error in yl += t
+     2^-103 from the error in the 1st fast_two_sum
      Total absolute error < 2^-67.99 on yh+yl here (with respect to 2^h).
   */
 
@@ -965,14 +972,16 @@ cr_exp (double x)
   t = l2 * l * yh;
   /* we have |l2| < 0.70, |l| < 2^-42, |yh| < 1.01 thus |l2 * l * yh| < 2^-42
      and the total rounding error is bounded by 3*2^-95 */
-  fast_two_sum (&yh, &u, yh, t); /* exact */
+  fast_two_sum (&yh, &u, yh, t);
   u += yl;
   /* |yh| < 2, |u| < 2^-52, |yl| < 2^-52 thus |u+yl| < 2^-51 and the rounding
-     error in u += yl is bounded by 2^-104. */
+     error in u += yl is bounded by 2^-104.
+     The error on fast_two_sum is bounded by 2^-104 |yh| < 2^-103. */
   /* now (yh,u) approximates 2^(h+l) to about 68 bits of accuracy:
-     2^-67.99 from the approximation (yh,yl) for 2^h multiplied by 1+2^-42
+     2^-67.99*(1+2^-42) from the approximation (yh,yl) for 2^h
      1.01*2^-86.05 < 2^-86.03 for the error from l2
      3*2^-95 < 2^-93.41 for the rounding error in l2 * l * yh
+     2^-103 for the error in fast_two_sum
      2^-104 for the rounding error in u += yl
      Total absolute error < 2^-67.98 on yh+u here with respect to 2^(h+l).
   */
@@ -1025,10 +1034,13 @@ cr_exp (double x)
        underflow before adding/subtracting 2^-1022, we do it directly on
        yh+yl, where 2^-1022 is replaced by 2^(-1022-e). */
     double magic = ldexp (1.0, -1022 - e), left;
+    /* In the following fast_two_sum call, magic and yh do overlap, and in
+       this case it can be proven that fast_two_sum is exact, even for
+       directed roundings. */
     fast_two_sum (&left, &u, magic, yh);
+    right = left;
     left += u + (yl - err); /* here comes the rounding */
     left -= magic;
-    fast_two_sum (&right, &u, magic, yh);
     right += u + (yl + err); /* here comes the rounding */
     right -= magic;
     if (left == right)
