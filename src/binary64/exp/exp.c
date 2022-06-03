@@ -60,7 +60,7 @@ fast_two_sum (double *hi, double *lo, double a, double b)
 }
 
 /* h + l <- a * b
-   We have h + l = a + b exactly, whatever the rounding mode, when no
+   We have h + l = a * b exactly, whatever the rounding mode, when no
    underflow happens (cf Section 4.4 of the Handbook of Floating-Point
    Arithmetic, 2nd edition) */
 static void
