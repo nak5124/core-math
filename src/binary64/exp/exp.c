@@ -42,8 +42,13 @@ fast_two_sum (double *hi, double *lo, double a, double b)
   *hi = a + b;
   e = *hi - a; /* exact */
   *lo = b - e; /* exact */
-  /* Now *hi + *lo = a + b exactly for rounding to nearest.
-     For directed rounding modes, a bound on the error is given
+  /* Now hi + lo = a + b exactly for rounding to nearest.
+     For directed rounding modes, this is not always true.
+     Take for example a = 1, b = 2^-200, and rounding up,
+     then hi = 1 + 2^-52, e = 2^-52 (it can be proven that
+     e is always exact), and lo = -2^52 + 2^-105, thus
+     hi + lo = 1 + 2^-105 <> a + b = 1 + 2^-200.
+     A bound on the error is given
      in "Tight interval inclusions with compensated algorithms"
      by Stef Graillat and Fabienne Jézéquel,
      IEEE Transactions on Computers, 2020. Proposition 3.2 says that
