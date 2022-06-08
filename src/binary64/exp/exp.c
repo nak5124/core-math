@@ -32,6 +32,8 @@ SOFTWARE.
 #include <fenv.h>
 #include <assert.h>
 
+#define TRACEX -0x1.5c5ed0ec83666p-6
+
 /* Add a + b exactly, such that *hi + *lo = a + b.
    Assumes |a| >= |b|.  */
 static void
@@ -345,6 +347,8 @@ cr_exp_accurate (double x, int e, int i)
 {
   double h, l, yh, yl;
 
+  if (x == TRACEX) printf ("enter cr_exp_accurate, x=%la\n", x);
+
   /* we recompute h, l such that x/log(2) = e + i/128 + h + l,
      to get more accuracy on l (in the fast path we extract the high 8 bits
      of h to go into i, thus we lose 8 bits on l) */
@@ -420,6 +424,7 @@ cr_exp_accurate (double x, int e, int i)
   dekker (&yh, &yl, yh, tab_i[127+i][0]);
   yl += t + u * tab_i[127+i][0];
   d64u64 v;
+  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
   v.x = yh + yl;
   unsigned int f = v.n >> 52;
   f += e;
@@ -1020,6 +1025,8 @@ cr_exp (double x)
   double right = yh + (yl + err);
   if (v.x != right)
     return cr_exp_accurate (x, e, i);
+
+  if (x == TRACEX) printf ("fast path succeeded for x=%la\n", x);
 
   /* Multiply by 2^e. */
   unsigned int f = v.n >> 52; /* sign is always positive */
