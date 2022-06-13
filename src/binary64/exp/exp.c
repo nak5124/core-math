@@ -365,6 +365,7 @@ cr_exp_accurate (double x, int e, int i)
   fast_two_sum (&h, &l1, h, bh);
   /* h + (l+l1) = ah + (al + bh) */
   l += l1 + (bl + x * log2_l);
+  if (x == TRACEX) printf ("h=%la l=%la\n", h, l);
 
   /* now x/log(2) ~ e + i/128 + h + l */
 
@@ -412,12 +413,14 @@ cr_exp_accurate (double x, int e, int i)
   fast_two_sum (&yh, &yl, p[0], t);
   yl += u;
   /* yh+yl is an approximation of 2^h */
+  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
 
   /* multiply by 2^l */
   static const double l2 = 0x1.62e42fefa39efp-1;
   t = l2 * l * yh;
   fast_two_sum (&yh, &u, yh, t);
   u += yl;
+  if (x == TRACEX) printf ("yh=%la u=%la\n", yh, u);
 
   /* multiply by 2^(i/128) */
   t = yh * tab_i[127+i][1];
