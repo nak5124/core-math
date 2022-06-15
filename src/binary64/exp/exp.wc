@@ -68051,3 +68051,7 @@
 -0x1.ffffffffffffep-55
 -0x1.fffffffffffffp-54
 -0x1.fffffffffffffp-55
+# the following values are such that exp(x) ~ 2^-1075
+-0x1.74910d52d3053p+9
+-0x1.74910d52d3052p+9
+-0x1.74910d52d3051p+9
