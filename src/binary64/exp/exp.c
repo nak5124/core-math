@@ -32,8 +32,6 @@ SOFTWARE.
 #include <fenv.h>
 #include <assert.h>
 
-#define TRACEX -0x1.5c5ed0ec83666p-6
-
 /* Add a + b exactly, such that *hi + *lo = a + b.
    Assumes |a| >= |b|.  */
 static void
@@ -347,8 +345,6 @@ cr_exp_accurate (double x, int e, int i)
 {
   double h, l, yh, yl;
 
-  if (x == TRACEX) printf ("enter cr_exp_accurate, x=%la\n", x);
-
   /* we recompute h, l such that x/log(2) = e + i/128 + h + l,
      to get more accuracy on l (in the fast path we extract the high 8 bits
      of h to go into i, thus we lose 8 bits on l) */
@@ -365,7 +361,6 @@ cr_exp_accurate (double x, int e, int i)
   fast_two_sum (&h, &l1, h, bh);
   /* h + (l+l1) = ah + (al + bh) */
   l += l1 + (bl + x * log2_l);
-  if (x == TRACEX) printf ("h=%la l=%la\n", h, l);
 
   /* now x/log(2) ~ e + i/128 + h + l */
 
@@ -413,21 +408,18 @@ cr_exp_accurate (double x, int e, int i)
   fast_two_sum (&yh, &yl, p[0], t);
   yl += u;
   /* yh+yl is an approximation of 2^h */
-  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
 
   /* multiply by 2^l */
   static const double l2 = 0x1.62e42fefa39efp-1;
   t = l2 * l * yh;
   fast_two_sum (&yh, &u, yh, t);
   u += yl;
-  if (x == TRACEX) printf ("yh=%la u=%la\n", yh, u);
 
   /* multiply by 2^(i/128) */
   t = yh * tab_i[127+i][1];
   dekker (&yh, &yl, yh, tab_i[127+i][0]);
   yl += t + u * tab_i[127+i][0];
   d64u64 v;
-  if (x == TRACEX) printf ("yh=%la yl=%la\n", yh, yl);
   v.x = yh + yl;
   unsigned int f = v.n >> 52;
   f += e;
@@ -824,6 +816,22 @@ cr_exp_accurate (double x, int e, int i)
       if (x == -0x1.aa46a178b9e49p-26)
         return 0x1.ffffff2adcaf7p-1 - 0x1.40324830f1dp-107;
       break;
+    case 38:
+      if (x == -0x1.5c5ed0ec83666p-6)
+        return 0x1.f53a751d7db49p-1 + 0x1.7b56017c8c236p-106;
+      break;
+    case 56:
+      if (x == -0x1.65061daf79a78p+1)
+        return 0x1.f78a60182b74dp-5 + 0x1.e80ff4db7a3efp-110;
+      break;
+    case 60:
+      if (x == -0x1.add1dce7cd5bcp-2)
+        return 0x1.507e542d9849dp-1 + 0x1.398091600cd41p-105;
+      break;
+    case 61:
+      if (x == -0x1.dc2b5df1f7d3dp-1)
+        return 0x1.9403fd0ee51c8p-2 + 0x1.dc83c7a84cf5fp-108;
+      break;
   };
 
   /* special code for tiny x */
@@ -1028,8 +1036,6 @@ cr_exp (double x)
   double right = yh + (yl + err);
   if (v.x != right)
     return cr_exp_accurate (x, e, i);
-
-  if (x == TRACEX) printf ("fast path succeeded for x=%la\n", x);
 
   /* Multiply by 2^e. */
   unsigned int f = v.n >> 52; /* sign is always positive */
