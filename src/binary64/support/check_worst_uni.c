@@ -50,7 +50,7 @@ doloop(void)
   size_t buflength = 0;
   ssize_t n;
   double x, z1, z2;
-  int count = 0;
+  int count = 0, failures = 0;
 
   ref_init();
   ref_fesetround(rnd);
@@ -64,14 +64,18 @@ doloop(void)
       if (z1 != z2) {
         printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
         fflush(stdout);
+#ifdef DO_NOT_ABORT
+        failures ++;
+#else
         exit(1);
+#endif
       }
       count++;
     }
   }
   free(buf);
 
-  printf("%d tests passed\n", count);
+  printf("%d tests passed, %d failure(s)\n", count, failures);
 }
 
 int
