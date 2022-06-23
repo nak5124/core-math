@@ -1,4 +1,4 @@
-/* Generate special cases for exp testing.
+/* Generate special cases for exp2 testing.
 
 Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
 
@@ -39,9 +39,9 @@ int rnd = 0;
 int verbose = 0;
 
 static void
-check_subnormal (int64_t n)
+check_subnormal (int64_t n, int e)
 {
-  double x = ldexp ((double) n, -43);
+  double x = ldexp ((double) n, e);
   double y1 = ref_exp2 (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_exp2 (x);
@@ -96,15 +96,26 @@ main (int argc, char *argv[])
     }
 
   /* check subnormal results */
-  /* x0 is the smallest x such that 2^-1075 <= RN(exp(x)) */
-  double x0 = -0x1.74910d52d3051p+9;
-  /* x1 is the smallest x such that 2^-1022 <= RN(exp(x)) */
-  double x1 = -0x1.6232bdd7abcd2p+9;
-  int64_t n0 = ldexp (x0, 43); /* n0 = -6554261109157969 */
-  int64_t n1 = ldexp (x1, 43); /* n1 = -6231120794008786 */
+  /* x0 is the smallest x such that 2^-1075 <= RN(exp2(x)) */
+  double x0 = -1075;
+  /* x1 is the smallest x such that 2^-1024 <= RN(exp2(x)) */
+  double x1 = -1024;
+  /* in the [x0,x1) range, floating-point numbers have an integer part
+     of 11 bits, thus we multiply by 2^42 to get integers */
+  int64_t n0 = ldexp (x0, 42); /* n0 = -4727899999436800 */
+  int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
 #pragma omp parallel for
   for (int64_t n = n0; n < n1; n++)
-    check_subnormal (n);
+    check_subnormal (n, -42);
+  /* x2 is the smallest x such that 2^-1022 <= RN(exp2(x)) */
+  double x2 = -1022;
+  /* in the [x1,x2) range, floating-point numbers have an integer part
+     of 10 bits, thus we multiply by 2^43 to get integers */
+  n1 = ldexp (x1, 43); /* n1 = -9007199254740992, twice as large as above */
+  int64_t n2 = ldexp (x2, 43); /* n2 = -8989607068696576 */
+#pragma omp parallel for
+  for (int64_t n = n1; n < n2; n++)
+    check_subnormal (n, -43);
 
   return 0;
 }
