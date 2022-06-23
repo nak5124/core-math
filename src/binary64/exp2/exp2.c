@@ -635,23 +635,6 @@ cr_exp_accurate (double x, int e, int i)
       break;
   };
 
-  /* special code for tiny x */
-  if (__builtin_fabs (x) < 0x1p-54)
-  {
-    x *= 0x1.62e42fefa39efp-1; /* x * log(2) */
-    h = x * 0x1.5555555555555p-3; /* x/6 */
-    fast_two_sum (&yh, &yl, 0.5, h); /* yh+yl ~ 1/2 + x/6 */
-    dekker (&h, &l, yh, x);
-    l += yl * x;                     /* h+l ~ x/2 + x^2/6 */
-    fast_two_sum (&yh, &yl, 1.0, h);
-    yl += l;                         /* yh+yl ~ 1 + x/2+x^2/6 */
-    dekker (&h, &l, yh, x);
-    l += yl * x;                     /* h+l ~ x + x^2/2 + x^3/6 */
-    fast_two_sum (&yh, &yl, 1.0, h);
-    yl += l;                         /* yh+yl ~ 1 + x + x^2/2 + x^3/6 */
-    return yh + yl;
-  }
-
   return ldexp (v.x, e);
 }
 
