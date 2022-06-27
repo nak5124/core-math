@@ -74,6 +74,9 @@ float cr_exp10f(float x){
 	if(k==26) return 10000000000.0f;
       }
     }
+    /* The following code is wrongly compiled with -std=gnu18:
+       https://gcc.gnu.org/pipermail/gcc-help/2022-May/141480.html
+       https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105504 */
     double a = iln2h*z, ia = __builtin_floor(a), h = (a - ia) + iln2l*z;
     long i = ia, j = i&0xf, e = i - j;
     e >>= 4;
