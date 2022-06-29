@@ -432,6 +432,14 @@ cr_exp_accurate (double x, int e, int i)
     return ldexp (t, e);
   }
 
+  /* rounding test */
+  double err = 0x1p-104;
+  double left = yh + (yl - err), right = yh + (yl + err);
+  if (left == right)
+  {
+    return ldexp (v.x, e);
+  }
+
   d64u64 w;
   w.x = x;
   switch (w.n & 0x3f) {
