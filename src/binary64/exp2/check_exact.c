@@ -88,6 +88,9 @@ main (int argc, char *argv[])
       printf ("FAIL i=%d, x=%la\n", i, x);
       fflush (stdout);
       ret = 1;
+#ifndef DO_NOT_ABORT
+      exit (1);
+#endif
     }
   }
   return ret;
