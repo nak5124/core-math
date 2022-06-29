@@ -341,7 +341,7 @@ static const double xmax = 0x1p1023;
    (cf exp2_acc.sollya) with 105.765 bits of relative precision.
    Coefficients of degree 0-4 are double-double, 5-9 are doubles. */
 static double
-cr_exp_accurate (double x, int e, int i)
+cr_exp2_accurate (double x, int e, int i)
 {
   double h, l, yh, yl;
 
@@ -812,7 +812,7 @@ cr_exp2 (double x)
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
   if (v.x != right)
-    return cr_exp_accurate (x, e, i);
+    return cr_exp2_accurate (x, e, i);
 
   /* Multiply by 2^e. */
   unsigned int f = v.n >> 52; /* sign is always positive */
@@ -838,7 +838,7 @@ cr_exp2 (double x)
     right -= magic;
     if (left == right)
       return ldexp (left, e);
-    return cr_exp_accurate (x, e, i);
+    return cr_exp2_accurate (x, e, i);
   }
   v.n += (int64_t) e << 52;
   return v.x;
