@@ -85,7 +85,7 @@ main (int argc, char *argv[])
     feclearexcept(FE_INEXACT);
     cr_exp2(x);
     if (fetestexcept(FE_INEXACT)) {
-      printf ("FAIL i=%d, x=%la\n", i, x);
+      printf ("spurious inexact exception: i=%d, x=%la\n", i, x);
       fflush (stdout);
       ret = 1;
 #ifndef DO_NOT_ABORT
