@@ -660,7 +660,9 @@ cr_exp2 (double x)
     /* otherwise go through the main path */
   }
 
-  /* now |x| < 1075 */
+  /* check if x is an integer, and avoid inexact exception */
+  int xint = x;
+  if ((double) xint == x) return ldexp(1, xint);
 
   double h = x, l = 0;
   double t = __builtin_trunc (128.0 * h), u;
