@@ -13,7 +13,7 @@ if ! [ -d "$ORIG_DIR" ]; then
     exit 1
 fi
 
-TMP_DIR="$(mktemp -d --tmpdir core-math.XXXXXX)"
+TMP_DIR="$(mktemp -d -t core-math.XXXXXX)"
 
 trap 'rm -rf "$TMP_DIR"' EXIT
 
