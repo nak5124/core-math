@@ -102,7 +102,7 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-#define K 100000000UL /* total number of tests */
+#define K 10000000000UL /* total number of tests */
 #define BUF_SIZE 1000
 
   long seed = getpid ();
