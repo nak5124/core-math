@@ -36,7 +36,7 @@ Tested on x86_64-linux with and without FMA (-march=native).
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
 
-#if defined(__clang__) && (defined(__AVX__) || defined(__SSE4_1__))
+#if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__))
 inline double __builtin_roundeven(double x){
    double ix;
 #if defined __AVX__
