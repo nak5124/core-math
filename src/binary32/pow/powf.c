@@ -34,7 +34,7 @@ typedef union {double f; uint64_t u;} b64u64_u;
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
 
-#if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || defined(__SSE2__))
+#if defined(__clang__) && (defined(__AVX__) || defined(__SSE4_1__) || defined(__SSE2__))
 inline double __builtin_roundeven(double x){
    double ix;
 #if defined __AVX__
