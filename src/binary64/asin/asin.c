@@ -266,7 +266,7 @@ double cr_asin(double x){
     fi.a += dd.a;
     int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
     u128_u u = fi;
-    u.a += 7l<<ss;
+    u.a += 9l<<ss;
     if( __builtin_expect(((fi.b[1]^u.b[1])>>(11-nz))&1, 0)){
       return asin_acc(x);
     }
@@ -318,8 +318,8 @@ double cr_asin(double x){
 
     int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
     u128_u u = fi, d = fi;
-    u.a += 40l<<55;
-    d.a -= 20l<<55;
+    u.a += 50l<<55;
+    d.a -= 27l<<55;
     if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
       return asin_acc(x);
     }
