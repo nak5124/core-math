@@ -769,19 +769,19 @@ cr_exp2 (double x)
      |yl + t + u * tab_i[127+i][0]| < 2^-48 thus the rounding error in
      yl += ,,, is bounded by 2^-101.
      Total error bounded by:
-     2^-66.99 (initial error 2^-67.99 on yh+u multiplied by maximal value of
-               2^(i/128) for i=127)
+     2^-66.997 (initial error 2^-67.99 on yh+u multiplied by maximal value of
+                2^(i/128) for i=127)
      2^-105.99 for the error on 2^(i/128) multiplied by |yh+u| < 2
      2^-106 for the rounding error on t
      2^-103 for the rounding error on u * tab_i[127+i][0]
      2^-102 for the rounding error on t + u * tab_i[127+i][0]
      2^-101 for the rounding error on yl += ...
-     Total error < 2^-66.98 on yh + yl with respect to 2^(i/128+h+l). */
+     Total error < 2^-66.99 on yh + yl with respect to 2^(i/128+h+l). */
 
-  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-66.98 */
+  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-66.99 */
 
   /* rounding test */
-  double err = 0x1.0392d9352ad76p-67; /* e = up(2^-66.98) */
+  double err = 0x1.01c7d6c404f0cp-67; /* e = up(2^-66.99) */
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
   if (v.x != right)
