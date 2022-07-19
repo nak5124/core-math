@@ -24,13 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <mpfr.h>
-#include <stdint.h>
-#include <math.h>
-#include <fenv.h>
-#include <assert.h>
+#include <stdint.h> /* for uint64_t */
+#include <math.h>   /* for ldexp */
 
 /* Add a + b exactly, such that *hi + *lo = a + b.
    Assumes |a| >= |b|.  */
@@ -653,7 +648,10 @@ cr_exp2 (double x)
   v.x = x;
   int e = ((v.n >> 52) & 0x7ff) - 0x3ff;
 
-  if (e >= 9) /* potential underflow or overflow */
+  if (e >= 10) /* Overflow or potential underflow. For e=9 we cannot
+                  have any overflow or underflow. Indeed the largest
+                  number with e=9 is x=0x1.fffffffffffffp+9: exp2(x)
+                  does not overflow, and exp2(-x) does not underflow. */
   {
     if (isnan (x))
       return x + x; /* always return qNaN, even for sNaN input */
@@ -668,23 +666,19 @@ cr_exp2 (double x)
     /* otherwise go through the main path */
   }
 
-  /* check if x is an integer, and avoid inexact exception */
-  int xint = x;
-  if ((double) xint == x) return ldexp(1, xint);
-
-  double h = x, l = 0;
-  double t = __builtin_trunc (128.0 * h), u;
-  h = h - t / 128.0; /* exact */
+  double h, t = __builtin_trunc (128.0 * x), u;
+  h = x - t / 128.0; /* exact */
+  /* check if x is an integer, avoiding inexact exception */
+  if (h == 0 && (double) (int) x == x) return ldexp (1.0, x);
   e = t;
   int i = e % 128;
   e = (e - i) >> 7;
-  /* 2^x ~ 2^e * 2^(i/128) * 2^h * 2^l where |h| < 1/128 and |l| < 2^-42,
-     where -127 <= i <= 127 */
+  /* 2^x ~ 2^e * 2^(i/128) * 2^h where |h| < 1/128 and -127 <= i <= 127 */
 
   /* p[i] are the coefficients of a degree-6 polynomial approximating 2^x
      over [-1/128,1/128], with double coefficients, except p[1] which is
-     double-double (here we give only the upper term, the lower is p1l.
-     The relative accuracy is 70.862 bits. */
+     double-double (here we give only the upper term of p[1], the lower
+     term is p1l). The relative accuracy is 70.862 bits. */
   static const double p[7] = {
   0x1p0, 0x1.62e42fefa39efp-1, 0x1.ebfbdff82c58fp-3,
     0x1.c6b08d70484c1p-5, 0x1.3b2ab6fb663a2p-7, 0x1.5d881a764d899p-10,
@@ -695,40 +689,41 @@ cr_exp2 (double x)
   double yl = p[5] + h * p[6];
   /* |h * p[6]| < 2^-7 * 2^-12 = 2^-19 thus the rounding error on h * p[6] is
      bounded by 2^-72. When adding to p[5] we stay in the same binade than p[5]
-     thus error(yl) < ulp(p[5]) + 2^-72 = 2^-62+2^-72 < 2^-61.99 */
+     thus error(yl) < ulp(p[5]) + 2^-72 = 2^-62 + 2^-72 < 2^-61.99 */
   double yh = p[3] + h * p[4];
   /* |h * p[4]| < 2^-7 * 2^-6 = 2^-13 thus the rounding error on h * p[4] is
      bounded by 2^-66. When adding to p[3] we stay in the same binade than p[3]
-     thus error(yh) < ulp(p[3]) + 2^-66 = 2^-57+2^-66 < 2^-56.99 */
+     thus error(yh) < ulp(p[3]) + 2^-66 = 2^-57 + 2^-66 < 2^-56.99 */
   yh = yh + hh * yl;
   /* the error on yh is bounded by:
      2^-56.99 : error on the previous value of yh
      2^-67 * 2^-9 = 2^-76 : error on hh times maximal value of yl
-     2^-14 * 2^-61.99 = 2^-75.99 : maximal value of hh tomes error on yl
+     2^-14 * 2^-61.99 = 2^-75.99 : maximal value of hh times error on yl
      2^-76 : rounding error on hh * yl since hh * yl < 2^-23
-     2^-57 : rounding error on yh since we stay in the same binade as p[3]
+     2^-57 : rounding error on yh+... since we stay in the same binade as p[3]
      Total: error(yh) < 2^-55.99 */
   yh = p[2] + yh * h;
   /* |yh * h| < 2^-4 * 2^-7 = 2^-11 thus the rounding error on yh * h is
-     bounded by 2^-64. After adding yh * h we stay in the same binade, thus
-     the error on yh is bounded by ulp(p2) + 2^-64 = 2^-55+2^-64 < 2^-54.99.
+     bounded by 2^-64. After adding yh * h we stay in the same binade than p[2]
+     thus the sum of the rounding errors in the addition p[2] + ... and the
+     product yh * h is bounded by ulp(p2) + 2^-64 = 2^-55 + 2^-64 < 2^-54.99.
      We need to add the error on yh multiplied by h, which is bounded by
      2^-55.99 * 2^-7 < 2^-62.99, which gives 2^-55+2^-64+2^-62.99 < 2^-54.99.
-     This error is multiplied by h^2 < 2^-14, thus contributes to at most
+     This error is multiplied by h^2 < 2^-14 below, thus contributes to at most
      2^-68.99 in the final error. */
   /* add p[1] + p1l + yh * h */
   fast_two_sum (&yh, &yl, p[1], yh * h);
-  /* |yh * h| < 2^-2 * 2^-7 = 2^-9 thus the rounding error on yh * h is
-     bounded by 2^-62. This rounding error is multiplied by h < 2^-7 thus
-     contributes to < 2^-69 to the final error.
+  /* At input |yh * h| < 2^-2*2^-7 = 2^-9 thus the rounding error on yh * h is
+     bounded by 2^-62. This rounding error is multiplied by h < 2^-7 below
+     thus contributes to < 2^-69 to the final error.
      The fast_two_sum error is bounded by 2^-104 |yh| (for the result yh),
-     thus since |yh| <= o(yh_in * p[1]) <= 2^-2, the fast_two_sum error is
-     bounded by 2^-106. Since this error is multiplied by h < 2^-7 it
-     contributes to < 2^-113 to the final error. */
+     thus since |yh| <= o(p[1] + 2^-9) <= 2^-0.52, the fast_two_sum error is
+     bounded by 2^-104.52. Since this error is multiplied by h < 2^-7 below,
+     it contributes to < 2^-111.52 to the final error. */
   yl += p1l;
   /* |yl| < 2^-53 and |p1l| < 2^-55 thus the rounding error in yl += p1l
      is bounded by 2^-105 (we might have an exponent jump). This error is
-     multiplied by h below, thus contributes < 2^-112. */
+     multiplied by h below, thus contributes to < 2^-112. */
   /* multiply (yh,yl) by h */
   dekker (&yh, &t, yh, h); /* exact */
   /* add yl*h */
@@ -736,55 +731,32 @@ cr_exp2 (double x)
   /* |yl| < 2^-52 here, thus |yl * h| < 2^-59, thus the rounding error on
      yl * h is < 2^-112.
      |yh| < 1 before the dekker() call, thus after we have |yh| < 2^-7
-     and |t| < 2^-60, thus |t+yl * h| < 2^-58, and the rounding error on
+     and |t| < 2^-60, thus |t + yl * h| < 2^-58, and the rounding error on
      t += yl * h is < 2^-111. */
   /* add p[0] = 1 */
   fast_two_sum (&yh, &yl, p[0], yh);
-  yl += t;
+  u = yl + t;
   /* now |yh| < 2 and |yl| < 2^-52, with |t| < 2^-58, thus |yl+t| < 2^-51
-     and the rounding error in yl += t is bounded by 2^-104.
+     and the rounding error in u = yl + t is bounded by 2^-104.
      The error in fast_two_sum is bounded by 2^-104 |yh| <= 2^-103. */
   /* now (yh,yl) approximates 2^h to about 68 bits of accuracy:
      2^-68.99 from the rounding errors for evaluating p[2] + ...
      2^-69 from the rounding error in yh * h in the 1st fast_two_sum
-     2^-113 from the error in the 1st fast_two_sum
+     2^-111.52 from the error in the 1st fast_two_sum
      2^-112 from the rounding error in yl += p1l
      2^-112 from the rounding error in yl * h
      2^-111 from the rounding error in t += yl * h
-     2^-104 from the rounding error in yl += t
-     2^-103 from the error in the 1st fast_two_sum
-     Total absolute error < 2^-67.99 on yh+yl here (with respect to 2^h).
-  */
-
-  /* FIXME: could we integrate the multiplication by 2^l above? */
-  /* multiply (yh,yl) by 2^l. Since |l| < 2^-42, it suffices to multiply
-     by 1 + log(2)*l to get 70-bit accuracy: the maximal error while doing
-     this is 2^-86.05. */
-  static const double l2 = 0x1.62e42fefa39efp-1;
-  /* error on l2 < 2^-55.25 */
-  t = l2 * l * yh;
-  /* we have |l2| < 0.70, |l| < 2^-42, |yh| < 1.01 thus |l2 * l * yh| < 2^-42
-     and the total rounding error is bounded by 3*2^-95 */
-  fast_two_sum (&yh, &u, yh, t);
-  u += yl;
-  /* |yh| < 2, |u| < 2^-52, |yl| < 2^-52 thus |u+yl| < 2^-51 and the rounding
-     error in u += yl is bounded by 2^-104.
-     The error on fast_two_sum is bounded by 2^-104 |yh| < 2^-103. */
-  /* now (yh,u) approximates 2^(h+l) to about 68 bits of accuracy:
-     2^-67.99*(1+2^-42) from the approximation (yh,yl) for 2^h
-     1.01*2^-86.05 < 2^-86.03 for the error from l2
-     3*2^-95 < 2^-93.41 for the rounding error in l2 * l * yh
-     2^-103 for the error in fast_two_sum
-     2^-104 for the rounding error in u += yl
-     Total absolute error < 2^-67.98 on yh+u here with respect to 2^(h+l).
+     2^-104 from the rounding error in u = yl + t
+     2^-103 from the error in the 2nd fast_two_sum
+     Total absolute error < 2^-67.99 on yh+u here (with respect to 2^h).
   */
 
   /* multiply (yh,u) by 2^(i/128) */
   /* the maximal error |2^(i/128) - tab_i[127+i][0] - tab_i[127+i][1]|
      is 1/2*max(ulp(tab_i[127+i][1])) = 2^-107.
-     Since we multiply by |2^(h+l)| < 1.006 this yields 2^-106.99. */
+     Since we multiply by |2^h| < 1.006 this yields 2^-106.99. */
   t = yh * tab_i[127+i][1];
-  /* |yh| < 1.006 and |tab_i[127+i][1]| < 0x1.fc6f89bd4f6bap-54 thus
+  /* |yh| < 1.006 and |tab_i[127+i][1]| < 0x1.fc6f89bd4f6bap-54 (i=78) thus
      |yh * tab_i[127+i][1]| < 2^-53 and the rounding error on t is
      bounded by 2^-106 */
   dekker (&yh, &yl, yh, tab_i[127+i][0]); /* exact */
@@ -797,18 +769,19 @@ cr_exp2 (double x)
      |yl + t + u * tab_i[127+i][0]| < 2^-48 thus the rounding error in
      yl += ,,, is bounded by 2^-101.
      Total error bounded by:
-     2^-66.98 (2^-67.98 multiplied by 2^(i/128))
-     2^-106.99 for the error on 2^(i/128)
+     2^-66.99 (initial error 2^-67.99 on yh+u multiplied by maximal value of
+               2^(i/128) for i=127)
+     2^-105.99 for the error on 2^(i/128) multiplied by |yh+u| < 2
      2^-106 for the rounding error on t
      2^-103 for the rounding error on u * tab_i[127+i][0]
      2^-102 for the rounding error on t + u * tab_i[127+i][0]
      2^-101 for the rounding error on yl += ...
-     Total error < 2^-66.97 on yh + yl with respect to 2^(i/128+h+l). */
+     Total error < 2^-66.98 on yh + yl with respect to 2^(i/128+h+l). */
 
-  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-66.97 */
+  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-66.98 */
 
   /* rounding test */
-  double err = 0x1.05610cf8bb59ap-67; /* e = up(2^-66.97) */
+  double err = 0x1.0392d9352ad76p-67; /* e = up(2^-66.98) */
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
   if (v.x != right)

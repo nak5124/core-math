@@ -1,3 +1,11 @@
+# the following inputs exercise overflow or underflow
+0x1p+10
+0x1.fffffffffffffp+9
+0x1.0000000000001p+10
+-0x1.0ccp+10
+-0x1.0cbffffffffffp+10
+-0x1.0cc0000000001p+10
+# the following are hard-to-round cases
 0x1p+9
 0x1.0002ff1388649p+9
 0x1.003b81681e9bap+9
