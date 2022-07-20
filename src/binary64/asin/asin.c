@@ -279,8 +279,6 @@ double cr_asin(double x){
          c*x < 1/2 ulp(x). */
       return __builtin_fma (x, 0x1p-54, x);
     /* now 2^-26 <= |x| < 2^-6 */
-    fi.b[0] = 0; /* since the low 11 bits of sm are zero */
-    fi.b[1] = sm>>1;
     /* |x| = 2^(e-62)*(fi.b[1] + fi.b[0]/2^64) */
     /* We also have |x| = 2^(e+1)*sm/2^64, since e <= -7 we have e+1 <= -6,
        thus we write |x| = 2^-6*y with y=2^(e+7)*sm/2^64 */
@@ -292,8 +290,8 @@ double cr_asin(double x){
     u64 d = muuh(v3, b[0] + muuh(v2, b[1] + muuh(v2, b[2] + muuh(v2, b[3] + muuh(v2, b[4])))));
     /* d/2^64 approximates 1/6*x^3 + 3/40*x^5 + ... + 63/2816*x^11 */
     int ss = 63 + 2*e;
-    u128_u dd = {.b = {d<<ss, d>>(64-ss)}};
-    fi.a += dd.a;
+    fi.b[0] = d<<ss;
+    fi.b[1] = (d>>(64-ss)) + (sm>>1);
     /* fi.a/2^128 approximates x + 1/6*x^3 + 3/40*x^5 + ... + 63/2816*x^11 */
     int nz = __builtin_clzll (fi.b[1]) + (rm==FE_TONEAREST);
     u128_u u = fi;
