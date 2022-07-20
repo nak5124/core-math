@@ -113,7 +113,7 @@ static double asin_acc(double x){
      {.b = {0x41390efdc726e9ef, 0xfec46d1e89292cf0}},{.b = {0xf668633f1ab858a, 0xff4e6d680c41d0a9}},
      {.b = {0x421e8edaaf59453e, 0xffb10f1bcb6bef1d}},{.b = {0x5657552366961732, 0xffec4304266865d9}}};
     
-  const unsigned flagp = _mm_getcsr(), rm = (flagp&(3<<13))>>3;
+  const unsigned flagp = _mm_getcsr (), rm = (flagp&(3<<13))>>3;
   b64u64_u t = {.f = x};
   int se = ((t.u>>52)&0x7ff)-0x3ff;
   i64 xsign = t.u&(1l<<63);
@@ -239,32 +239,63 @@ double cr_asin(double x){
     0x6297cff75cb02ac4, 0x8764fa714ba93565, 0xa7557f08a516a17d, 0xc26470e19fd347b2, 
     0xd88da3d125259e08, 0xe9cdad01883a1522, 0xf621e3796d7de3a8, 0xfd886084cd0cbb2b, 0};
   static const u64 a[] = {0x002aaaaaaaaaaaaa, 0x0000133333333344, 0x0000000b6db6d69d, 0x0000000007c7aa6f};
+  /* b[0], ... b[4] are approximations of the Taylor coefficients of
+     2^84*asin(x/2^6) at x=0 of order 3, ..., 11 */
   static const u64 b[] = {0xaaaaaaaaaaaaaaaa, 0x0004cccccccccccc, 0x0000002db6db6db8, 0x0000000001f1c718, 0x00000000000016ec};
   static const double ch[] = {0x1.ffb77e06e54aap+5, -0x1.3b200d87cc0fep+5, 0x1.79457faf679e3p+4, -0x1.dc7d5a91dfb7ep+2};
-  const unsigned flagp = _mm_getcsr(), rm = (flagp&(3<<13))>>3;
+  const unsigned flagp = _mm_getcsr (), rm = (flagp&(3<<13))>>3;
   b64u64_u t = {.f = x};
   int e = ((t.u>>52)&0x7ff)-0x3ff;
+  /* x = 2^e*y with 1 <= |y| < 2 */
   i64 xsign = t.u&(1l<<63);
+  /* xsign=0 for x > 0, xsign=1 for x < 0 */
   u64 sm = (t.u<<11)|1l<<63;
+  /* sm contains in its high 53 bits: the implicit leading bit, and the
+     the 52 explicit bits from the significand, thus |x| = 2^(e+1)*sm/2^64
+     where 2^63 <= sm < 2^64 */
   u128_u fi;
-  if(__builtin_expect(e>=0,0)){
-    u64 m = t.u<<12;
-    if(e==0 && m == 0) return __builtin_copysign(0x1.921fb54442d18p+0, x) + __builtin_copysign(0x1.1a62633145c07p-54, x);
-    if(e==0x400 && m) return x; // nan
+  if(__builtin_expect (e>=0,0)){ /* |x| >= 1 */
+    u64 m = t.u<<12; /* m contains the 52 explicit bits from the significand */
+    if (e==0 && m == 0) /* case x = 1 or -1 */
+      /* h=0x1.921fb54442d18p+0 is pi/2 rounded to nearest,
+         and 0x1.1a62633145c07p-54 is pi/2-h rounded to nearest */
+      return __builtin_copysign (0x1.921fb54442d18p+0, x)
+        + __builtin_copysign (0x1.1a62633145c07p-54, x);
+    if (e==0x400 && m) return x; // nan
     errno = EDOM;
-    feraiseexcept(FE_INVALID);
-    return __builtin_nanf64(">1");
-  } else if(__builtin_expect(e < -6,0)){
-    if(__builtin_expect(e<-26,0)) return __builtin_fma(x, 0x1p-54, x);
-    fi.b[0] = sm<<63;
+    feraiseexcept (FE_INVALID);
+    return __builtin_nanf64 (">1");
+  } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */
+    if (__builtin_expect (e < -26,0)) /* |x| < 2^-26 */
+      /* For |x| < 2^-2, we have |asin(x)-x| < 0.25x^3
+         thus the difference between asin(x) and x is less than
+         0.25|x|^3, and since |x| < 2^53 ulp(x) and |x| < 2^-26:
+         |asin(x)-x| < 2^51 x^2 ulp(x) < 1/2 ulp(x), which
+         proves that asin(x) rounds either to x (always for
+         rounding to nearest), either to nextabove(x), or to nextbelow(x),
+         depending on the rounding mode and the sign of x.
+         The expression x + 2^-54*x rounds identically, where the constant
+         2^-54 can be replaced by any expression c <= 2^-54, such that
+         c*x < 1/2 ulp(x). */
+      return __builtin_fma (x, 0x1p-54, x);
+    /* now 2^-26 <= |x| < 2^-6 */
+    fi.b[0] = 0; /* since the low 11 bits of sm are zero */
     fi.b[1] = sm>>1;
+    /* |x| = 2^(e-62)*(fi.b[1] + fi.b[0]/2^64) */
+    /* We also have |x| = 2^(e+1)*sm/2^64, since e <= -7 we have e+1 <= -6,
+       thus we write |x| = 2^-6*y with y=2^(e+7)*sm/2^64 */
     u64 v2 = muuh(sm, sm), v3 = muuh(sm, v2);
+    /* v2 = floor(sm^2/2^64), v3 = floor(sm*v2/2^64) */
+    /* since -26 <= e <= -7, 0 <= -2*e-14 <= 38 thus the shift is valid */
     v2 >>= -2*e-14;
+    /* v2/2^64 approximates y^2: v2/2^64 <= y^2 < (v2+1)/2^64 */
     u64 d = muuh(v3, b[0] + muuh(v2, b[1] + muuh(v2, b[2] + muuh(v2, b[3] + muuh(v2, b[4])))));
+    /* d/2^64 approximates 1/6*x^3 + 3/40*x^5 + ... + 63/2816*x^11 */
     int ss = 63 + 2*e;
     u128_u dd = {.b = {d<<ss, d>>(64-ss)}};
     fi.a += dd.a;
-    int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
+    /* fi.a/2^128 approximates x + 1/6*x^3 + 3/40*x^5 + ... + 63/2816*x^11 */
+    int nz = __builtin_clzll (fi.b[1]) + (rm==FE_TONEAREST);
     u128_u u = fi;
     u.a += 9l<<ss;
     if( __builtin_expect(((fi.b[1]^u.b[1])>>(11-nz))&1, 0)){
