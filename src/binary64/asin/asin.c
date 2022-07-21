@@ -243,7 +243,11 @@ double cr_asin(double x){
      2^84*asin(x/2^6) at x=0 of order 3, ..., 11.
      The following polynomial has a maximal absolute error
      less than 2^-82.731 with respect to asin(x)-x over [0,2^-6] */
+#if 1 /* original coefficients */
   static const u64 b[] = {0xaaaaaaaaaaaaaaaa, 0x0004cccccccccccc, 0x0000002db6db6db8, 0x0000000001f1c718, 0x00000000000016ec};
+#else /* alternate coefficients, rounded towards zero */
+  static const u64 b[] = {0xaaaaaaaaaaaaaaaa, 0x0004cccccccccccc, 0x0000002db6db6db6, 0x0000000001f1c71c, 0x00000000000016e8};
+#endif
   static const double ch[] = {0x1.ffb77e06e54aap+5, -0x1.3b200d87cc0fep+5, 0x1.79457faf679e3p+4, -0x1.dc7d5a91dfb7ep+2};
   const unsigned flagp = _mm_getcsr (), rm = (flagp&(3<<13))>>3;
   b64u64_u t = {.f = x};
