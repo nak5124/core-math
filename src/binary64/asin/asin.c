@@ -247,6 +247,8 @@ double cr_asin(double x){
      rounded towards zero (using integer arithmetic), this guarantees the
      final approximation is a lower bound of asin(x). */
   static const u64 b[] = {0xaaaaaaaaaaaaaaaa, 0x0004cccccccccccc, 0x0000002db6db6db6, 0x0000000001f1c71c, 0x00000000000016e8};
+  /* pi/2*sqrt(1-x^2)*(ch[0]*x + ch[1]*x^2 + ch[2]*x^3 + ch[3]*x^4) is a rough
+     approximation of 64*acos(x) for 0 <= x <= 1, with error less than 0.056 */
   static const double ch[] = {0x1.ffb77e06e54aap+5, -0x1.3b200d87cc0fep+5, 0x1.79457faf679e3p+4, -0x1.dc7d5a91dfb7ep+2};
   const unsigned flagp = _mm_getcsr (), rm = (flagp&(3<<13))>>3;
   b64u64_u t = {.f = x};
@@ -336,17 +338,25 @@ double cr_asin(double x){
     }
     e += 0x3ff;
   } else { /* case |x| >= 2^-6 */
-    double xx = __builtin_fma(x,-x,1.0);
-    b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt(xx)};
+    double xx = __builtin_fma(x,-x,1.0); /* xx = 1-x^2 */
+    b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt (xx)};
+    /* ixx = 1/(1-x^2), c = sqrt(1-x^2) */
     ixx.f *= c.f;
-    double ax = __builtin_fabs(x), x2 = x*x;
+    /* ixx = 1/sqrt(1-x^2) */
+    double ax = __builtin_fabs (x), x2 = x*x;
     double c0 = ch[0] + ax*ch[1];
     double c2 = ch[2] + ax*ch[3];
     c0 += x2*c2;
+    /* FIXME: use FMA here: c0 = fma (c0, c.f, 64) */
     c0 *= c.f;
     c0 += 64;
+    /* now c0 approximates 64+64*acos(x)/(pi/2), which lies in [64,128] */
     b64u64_u ic = {.f = c0};
-    int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7)))>>(52-6);
+    int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7))) >> (52-6);
+    /* indx = round(c0)-64. We have indx < 64 since c0 is decreasing with
+       |x|, thus the largest value is obtained for |x| = 2^-6, and for this
+       value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
+       with rounding upwards */
     u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
     u128_u sm2 = {.a = (u128)sm * sm}, cm2 = {.a = (u128)cm * cm};
     const int off = 36 - 22 + 14;
