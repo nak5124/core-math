@@ -1,4 +1,4 @@
-/* Correctly-rounded Euclidean distance function (hypot) for binary32 values.
+/* Correctly-rounded Euclidean distance function (hypot) for binary64 values.
 
 Copyright (c) 2022 Alexei Sibidanov.
 
