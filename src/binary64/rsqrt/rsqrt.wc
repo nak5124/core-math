@@ -107,6 +107,7 @@
 0x1.6f2f1966a3bf4p+0
 # hard to round cases from https://www.vinc17.net/research/testlibm/
 # (file testlibm-data.xz, update from 2020-11-27, function 'isq')
+# (with duplicates from above removed)
 0x1.0001486cd8p+0
 0x1.0008a9412p+1
 0x1.001e1e5ap+1
@@ -133,7 +134,6 @@
 0x1.015d166382841p+1
 0x1.016ab3f34f6cap+1
 0x1.019d544f1d68p+1
-0x1.019f3185cc078p+0
 0x1.01a481de78a0fp+0
 0x1.01af4cp+0
 0x1.01bfbdp+1
@@ -771,7 +771,6 @@
 0x1.2cd1e4ap+0
 0x1.2cd25ap+1
 0x1.2cd32b31189cep+0
-0x1.2cf7c2d6696e2p+0
 0x1.2d09b42cp+0
 0x1.2d2b364d088p+0
 0x1.2d3c02618p+1
@@ -1227,7 +1226,6 @@
 0x1.543d0a4p+1
 0x1.54547f6428p+0
 0x1.545c8acececp+1
-0x1.54709118a46d6p+1
 0x1.547676d11d8p+0
 0x1.54798e783ap+1
 0x1.54926755cp+1
@@ -1424,7 +1422,6 @@
 0x1.651f6dep+1
 0x1.653eb61e603fcp+1
 0x1.6543ee494p+1
-0x1.656230dda552dp+0
 0x1.658687a5828p+0
 0x1.659b742p+0
 0x1.65e3cd7p+0
@@ -1698,7 +1695,6 @@
 0x1.8203b97e4a83cp+0
 0x1.822d98p+0
 0x1.82688cp+0
-0x1.826dca556295ap+1
 0x1.82719ad011p+0
 0x1.82815339eeedap+1
 0x1.8287c48e270cp+1
@@ -1821,7 +1817,6 @@
 0x1.8fa6p+1
 0x1.8fb9d765a4069p+0
 0x1.8fc2c1773fd1cp+1
-0x1.90229294e10bep+1
 0x1.904f2ab71a103p+1
 0x1.905def5bp+0
 0x1.9063adc3067p+0
@@ -1986,7 +1981,6 @@
 0x1.a2c2023b2b35ap+0
 0x1.a2c6d3d7p+1
 0x1.a2efep+0
-0x1.a322206b56e7bp+1
 0x1.a3260ap+0
 0x1.a36dbe13p+1
 0x1.a37d499ac8p+0
@@ -2014,7 +2008,6 @@
 0x1.a600036d9708p+0
 0x1.a66c97b18ap+1
 0x1.a6a0a10afa4p+0
-0x1.a6a9cc15abccep+0
 0x1.a6ac1d11a9ep+1
 0x1.a6b193bd1p+1
 0x1.a6d5p+1
@@ -2074,7 +2067,6 @@
 0x1.add9ed7f814p+1
 0x1.addf64p+0
 0x1.adef6d4p+0
-0x1.adf7d568fb6bdp+1
 0x1.ae80b30478f5ap+1
 0x1.ae8aa4p+0
 0x1.aec7d9599p+0
@@ -2229,12 +2221,10 @@
 0x1.c475170ccp+0
 0x1.c4c4e918p+1
 0x1.c4c79p+0
-0x1.c51fd5dac918dp+0
 0x1.c52a348c18p+1
 0x1.c52d1ec654p+1
 0x1.c54a63p+0
 0x1.c54d373p+1
-0x1.c562b857453ddp+1
 0x1.c573a388p+1
 0x1.c595d2430bc64p+1
 0x1.c5a58p+0
@@ -2323,7 +2313,6 @@
 0x1.d019b260cp+0
 0x1.d04fc9b4ep+0
 0x1.d06bae34p+0
-0x1.d0a4a40f6cdecp+0
 0x1.d0ee20f09f13p+0
 0x1.d0f1p+1
 0x1.d0f358p+0
@@ -2385,7 +2374,6 @@
 0x1.d94f6p+0
 0x1.d9a10776aea09p+0
 0x1.d9dc525f6c02p+1
-0x1.d9e27fc59beaap+1
 0x1.da04571447965p+0
 0x1.da4408p+0
 0x1.da646p+0
@@ -2565,7 +2553,6 @@
 0x1.f432d8p+0
 0x1.f45e86a4cp+0
 0x1.f491cd975a8p+0
-0x1.f4b0482bfa34cp+0
 0x1.f4ccafa8p+1
 0x1.f4dbd78p+1
 0x1.f538d9a0d98p+0
@@ -2710,11 +2697,5 @@
 0x1.ffffffffffff8p+1
 0x1.ffffffffffffdp+1
 0x1.ffffffffffffcp+1
-0x1.ffffffffffffep+1
-0x1.ffffffffffffep+1
 0x1.fffffffffffffp+1
-0x1.fffffffffffffp+1
-0x1p+2
-0x1p+2
-0x1p+2
 0x1p+2
