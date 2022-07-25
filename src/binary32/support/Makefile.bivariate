@@ -1,6 +1,6 @@
 # -*- makefile -*-
 
-CFLAGS += -Wpedantic -W -Wall -frounding-math
+CFLAGS += -W -Wall -frounding-math
 
 TYPE_UNDER_TEST := float
 
