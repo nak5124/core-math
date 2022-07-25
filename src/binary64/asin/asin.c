@@ -369,7 +369,7 @@ double cr_asin(double x){
     shl(&sm2, ss); /* multiply sm2 by 2^(2*e+constant) */
     int sc = 128 - 104 + 2*ce + off;
     shl(&cm2, sc); /* multiply cm2 by 2^(2*ce+constant) */
-    sm2.a += cm2.a; /* this is x^2+sqrt(1-x^2) */
+    sm2.a += cm2.a; /* this is x^2+sqrt(1-x^2)^2 up to some 2^k */
     i64 h = sm2.b[1];
     u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
     i64 Smh;
