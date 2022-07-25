@@ -41,6 +41,8 @@ extern int rnd1[];
 extern int rnd;
 extern int verbose;
 
+char RND[] = "NZUD";
+
 static void
 doit (double x, double y)
 {
@@ -49,7 +51,7 @@ doit (double x, double y)
   fesetround (rnd1[rnd]);
   z2 = cr_hypot (x, y);
   if (z1 != z2) {
-    printf("FAIL x=%la y=%la ref=%la z=%la\n", x, y, z1, z2);
+    printf("FAIL x=%la y=%la ref=%la z=%la RND%c\n", x, y, z1, z2, RND[rnd]);
     fflush(stdout);
     exit(1);
   }

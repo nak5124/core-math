@@ -1,1 +1,4 @@
+# exact cases
+0x1.000001cc784cbp+52,0x1.fdd67bceb35fp+52
+# worst cases
 0x1.6p-45,0x1.2c2fc595456a7p-71
