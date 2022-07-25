@@ -286,7 +286,7 @@ double cr_asin(double x){
          c*x < 1/2 ulp(x). */
       return __builtin_fma (x, 0x1p-54, x);
     /* now 2^-26 <= |x| < 2^-6 */
-    /* We also have |x| = 2^(e+1)*sm/2^64, since e <= -7 we have e+1 <= -6,
+    /* We also have |x| = 2^e*sm/2^63, since e <= -7 we have e+1 <= -6,
        thus we write |x| = 2^(e+1)*y with y=sm/2^64 */
     u64 v2 = muuh(sm, sm), v3 = muuh(sm, v2);
     /* v2 = floor(sm^2/2^64), v3 = floor(sm*v2/2^64) */
@@ -358,13 +358,18 @@ double cr_asin(double x){
        value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
        with rounding upwards */
     u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
+    /* cm contains in its 53 most significant bits the bits from c,
+       which approximates sqrt(1-x^2), including the implicit bit,
+       ce is the corresponding exponent, such that c = 2^ce*cm/2^63 */
     u128_u sm2 = {.a = (u128)sm * sm}, cm2 = {.a = (u128)cm * cm};
+    /* x^2 = 2^(2*e)*sm2/2^126 and c^2 ~ 2^(2*ce)*cm2/2^126 */
     const int off = 36 - 22 + 14;
     int ss = 128 - 104 + 2*e + off;
-    shl(&sm2, ss);
+    /* for e=-6, ss=40; for x=0x1.fffffffffffffp-1, ss=50 */
+    shl(&sm2, ss); /* multiply sm2 by 2^(2*e+constant) */
     int sc = 128 - 104 + 2*ce + off;
-    shl(&cm2, sc);
-    sm2.a += cm2.a;
+    shl(&cm2, sc); /* multiply cm2 by 2^(2*ce+constant) */
+    sm2.a += cm2.a; /* this is x^2+sqrt(1-x^2) */
     i64 h = sm2.b[1];
     u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
     i64 Smh;
