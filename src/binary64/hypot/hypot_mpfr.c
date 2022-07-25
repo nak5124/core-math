@@ -36,7 +36,7 @@ double ref_hypot (double x, double y){
   mpfr_set_d (ym, y, MPFR_RNDN);
   int inex = mpfr_hypot (zm, xm, ym, rnd2[rnd]);
   mpfr_subnormalize (zm, inex, rnd2[rnd]);
-  double ret = mpfr_get_flt (zm, MPFR_RNDN);
+  double ret = mpfr_get_d (zm, MPFR_RNDN);
   mpfr_clear (xm);
   mpfr_clear (ym);
   mpfr_clear (zm);
