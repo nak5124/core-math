@@ -24,6 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+// #include <stdio.h>
 #include <errno.h>
 #include <math.h>
 #include <fenv.h>
@@ -204,6 +205,8 @@ static double asin_acc(double x){
 }
 
 double cr_asin(double x){
+  /* for 0 <= i <= 64, s[i]/2^63 is an approximation of sin(pi/2*i/64),
+     which equals cos(pi/2*(64-i)/64) */
   static const u64 s[] = {
     0, 0x3242abef46ccfbf, 0x647d97c437604f9, 0x96a9049670cfae6, 
     0xc8bd35e14da15f0, 0xfab272b54b9871a, 0x12c8106e8e613a22, 0x15e214448b3fc654, 
@@ -221,6 +224,8 @@ double cr_asin(double x){
     0x7a7d055b18b76976, 0x7b5d039da1258cf4, 0x7c29fbee48c35ca9, 0x7ce3ceb193962314, 
     0x7d8a5f3fdd72c0ab, 0x7e1d93e9c52ea4d5, 0x7e9d55fc22945a85, 0x7f0991c3867f4d1e, 
     0x7f62368f44949678, 0x7fa736b40620e854, 0x7fd8878de5b5f78e, 0x7ff62182133432ec, ~0ul>>1 };
+  /* for 0 <= i <= 64, sh[i] = round(sin(i*pi/2/64)*2^69) mod 2^64,
+     with maximal error < 0.496 (for i=17 */
   static const u64 sh[] = {
     0, 0xc90aafbd1b33efca, 0x91f65f10dd813e6f, 0x5aa41259c33eb998, 
     0x22f4d78536857c3b, 0xeac9cad52e61c68a, 0xb2041ba3984e8898, 0x78851122cff19532, 
@@ -260,6 +265,9 @@ double cr_asin(double x){
   /* sm contains in its high 53 bits: the implicit leading bit, and the
      the 52 explicit bits from the significand, thus |x| = 2^(e+1)*sm/2^64
      where 2^63 <= sm < 2^64 */
+#define X1 0x1p-6
+#define X2 0x1.fffffffffffffp-1
+  //  if (x == X1 || x == X2) printf ("x=%la e=%d sm=%lu\n", x, e, sm);
   u128_u fi;
   if(__builtin_expect (e>=0,0)){ /* |x| >= 1 */
     u64 m = t.u<<12; /* m contains the 52 explicit bits from the significand */
@@ -339,7 +347,22 @@ double cr_asin(double x){
     e += 0x3ff;
   } else { /* case |x| >= 2^-6 */
     double xx = __builtin_fma(x,-x,1.0); /* xx = 1-x^2 */
+    /* if x^2 >= 1/2, then 1-x^2 is exact;
+       if x^2 < 1/2, then 1-x^2 >= 1/2 and might be inexact, but the
+       error is bounded by ulp(1/2) = 2^-53 */
     b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt (xx)};
+    /* if x^2 >= 1/2, then since xx=1-x^2 exactly, the error on c
+       is bounded by ulp(c) <= ulp(1/4) = 2^-54;
+       if x^2 < 1/2, the error on xx is bounded by 2^-53,
+       more precisely we have xx = (1-x^2)*(1+theta1) with |theta1| < 2^-52
+       thus c = sqrt(1-x^2)*sqrt(1+theta1)*(1+theta2) with |theta2| < 2^-52
+       which can be written:
+       c = sqrt(1-x^2)*(1+theta3)^(3/2) with |theta3| < 2^-52 or:
+       c = sqrt(1-x^2)*(1+theta4) with |theta4| < 2^-51.41
+       thus the absolute error on c is bounded by:
+       sqrt(1-x^2)*2^51.41 < 2^-51.41.
+       In all cases the absolute error on c is bounded by 2^-51.41. */
+    // if (x == X1 || x == X2) printf ("x=%la c=%la\n", x, c.f);
     /* ixx = 1/(1-x^2), c = sqrt(1-x^2) */
     ixx.f *= c.f;
     /* ixx = 1/sqrt(1-x^2) */
@@ -353,36 +376,60 @@ double cr_asin(double x){
     /* now c0 approximates 64+64*acos(x)/(pi/2), which lies in [64,128] */
     b64u64_u ic = {.f = c0};
     int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7))) >> (52-6);
+    // if (x == X1 || x == X2) printf ("x=%la indx=%d\n", x, indx);
     /* indx = round(c0)-64. We have indx < 64 since c0 is decreasing with
        |x|, thus the largest value is obtained for |x| = 2^-6, and for this
        value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
-       with rounding upwards */
+       with rounding upwards.
+       Let y=asin(x), and y[i]=i*pi/2/64, then we have the rotation
+       formula:
+       sin(y-y[i]) = sin(y)*cos(y[i]) - cos(y)*sin(y[i])
+                   = x*cos(y[i]) - sqrt(1-x^2)*sin(y[i])
+       thus:
+       y = y[i] + asin(x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]))
+       where x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is small. */
     u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
-    /* cm contains in its 53 most significant bits the bits from c,
+    /* cm contains in its high bits the 53 significant bits from c,
        which approximates sqrt(1-x^2), including the implicit bit,
        ce is the corresponding exponent, such that c = 2^ce*cm/2^63 */
+    // if (x == X1 || x == X2) printf ("x=%la cm=%lu ce=%d\n", x, cm, ce);
     u128_u sm2 = {.a = (u128)sm * sm}, cm2 = {.a = (u128)cm * cm};
-    /* x^2 = 2^(2*e)*sm2/2^126 and c^2 ~ 2^(2*ce)*cm2/2^126 */
-    const int off = 36 - 22 + 14;
-    int ss = 128 - 104 + 2*e + off;
+    /* x^2 = 2^(2*e)*sm2/2^126 and c^2 = 2^(2*ce)*cm2/2^126 */
+    // if (x == X1 || x == X2) printf ("x=%la sm2=%lu,%lu cm2=%lu,%lu\n", x, sm2.b[1], sm2.b[0], cm2.b[1], cm2.b[0]);
+    const int off = 36 - 22 + 14;   /* off = 28 */
+    int ss = 128 - 104 + 2*e + off; /* ss = 52 + 2*e */
     /* for e=-6, ss=40; for x=0x1.fffffffffffffp-1, ss=50 */
-    shl(&sm2, ss); /* multiply sm2 by 2^(2*e+constant) */
+    shl(&sm2, ss);
+    /* now frac(2^50*x^2) = sm2/2^128 */
+    // if (x == X1 || x == X2) printf ("x=%la ss=%d sm2=%lu,%lu\n", x, ss, sm2.b[1], sm2.b[0]);
     int sc = 128 - 104 + 2*ce + off;
-    shl(&cm2, sc); /* multiply cm2 by 2^(2*ce+constant) */
-    sm2.a += cm2.a; /* this is x^2+sqrt(1-x^2)^2 up to some 2^k */
+    shl(&cm2, sc);
+    /* now frac(2^50*c^2) = cm2/2^128 */
+    // if (x == X1 || x == X2) printf ("x=%la sc=%d cm2=%lu,%lu\n", x, sc, cm2.b[1], cm2.b[0]);
+    sm2.a += cm2.a; /* now frac(2^50*(x^2+c^2)) = sm2/2^128 */
+    /* x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is computed as
+       (x-sin(y[i]))*cos(y[i]) - (sqrt(1-x^2)-cos(y[i]))*sin(y[i]) */
     i64 h = sm2.b[1];
     u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
     i64 Smh;
-    ss = 6 + e;
+    ss = 6 + e; /* ss >= 0 */
+    // if (x == X1 || x == X2) printf ("x=%la sh[indx]=%lu sh[64-indx]=%lu s[indx]=%lu s[64-indx]=%lu\n", x, sh[indx], sh[64-indx], s[indx], s[64-indx]);
     Smh = (sm<<ss) - sh[64-indx];
-    
+    /* since |x| = 2^(e+1)*sm/2^64, sm*2^ss = |x|*2^69 */
+    /* now Smh approximates 2^69*(|x|-sin(y[i])) mod 2^64,
+       with maximal error < 0.5 */
     i64 Cmh;
-    sc = 6+ce;
+    sc = 6 + ce;
+    /* Here ce might be less than -6, and thus sc negative, for example when
+       |x| is very near 1, since sqrt(1-x^2) ~ c^2 = 2^(2*ce)*cm2/2^126.
+       The worst case for |x|=0x1.fffffffffffffp-1 is ce=-26. */
     if(__builtin_expect(sc>=0,1))
       Cmh = cm<<sc;
     else
       Cmh = cm>>-sc;
     Cmh -= sh[indx];
+    /* now Cmh approximates 2^69*(sqrt(1-x^2)-cos(y[i]))
+       with maximal error 2^69*2^-51.41+0.5 < 2^17.60 */
     Cmh -= mh(h, ixm)>>(34-ixe);
     i64 v = mh(Smh, s[indx]) - mh(Cmh, s[64-indx]), v2 = mh(v, v), v3 = mh(v2, v);
     v += mh(v3, a[0] + muuh(v2, a[1] + muuh(v2, a[2] + muuh(v2, a[3]))));
@@ -390,6 +437,7 @@ double cr_asin(double x){
     t.u = v;
     fi.b[0] = 0xd313198a2e037073;
     fi.b[1] = 0x3243f6a8885a308;
+    /* fi.a/2^127 approximates pi/2/64 */
     fi.a *= (u64)(64u - indx);
     u64 Vh = v>>5, Vl = v<<59;
     i128 V = (u128)Vh<<64|Vl;
