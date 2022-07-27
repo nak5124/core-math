@@ -205,8 +205,12 @@ static double asin_acc(double x){
 }
 
 double cr_asin(double x){
-  /* for 0 <= i <= 64, s[i]/2^63 is an approximation of sin(pi/2*i/64),
-     which equals cos(pi/2*(64-i)/64) */
+  /* For 0 <= i <= 64, s[i]=floor(sin(pi/2*i/64)*2^63), except for i=64
+     where s[i]=2^63-1.
+     Thus s[i]/2^63 approximates sin(pi/2*i/64)=cos(pi/2*(64-i)/64).
+     We use only 63 bits since we use it as a signed value.
+     The maximal difference between s[i] and sin(pi/2*i/64)*2^63 is 1
+     (for i=64). */
   static const u64 s[] = {
     0, 0x3242abef46ccfbf, 0x647d97c437604f9, 0x96a9049670cfae6, 
     0xc8bd35e14da15f0, 0xfab272b54b9871a, 0x12c8106e8e613a22, 0x15e214448b3fc654, 
@@ -224,8 +228,8 @@ double cr_asin(double x){
     0x7a7d055b18b76976, 0x7b5d039da1258cf4, 0x7c29fbee48c35ca9, 0x7ce3ceb193962314, 
     0x7d8a5f3fdd72c0ab, 0x7e1d93e9c52ea4d5, 0x7e9d55fc22945a85, 0x7f0991c3867f4d1e, 
     0x7f62368f44949678, 0x7fa736b40620e854, 0x7fd8878de5b5f78e, 0x7ff62182133432ec, ~0ul>>1 };
-  /* for 0 <= i <= 64, sh[i] = round(sin(i*pi/2/64)*2^69) mod 2^64,
-     with maximal error < 0.496 (for i=17 */
+  /* For 0 <= i <= 64, sh[i] = round(sin(i*pi/2/64)*2^69) mod 2^64,
+     with maximal error < 0.496 (for i=17). */
   static const u64 sh[] = {
     0, 0xc90aafbd1b33efca, 0x91f65f10dd813e6f, 0x5aa41259c33eb998, 
     0x22f4d78536857c3b, 0xeac9cad52e61c68a, 0xb2041ba3984e8898, 0x78851122cff19532, 
@@ -267,7 +271,7 @@ double cr_asin(double x){
      where 2^63 <= sm < 2^64 */
 #define X1 0x1p-6
 #define X2 0x1.fffffffffffffp-1
-  //  if (x == X1 || x == X2) printf ("x=%la e=%d sm=%lu\n", x, e, sm);
+  // if (x == X1 || x == X2) printf ("x=%la e=%d sm=%lu\n", x, e, sm);
   u128_u fi;
   if(__builtin_expect (e>=0,0)){ /* |x| >= 1 */
     u64 m = t.u<<12; /* m contains the 52 explicit bits from the significand */
@@ -351,6 +355,7 @@ double cr_asin(double x){
        if x^2 < 1/2, then 1-x^2 >= 1/2 and might be inexact, but the
        error is bounded by ulp(1/2) = 2^-53 */
     b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt (xx)};
+    // if (x == X1 || x == X2) printf ("x=%la ixx=%la\n", x, ixx.f);
     /* if x^2 >= 1/2, then since xx=1-x^2 exactly, the error on c
        is bounded by ulp(c) <= ulp(1/4) = 2^-54;
        if x^2 < 1/2, the error on xx is bounded by 2^-53,
@@ -360,12 +365,22 @@ double cr_asin(double x){
        c = sqrt(1-x^2)*(1+theta3)^(3/2) with |theta3| < 2^-52 or:
        c = sqrt(1-x^2)*(1+theta4) with |theta4| < 2^-51.41
        thus the absolute error on c is bounded by:
-       sqrt(1-x^2)*2^51.41 < 2^-51.41.
+       |c - sqrt(1-x^2)| < sqrt(1-x^2)*2^51.41 < 2^-51.41.
        In all cases the absolute error on c is bounded by 2^-51.41. */
     // if (x == X1 || x == X2) printf ("x=%la c=%la\n", x, c.f);
-    /* ixx = 1/(1-x^2), c = sqrt(1-x^2) */
+    /* ixx ~ 1/(1-x^2), c ~ sqrt(1-x^2) */
     ixx.f *= c.f;
-    /* ixx = 1/sqrt(1-x^2) */
+    /* ixx approximates 1/sqrt(1-x^2). Let t = o(1/xx) the previous
+       value of ixx. We have t = 1/xx*(1+theta1) with |theta1| < 2^-52,
+       c = sqrt(xx)*(1+theta2) with |theta2| < 2^-52, then
+       ixx = o(t*c) = t*c*(1+theta3) with |theta3| < 2^-52, which yields:
+       ixx = 1/sqrt(xx)*(1+theta1)*(1+theta2)*(1+theta3)
+           = 1/c*(1+theta1)*(1+theta2)^2*(1+theta3)
+       thus |ixx-1/c| < 1/c*|(1+theta1)*(1+theta2)^2*(1+theta3)-1|.
+       The maximal values are attained when all thetaj are +/-2^-52,
+       which yields |ixx-1/c| < 2^-49.9*1/c.
+    */
+    // if (x == X1 || x == X2) printf ("x=%la ixx=%la\n", x, ixx.f);
     double ax = __builtin_fabs (x), x2 = x*x;
     double c0 = ch[0] + ax*ch[1];
     double c2 = ch[2] + ax*ch[3];
@@ -391,7 +406,15 @@ double cr_asin(double x){
     u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
     /* cm contains in its high bits the 53 significant bits from c,
        which approximates sqrt(1-x^2), including the implicit bit,
-       ce is the corresponding exponent, such that c = 2^ce*cm/2^63 */
+       ce is the corresponding exponent, such that c = 2^ce*cm/2^63.
+       We now refine the approximation c of sqrt(1-x^2) using one step
+       of Newton's iteration: c += 1/2*e/sqrt(1-x^2) where e = (1-x^2) - c^2.
+       It can be proven (by using the same kind of analysis than in Modern
+       Computer Arithmetic, Lemma 3.7) that if c is an approximation of
+       sqrt(a), and c' = c + 1/2*(a-c^2)/c, then
+       |c'-sqrt(a)| = (sqrt(a)-c)^2/(2c).
+       Here a=1-x^2, and since |c - sqrt(1-x^2)| < 2^-51.41, we get:
+       |c'-sqrt(a)| < 2^-103.82/c. */
     // if (x == X1 || x == X2) printf ("x=%la cm=%lu ce=%d\n", x, cm, ce);
     u128_u sm2 = {.a = (u128)sm * sm}, cm2 = {.a = (u128)cm * cm};
     /* x^2 = 2^(2*e)*sm2/2^126 and c^2 = 2^(2*ce)*cm2/2^126 */
@@ -407,10 +430,20 @@ double cr_asin(double x){
     /* now frac(2^50*c^2) = cm2/2^128 */
     // if (x == X1 || x == X2) printf ("x=%la sc=%d cm2=%lu,%lu\n", x, sc, cm2.b[1], cm2.b[0]);
     sm2.a += cm2.a; /* now frac(2^50*(x^2+c^2)) = sm2/2^128 */
+    /* since |c-sqrt(xx)| < 2^-51.41, we have:
+       |c^2-xx| < 2^-51.41*|c+sqrt(xx)| < 2^-50.41 since c,xx < 1.
+       This proves that |2^50*e| < 2^-0.41 with e = (1-x^2) - c^2.
+       Thus frac(2^50*(x^2+c^2)) is enough to uniquely identify the
+       value of 2^50*(x^2+c^2). */
+    i64 h = sm2.b[1];
+    /* h/2^64 approximates 2^50*(x^2+c^2) mod 1, with error bounded by
+       1/2^64 for the truncated part sm2.b[0]/2^128. */
+    // if (x == X1 || x == X2) printf ("x=%la h=%lu\n", x, h);
+    u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
+    /* ixx = ixm*2^(ixe-52) */
+    // if (x == X1 || x == X2) printf ("x=%la ixm=%lu ixe=%d\n", x, ixm, ixe);
     /* x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is computed as
        (x-sin(y[i]))*cos(y[i]) - (sqrt(1-x^2)-cos(y[i]))*sin(y[i]) */
-    i64 h = sm2.b[1];
-    u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
     i64 Smh;
     ss = 6 + e; /* ss >= 0 */
     // if (x == X1 || x == X2) printf ("x=%la sh[indx]=%lu sh[64-indx]=%lu s[indx]=%lu s[64-indx]=%lu\n", x, sh[indx], sh[64-indx], s[indx], s[64-indx]);
@@ -428,9 +461,18 @@ double cr_asin(double x){
     else
       Cmh = cm>>-sc;
     Cmh -= sh[indx];
-    /* now Cmh approximates 2^69*(sqrt(1-x^2)-cos(y[i]))
-       with maximal error 2^69*2^-51.41+0.5 < 2^17.60 */
+    /* We now need to add
+       1/2*(1-x^2-c^2)/c to c. Instead we subtract 1/2*h/2^114*ixm*2^(ixe-52),
+       with error bounded by:
+       (a) 2^-103.82/c for the error in Newton's method
+       (b) 1/2/2^114/c for the error on h (neglecting lower order terms)
+       (c) 1/2/2^50*2^-49.9*1/c for the error between ixx and 1/c
+       Altogether we have an error bounded by 2^-100.72*1/c.
+       Since c >= 2^-26 this yields 2^-74.72.
+    */
     Cmh -= mh(h, ixm)>>(34-ixe);
+    /* now Cmh approximates 2^69*(sqrt(1-x^2)-cos(y[i]))
+       with maximal error 2^69*2^-74.72+0.5 < 0.52 */
     i64 v = mh(Smh, s[indx]) - mh(Cmh, s[64-indx]), v2 = mh(v, v), v3 = mh(v2, v);
     v += mh(v3, a[0] + muuh(v2, a[1] + muuh(v2, a[2] + muuh(v2, a[3]))));
 
