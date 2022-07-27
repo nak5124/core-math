@@ -247,10 +247,12 @@ double cr_asin(double x){
     0x9f4156c62dda5d83, 0xd740e76849633d06, 0xa7efb9230d72a59, 0x38f3ac64e588c509, 
     0x6297cff75cb02ac4, 0x8764fa714ba93565, 0xa7557f08a516a17d, 0xc26470e19fd347b2, 
     0xd88da3d125259e08, 0xe9cdad01883a1522, 0xf621e3796d7de3a8, 0xfd886084cd0cbb2b, 0};
+  /* a[0]...a[3] are approximations of the Taylor coefficients of
+     2^68*asin(x/2^4) at x=0 of order 3, ..., 9. */
   static const u64 a[] = {0x002aaaaaaaaaaaaa, 0x0000133333333344, 0x0000000b6db6d69d, 0x0000000007c7aa6f};
   /* b[0]...b[4] are approximations towards zero of the Taylor coefficients of
      2^84*asin(x/2^6) at x=0 of order 3, ..., 11.
-     The following polynomial has a maximal absolute error
+     The corresponding polynomial has a maximal absolute error
      less than 2^-82.731 with respect to asin(x)-x over [0,2^-6].
      Since coefficients are rounded towards zero, and the evaluation is also
      rounded towards zero (using integer arithmetic), this guarantees the
@@ -396,7 +398,7 @@ double cr_asin(double x){
        |x|, thus the largest value is obtained for |x| = 2^-6, and for this
        value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
        with rounding upwards.
-       Let y=asin(x), and y[i]=i*pi/2/64, then we have the rotation
+       Let y=asin(x), i=64-indx, and y[i]=i*pi/2/64, then we have the rotation
        formula:
        sin(y-y[i]) = sin(y)*cos(y[i]) - cos(y)*sin(y[i])
                    = x*cos(y[i]) - sqrt(1-x^2)*sin(y[i])
@@ -474,19 +476,51 @@ double cr_asin(double x){
     /* now Cmh approximates 2^69*(sqrt(1-x^2)-cos(y[i]))
        with maximal error 2^69*2^-74.72+0.5 < 0.52 */
     i64 v = mh(Smh, s[indx]) - mh(Cmh, s[64-indx]), v2 = mh(v, v), v3 = mh(v2, v);
+    /* v approximates 2^68*[(|x|-sin(y[i]))*cos(y[i])
+                            -(sqrt(1-x^2)-cos(y[i]))*sin(y[i])] with error
+       bounded by:
+       1 (truncation error in mh(Smh, s[indx]))
+       +1 (truncation error in mh(Cmh, s[64-indx]))
+       +0.5*0.5=0.25 (error on Smh multiplied by s[indx]/2^64)
+       +0.52*0.5=0.26 (error on Cmh multiplied by s[64-indx])
+       which yields 2.51 neglecting second order terms. */
+    /* the error on v2 is thus bounded by 5.02, and that on v3 by 7.53, still
+       neglecting second order terms */
     v += mh(v3, a[0] + muuh(v2, a[1] + muuh(v2, a[2] + muuh(v2, a[3]))));
+    /* err(muuh(v2, a[3]) <= 1
+       let c2=muuh(v2, a[3])
+       a[2] + c2 is exact, and does not overflow since c2 < a[3], and
+       a[2]+a[3] < 2^64
+       err(muuh(v2, a[2] + c2)) <= err(v2) + err(muuh(v2, a[3])) + 1
+                                <= 5.02 + 1 + 1 = 7.02
+       let c1=muuh(v2, a[2] + c2)
+       a[1] + c1 is exact, and does not overflow since c1 < a[2]+a[3],
+       and a[2]+a[3] < 2^64
+       err(muuh(v2, a[1] + c1)) <= err(v2) + err(muuh(v2, a[2] + c2)) + 1
+                                <= 5.02 + 7.02 + 1 = 13.04
+       let c0=muuh(v2, a[1] + c1)
+       a[0] + c0 is exact, and does not overflow since c0 < a[1]+a[2]+a[3],
+       and a[1]+a[2]+a[3] < 2^64
+       err(mh(v3, a[0] + c0) <= err(v3) + err(c0) + 1 <= 7.53+13.04+1 = 21.57
+       The total error on v is thus bounded by 2.51 (order 1) + 21.57 (orders
+       3 and more), thus by 24.08.
+     */
 
     t.u = v;
     fi.b[0] = 0xd313198a2e037073;
     fi.b[1] = 0x3243f6a8885a308;
     /* fi.a/2^127 approximates pi/2/64 */
-    fi.a *= (u64)(64u - indx);
+    fi.a *= (u64)(64u - indx); /* multiply pi/2/64 by i=64-indx */
+    /* we add v after normalization */
     u64 Vh = v>>5, Vl = v<<59;
+    /* the maximal error 24.08 on v translates into an error of 24.08*2^59
+       on Vl */
     i128 V = (u128)Vh<<64|Vl;
     fi.a += V;
 
     int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
     u128_u u = fi, d = fi;
+    /* the error is bounded by 24.08*2^59 here */
     u.a += 50l<<55;
     d.a -= 27l<<55;
     if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
