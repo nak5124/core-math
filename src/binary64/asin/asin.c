@@ -353,22 +353,16 @@ double cr_asin(double x){
     e += 0x3ff;
   } else { /* case |x| >= 2^-6 */
     double xx = __builtin_fma(x,-x,1.0); /* xx = 1-x^2 */
-    /* if x^2 >= 1/2, then 1-x^2 is exact;
-       if x^2 < 1/2, then 1-x^2 >= 1/2 and might be inexact, but the
-       error is bounded by ulp(1/2) = 2^-53 */
     b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt (xx)};
     // if (x == X1 || x == X2) printf ("x=%la ixx=%la\n", x, ixx.f);
-    /* if x^2 >= 1/2, then since xx=1-x^2 exactly, the error on c
-       is bounded by ulp(c) <= ulp(1/4) = 2^-54;
-       if x^2 < 1/2, the error on xx is bounded by 2^-53,
-       more precisely we have xx = (1-x^2)*(1+theta1) with |theta1| < 2^-52
+    /* we have xx = (1-x^2)*(1+theta1) with |theta1| < 2^-52
        thus c = sqrt(1-x^2)*sqrt(1+theta1)*(1+theta2) with |theta2| < 2^-52
        which can be written:
        c = sqrt(1-x^2)*(1+theta3)^(3/2) with |theta3| < 2^-52 or:
        c = sqrt(1-x^2)*(1+theta4) with |theta4| < 2^-51.41
        thus the absolute error on c is bounded by:
        |c - sqrt(1-x^2)| < sqrt(1-x^2)*2^51.41 < 2^-51.41.
-       In all cases the absolute error on c is bounded by 2^-51.41. */
+       Thus the absolute error on c is bounded by 2^-51.41. */
     // if (x == X1 || x == X2) printf ("x=%la c=%la\n", x, c.f);
     /* ixx ~ 1/(1-x^2), c ~ sqrt(1-x^2) */
     ixx.f *= c.f;
