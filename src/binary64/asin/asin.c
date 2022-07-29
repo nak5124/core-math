@@ -427,7 +427,10 @@ double cr_asin(double x){
     /* now frac(2^50*x^2) = sm2/2^128 */
     // if (x == X1 || x == X2) printf ("x=%la ss=%d sm2=%lu,%lu\n", x, ss, sm2.b[1], sm2.b[0]);
     int sc = 128 - 104 + 2*ce + off;
-    shl(&cm2, sc);
+    if(__builtin_expect(sc>=0, 1))
+      shl(&cm2, sc);
+    else
+      cm2.a >>= -sc;
     /* now frac(2^50*c^2) = cm2/2^128 */
     // if (x == X1 || x == X2) printf ("x=%la sc=%d cm2=%lu,%lu\n", x, sc, cm2.b[1], cm2.b[0]);
     // if (x == X1) printf ("sm2=%lu,%lu cm2=%lu,%lu\n", sm2.b[1], sm2.b[0], cm2.b[1], cm2.b[0]);
