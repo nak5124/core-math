@@ -1,15 +1,66 @@
 #!/bin/bash
 # Usage: ./perf.sh acos
 
+S=20 # trial
+N=100000 # count
+M=500 # repeat
+
+read -r -d '' prog_end <<EOF
+END {
+  s = 0;
+  nout = int(5*i/100);
+  for(k = 1; k < i-nout; k++){
+    d = a[k] - a[0];
+    s += d*d;
+  }
+  rms = sqrt(s/(i-nout-1));
+  nmd = a[int(i/2)] - a[0];
+  printf "Ntrail = %d ; Min = %.3f + %.3f clc/call; Median-Min = %.3f clc/call; Max = %.3f clc/call;\n", i, a[0], rms, nmd, a[i-1];
+}
+EOF
+
+collect_perf_stat () {
+    echo -n "" > $LOG_FILE
+    local i=1
+    while [ $i -le $S ]; do
+	perf stat -e cycles -x " " ./perf $PERF_ARGS &>> $LOG_FILE
+	i=$(( i + 1 ))
+    done
+}
+process_perf_stat () {
+    sort -g -k 1 $LOG_FILE | awk "/cycles:u/{a[i++]=\$1/(${N}*${M});} ${prog_end}"
+}
+proc_perf () {
+    collect_perf_stat
+    process_perf_stat
+}
+
+collect_rdtsc_stat () {
+    echo -n "" > $LOG_FILE
+    local i=1
+    while [ $i -le $S ]; do
+	./perf $PERF_ARGS &>> $LOG_FILE
+	i=$(( i + 1 ))
+    done
+}
+process_rdtsc_stat () {
+    sort -g $LOG_FILE | awk "{a[i++]=\$1;} ${prog_end}"
+}
+proc_rdtsc () {
+    collect_rdtsc_stat
+    process_rdtsc_stat
+}
+
 RANDOMS_FILE="$(mktemp /tmp/core-math.XXXXXX)"
-trap "rm -f $RANDOMS_FILE" 0
+LOG_FILE="$(mktemp /tmp/core-math.XXXXXX)"
+trap "rm -f $RANDOMS_FILE $LOG_FILE" 0
 
 f=$1
 u="$(echo src/binary*/*/$f.c)"
 
 if [ -z "$CORE_MATH_PERF_MODE" ]; then
-    echo 'Please set CORE_MATH_PERF_MODE environment variable (perf or rdtsc)'
-    exit 2
+    echo 'CORE_MATH_PERF_MODE (perf or rdtsc) environment variable is not set. The default is perf.'
+    CORE_MATH_PERF_MODE=perf
 fi
 
 if [ -f "$u" ]; then
@@ -39,23 +90,36 @@ fi
 cd $dir
 make -s clean
 make -s perf
-./perf --file "$RANDOMS_FILE" --reference --count 1000000
+
+# prepare random arguments for performance test
+./perf --file ${RANDOMS_FILE} --count ${N} --reference
+
+PERF_ARGS="${PERF_ARGS} --file ${RANDOMS_FILE} --count ${N} --repeat ${M}"
 
 if [ "$CORE_MATH_PERF_MODE" = perf ]; then
-    perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
-    perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
+    proc_perf
+
+    PERF_ARGS="${PERF_ARGS} --libc"
+    proc_perf
+
 elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
-    $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 $PERF_ARGS --rdtsc
-    $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS --rdtsc
+    PERF_ARGS="${PERF_ARGS} --rdtsc"
+    proc_rdtsc
+
+    PERF_ARGS="${PERF_ARGS} --libc"
+    proc_rdtsc
 fi
 
 if [ -n "$BACKUP_LIBM" ]; then
     export LIBM="$BACKUP_LIBM"
+    PERF_ARGS="${PERF_ARGS} --libc"
     make -s clean
     make -s perf
     if [ "$CORE_MATH_PERF_MODE" = perf ]; then
-        perf stat -e cpu-cycles --no-big-num -x';' $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS 2>&1 | { IFS=';' read a b; printf 'scale=3\n%s/1000000000\n' $a | bc; }
+	proc_perf
+
     elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
-        $CORE_MATH_LAUNCHER ./perf --file "$RANDOMS_FILE" --count 1000000 --repeat 1000 --libc $PERF_ARGS --rdtsc
+	PERF_ARGS="${PERF_ARGS} --rdtsc"
+	proc_rdtsc
     fi
 fi
