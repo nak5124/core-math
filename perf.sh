@@ -19,11 +19,27 @@ END {
 }
 EOF
 
+prog_bar () {
+    local T=$1 i=$2
+    local p=$(( i * 100 / T ))
+    local j=$(( T - i ))
+    printf "[%s%s] %3d %%\r" "${str_hsh:0:${i}}" "${str_dot:0:${j}}" $p
+    if (( i == T )); then
+       echo
+    fi
+}
+
 collect_perf_stat () {
     echo -n "" > $LOG_FILE
+    if [ -z "$CORE_MATH_QUIET" ]; then
+	prog_bar $S 0
+    fi
     local i=1
     while [ $i -le $S ]; do
 	perf stat -e cycles -x " " ./perf $PERF_ARGS &>> $LOG_FILE
+	if [ -z "$CORE_MATH_QUIET" ]; then
+	    prog_bar $S $i
+	fi
 	i=$(( i + 1 ))
     done
 }
@@ -85,6 +101,14 @@ if [ -z "$CORE_MATH_QUIET" ]; then
     make -s -C src/generic/support clean
     make -s -C src/generic/support all
     $CORE_MATH_LAUNCHER src/generic/support/glibc_version >&2
+    str_hsh=""
+    str_dot=""
+    i=1
+    while [ $i -le $S ]; do
+	str_hsh="${str_hsh}#"
+	str_dot="${str_dot}."
+	i=$(( i + 1 ))
+    done
 fi
 
 cd $dir
