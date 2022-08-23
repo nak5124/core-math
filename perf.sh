@@ -15,7 +15,7 @@ END {
   }
   rms = sqrt(s/(i-nout-1));
   nmd = a[int(i/2)] - a[0];
-  printf "Ntrail = %d ; Min = %.3f + %.3f clc/call; Median-Min = %.3f clc/call; Max = %.3f clc/call;\n", i, a[0], rms, nmd, a[i-1];
+  printf "Ntrial = %d ; Min = %.3f + %.3f clc/call; Median-Min = %.3f clc/call; Max = %.3f clc/call;\n", i, a[0], rms, nmd, a[i-1];
 }
 EOF
 
