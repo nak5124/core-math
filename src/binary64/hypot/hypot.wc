@@ -2,3 +2,5 @@
 0x1.000001cc784cbp+52,0x1.fdd67bceb35fp+52
 # worst cases
 0x1.6p-45,0x1.2c2fc595456a7p-71
+# from https://hal-ens-lyon.archives-ouvertes.fr/ensl-01527202/document:
+0x1.87de29ce10f34p-14,0x1.0000002d413cdp+0
