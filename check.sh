@@ -78,6 +78,19 @@ case "$KIND" in
             "$DIR/check_special" "$MODE"
         done
         ;;
+    --exact)
+        "$MAKE" --quiet -C "$DIR" clean
+        "$MAKE" --quiet -C "$DIR" check_exact
+        if [ "${#ARGS[@]}" -eq 0 ]; then
+            MODES=("--rndn" "--rndz" "--rndu" "--rndd")
+        else
+            MODES=("${ARGS[@]}")
+        fi
+        for MODE in "${MODES[@]}"; do
+            echo "Running exact checks in $MODE mode..."
+            "$DIR/check_exact" "$MODE"
+        done
+        ;;
     *)
         echo "Unrecognized command"
         exit 1
