@@ -57,7 +57,7 @@ case "$KIND" in
         "$MAKE" --quiet -C "$DIR" check_exhaustive
         for MODE in "${MODES[@]}"; do
             echo "Running exhaustive check in $MODE mode..."
-            "$DIR/check_exhaustive" "$MODE"
+            "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
         done
         ;;
     --worst)
@@ -65,7 +65,7 @@ case "$KIND" in
         "$MAKE" --quiet -C "$DIR" check_worst
         for MODE in "${MODES[@]}"; do
             echo "Running worst cases check in $MODE mode..."
-            "$DIR/check_worst" "$MODE" < "${FILE%.c}.wc"
+            "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
         done
         ;;
     --special)
@@ -73,7 +73,7 @@ case "$KIND" in
         "$MAKE" --quiet -C "$DIR" check_special
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
-            "$DIR/check_special" "$MODE"
+            "$DIR/check_special" "$MODE" "${ARGS[@]}"
         done
         ;;
     --exact)
@@ -81,7 +81,7 @@ case "$KIND" in
         "$MAKE" --quiet -C "$DIR" check_exact
         for MODE in "${MODES[@]}"; do
             echo "Running exact checks in $MODE mode..."
-            "$DIR/check_exact" "$MODE"
+            "$DIR/check_exact" "$MODE" "${ARGS[@]}"
         done
         ;;
     *)
