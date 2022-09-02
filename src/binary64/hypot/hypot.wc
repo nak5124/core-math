@@ -17,3 +17,9 @@
 0x1.9c6d80093ebf8p+446,0x1.add8969f3a07ep+421
 -0x0.5a22c27a3893p-1022,0x0.9cfea180c00dap-1022
 0x0.89c127b351f2bp-1022,0x0.4fd9b86bb4fe8p-1022
+# the following tests intermediate overflow
+0x1.fffffffffffffp+1023,0x1.fffffffffffffp+1023
+# the following tests intermediate underflow
+0x1p-1074,0x1p-1074
+# the following mixes overflow/underflow
+0x1.fffffffffffffp+1023,0x1p-1074
