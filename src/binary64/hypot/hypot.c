@@ -28,8 +28,8 @@ SOFTWARE.
 #include <errno.h>
 #include <x86intrin.h>
 
-typedef unsigned long u64;
-typedef long i64;
+typedef uint64_t u64;
+typedef int64_t i64;
 typedef unsigned __int128 u128;
 typedef union {double f; u64 u;} b64u64_u;
 
