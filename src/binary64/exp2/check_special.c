@@ -1,6 +1,6 @@
-/* Generate exact cases for cbrt testing.
+/* Generate special cases for exp2 testing.
 
-Copyright (c) 2022 Stéphane Glond and Paul Zimmermann, Inria.
+Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -26,59 +26,30 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
 
-int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
+double cr_exp2 (double);
+double ref_exp2 (double);
 
-double ref_cbrt (double);
-double cr_cbrt (double);
+int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
 
 static void
-doit (double x)
+check_subnormal (int64_t n, int e)
 {
-  double z1, z2;
-  z1 = ref_cbrt (x);
-  fesetround(rnd1[rnd]);
-  z2 = cr_cbrt (x);
-  if (z1 != z2) {
-    printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
-    fflush(stdout);
-    exit(1);
-  }
-}
-
-/* check exact cases in binade 2^(i-1) <= x < 2^i */
-static void
-check_exact (int i)
-{
-  uint64_t t0, t1;
-  if (verbose)
-    printf ("Checking 2^%d <= x < 2^%d\n", i-1, i);
-  if (i == 0)
+  double x = ldexp ((double) n, e);
+  double y1 = ref_exp2 (x);
+  fesetround (rnd1[rnd]);
+  double y2 = cr_exp2 (x);
+  if (y1 != y2)
   {
-    t0 = 208064;
-    t1 = 262144;
-  }
-  if (i == 1)
-  {
-    t0 = 262144;
-    t1 = 330282;
-  }
-  if (i == 2)
-  {
-    t0 = 330282;
-    t1 = 416128;
-  }
-  for (uint64_t t = t0; t < t1; t += 2)
-  {
-    double x = ldexp (t * t * t, -54);
-    doit (x);
+    printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
+    fflush (stdout);
+    exit (1);
   }
 }
 
@@ -124,8 +95,27 @@ main (int argc, char *argv[])
         }
     }
 
-  check_exact (0);
-  check_exact (1);
-  check_exact (2);
+  /* check subnormal results */
+  /* x0 is the smallest x such that 2^-1075 <= RN(exp2(x)) */
+  double x0 = -1075;
+  /* x1 is the smallest x such that 2^-1024 <= RN(exp2(x)) */
+  double x1 = -1024;
+  /* in the [x0,x1) range, floating-point numbers have an integer part
+     of 11 bits, thus we multiply by 2^42 to get integers */
+  int64_t n0 = ldexp (x0, 42); /* n0 = -4727899999436800 */
+  int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
+#pragma omp parallel for
+  for (int64_t n = n0; n < n1; n++)
+    check_subnormal (n, -42);
+  /* x2 is the smallest x such that 2^-1022 <= RN(exp2(x)) */
+  double x2 = -1022;
+  /* in the [x1,x2) range, floating-point numbers have an integer part
+     of 10 bits, thus we multiply by 2^43 to get integers */
+  n1 = ldexp (x1, 43); /* n1 = -9007199254740992, twice as large as above */
+  int64_t n2 = ldexp (x2, 43); /* n2 = -8989607068696576 */
+#pragma omp parallel for
+  for (int64_t n = n1; n < n2; n++)
+    check_subnormal (n, -43);
+
   return 0;
 }

@@ -1,6 +1,6 @@
-/* Generate exact cases for cbrt testing.
+/* Generate exact cases for exp2 testing.
 
-Copyright (c) 2022 Stéphane Glond and Paul Zimmermann, Inria.
+Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -26,61 +26,16 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
 
-int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
+double cr_exp2 (double);
 
-double ref_cbrt (double);
-double cr_cbrt (double);
+int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
-
-static void
-doit (double x)
-{
-  double z1, z2;
-  z1 = ref_cbrt (x);
-  fesetround(rnd1[rnd]);
-  z2 = cr_cbrt (x);
-  if (z1 != z2) {
-    printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
-    fflush(stdout);
-    exit(1);
-  }
-}
-
-/* check exact cases in binade 2^(i-1) <= x < 2^i */
-static void
-check_exact (int i)
-{
-  uint64_t t0, t1;
-  if (verbose)
-    printf ("Checking 2^%d <= x < 2^%d\n", i-1, i);
-  if (i == 0)
-  {
-    t0 = 208064;
-    t1 = 262144;
-  }
-  if (i == 1)
-  {
-    t0 = 262144;
-    t1 = 330282;
-  }
-  if (i == 2)
-  {
-    t0 = 330282;
-    t1 = 416128;
-  }
-  for (uint64_t t = t0; t < t1; t += 2)
-  {
-    double x = ldexp (t * t * t, -54);
-    doit (x);
-  }
-}
 
 int
 main (int argc, char *argv[])
@@ -124,8 +79,19 @@ main (int argc, char *argv[])
         }
     }
 
-  check_exact (0);
-  check_exact (1);
-  check_exact (2);
-  return 0;
+  int ret = 0;
+  for (int i = -1074; i <= 1023; i++) {
+    double x = i;
+    feclearexcept(FE_INEXACT);
+    cr_exp2(x);
+    if (fetestexcept(FE_INEXACT)) {
+      printf ("spurious inexact exception: i=%d, x=%la\n", i, x);
+      fflush (stdout);
+      ret = 1;
+#ifndef DO_NOT_ABORT
+      exit (1);
+#endif
+    }
+  }
+  return ret;
 }

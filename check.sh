@@ -5,6 +5,19 @@ MAKE=make
 FUN="${!#}"
 ARGS=("${@:1:$#-1}")
 
+MODES=()
+for i in "${!ARGS[@]}"; do
+    case "${ARGS[i]}" in
+        --rnd*)
+            MODES+=("${ARGS[i]}")
+            unset 'ARGS[i]'
+            ;;
+    esac
+done
+if [[ "${#MODES[@]}" -eq 0 ]]; then
+    MODES=("--rndn" "--rndz" "--rndu" "--rndd")
+fi
+
 FILE="$(echo src/*/*/"$FUN".c)"
 ORIG_DIR="$(dirname "$FILE")"
 
@@ -25,7 +38,7 @@ cp -a "$ORIG_DIR/../../generic" "$TMP_DIR"
 
 if [ -n "${ARGS[0]}" ]; then
     KIND="${ARGS[0]}"
-    ARGS=("${ARGS[@]:1}")
+    unset 'ARGS[0]'
 else
     SIZE=${FILE#src/binary}
     SIZE=${SIZE%%/*}
@@ -42,40 +55,33 @@ case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
         "$MAKE" --quiet -C "$DIR" check_exhaustive
-        if [ "${#ARGS[@]}" -eq 0 ]; then
-            MODES=("--rndn" "--rndz" "--rndu" "--rndd")
-        else
-            MODES=("${ARGS[@]}")
-        fi
         for MODE in "${MODES[@]}"; do
             echo "Running exhaustive check in $MODE mode..."
-            "$DIR/check_exhaustive" "$MODE"
+            "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
         done
         ;;
     --worst)
         "$MAKE" --quiet -C "$DIR" clean
         "$MAKE" --quiet -C "$DIR" check_worst
-        if [ "${#ARGS[@]}" -eq 0 ]; then
-            MODES=("--rndn" "--rndz" "--rndu" "--rndd")
-        else
-            MODES=("${ARGS[@]}")
-        fi
         for MODE in "${MODES[@]}"; do
             echo "Running worst cases check in $MODE mode..."
-            "$DIR/check_worst" "$MODE" < "${FILE%.c}.wc"
+            "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
         done
         ;;
     --special)
         "$MAKE" --quiet -C "$DIR" clean
         "$MAKE" --quiet -C "$DIR" check_special
-        if [ "${#ARGS[@]}" -eq 0 ]; then
-            MODES=("--rndn" "--rndz" "--rndu" "--rndd")
-        else
-            MODES=("${ARGS[@]}")
-        fi
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
-            "$DIR/check_special" "$MODE"
+            "$DIR/check_special" "$MODE" "${ARGS[@]}"
+        done
+        ;;
+    --exact)
+        "$MAKE" --quiet -C "$DIR" clean
+        "$MAKE" --quiet -C "$DIR" check_exact
+        for MODE in "${MODES[@]}"; do
+            echo "Running exact checks in $MODE mode..."
+            "$DIR/check_exact" "$MODE" "${ARGS[@]}"
         done
         ;;
     *)
