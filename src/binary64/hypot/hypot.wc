@@ -4,3 +4,16 @@
 0x1.6p-45,0x1.2c2fc595456a7p-71
 # from https://hal-ens-lyon.archives-ouvertes.fr/ensl-01527202/document:
 0x1.87de29ce10f34p-14,0x1.0000002d413cdp+0
+# from https://gitlab.inria.fr/zimmerma/math_accuracy/-/blob/master/binary64/check_sample2.c
+0x0.603e52daf0bfdp-1022,-0x0.a622d0a9a433bp-1022
+0x0.19deaac345ffap-1022,0x0.92c8727c389b6p-1022
+-0x0.fffffffffffffp-1022,0x0.0000000000001p-1022
+0x1.00014d4b1c6b9p-1015,-0x1.000105ba9bf4p-1015
+0x1.6a0a41410b1abp-1004,-0x1.4495fce36a73ep-1023
+0x1.a308e1455f447p+0,0x1.9d931a83ef879p+0
+0x1.205e5d5fee071p-9,0x1.a71193d4eb838p-9
+0x1.6d080c1f5339ep+25,0x1.149ee0ad66632p+13
+-0x1.72b48b14296a7p-510,-0x1.3dcd53d99b107p-518
+0x1.9c6d80093ebf8p+446,0x1.add8969f3a07ep+421
+-0x0.5a22c27a3893p-1022,0x0.9cfea180c00dap-1022
+0x0.89c127b351f2bp-1022,0x0.4fd9b86bb4fe8p-1022
