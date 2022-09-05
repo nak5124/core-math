@@ -135,11 +135,14 @@ double cr_hypot(double x, double y){
   /* emsk corresponds to the upper bits of NaN and Inf (apart the sign bit) */
   x = __builtin_fabs(x), y = __builtin_fabs(y);
   if(__builtin_expect(ex==emsk||ey==emsk, 0)){
-    /* either x or y is NaN or Inf */
+    /* Either x or y is NaN or Inf */
     u64 wx = xi.u<<1, wy = yi.u<<1, wm = emsk<<1;
-    int ninf = (wx==wm) + (wy==wm) - 1, nqnn = ((wx>>52)==0xfff) + ((wy>>52)==0xfff) - 1;
-    /* ninf is 0 if only one of x and y are +/-Inf */
-    if(!(ninf|nqnn)) return __builtin_inf();
+    int ninf = (wx==wm) ^ (wy==wm);
+    int nqnn = ((wx>>52)==0xfff) ^ ((wy>>52)==0xfff);
+    /* ninf is 1 when only one of x and y is +/-Inf
+       nqnn is 1 when only one of x and y is qNaN
+       IEEE 754 says that hypot(+/-Inf,qNaN)=hypot(qNaN,+/-Inf)=+Inf. */
+    if(ninf && nqnn) return __builtin_inf ();
     return x + y; /* inf, nan */
   }
   double u = __builtin_fmax(x,y), v = __builtin_fmin(x,y);
