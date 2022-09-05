@@ -132,10 +132,13 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y){
 double cr_hypot(double x, double y){
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 emsk = 0x7ffl<<52, ex = xi.u&emsk, ey = yi.u&emsk;
+  /* emsk corresponds to the upper bits of NaN and Inf (apart the sign bit) */
   x = __builtin_fabs(x), y = __builtin_fabs(y);
   if(__builtin_expect(ex==emsk||ey==emsk, 0)){
+    /* either x or y is NaN or Inf */
     u64 wx = xi.u<<1, wy = yi.u<<1, wm = emsk<<1;
-    char ninf = (wx==wm) + (wy==wm) - 1, nqnn = ((wx>>52)==0xfff) + ((wy>>52)==0xfff) - 1;
+    int ninf = (wx==wm) + (wy==wm) - 1, nqnn = ((wx>>52)==0xfff) + ((wy>>52)==0xfff) - 1;
+    /* ninf is 0 if only one of x and y are +/-Inf */
     if(!(ninf|nqnn)) return __builtin_inf();
     return x + y; /* inf, nan */
   }
