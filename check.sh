@@ -51,10 +51,16 @@ else
     esac
 fi
 
+if [[ -z "$CORE_MATH_VERBOSE" ]]; then
+    QUIET=--quiet
+else
+    QUIET=
+fi
+
 case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" --quiet -C "$DIR" check_exhaustive
+        "$MAKE" $QUIET -C "$DIR" check_exhaustive
         for MODE in "${MODES[@]}"; do
             echo "Running exhaustive check in $MODE mode..."
             "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
@@ -62,7 +68,7 @@ case "$KIND" in
         ;;
     --worst)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" --quiet -C "$DIR" check_worst
+        "$MAKE" $QUIET -C "$DIR" check_worst
         for MODE in "${MODES[@]}"; do
             echo "Running worst cases check in $MODE mode..."
             "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
@@ -70,7 +76,7 @@ case "$KIND" in
         ;;
     --special)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" --quiet -C "$DIR" check_special
+        "$MAKE" $QUIET -C "$DIR" check_special
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
             "$DIR/check_special" "$MODE" "${ARGS[@]}"
@@ -78,7 +84,7 @@ case "$KIND" in
         ;;
     --exact)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" --quiet -C "$DIR" check_exact
+        "$MAKE" $QUIET -C "$DIR" check_exact
         for MODE in "${MODES[@]}"; do
             echo "Running exact checks in $MODE mode..."
             "$DIR/check_exact" "$MODE" "${ARGS[@]}"
