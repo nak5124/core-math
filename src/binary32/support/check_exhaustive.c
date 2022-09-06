@@ -44,6 +44,7 @@ void ref_init (void);
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
+int keep = 0;
 
 typedef union { uint32_t n; float x; } union_t;
 
@@ -69,7 +70,7 @@ doit (uint32_t n)
   {
     printf ("FAIL x=%a ref=%a y=%a\n", x, y, z);
     fflush (stdout);
-    exit (1);
+    if (!keep) exit (1);
   }
 }
 
@@ -110,6 +111,12 @@ main (int argc, char *argv[])
       else if (strcmp (argv[1], "--rndd") == 0)
         {
           rnd = 3;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--keep") == 0)
+        {
+          keep = 1;
           argc --;
           argv ++;
         }
