@@ -57,6 +57,16 @@ else
     QUIET=
 fi
 
+has_symbol () {
+    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$FUN" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
+}
+
+if [[ -n "$LIBM" ]] && ! has_symbol; then
+    echo "Error: symbol $FUN is not present in $LIBM" >&2
+    exit 2
+fi
+
+
 case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
