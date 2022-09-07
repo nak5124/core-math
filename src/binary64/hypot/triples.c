@@ -31,6 +31,7 @@ SOFTWARE.
 #include <fenv.h>
 #include <assert.h>
 #include <omp.h>
+#include <mpfr.h>
 
 double cr_hypot (double, double);
 double ref_hypot (double, double);
@@ -211,11 +212,104 @@ check_pythagorean_triples (int k)
   }
 }
 
+/* check hypot(x,y) near z, with 27-bit x */
+static void
+check_bound (mpfr_t z)
+{
+  mpfr_t x, y, t, zz;
+  int ret, rety, ny;
+  mpfr_exp_t emax = mpfr_get_emax ();
+  mpfr_exp_t emin = mpfr_get_emin ();
+
+  mpfr_init2 (x, 27);
+  mpfr_init2 (y, 53);
+  mpfr_init2 (t, 2 * mpfr_get_prec (z));
+  mpfr_init2 (zz, 2 * mpfr_get_prec (z));
+  mpfr_set_emax (mpfr_get_emax_max ());
+  mpfr_set_emin (mpfr_get_emin_min ());
+  ret = mpfr_sqr (zz, z, MPFR_RNDN);
+  assert (ret == 0);
+  mpfr_sqrt_ui (t, 2, MPFR_RNDU);
+  mpfr_div (x, z, t, MPFR_RNDZ);
+  while (1)
+  {
+    mpfr_hypot (t, x, x, MPFR_RNDZ);
+    if (mpfr_cmp (t, z) >= 0)
+      break;
+    mpfr_nextabove (x);
+  }
+  /* xmin = ceil(z/sqrt(2)) */
+  while (1)
+  {
+    if (mpfr_cmp (x, z) > 0)
+      break;
+    mpfr_set_emax (mpfr_get_emax_max ());
+    mpfr_set_emin (mpfr_get_emin_min ());
+    ret = mpfr_sqr (t, x, MPFR_RNDN);
+    assert (ret == 0);
+    ret = mpfr_sub (t, zz, t, MPFR_RNDN);
+    assert (ret == 0);
+    /* we want y^2 near t */
+    rety = mpfr_sqrt (y, t, MPFR_RNDZ);
+    ny = 2;
+    if (rety == 0 || !mpfr_zero_p (y))
+    {
+      mpfr_nextbelow (y);
+      ny ++;
+    }
+    while (ny-- > 0)
+    {
+      mpfr_set_emax (emax);
+      mpfr_set_emin (emin);
+      doit (mpfr_get_d (x, MPFR_RNDN), mpfr_get_d (y, MPFR_RNDN));
+      mpfr_nextabove (y);
+    }
+    mpfr_nextabove (x);
+  }
+  mpfr_clear (x);
+  mpfr_clear (y);
+  mpfr_clear (t);
+  mpfr_clear (zz);
+  /* restore initial values */
+  mpfr_set_emax (emax);
+  mpfr_set_emin (emin);
+}
+
+static void
+check_overflow_and_underflow (void)
+{
+  mpfr_t z;
+  mpfr_exp_t emin = mpfr_get_emin ();
+  mpfr_set_emin (-1075);
+  mpfr_init2 (z, 54);
+  if (verbose)
+    printf ("Checking near overflow boundary for directed rounding...\n");
+  mpfr_set_d (z, 0x1.fffffffffffffp+1023, MPFR_RNDN); /* DBL_MAX */
+  check_bound (z);
+  if (verbose)
+    printf ("Checking near overflow boundary for rounding to nearest...\n");
+  mpfr_nextabove (z); /* middle between DBL_MAX and 2^1024 */
+  check_bound (z);
+  if (verbose)
+    printf ("Checking near underflow boundary for directed rounding...\n");
+  mpfr_set_ui_2exp (z, 1, -1074, MPFR_RNDN); /* DBL_MIN */
+  check_bound (z);
+  if (verbose)
+    printf ("Checking near underflow boundary for rounding to nearest...\n");
+  mpfr_set_ui_2exp (z, 1, -1075, MPFR_RNDN); /* DBL_MIN/2 */
+  check_bound (z);
+  mpfr_clear (z);
+  mpfr_set_emin (emin);
+}
+
 void
 doloop (int k0, int k1)
 {
   ref_init ();
   ref_fesetround (rnd);
+  check_overflow_and_underflow ();
+  if (verbose)
+    printf ("Checking Pythagorean triples...\n");
   for (int k = k0; k <= k1; k++)
     check_pythagorean_triples (k);
 }
