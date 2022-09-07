@@ -273,7 +273,6 @@ double cr_asin(double x){
   /* sm contains in its high 53 bits: the implicit leading bit, and the
      the 52 explicit bits from the significand, thus |x| = 2^(e+1)*sm/2^64
      where 2^63 <= sm < 2^64 */
-  // if (x == X1) printf ("x=%la e=%d sm=%lu\n", x, e, sm);
   u128_u fi;
   if(__builtin_expect (e>=0,0)){ /* |x| >= 1 */
     u64 m = t.u<<12; /* m contains the 52 explicit bits from the significand */
@@ -353,9 +352,7 @@ double cr_asin(double x){
     e += 0x3ff;
   } else { /* case |x| >= 2^-6 */
     double xx = __builtin_fma(x,-x,1.0); /* xx = 1-x^2 */
-    // if (x == X1) printf ("xx=%la\n", xx);
     b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt (xx)};
-    // if (x == X1) printf ("x=%la ixx=%la c=%la\n", x, ixx.f, c.f);
     /* we have xx = (1-x^2)*(1+theta1) with |theta1| < 2^-52
        thus c = sqrt(1-x^2)*sqrt(1+theta1)*(1+theta2) with |theta2| < 2^-52
        which can be written:
@@ -364,10 +361,8 @@ double cr_asin(double x){
        thus the absolute error on c is bounded by:
        |c - sqrt(1-x^2)| < sqrt(1-x^2)*2^51.41 < 2^-51.41.
        Thus the absolute error on c is bounded by 2^-51.41. */
-    // if (x == X1 || x == X2) printf ("x=%la c=%la\n", x, c.f);
     /* ixx ~ 1/(1-x^2), c ~ sqrt(1-x^2) */
     ixx.f *= c.f;
-    // if (x == X1) printf ("ixx=%la\n", ixx.f);
     /* ixx approximates 1/sqrt(1-x^2). Let t = o(1/xx) the previous
        value of ixx. We have t = 1/xx*(1+theta1) with |theta1| < 2^-52,
        c = sqrt(xx)*(1+theta2) with |theta2| < 2^-52, then
@@ -378,21 +373,16 @@ double cr_asin(double x){
        The maximal values are attained when all thetaj are +/-2^-52,
        which yields |ixx-1/c| < 2^-49.9*1/c.
     */
-    // if (x == X1 || x == X2) printf ("x=%la ixx=%la\n", x, ixx.f);
     double ax = __builtin_fabs (x), x2 = x*x;
     double c0 = ch[0] + ax*ch[1];
     double c2 = ch[2] + ax*ch[3];
-    // if (x == X1) printf ("c0=%la c2=%la\n", c0, c2);
     c0 += x2*c2;
     /* FIXME: use FMA here: c0 = fma (c0, c.f, 64) */
     c0 *= c.f;
     c0 += 64;
-    // if (x == X1) printf ("c0=%la\n", c0);
     /* now c0 approximates 64+64*acos(x)/(pi/2), which lies in [64,128] */
     b64u64_u ic = {.f = c0};
     int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7))) >> (52-6);
-    // if (x == X1) printf ("indx=%d\n", indx);
-    // if (x == X1 || x == X2) printf ("x=%la indx=%d\n", x, indx);
     /* indx = round(c0)-64. We have indx < 64 since c0 is decreasing with
        |x|, thus the largest value is obtained for |x| = 2^-6, and for this
        value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
@@ -416,26 +406,20 @@ double cr_asin(double x){
        |c'-sqrt(a)| = (sqrt(a)-c)^2/(2c).
        Here a=1-x^2, and since |c - sqrt(1-x^2)| < 2^-51.41, we get:
        |c'-sqrt(a)| < 2^-103.82/c. */
-    // if (x == X1) printf ("cm=%lu ce=%d\n", cm, ce);
     u128_u sm2 = {.a = (u128)sm * sm}, cm2 = {.a = (u128)cm * cm};
     /* x^2 = 2^(2*e)*sm2/2^126 and c^2 = 2^(2*ce)*cm2/2^126 */
-    // if (x == X1) printf ("sm2=%lu,%lu cm2=%lu,%lu\n", sm2.b[1], sm2.b[0], cm2.b[1], cm2.b[0]);
     const int off = 36 - 22 + 14;   /* off = 28 */
     int ss = 128 - 104 + 2*e + off; /* ss = 52 + 2*e */
     /* for e=-6, ss=40; for x=0x1.fffffffffffffp-1, ss=50 */
     shl(&sm2, ss);
     /* now frac(2^50*x^2) = sm2/2^128 */
-    // if (x == X1 || x == X2) printf ("x=%la ss=%d sm2=%lu,%lu\n", x, ss, sm2.b[1], sm2.b[0]);
     int sc = 128 - 104 + 2*ce + off;
     if(__builtin_expect(sc>=0, 1))
       shl(&cm2, sc);
     else
       cm2.a >>= -sc;
     /* now frac(2^50*c^2) = cm2/2^128 */
-    // if (x == X1 || x == X2) printf ("x=%la sc=%d cm2=%lu,%lu\n", x, sc, cm2.b[1], cm2.b[0]);
-    // if (x == X1) printf ("sm2=%lu,%lu cm2=%lu,%lu\n", sm2.b[1], sm2.b[0], cm2.b[1], cm2.b[0]);
     sm2.a += cm2.a; /* now frac(2^50*(x^2+c^2)) = sm2/2^128 */
-    // if (x == X1) printf ("sm2=%lu,%lu\n", sm2.b[1], sm2.b[0]);
     /* since |c-sqrt(xx)| < 2^-51.41, we have:
        |c^2-xx| < 2^-51.41*|c+sqrt(xx)| < 2^-50.41 since c,xx < 1.
        This proves that |2^50*e| < 2^-0.41 with e = (1-x^2) - c^2.
@@ -444,18 +428,13 @@ double cr_asin(double x){
     i64 h = sm2.b[1];
     /* h/2^64 approximates 2^50*(x^2+c^2) mod 1, with error bounded by
        1/2^64 for the truncated part sm2.b[0]/2^128. */
-    // if (x == X1) printf ("h=%lu\n", h);
-    // if (x == X1) printf ("ixx.u=%lu\n", ixx.u);
     u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
     /* ixx = ixm*2^(ixe-52) */
-    // if (x == X1) printf ("ixm=%lu ixe=%d\n", ixm, ixe);
     /* x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is computed as
        (x-sin(y[i]))*cos(y[i]) - (sqrt(1-x^2)-cos(y[i]))*sin(y[i]) */
     i64 Smh;
     ss = 6 + e; /* ss >= 0 */
-    // if (x == X1 || x == X2) printf ("x=%la sh[indx]=%lu sh[64-indx]=%lu s[indx]=%lu s[64-indx]=%lu\n", x, sh[indx], sh[64-indx], s[indx], s[64-indx]);
     Smh = (sm<<ss) - sh[64-indx];
-    // if (x == X1) printf ("Smh=%ld\n", Smh);
     /* since |x| = 2^(e+1)*sm/2^64, sm*2^ss = |x|*2^69 */
     /* now Smh approximates 2^69*(|x|-sin(y[i])) mod 2^64,
        with maximal error < 0.5 */
@@ -468,9 +447,7 @@ double cr_asin(double x){
       Cmh = cm<<sc;
     else
       Cmh = cm>>-sc;
-    // if (x == X1) printf ("Cmh=%ld\n", Cmh);
     Cmh -= sh[indx];
-    // if (x == X1) printf ("Cmh=%ld\n", Cmh);
     /* We now need to add
        1/2*(1-x^2-c^2)/c to c. Instead we subtract 1/2*h/2^114*ixm*2^(ixe-52),
        with error bounded by:
@@ -481,12 +458,9 @@ double cr_asin(double x){
        Since c >= 2^-26 this yields 2^-74.72.
     */
     Cmh -= mh(h, ixm)>>(34-ixe);
-    // if (x == X1) printf ("Cmh=%ld %ld\n", Cmh, mh(h, ixm));
     /* now Cmh approximates 2^69*(sqrt(1-x^2)-cos(y[i]))
        with maximal error 2^69*2^-74.72+0.5 < 0.52 */
     i64 v = mh(Smh, s[indx]) - mh(Cmh, s[64-indx]), v2 = mh(v, v), v3 = mh(v2, v);
-    // if (x == X1) printf ("v=%ld\n", v);
-    // if (x == X1) printf ("v2=%ld v3=%ld\n", v2, v3);
     /* v approximates 2^68*[(|x|-sin(y[i]))*cos(y[i])
                             -(sqrt(1-x^2)-cos(y[i]))*sin(y[i])] with error
        bounded by:
@@ -498,7 +472,6 @@ double cr_asin(double x){
     /* the error on v2 is thus bounded by 5.02, and that on v3 by 7.53, still
        neglecting second order terms */
     v += mh(v3, a[0] + muuh(v2, a[1] + muuh(v2, a[2] + muuh(v2, a[3]))));
-    // if (x == X1) printf ("v=%ld\n", v);
     /* err(muuh(v2, a[3]) <= 1
        let c2=muuh(v2, a[3])
        a[2] + c2 is exact, and does not overflow since c2 < a[3], and
@@ -529,14 +502,15 @@ double cr_asin(double x){
        on Vl */
     i128 V = (u128)Vh<<64|Vl;
     fi.a += V;
-    // if (x == X1) printf ("fi=%lu,%lu\n", fi.b[1], fi.b[0]);
     /* now fi/2^127 approximates asin(|x|) */
 
     int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
     u128_u u = fi, d = fi;
-    /* the error is bounded by 24.08*2^59 here */
-    u.a += 50l<<55;
-    d.a -= 27l<<55;
+    /* The error is bounded by 24.08*2^59 here, thus by 386*2^55.
+       For reference, the original (non proven) error bounds are:
+       u.a += 50l<<55 and d.a -= 27l<<55. */
+    u.a += 386l<<55;
+    d.a -= 386l<<55;
     if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
       return asin_acc(x);
     }
