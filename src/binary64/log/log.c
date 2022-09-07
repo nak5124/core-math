@@ -25,7 +25,6 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#include <math.h>
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -59,7 +58,9 @@ static void
 cr_log_fast (double *h, double *l, double x)
 {
   d64u64 v = {.f = x};
-  int i = (v >> 44) & 0xff; /* 0 <= i < 256 */
+  int i = (v.u >> 44) & 0xff; /* 0 <= i < 256 */
+  *h = x;
+  *l = 0;
 }
 
 double
