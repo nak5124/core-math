@@ -1,3 +1,10 @@
+# the following inputs exercise underflow or overflow
+0x1.62e42fefa39efp+9
+0x1.62e42fefa39fp+9
+-0x1.74910d52d3052p+9
+-0x1.74910d52d3051p+9
+-0x1.74385446d71c3p+9
+-0x1.74385446d71c4p+9
 # hard-to-round cases for exp in binary64
 # for most inputs x, exp(x) has at least 44 identical bits
 # after the round bit

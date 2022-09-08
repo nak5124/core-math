@@ -58,6 +58,8 @@ static void
 check_exact (int i)
 {
   uint64_t t0, t1;
+  if (verbose)
+    printf ("Checking 2^%d <= x < 2^%d\n", i-1, i);
   if (i == 0)
   {
     t0 = 208064;

@@ -1,6 +1,6 @@
-/* Correctly rounded exponential function for binary64 values.
+/* Correctly rounded exp2 function for binary64 values.
 
-Copyright (c) 2021-2022 Paul Zimmermann, Inria.
+Copyright (c) 2021-2022 Paul Zimmermann and Stéphane Glondu, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -330,34 +330,31 @@ static const double xmax = 0x1p1023;
 #define MAYBE_UNUSED __attribute__ ((unused))
 
 /* compute a double-double approximation of
-   exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l
+   2^x ~ 2^e * 2^(i/128) * 2^h * 2^l
    where -127 <= i <= 127, |h| < 1/128, and |l| < 2^-42.
    We use a degree-9 polynomial to approximate 2^h on [-1/128,1/128]
    (cf exp2_acc.sollya) with 105.765 bits of relative precision.
    Coefficients of degree 0-4 are double-double, 5-9 are doubles. */
 static double
-cr_exp_accurate (double x, int e, int i)
+cr_exp2_accurate (double x, int e, int i)
 {
   double h, l, yh, yl;
 
-  /* we recompute h, l such that x/log(2) = e + i/128 + h + l,
+  /* we recompute h, l such that x = e + i/128 + h + l,
      to get more accuracy on l (in the fast path we extract the high 8 bits
      of h to go into i, thus we lose 8 bits on l) */
-  static const double log2_h = 0x1.71547652b82fep+0;
-  static const double log2_m = 0x1.777d0ffda0ep-56;
-  static const double log2_l = -0x1.b8b05dc52a215p-101;
   double l1;
   double ah, al, bh, bl;
-  dekker (&ah, &al, x, log2_h);
-  dekker (&bh, &bl, x, log2_m);
+  ah = x; al = 0;
+  bh = 0; bl = 0;
   ah -= e + i / 128.0;
   /* h + l = ah + (al + bh) + (bl + c) */
   fast_two_sum (&h, &l, ah, al);
   fast_two_sum (&h, &l1, h, bh);
   /* h + (l+l1) = ah + (al + bh) */
-  l += l1 + (bl + x * log2_l);
+  l += l1 + bl;
 
-  /* now x/log(2) ~ e + i/128 + h + l */
+  /* now x ~ e + i/128 + h + l */
 
   static const double p[14] = { 0x1p0,            /* p[0]: degree 0 */
     0x1.62e42fefa39efp-1, 0x1.abc9e3b397ebp-56,   /* p[1,2]: degree 1 */
@@ -430,442 +427,238 @@ cr_exp_accurate (double x, int e, int i)
     return ldexp (t, e);
   }
 
+  /* rounding test */
+  double err = 0x1p-104;
+  double left = yh + (yl - err), right = yh + (yl + err);
+  if (left == right)
+  {
+    return ldexp (v.x, e);
+  }
+
   d64u64 w;
   w.x = x;
   switch (w.n & 0x3f) {
-    case 0:
-      if (x == 0x1p-53)
-        return 0x1.0000000000001p+0 - 0x1.fffffffffffffp-54;
-      if (x == -0x1.60296a66b43p+8)
-        return 0x1.ea71d85cee02p-509 - 0x1.de4ec450e71c7p-614;
-      break;
-    case 37:
-      if (x == 0x1.00091a4a0dae5p+2)
-        return 0x1.b50726fd1ccb3p+5 - 0x1.ffffffffffffep-49;
-      if (x == -0x1.ff171507f8ba5p-30)
-        return 0x1.fffffff007475p-1 + 0x1.fffffffffffffp-55;
-      if (x == 0x1.d7a7d893609e5p-26)
-        return 0x1.00000075e9f64p+0 + 0x1.63d01ed72ff7bp-109;
-      if (x == 0x1.d7a7d893609e5p-26)
-        return 0x1.00000075e9f64p+0 + 0x1.63d01ed72ff7bp-109;
-      break;
-    case 43:
-      if (x == 0x1.005ae04256babp-1)
-        return 0x1.a65d89abf3d1fp+0 - 0x1.fffffffffffffp-54;
-      if (x == -0x1.f31ed23cd212bp-27)
-        return 0x1.ffffff83384b8p-1 - 0x1.2af5c92c5a7e4p-107;
-      break;
-    case 41:
-      if (x == -0x1.02393d5976769p+1)
-        return 0x1.1064b2c103ddbp-3 - 0x1.fffffffffffffp-57;
-      break;
-    case 29:
-      if (x == -0x1.150dd1bf6ae1dp+3)
-        return 0x1.6c5d3ae7c88f7p-13 - 0x1.ffffffffffffep-67;
-      if (x == 0x1.7a60ee15e3e9dp+6)
-        return 0x1.62e4dc3bbf53fp+136 + 0x1.ae7c8eddb6bcbp+30;
-      if (x == 0x1.7a60ee15e3e9dp+6)
-        return 0x1.62e4dc3bbf53fp+136 + 0x1.ae7c8eddb6bcbp+30;
-      break;
-    case 20:
-      if (x == 0x1.273c188aa7b14p+2)
-        return 0x1.93295a96ec6ebp+6 - 0x1.fffffffffffffp-48;
-      if (x == 0x1.369bc71a44b14p-22)
-        return 0x1.000004da6f283p+0 - 0x1.f9bc07bd14aeap-107;
-      if (x == 0x1.458f7365fd894p-8)
-        return 0x1.01465ece08736p+0 - 0x1.092f785a56fd9p-106;
-      break;
-    case 39:
-      if (x == 0x1.282aae3169ee7p-20)
-        return 0x1.00001282ab8e7p+0 - 0x1.fffffffffffffp-54;
-      if (x == -0x1.7fb235d76cce7p-8)
-        return 0x1.fd02d98c24bbbp-1 - 0x1.fffffffffffffp-55;
-      if (x == 0x1.ba07d73250de7p-14)
-        return 0x1.0006e83736f8dp+0 - 0x1.fffffffffffffp-54;
-      if (x == 0x1.79c2a7777bee7p-10)
-        return 0x1.005e8217799bbp+0 + 0x1.500dede5d5458p-106;
-      if (x == 0x1.1d5c2daebe367p+4)
-        return 0x1.a8c02e974c315p+25 - 0x1.de0fc9395bbd4p-83;
-      if (x == 0x1.79c2a7777bee7p-10)
-        return 0x1.005e8217799bbp+0 + 0x1.500dede5d5458p-106;
-      break;
-    case 7:
-      if (x == 0x1.413f33fe6ce07p-31)
-        return 0x1.00000002827e7p+0 - 0x1.fffffffffffffp-54;
-      break;
-    case 12:
-      if (x == -0x1.54511e930898cp-7)
-        return 0x1.fab5c6e464e0dp-1 + 0x1.ffffffffffffdp-55;
-      if (x == 0x1.7d7fc2e4f5fccp-3)
-        return 0x1.346b07b6dd7f3p+0 - 0x1.fffffffffffffp-54;
-      if (x == -0x1.057b641debc0cp-15)
-        return 0x1.fffbea169bd8dp-1 + 0x1.da08d6f93c81ep-108;
-      if (x == -0x1.8f80e06f3a04cp+4)
-        return 0x1.f80aafa92b498p-37 - 0x1.191595b7e88edp-143;
-      if (x == -0x1.bb95d9aa3bf8cp-19)
-        return 0x1.ffff911a9597fp-1 + 0x1.d10cdb12393b4p-108;
-      if (x == -0x1.890143380b9ccp-19)
-        return 0x1.ffff9dbfb89f5p-1 + 0x1.8fdd717b3871ep-108;
-      break;
-    case 28:
-      if (x == -0x1.59f038076039cp+6)
-        return 0x1.2c0fa76a0e15fp-125 + 0x1.fffffffffffffp-179;
-      if (x == 0x1.8cd99fffb319cp-34)
-        return 0x1.0000000063367p+0 - 0x1.fffffffffffffp-54;
-      if (x == -0x1.85e60704a3a9cp-30)
-        return 0x1.fffffff3d0cfdp-1 - 0x1.fffffffffffffp-55;
-      if (x == 0x1.51d0f4f0a901cp+5)
-        return 0x1.e4a01c9ddbc87p+60 + 0x1.676fbe202d089p-44;
-      if (x == 0x1.51d0f4f0a901cp+5)
-        return 0x1.e4a01c9ddbc87p+60 + 0x1.676fbe202d089p-44;
-      break;
-    case 34:
-      if (x == 0x1.6b7fef325ada2p+2)
-        return 0x1.24db524842d71p+8 - 0x1.ffffffffffffep-46;
-      if (x == 0x1.1b231819a1ce2p-4)
-        return 0x1.12527095bbd08p+0 + 0x1.55e8d3c024021p-106;
-      if (x == -0x1.2a9cad9998262p+0)
-        return 0x1.3ef1e9b3a81c8p-2 - 0x1.e757fe830d60ep-109;
-      if (x == 0x1.32d3b310ba562p-14)
-        return 0x1.0004cb5a4a4b8p+0 - 0x1.6a1e33d1252d9p-108;
-      if (x == 0x1.1b231819a1ce2p-4)
-        return 0x1.12527095bbd08p+0 + 0x1.55e8d3c024021p-106;
-      break;
-    case 54:
-      if (x == -0x1.85068c07fbbf6p-1)
-        return 0x1.defa8f4a8af21p-2 - 0x1.ffffffffffffep-56;
-      break;
-    case 57:
-      if (x == -0x1.a4187f2ca71f9p-6)
-        return 0x1.f309f46111221p-1 - 0x1.ffffffffffffep-55;
-      if (x == -0x1.290ea09e36479p-3)
-        return 0x1.baded30cbf1c4p-1 - 0x1.09bec3f4113eep-111;
-      if (x == 0x1.d8d934d46a2b9p-7)
-        return 0x1.03b88d9bb35e2p+0 - 0x1.061ccfb697d4ap-104;
-      break;
-    case 1:
-      if (x == -0x1.ac026dccaa781p+5)
-        return 0x1.c219cd8029075p-78 - 0x1.ffffffffffffdp-132;
-      if (x == 0x1.ffff7fffe0001p-36)
-        return 0x1.000000001ffffp+0 + 0x1.fffffffffffffp-54;
-      if (x == -0x1.cc37ef7de7501p+0)
-        return 0x1.534d4de870713p-3 + 0x1.e37dbca61347dp-110;
-      if (x == -0x1.cc37ef7de7501p+0)
-        return 0x1.534d4de870713p-3 + 0x1.e37dbca61347dp-110;
-      if (x == -0x1.04afe82cbae41p-24)
-        return 0x1.fffffdf6a030bp-1 + 0x1.21d616348b55p-109;
-      break;
-    case 59:
-      if (x == 0x1.aca7ae8da5a7bp+0)
-        return 0x1.557d4acd7e557p+2 - 0x1.fffffffffffffp-52;
-      if (x == 0x1.be2caeebfc83bp-4)
-        return 0x1.1d761d8637563p+0 + 0x1.a3cd02c39fb3ep-106;
-      if (x == 0x1.16e7724ac74bbp-19)
-        return 0x1.000022dcf0a91p+0 - 0x1.7a2300c13e9cfp-107;
-      if (x == 0x1.be2caeebfc83bp-4)
-        return 0x1.1d761d8637563p+0 + 0x1.a3cd02c39fb3ep-106;
-      break;
-    case 48:
-      if (x == 0x1.accfbe46b4efp-1)
-        return 0x1.27c2e4bc1ee7p+1 + 0x1.fffffffffffffp-53;
-      break;
-    case 30:
-      if (x == 0x1.bcab27d05abdep-2)
-        return 0x1.8b367381d82f5p+0 - 0x1.ffffffffffffep-54;
-      if (x == 0x1.9c026d62f631ep-11)
-        return 0x1.0033857c34f23p+0 + 0x1.1be674ce71eccp-107;
-      if (x == 0x1.9c026d62f631ep-11)
-        return 0x1.0033857c34f23p+0 + 0x1.1be674ce71eccp-107;
-      if (x == -0x1.cc83748b7669ep-2)
-        return 0x1.468e956d45383p-1 - 0x1.05665296469fdp-106;
-      if (x == 0x1.9c026d62f631ep-11)
-        return 0x1.0033857c34f23p+0 + 0x1.1be674ce71eccp-107;
-      if (x == -0x1.81cc8afed1b1ep-22)
-        return 0x1.fffff3f19bcc6p-1 + 0x1.c6c88f346542ap-108;
-      break;
-    case 26:
-      if (x == -0x1.c794ddcbd661ap+3)
-        return 0x1.6040718b6b7cdp-21 - 0x1.fffffffffffffp-75;
-      if (x == -0x1.daf693d64fadap-4)
-        return 0x1.c7f14af0a08ebp-1 - 0x1.2aa7e4ef70195p-109;
-      break;
-    case 19:
-      if (x == -0x1.d1d85a7f253d3p-15)
-        return 0x1.fff8b8abd4c21p-1 + 0x1.fffffffffffffp-55;
-      if (x == -0x1.8770955e29c93p+4)
-        return 0x1.a12b15f39cf17p-36 + 0x1.556e099f7c80bp-140;
-      if (x == -0x1.8770955e29c93p+4)
-        return 0x1.a12b15f39cf17p-36 + 0x1.556e099f7c80bp-140;
-      break;
-    case 21:
-      if (x == -0x1.d3f3799439415p-3)
-        return 0x1.976a4c9985f5bp-1 + 0x1.fffffffffffffp-55;
-      break;
-    case 47:
-      if (x == 0x1.e5ba92aa9b1efp-20)
-        return 0x1.00001e5baaf77p+0 + 0x1.fffffffffffffp-54;
-      if (x == -0x1.4bd46601ae1efp-31)
-        return 0x1.fffffffad0ae7p-1 - 0x1.fffffffffffffp-55;
-      if (x == -0x1.0a54d87783d6fp+0)
-        return 0x1.69cef05657108p-2 + 0x1.d81f352752164p-108;
-      if (x == 0x1.e07e71bfcf06fp+5)
-        return 0x1.91ec4412c344fp+86 + 0x1.09d2b56d79a72p-23;
-      if (x == -0x1.cddf723d3e52fp-3)
-        return 0x1.98a04e0833091p-1 - 0x1.4c519851f4cf7p-106;
-      if (x == 0x1.e07e71bfcf06fp+5)
-        return 0x1.91ec4412c344fp+86 + 0x1.09d2b56d79a72p-23;
-      if (x == -0x1.0a54d87783d6fp+0)
-        return 0x1.69cef05657108p-2 + 0x1.d81f352752164p-108;
-      if (x == 0x1.e07e71bfcf06fp+5)
-        return 0x1.91ec4412c344fp+86 + 0x1.09d2b56d79a72p-23;
-      if (x == -0x1.b57c0a7d7416fp-26)
-        return 0x1.ffffff2541fafp-1 - 0x1.888023336e54dp-108;
-      break;
-    case 55:
-      if (x == 0x1.f8e165f8388f7p-30)
-        return 0x1.00000007e3859p+0 + 0x1.fffffffffffffp-54;
-      if (x == -0x1.26bc462a6a9f7p-26)
-        return 0x1.ffffff6ca1ddp-1 + 0x1.5bcdd46a13504p-108;
-      break;
-    case 53:
-      if (x == -0x1.0401ae48409b5p-28)
-        return 0x1.ffffffdf7fca3p-1 + 0x1.fffffffffffffp-55;
-      if (x == -0x1.8aeb636f3ce35p-3)
-        return 0x1.a634ae87df6aep-1 + 0x1.82b6b66e03876p-110;
+    case 2:
+      if (x == 0x1.1380388fd8942p-33)
+        return 0x1.000000005f7b3p+0 + 0x1.fffffffffffffp-54;
+      if (x == -0x1.3ec814d260d02p-10)
+        return 0x1.ff9190b6000bdp-1 - 0x1.fffffffffffffp-55;
       break;
     case 3:
-      if (x == 0x1.08f51434652c3p+4)
-        return 0x1.daac459b157e5p+23 + 0x1.c6823badae774p-84;
-      if (x == 0x1.08f51434652c3p+4)
-        return 0x1.daac459b157e5p+23 + 0x1.c6823badae774p-84;
-      break;
-    case 62:
-      if (x == -0x1.1ff9b8e8b38bep-7)
-        return 0x1.fb85251a3f26fp-1 + 0x1.08e2a7c5ac444p-109;
-      if (x == 0x1.333a83013057ep+2)
-        return 0x1.e642354c34a34p+6 + 0x1.3df4a4fb0b639p-99;
-      if (x == -0x1.1ff9b8e8b38bep-7)
-        return 0x1.fb85251a3f26fp-1 + 0x1.08e2a7c5ac444p-109;
-      if (x == 0x1.333a83013057ep+2)
-        return 0x1.e642354c34a34p+6 + 0x1.3df4a4fb0b639p-99;
-      break;
-    case 25:
-      if (x == -0x1.381126525f9d9p-7)
-        return 0x1.fb25a83c4532p-1 + 0x1.34b866e39d79dp-106;
-      if (x == 0x1.d707029bb59d9p-2)
-        return 0x1.958497f7b353fp+0 + 0x1.e27333f64e0b9p-106;
-      if (x == -0x1.381126525f9d9p-7)
-        return 0x1.fb25a83c4532p-1 + 0x1.34b866e39d79dp-106;
-      if (x == 0x1.d707029bb59d9p-2)
-        return 0x1.958497f7b353fp+0 + 0x1.e27333f64e0b9p-106;
-      break;
-    case 16:
-      if (x == 0x1.39fc4d3bb711p+5)
-        return 0x1.8a4e90733b95ep+56 + 0x1.6fc2e81137fa9p-49;
-      if (x == 0x1.39fc4d3bb711p+5)
-        return 0x1.8a4e90733b95ep+56 + 0x1.6fc2e81137fa9p-49;
-      break;
-    case 27:
-      if (x == 0x1.46370d915991bp-4)
-        return 0x1.1538ea18a4585p+0 + 0x1.cf02a409a72c9p-107;
-      if (x == 0x1.46370d915991bp-4)
-        return 0x1.1538ea18a4585p+0 + 0x1.cf02a409a72c9p-107;
-      break;
-    case 58:
-      if (x == 0x1.54cd1fea7663ap+7)
-        return 0x1.c90810d354618p+245 + 0x1.2925a9627fb2cp+136;
-      if (x == 0x1.54cd1fea7663ap+7)
-        return 0x1.c90810d354618p+245 + 0x1.2925a9627fb2cp+136;
-      break;
-    case 33:
-      if (x == 0x1.62f71c4656b61p-1)
-        return 0x1.000976581ce4ep+1 + 0x1.01dc6b104a893p-105;
-      if (x == 0x1.62f71c4656b61p-1)
-        return 0x1.000976581ce4ep+1 + 0x1.01dc6b104a893p-105;
-      break;
-    case 4:
-      if (x == 0x1.7486e56dbca44p-14)
-        return 0x1.0005d22c869a6p+0 + 0x1.878d58ee35bc1p-107;
-      if (x == -0x1.4156584bcd084p+7)
-        return 0x1.26e9c4d32796p-232 + 0x1.566f8d0f3440dp-339;
-      if (x == 0x1.7486e56dbca44p-14)
-        return 0x1.0005d22c869a6p+0 + 0x1.878d58ee35bc1p-107;
-      break;
-    case 36:
-      if (x == -0x1.78ba0840d79e4p+4)
-        return 0x1.05960be55d55ap-34 + 0x1.2b040838e056bp-139;
-      if (x == 0x1.c7206c1b753e4p+8)
-        return 0x1.8670de0b68cadp+656 - 0x1.7599cebd802f7p+549;
-      break;
-    case 52:
-      if (x == 0x1.83d4bcdebb3f4p+2)
-        return 0x1.ac50b409c8aeep+8 + 0x1.16719fcede453p-103;
-      if (x == 0x1.b9d483946ef74p+2)
-        return 0x1.f1ecb20dbd6d9p+9 + 0x1.90a0f3bbcc087p-94;
-      if (x == 0x1.83d4bcdebb3f4p+2)
-        return 0x1.ac50b409c8aeep+8 + 0x1.16719fcede453p-103;
-      if (x == 0x1.b9d483946ef74p+2)
-        return 0x1.f1ecb20dbd6d9p+9 + 0x1.90a0f3bbcc087p-94;
-      break;
-    case 63:
-      if (x == 0x1.97efcad0968ffp-4)
-        return 0x1.1acf134ae11cfp+0 + 0x1.58240d09ab4abp-105;
-      if (x == 0x1.d77fd13d27fffp-11)
-        return 0x1.003af6c37c1d3p+0 + 0x1.288ddd3991ec4p-109;
-      if (x == 0x1.97efcad0968ffp-4)
-        return 0x1.1acf134ae11cfp+0 + 0x1.58240d09ab4abp-105;
-      if (x == 0x1.d77fd13d27fffp-11)
-        return 0x1.003af6c37c1d3p+0 + 0x1.288ddd3991ec4p-109;
-      break;
-    case 14:
-      if (x == -0x1.a01c846cb4a4ep-15)
-        return 0x1.fff97f987fb48p-1 + 0x1.28458fcaa6d88p-110;
-      if (x == 0x1.c1b4603b2f18ep-8)
-        return 0x1.01c3404506a2cp+0 + 0x1.1f8cef4615c73p-105;
-      if (x == -0x1.e8bdbfcd9144ep+3)
-        return 0x1.f3e558cf4de54p-23 + 0x1.f5808cf1d9ee5p-131;
-      if (x == 0x1.46d06e5d90f4ep-22)
-        return 0x1.0000051b41c68p+0 - 0x1.90412d7b31c2cp-107;
-      if (x == -0x1.a01c846cb4a4ep-15)
-        return 0x1.fff97f987fb48p-1 + 0x1.28458fcaa6d88p-110;
-      if (x == 0x1.c1b4603b2f18ep-8)
-        return 0x1.01c3404506a2cp+0 + 0x1.1f8cef4615c73p-105;
-      if (x == -0x1.e8bdbfcd9144ep+3)
-        return 0x1.f3e558cf4de54p-23 + 0x1.f5808cf1d9ee5p-131;
-      break;
-    case 31:
-      if (x == -0x1.a2fefefd580dfp-13)
-        return 0x1.ffe5d0bb7eabfp-1 + 0x1.81905a57d6a44p-112;
-      if (x == -0x1.a2fefefd580dfp-13)
-        return 0x1.ffe5d0bb7eabfp-1 + 0x1.81905a57d6a44p-112;
-      if (x == -0x1.ef25e4b7b671fp-26)
-        return 0x1.ffffff086d0dep-1 - 0x1.ec8bd8b42ad78p-110;
-      break;
-    case 45:
-      if (x == -0x1.b604e4b77d96dp-5)
-        return 0x1.e557c34fef2b1p-1 + 0x1.5822731ec52fbp-106;
-      break;
-    case 11:
-      if (x == -0x1.cecc4ad8d358bp-8)
-        return 0x1.fc65aa1908a66p-1 + 0x1.631ff977c5109p-107;
-      if (x == 0x1.26ee1a46d8c8bp+9)
-        return 0x1.fbe20477df4a7p+850 - 0x1.556f0ed19479ep+746;
-      if (x == -0x1.cecc4ad8d358bp-8)
-        return 0x1.fc65aa1908a66p-1 + 0x1.631ff977c5109p-107;
-      break;
-    case 42:
-      if (x == 0x1.d6336a88077aap+0)
-        return 0x1.91a8dff540ff7p+2 + 0x1.78f1982b593afp-105;
-      if (x == 0x1.d6336a88077aap+0)
-        return 0x1.91a8dff540ff7p+2 + 0x1.78f1982b593afp-105;
-      if (x == -0x1.ed318efb627eap-27)
-        return 0x1.ffffff84b39c5p-1 - 0x1.d017def75eee1p-114;
-      break;
-    case 50:
-      if (x == 0x1.f6e4c3ced7c72p-3)
-        return 0x1.47408cb9583cep+0 + 0x1.644b7f5399dfp-107;
-      if (x == 0x1.f6e4c3ced7c72p-3)
-        return 0x1.47408cb9583cep+0 + 0x1.644b7f5399dfp-107;
+      if (x == -0x1.06922ce606443p-25)
+        return 0x1.ffffff49ffe97p-1 - 0x1.fffffffffffffp-55;
+      if (x == -0x1.72e40977492c3p-8)
+        return 0x1.fdfed7e7210e2p-1 + 0x1.03649710c1f49p-108;
+      if (x == -0x1.72e40977492c3p-8)
+        return 0x1.fdfed7e7210e2p-1 + 0x1.03649710c1f49p-108;
       break;
     case 5:
-      if (x == 0x1.4ff7529737745p-7)
-        return 0x1.02a3637d2021fp+0 - 0x1.8ce83a1239239p-105;
+      if (x == -0x1.234ada2403885p-6)
+        return 0x1.f9baa4e60c96fp-1 + 0x1.75fc83263fa78p-106;
+      if (x == -0x1.234ada2403885p-6)
+        return 0x1.f9baa4e60c96fp-1 + 0x1.75fc83263fa78p-106;
       break;
-    case 23:
-      if (x == 0x1.6474c604cc0d7p+6)
-        return 0x1.7a8f65ad009bdp+128 - 0x1.0b611158ec877p+21;
-      break;
-    case 46:
-      if (x == 0x1.968d2004d83eep-6)
-        return 0x1.066e8c9ca7589p+0 - 0x1.fc9cb62e1cf95p-105;
-      if (x == -0x1.c0f0018f48e2ep-23)
-        return 0x1.fffff8fc40061p-1 + 0x1.bbab72b038cb9p-108;
-      break;
-    case 17:
-      if (x == -0x1.a2772020006d1p-12)
-        return 0x1.ffcbb3c7edf17p-1 - 0x1.41d718c5b866ep-109;
-      if (x == -0x1.08f7dd6248051p-26)
-        return 0x1.ffffff7b84116p-1 + 0x1.edc9902906d23p-108;
-      break;
-    case 2:
-      if (x == 0x1.dd2ae021a5cc2p-25)
-        return 0x1.000000ee95708p+0 - 0x1.517fb684e390ap-106;
+    case 7:
+      if (x == 0x1.9cebb555ce547p-37)
+        return 0x1.0000000008f1bp+0 + 0x1.fffffffffffffp-54;
       break;
     case 8:
-      if (x == 0x1.eb9914d4ac1c8p+8)
-        return 0x1.2b67eff65dce8p+709 - 0x1.01c4a555ef227p+604;
-      break;
-    case 35:
-      if (x == -0x1.f39c6d7449a23p+2)
-        return 0x1.aae341b425b8bp-12 - 0x1.428a476d4fcabp-117;
-      break;
-    case 10:
-      if (x == 0x1.1a0408712e00ap-2)
-        return 0x1.512b3126454f3p+0 + 0x1.758d621c3b9dep-106;
-      break;
-    case 51:
-      if (x == -0x1.c6aa26f277ff3p-27)
-        return 0x1.ffffff8e55765p-1 + 0x1.535b0aa5cc65p-107;
+      if (x == 0x1.8859f5e252908p-4)
+        return 0x1.11930594f1671p+0 - 0x1.fffffffffffffp-54;
       break;
     case 9:
-      if (x == -0x1.aa46a178b9e49p-26)
-        return 0x1.ffffff2adcaf7p-1 - 0x1.40324830f1dp-107;
+      if (x == -0x1.96d26a97d3ec9p-16)
+        return 0x1.fffdcc079fa23p-1 - 0x1.fffffffffffffp-55;
+      break;
+    case 10:
+      if (x == -0x1.ec1c7584af30ap-38)
+        return 0x1.fffffffff5573p-1 - 0x1.fffffffffffffp-55;
+      if (x == 0x1.82c7120ec258ap-15)
+        return 0x1.000218323a373p+0 + 0x1.fffffffffffffp-54;
+      break;
+    case 12:
+      if (x == -0x1.b444c224a70ccp-1)
+        return 0x1.1ba39ff28e3eap-1 - 0x1.cb1ddc7fbf64ep-108;
+      if (x == -0x1.b444c224a70ccp-1)
+        return 0x1.1ba39ff28e3eap-1 - 0x1.cb1ddc7fbf64ep-108;
+      break;
+    case 13:
+      if (x == 0x1.755aa6fa428cdp-9)
+        return 0x1.008185c263cb5p+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.12eecf76d63cdp+1)
+        return 0x1.1ba39ff28e3eap+2 - 0x1.cb1ddc7fbf64ep-105;
+      if (x == 0x1.92eecf76d63cdp+1)
+        return 0x1.1ba39ff28e3eap+3 - 0x1.cb1ddc7fbf64ep-104;
+      break;
+    case 14:
+      if (x == -0x1.a1c205dcb368ep-20)
+        return 0x1.ffffdbcdd6957p-1 - 0x1.fffffffffffffp-55;
+      break;
+    case 15:
+      if (x == 0x1.9f1a7d355cb4fp+0)
+        return 0x1.89d948a94fe17p+1 - 0x1.a658852e8fdp-104;
+      break;
+    case 16:
+      if (x == 0x1.2eecf76d63cdp-3)
+        return 0x1.1ba39ff28e3eap+0 - 0x1.cb1ddc7fbf64ep-107;
+      break;
+    case 19:
+      if (x == 0x1.5c356347f1b53p-8)
+        return 0x1.00f1ce05142bdp+0 - 0x1.fffffffffffffp-54;
+      break;
+    case 21:
+      if (x == -0x1.899e0474ba2d5p-9)
+        return 0x1.feef72f67c668p-1 + 0x1.4481acf37d0ebp-111;
+      if (x == -0x1.899e0474ba2d5p-9)
+        return 0x1.feef72f67c668p-1 + 0x1.4481acf37d0ebp-111;
+      if (x == 0x1.f16d04608afd5p-7)
+        return 0x1.02b53825c16d5p+0 - 0x1.adcbe036fa2fep-107;
+      if (x == -0x1.899e0474ba2d5p-9)
+        return 0x1.feef72f67c668p-1 + 0x1.4481acf37d0ebp-111;
+      break;
+    case 23:
+      if (x == 0x1.25afe8f725317p-11)
+        return 0x1.0019737447e57p+0 - 0x1.fffffffffffffp-54;
+      break;
+    case 24:
+      if (x == 0x1.48ef3961ac098p-47)
+        return 0x1.000000000001dp+0 - 0x1.fffffffffffffp-54;
+      break;
+    case 26:
+      if (x == 0x1.449b3bfeb3ddap-45)
+        return 0x1.0000000000071p+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.25dd9eedac79ap+0)
+        return 0x1.1ba39ff28e3eap+1 - 0x1.cb1ddc7fbf64ep-106;
+      break;
+    case 27:
+      if (x == -0x1.8177265c6649bp-10)
+        return 0x1.ff7a79d5dd209p-1 - 0x1.fffffffffffffp-55;
+      break;
+    case 28:
+      if (x == 0x1.ed937b32a891cp-8)
+        return 0x1.015703f362a59p+0 + 0x1.fffffffffffffp-54;
+      break;
+    case 30:
+      if (x == 0x1.7ab9ba54d881ep-31)
+        return 0x1.000000020d067p+0 - 0x1.fffffffffffffp-54;
+      if (x == 0x1.3e34fa6ab969ep-1)
+        return 0x1.89d948a94fe17p+0 - 0x1.a658852e8fdp-105;
+      break;
+    case 31:
+      if (x == -0x1.cef4c143b5adfp-1)
+        return 0x1.11930594f1671p-1 - 0x1.fffffffffffffp-55;
+      break;
+    case 32:
+      if (x == 0x1.c2c3ad10cdf6p-33)
+        return 0x1.000000009c391p+0 + 0x1.fffffffffffffp-54;
+      break;
+    case 33:
+      if (x == 0x1.6c4175ea0c6e1p-3)
+        return 0x1.21969738ee035p+0 - 0x1.fffffffffffffp-54;
+      break;
+    case 36:
+      if (x == -0x1.75fb048f853a4p-10)
+        return 0x1.ff7e73c8f1e79p-1 - 0x1.ffffffffffffep-55;
+      if (x == 0x1.93998f2295764p-21)
+        return 0x1.000008be08875p+0 - 0x1.fffffffffffffp-54;
+      break;
+    case 37:
+      if (x == -0x1.526ce079b05a5p-5)
+        return 0x1.f18bf8b031dbdp-1 - 0x1.fffffffffffffp-55;
+      if (x == 0x1.f99afefa30d65p-8)
+        return 0x1.015f65d104a36p+0 - 0x1.c66e8905e401p-111;
       break;
     case 38:
-      if (x == -0x1.5c5ed0ec83666p-6)
-        return 0x1.f53a751d7db49p-1 + 0x1.7b56017c8c236p-106;
+      if (x == -0x1.94e8b9b72d9a6p-27)
+        return 0x1.ffffffb9d5a89p-1 - 0x1.fffffffffffffp-55;
+      if (x == -0x1.da22611253866p+0)
+        return 0x1.1ba39ff28e3eap-2 - 0x1.cb1ddc7fbf64ep-109;
+      if (x == -0x1.da22611253866p+0)
+        return 0x1.1ba39ff28e3eap-2 - 0x1.cb1ddc7fbf64ep-109;
       break;
-    case 56:
-      if (x == -0x1.65061daf79a78p+1)
-        return 0x1.f78a60182b74dp-5 + 0x1.e80ff4db7a3efp-110;
+    case 39:
+      if (x == 0x1.9aa887abfb167p-22)
+        return 0x1.0000047296371p+0 + 0x1.fffffffffffffp-54;
       break;
-    case 60:
-      if (x == -0x1.add1dce7cd5bcp-2)
-        return 0x1.507e542d9849dp-1 + 0x1.398091600cd41p-105;
+    case 43:
+      if (x == 0x1.b014253a7dd6bp-27)
+        return 0x1.000000256fcffp+0 - 0x1.fffffffffffffp-54;
       break;
-    case 61:
-      if (x == -0x1.dc2b5df1f7d3dp-1)
-        return 0x1.9403fd0ee51c8p-2 + 0x1.dc83c7a84cf5fp-108;
+    case 45:
+      if (x == -0x1.0a4529bfcfbedp-18)
+        return 0x1.ffffa3b7c984fp-1 - 0x1.fffffffffffffp-55;
+      if (x == -0x1.bc7a709d1a2adp-36)
+        return 0x1.ffffffffd97d3p-1 - 0x1.fffffffffffffp-55;
+      break;
+    case 49:
+      if (x == -0x1.35dd739305031p-6)
+        return 0x1.f954f4f26d1ddp-1 + 0x1.fffffffffffffp-55;
+      break;
+    case 50:
+      if (x == -0x1.47b667916c4b2p-9)
+        return 0x1.ff1d0b30a8261p-1 + 0x1.5293b4bf9f174p-107;
+      if (x == -0x1.47b667916c4b2p-9)
+        return 0x1.ff1d0b30a8261p-1 + 0x1.5293b4bf9f174p-107;
+      if (x == -0x1.47b667916c4b2p-9)
+        return 0x1.ff1d0b30a8261p-1 + 0x1.5293b4bf9f174p-107;
+      break;
+    case 51:
+      if (x == -0x1.ed11308929c33p+1)
+        return 0x1.1ba39ff28e3eap-4 - 0x1.cb1ddc7fbf64ep-111;
+      if (x == -0x1.6d11308929c33p+1)
+        return 0x1.1ba39ff28e3eap-3 - 0x1.cb1ddc7fbf64ep-110;
+      if (x == -0x1.ed11308929c33p+1)
+        return 0x1.1ba39ff28e3eap-4 - 0x1.cb1ddc7fbf64ep-111;
+      if (x == -0x1.6d11308929c33p+1)
+        return 0x1.1ba39ff28e3eap-3 - 0x1.cb1ddc7fbf64ep-110;
+      break;
+    case 53:
+      if (x == -0x1.d6518ead568f5p-47)
+        return 0x1.fffffffffffafp-1 - 0x1.fffffffffffffp-55;
+      if (x == 0x1.8d040898b73f5p-6)
+        return 0x1.04560ec7b6c8dp+0 + 0x1.fffffffffffffp-54;
+      break;
+    case 58:
+      if (x == 0x1.926961243babap-3)
+        return 0x1.255a2a884ee79p+0 + 0x1.112edd525e11cp-105;
+      if (x == 0x1.926961243babap-3)
+        return 0x1.255a2a884ee79p+0 + 0x1.112edd525e11cp-105;
+      break;
+    case 59:
+      if (x == -0x1.ff8970e2da87bp-4)
+        return 0x1.d58af95f85766p-1 - 0x1.1c30e57dc9b05p-107;
+      break;
+    case 62:
+      if (x == 0x1.71547652b82fep-53)
+        return 0x1.0000000000001p+0 - 0x1.fffffffffffffp-54;
+      break;
+    case 63:
+      if (x == -0x1.fe89353e31cbfp-3)
+        return 0x1.aec09a0cd9ea4p-1 - 0x1.a549adf007feap-109;
       break;
   };
-
-  /* special code for tiny x */
-  if (__builtin_fabs (x) < 0x1p-27)
-  {
-    /* example: x=0x1.051699fdeb71dp-30: 49 identical bits after round bit */
-    /* -0x1.cfd2c0003485cp-35: 53 */
-    /* -0x1.ff45860ff45a8p-29: 44 */
-    h = x * 0x1.5555555555555p-3; /* x/6 */
-    fast_two_sum (&yh, &yl, 0.5, h); /* yh+l ~ 1/2 + x/6 */
-    dekker (&h, &l, yh, x);
-    l += yl * x;                     /* h+l ~ x/2 + x^2/6 */
-    fast_two_sum (&yh, &yl, 1.0, h);
-    yl += l;                         /* yh+yl ~ 1 + x/2+x^2/6 */
-    dekker (&h, &l, yh, x);
-    l += yl * x;                     /* h+l ~ x + x^2/2 + x^3/6 */
-    fast_two_sum (&yh, &yl, 1.0, h);
-    yl += l;                         /* yh+yl ~ 1 + x + x^2/2 + x^3/6 */
-    return yh + yl;
-  }
 
   return ldexp (v.x, e);
 }
 
 double
-cr_exp (double x)
+cr_exp2 (double x)
 {
   d64u64 v;
   v.x = x;
   int e = ((v.n >> 52) & 0x7ff) - 0x3ff;
 
-  if (e >= 9) /* potential underflow or overflow */
+  if (e >= 10) /* Overflow or potential underflow. For e=9 we cannot
+                  have any overflow or underflow. Indeed the largest
+                  number with e=9 is x=0x1.fffffffffffffp+9: exp2(x)
+                  does not overflow, and exp2(-x) does not underflow. */
   {
     if (isnan (x))
       return x + x; /* always return qNaN, even for sNaN input */
 
-    if (x >= 0x1.62e42fefa39fp+9) /* exp(x) > 2^1024*(1-2^-54) */
+    if (x >= 1024.) /* 2^x > 2^1024*(1-2^-54) */
       return xmax + xmax;
-    else if (x <= -0x1.74910d52d3052p+9) /* exp(x) < 2^-1075 */
+    else if (x < -1075.) /* 2^x < 2^-1075 */
     {
       static const double xmin = 0x1p-1074;
       return xmin / 2.0;
@@ -873,31 +666,14 @@ cr_exp (double x)
     /* otherwise go through the main path */
   }
 
-  /* now |x| < 746 */
-
-  /* first multiply x by a double-double approximation of 1/log(2) */
-  static const double log2_h = 0x1.71547652b82fep+0;
-  static const double log2_l = 0x1.777d0ffda0ep-56;
-  /* |1/log(2) - log2_h - log2_l| < 2^-100.2 */
-  double h, l, l0;
-  dekker (&h, &l0, x, log2_h);
-  /* h + l0 = x * log2_h exactly */
-  l = l0 + x * log2_l;
-  /* |x * log2_l| < 2^-45 thus the error on x * log2_h (even without fma)
-     is bounded by 2^-98.
-     |h| < 2^11 thus |l0| < 2^-42 thus the rounding error on l is bounded
-     by 2^-95.
-     The total rounding error on l is bounded by 2^-98+2^-95 < 2^-94.83.
-     |x/log(2) - h - l| < |x| * 2^-100.2 + 2^-94.83 < 2^-90.57. */
-
-  /* now x/log(2) ~ h + l thus exp(x) ~ 2^h * 2^l where |l| < 2^-42 */
-  double t = __builtin_trunc (128.0 * h), u;
-  h = h - t / 128.0; /* exact */
+  double h, t = __builtin_trunc (128.0 * x), u;
+  h = x - t / 128.0; /* exact */
+  /* check if x is an integer, avoiding inexact exception */
+  if (h == 0 && (double) (int) x == x) return ldexp (1.0, x);
   e = t;
   int i = e % 128;
   e = (e - i) >> 7;
-  /* exp(x) ~ 2^e * 2^(i/128) * 2^h * 2^l where |h| < 1/128 and |l| < 2^-42,
-     where -127 <= i <= 127 */
+  /* 2^x ~ 2^e * 2^(i/128) * 2^h where |h| < 1/128 and -127 <= i <= 127 */
 
   /* p[i] are the coefficients of a degree-6 polynomial approximating 2^x
      over [-1/128,1/128], with double coefficients, except p[1] which is
@@ -928,9 +704,9 @@ cr_exp (double x)
      Total: error(yh) < 2^-55.99 */
   yh = p[2] + yh * h;
   /* |yh * h| < 2^-4 * 2^-7 = 2^-11 thus the rounding error on yh * h is
-     bounded by 2^-64. After adding yh * h we stay in the same binade than [2],
+     bounded by 2^-64. After adding yh * h we stay in the same binade than p[2]
      thus the sum of the rounding errors in the addition p[2] + ... and the
-     product yh * h is bounded by ulp(p2) + 2^-64 = 2^-55+2^-64 < 2^-54.99.
+     product yh * h is bounded by ulp(p2) + 2^-64 = 2^-55 + 2^-64 < 2^-54.99.
      We need to add the error on yh multiplied by h, which is bounded by
      2^-55.99 * 2^-7 < 2^-62.99, which gives 2^-55+2^-64+2^-62.99 < 2^-54.99.
      This error is multiplied by h^2 < 2^-14 below, thus contributes to at most
@@ -938,12 +714,12 @@ cr_exp (double x)
   /* add p[1] + p1l + yh * h */
   fast_two_sum (&yh, &yl, p[1], yh * h);
   /* At input |yh * h| < 2^-2*2^-7 = 2^-9 thus the rounding error on yh * h is
-     bounded by 2^-62. This rounding error is multiplied by h < 2^-7 thus
-     contributes to < 2^-69 to the final error.
+     bounded by 2^-62. This rounding error is multiplied by h < 2^-7 below
+     thus contributes to < 2^-69 to the final error.
      The fast_two_sum error is bounded by 2^-104 |yh| (for the result yh),
      thus since |yh| <= o(p[1] + 2^-9) <= 2^-0.52, the fast_two_sum error is
-     bounded by 2^-104.52. Since this error is multiplied by h < 2^-7 it
-     contributes to < 2^-111.52 to the final error. */
+     bounded by 2^-104.52. Since this error is multiplied by h < 2^-7 below,
+     it contributes to < 2^-111.52 to the final error. */
   yl += p1l;
   /* |yl| < 2^-53 and |p1l| < 2^-55 thus the rounding error in yl += p1l
      is bounded by 2^-105 (we might have an exponent jump). This error is
@@ -959,9 +735,9 @@ cr_exp (double x)
      t += yl * h is < 2^-111. */
   /* add p[0] = 1 */
   fast_two_sum (&yh, &yl, p[0], yh);
-  yl += t;
+  u = yl + t;
   /* now |yh| < 2 and |yl| < 2^-52, with |t| < 2^-58, thus |yl+t| < 2^-51
-     and the rounding error in yl += t is bounded by 2^-104.
+     and the rounding error in u = yl + t is bounded by 2^-104.
      The error in fast_two_sum is bounded by 2^-104 |yh| <= 2^-103. */
   /* now (yh,yl) approximates 2^h to about 68 bits of accuracy:
      2^-68.99 from the rounding errors for evaluating p[2] + ...
@@ -970,38 +746,15 @@ cr_exp (double x)
      2^-112 from the rounding error in yl += p1l
      2^-112 from the rounding error in yl * h
      2^-111 from the rounding error in t += yl * h
-     2^-104 from the rounding error in yl += t
+     2^-104 from the rounding error in u = yl + t
      2^-103 from the error in the 2nd fast_two_sum
-     Total absolute error < 2^-67.99 on yh+yl here (with respect to 2^h).
-  */
-
-  /* FIXME: could we integrate the multiplication by 2^l above? */
-  /* multiply (yh,yl) by 2^l. Since |l| < 2^-42, it suffices to multiply
-     by 1 + log(2)*l to get 70-bit accuracy: the maximal error while doing
-     this is 2^-86.05. */
-  static const double l2 = 0x1.62e42fefa39efp-1;
-  /* error on l2 < 2^-55.25 */
-  t = l2 * l * yh;
-  /* we have |l2| < 0.70, |l| < 2^-42, |yh| < 1.01 thus |l2 * l * yh| < 2^-42
-     and the total rounding error is bounded by 3*2^-95 */
-  fast_two_sum (&yh, &u, yh, t);
-  u += yl;
-  /* |yh| < 2, |u| < 2^-52, |yl| < 2^-52 thus |u+yl| < 2^-51 and the rounding
-     error in u += yl is bounded by 2^-104.
-     The error on fast_two_sum is bounded by 2^-104 |yh| < 2^-103. */
-  /* now (yh,u) approximates 2^(h+l) to about 68 bits of accuracy:
-     2^-67.99*(1+2^-42) from the approximation (yh,yl) for 2^h
-     1.01*2^-86.05 < 2^-86.03 for the error from l2
-     3*2^-95 < 2^-93.41 for the rounding error in l2 * l * yh
-     2^-103 for the error in fast_two_sum
-     2^-104 for the rounding error in u += yl
-     Total absolute error < 2^-67.98 on yh+u here with respect to 2^(h+l).
+     Total absolute error < 2^-67.99 on yh+u here (with respect to 2^h).
   */
 
   /* multiply (yh,u) by 2^(i/128) */
   /* the maximal error |2^(i/128) - tab_i[127+i][0] - tab_i[127+i][1]|
      is 1/2*max(ulp(tab_i[127+i][1])) = 2^-107.
-     Since we multiply by |2^(h+l)| < 1.006 this yields 2^-106.99. */
+     Since we multiply by |2^h| < 1.006 this yields 2^-106.99. */
   t = yh * tab_i[127+i][1];
   /* |yh| < 1.006 and |tab_i[127+i][1]| < 0x1.fc6f89bd4f6bap-54 (i=78) thus
      |yh * tab_i[127+i][1]| < 2^-53 and the rounding error on t is
@@ -1016,23 +769,23 @@ cr_exp (double x)
      |yl + t + u * tab_i[127+i][0]| < 2^-48 thus the rounding error in
      yl += ,,, is bounded by 2^-101.
      Total error bounded by:
-     2^-66.987 (initial error 2^-67.98 on yh+yl multiplied by maximal value
-                of 2^(i/128) for i=127)
-     2^-106.99 for the error on 2^(i/128)
+     2^-66.997 (initial error 2^-67.99 on yh+u multiplied by maximal value of
+                2^(i/128) for i=127)
+     2^-105.99 for the error on 2^(i/128) multiplied by |yh+u| < 2
      2^-106 for the rounding error on t
      2^-103 for the rounding error on u * tab_i[127+i][0]
      2^-102 for the rounding error on t + u * tab_i[127+i][0]
      2^-101 for the rounding error on yl += ...
-     Total error < 2^-66.98 on yh + yl with respect to 2^(i/128+h+l). */
+     Total error < 2^-66.99 on yh + yl with respect to 2^(i/128+h+l). */
 
-  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-66.98 */
+  /* now yh+yl approximates 2^(i/128+h+l) with error < 2^-66.99 */
 
   /* rounding test */
-  double err = 0x1.0392d9352ad76p-67; /* e = up(2^-66.98) */
+  double err = 0x1.01c7d6c404f0cp-67; /* e = up(2^-66.99) */
   v.x = yh + (yl - err);
   double right = yh + (yl + err);
   if (v.x != right)
-    return cr_exp_accurate (x, e, i);
+    return cr_exp2_accurate (x, e, i);
 
   /* Multiply by 2^e. */
   unsigned int f = v.n >> 52; /* sign is always positive */
@@ -1058,7 +811,7 @@ cr_exp (double x)
     right -= magic;
     if (left == right)
       return ldexp (left, e);
-    return cr_exp_accurate (x, e, i);
+    return cr_exp2_accurate (x, e, i);
   }
   v.n += (int64_t) e << 52;
   return v.x;

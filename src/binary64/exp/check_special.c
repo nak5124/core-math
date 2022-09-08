@@ -30,6 +30,9 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h>
 
+int ref_fesetround (int);
+void ref_init (void);
+
 double cr_exp (double);
 double ref_exp (double);
 
@@ -94,6 +97,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  ref_init();
+  ref_fesetround (rnd);
 
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp(x)) */

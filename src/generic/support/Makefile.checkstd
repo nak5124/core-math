@@ -1,0 +1,8 @@
+# -*- makefile -*-
+
+ifeq (,$(CORE_MATH_CHECK_STD))
+  CORE_MATH_OBJS := $(FUNCTION_UNDER_TEST).o
+else
+  CORE_MATH_OBJS := $(LIBM)
+  CORE_MATH_DEFINES := -Dcr_$(FUNCTION_UNDER_TEST)=$(FUNCTION_UNDER_TEST)
+endif

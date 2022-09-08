@@ -1,19 +1,21 @@
 # -*- makefile -*-
 
-CFLAGS += -Wpedantic -W -Wall -frounding-math
+include ../../generic/support/Makefile.checkstd
+
+CFLAGS += -W -Wall -frounding-math
 
 TYPE_UNDER_TEST := float
 
 all:: check_worst
 
-check_worst: check_worst.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
+check_worst: check_worst.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) -o $@ $^ -lmpfr -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -I ../support -c -o $@ $<
 
 check_worst.o: ../support/check_worst.c
-	$(CC) $(CFLAGS) -I . -c -o $@ $<
+	$(CC) $(CFLAGS) $(CORE_MATH_DEFINES) -I . -c -o $@ $<
 
 clean::
 	rm -f *.o check_worst

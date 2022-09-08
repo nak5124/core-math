@@ -30,12 +30,13 @@ Tested on x86_64-linux with and without FMA (-march=native).
 #include <fenv.h>
 #include <errno.h>
 
-/* __builtin_roundeven was introduced in gcc 10 */
+/* __builtin_roundeven was introduced in gcc 10:
+   https://gcc.gnu.org/gcc-10/changes.html */
 #if defined(__GNUC__) && __GNUC__ >= 10
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
 
-#if defined(__clang__) && (defined(__AVX__) || defined(__SSE4_1__))
+#if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__))
 inline double __builtin_roundeven(double x){
    double ix;
 #if defined __AVX__

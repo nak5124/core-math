@@ -1,6 +1,6 @@
-/* Generate special cases for hypotf testing.
+/* Generate exact cases for exp2 testing.
 
-Copyright (c) 2022 Stéphane Glondu, Inria.
+Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -28,8 +28,9 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <fenv.h>
+#include <math.h>
 
-void doloop (int, int);
+double cr_exp2 (double);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
@@ -78,7 +79,19 @@ main (int argc, char *argv[])
         }
     }
 
-  /* we check triples with exponent difference 0 <= k <= 12 */
-  doloop(0, 12);
-  return 0;
+  int ret = 0;
+  for (int i = -1074; i <= 1023; i++) {
+    double x = i;
+    feclearexcept(FE_INEXACT);
+    cr_exp2(x);
+    if (fetestexcept(FE_INEXACT)) {
+      printf ("spurious inexact exception: i=%d, x=%la\n", i, x);
+      fflush (stdout);
+      ret = 1;
+#ifndef DO_NOT_ABORT
+      exit (1);
+#endif
+    }
+  }
+  return ret;
 }

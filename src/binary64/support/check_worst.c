@@ -1,6 +1,6 @@
-/* Generate special cases for hypotf testing.
+/* Check correctness of bivariate binary64 function on worst cases.
 
-Copyright (c) 2022 Stéphane Glondu, Inria.
+Copyright (c) 2022 Stéphane Glondu, Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -24,17 +24,55 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#define _POSIX_C_SOURCE 200809L  /* for getline */
+
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fenv.h>
 
-void doloop (int, int);
+#include "function_under_test.h"
+
+double cr_function_under_test (double, double);
+double ref_function_under_test (double, double);
+int ref_fesetround (int);
+void ref_init (void);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
-int verbose = 0;
+
+void
+doloop(void)
+{
+  char *buf = NULL;
+  size_t buflength = 0;
+  ssize_t n;
+  double x, y, z1, z2;
+  int count = 0;
+
+  ref_init();
+  ref_fesetround(rnd);
+
+  while ((n = getline(&buf, &buflength, stdin)) >= 0) {
+    if (n > 0 && buf[0] == '#') continue;
+    if (sscanf(buf, "%la,%la", &x, &y) == 2) {
+      z1 = ref_function_under_test(x, y);
+      fesetround(rnd1[rnd]);
+      z2 = cr_function_under_test(x, y);
+      if (z1 != z2) {
+        printf("FAIL x=%la y=%la ref=%la z=%la\n", x, y, z1, z2);
+        fflush(stdout);
+        exit(1);
+      }
+      count++;
+    }
+  }
+  free(buf);
+
+  printf("%d tests passed\n", count);
+}
 
 int
 main (int argc, char *argv[])
@@ -65,12 +103,6 @@ main (int argc, char *argv[])
           argc --;
           argv ++;
         }
-      else if (strcmp (argv[1], "--verbose") == 0)
-        {
-          verbose = 1;
-          argc --;
-          argv ++;
-        }
       else
         {
           fprintf (stderr, "Error, unknown option %s\n", argv[1]);
@@ -78,7 +110,5 @@ main (int argc, char *argv[])
         }
     }
 
-  /* we check triples with exponent difference 0 <= k <= 12 */
-  doloop(0, 12);
-  return 0;
+  doloop();
 }

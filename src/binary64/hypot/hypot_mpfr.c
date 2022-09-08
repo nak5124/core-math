@@ -1,6 +1,6 @@
-/* Correctly-rounded exponential of binary64 value.
+/* Correctly-rounded Euclidean distance function (hypot) for binary64 values.
 
-Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann (Inria).
+Copyright (c) 2022 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -21,25 +21,24 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
+SOFTWARE. */
 
 #include <mpfr.h>
 #include "fenv_mpfr.h"
 
-/* code from MPFR */
-double
-ref_exp (double x)
-{
-  mpfr_t y;
-  mpfr_exp_t emin = mpfr_get_emin ();
+double ref_hypot (double x, double y){
+  mpfr_t xm, ym, zm;
   mpfr_set_emin (-1073);
-  mpfr_init2 (y, 53);
-  mpfr_set_d (y, x, MPFR_RNDN);
-  int inex = mpfr_exp (y, y, rnd2[rnd]);
-  mpfr_subnormalize (y, inex, rnd2[rnd]);
-  double ret = mpfr_get_d (y, MPFR_RNDN);
-  mpfr_clear (y);
-  mpfr_set_emin (emin);
+  mpfr_init2 (xm, 53);
+  mpfr_init2 (ym, 53);
+  mpfr_init2 (zm, 53);
+  mpfr_set_d (xm, x, MPFR_RNDN);
+  mpfr_set_d (ym, y, MPFR_RNDN);
+  int inex = mpfr_hypot (zm, xm, ym, rnd2[rnd]);
+  mpfr_subnormalize (zm, inex, rnd2[rnd]);
+  double ret = mpfr_get_d (zm, MPFR_RNDN);
+  mpfr_clear (xm);
+  mpfr_clear (ym);
+  mpfr_clear (zm);
   return ret;
 }

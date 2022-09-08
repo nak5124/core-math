@@ -1,6 +1,6 @@
-/* Generate special cases for hypotf testing.
+/* Generate special cases for hypot testing.
 
-Copyright (c) 2022 Stéphane Glondu, Inria.
+Copyright (c) 2022 Stéphane Glondu, Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -78,7 +78,7 @@ main (int argc, char *argv[])
         }
     }
 
-  /* we check triples with exponent difference 0 <= k <= 12 */
-  doloop(0, 12);
+  /* we check triples with exponent difference 0 <= k <= 26 */
+  doloop(0, 26);
   return 0;
 }

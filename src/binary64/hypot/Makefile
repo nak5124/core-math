@@ -1,4 +1,4 @@
-FUNCTION_UNDER_TEST := hypotf
+FUNCTION_UNDER_TEST := hypot
 
 include ../support/Makefile.bivariate
 
