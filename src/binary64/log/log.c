@@ -256,7 +256,7 @@ cr_log (double x)
   if (left == right)
   {
     // if (x == TRACE) printf ("fast path succeeded\n");
-    return h + l;
+    return left;
   }
   // if (x == TRACE) printf ("fast path failed\n");
   return cr_log_accurate (x);
