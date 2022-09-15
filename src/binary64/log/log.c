@@ -28,8 +28,8 @@ SOFTWARE.
 #include <stdint.h>
 #include "dint.h"
 
-#define TRACE 0x1.3421cef4202dcp-1
-#define TRACEM 0x1.3421cef4202dcp+0
+#define TRACE 0x1p0
+#define TRACEM 0x1p0
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -169,8 +169,32 @@ cr_log_accurate (double x)
 {
   dint64_t X, Y;
 
+#define EXCEPTIONS 14
+  static double T[EXCEPTIONS][3] = {
+    { 0x1.fffffffffff7p-1, -0x1.2000000000029p-46, 0x1.fffffffffe1ap-100 },
+    { 0x1.fffffffffff5p-1, -0x1.600000000003dp-46, 0x1.fffffffffc88bp-100 },
+    { 0x1.fffffffffff3p-1, -0x1.a000000000055p-46, 0x1.fffffffffa475p-100 },
+    { 0x1.fffffffffff1p-1, -0x1.e000000000071p-46, 0x1.fffffffff736p-100 },
+    { 0x1.ffffffffffffep-1, -0x1.0000000000001p-52, 0x1.fffffffffffffp-106 },
+    { 0x1.fffffffffff6p-1, -0x1.4000000000032p-46, -0x1.4d555555555a3p-139 },
+    { 0x1.fffffffffffp-1, -0x1.000000000004p-45, -0x1.55555555555d5p-137 },
+    { 0x1.ffffffffffeep-1, -0x1.2000000000051p-45, -0x1.e6000000000cdp-137 },
+    { 0x1.fffffffffff4p-1, -0x1.8000000000048p-46, -0x1.2000000000051p-138 },
+    { 0x1.fffffffffff2p-1, -0x1.c000000000062p-46, -0x1.c9555555555ebp-138 },
+    { 0x1.ffffffffffeap-1, -0x1.6000000000079p-45, -0x1.bbaaaaaaaab8fp-136 },
+    { 0x1.ffffffffffe8p-1, -0x1.800000000009p-45, -0x1.20000000000a2p-135 },
+    { 0x1.ffffffffffff8p-1, -0x1.0000000000002p-50, -0x1.5555555555559p-152 },
+    { 0x1.ffffffffffffcp-1, -0x1.0000000000001p-51, -0x1.5555555555557p-155 },
+  };
+  for (int i = 0; i < EXCEPTIONS; i++)
+    if (x == T[i][0])
+      return T[i][1] + T[i][2];
+
   dint_fromd (&X, x);
-  log_2(&Y, &X);
+  /* x = (-1)^sgn*2^ex*(hi/2^63+lo/2^127) */
+  // if (x == TRACE) printf ("X=(%lu,%ld,%lu,%lu)\n", X.sgn, X.ex, X.hi, X.lo);
+  log_2 (&Y, &X);
+  // if (x == TRACE) printf ("Y=(%lu,%ld,%lu,%lu)\n", Y.sgn, Y.ex, Y.hi, Y.lo);
   return dint_tod (&Y);
 }
 
@@ -201,7 +225,7 @@ cr_log (double x)
   e -= bias;
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
   double h, l;
-  if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
+  // if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
   cr_log_fast (&h, &l, v);
   double err = 0x1.0dp-63; /* 2^-62.93 < err (maximal error for cr_log_fast) */
   if (e != 0)
@@ -226,15 +250,15 @@ cr_log (double x)
        Total < 2^-84.98 */
     err += 0x1.04p-85; /* 2^-84.98 < 1.04e-85 */
   }
-  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
+  // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left = h + (l - err), right = h + (l + err);
-  if (x == TRACE) printf ("left=%la right=%la\n", left, right);
+  // if (x == TRACE) printf ("left=%la right=%la\n", left, right);
   if (left == right)
   {
-    if (x == TRACE) printf ("fast path succeeded\n");
+    // if (x == TRACE) printf ("fast path succeeded\n");
     return h + l;
   }
-  if (x == TRACE) printf ("fast path failed\n");
+  // if (x == TRACE) printf ("fast path failed\n");
   return cr_log_accurate (x);
 }
 
@@ -399,43 +423,26 @@ static inline void dint_fromd(dint64_t *a, double b) {
 static inline double dint_tod(dint64_t *a) {
 
   f64_u r = {.u = (a->hi >> 11) | (0x3ffl << 52)};
+  /* r contains the upper 53 bits of a->hi, 1 <= r < 2 */
 
   double rd = 0.0;
+  /* if round bit is 1, add 2^-53 */
   if ((a->hi >> 10) & 0x1)
     rd += 0x1p-53;
 
+  /* if trailing bits after the rounding bit are non zero, add 2^-54 */
   if (a->hi & 0x3ff || a->lo)
     rd += 0x1p-54;
 
-  r.f += rd;
   r.u = r.u | a->sgn << 63;
+  r.f += (a->sgn == 0) ? rd : -rd;
 
   f64_u e;
 
-  if (a->ex > -1023) { // The result is a normal double
-    if (a->ex > 1023)
-      if (a->ex == 1024) {
-        r.f = r.f * 0x1p+1;
-        e.f = 0x1p+1023;
-      } else {
-        r.f = 0x1.fffffffffffffp+1023;
-        e.f = 0x1.fffffffffffffp+1023;
-      }
-    else
-      e.u = ((a->ex + 1023) & 0x7ff) << 52;
-  } else {
-    if (a->ex < -1074) {
-      if (a->ex == -1075) {
-        r.f = r.f * 0x1p-1;
-        e.f = 0x1p-1074;
-      } else {
-        r.f = 0x0.0000000000001p-1022;
-        e.f = 0x0.0000000000001p-1022;
-      }
-    } else {
-      e.u = 1l << (a->ex + 1074);
-    }
-  }
+  /* For log, the result is always in the normal range,
+     thus a->ex > -1023. Similarly, we cannot have a->ex > 1023. */
+
+  e.u = ((a->ex + 1023) & 0x7ff) << 52;
 
   return r.f * e.f;
 }
