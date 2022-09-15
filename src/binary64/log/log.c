@@ -1,6 +1,7 @@
 /* Correctly rounded logarithm of binary64 values.
 
-Copyright (c) 2022 Paul Zimmermann, Inria.
+Copyright (c) 2022 INRIA and CERN.
+Authors: Paul Zimmermann and Tom Hubrecht.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -25,9 +26,10 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include "dint.h"
 
-#define TRACE 0x1.19847c76d3bf3p-3
-#define TRACEM 0x1.19847c76d3bf3p+0
+#define TRACE 0x1.3421cef4202dcp-1
+#define TRACEM 0x1.3421cef4202dcp+0
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -157,6 +159,21 @@ c     - 2^-65 for the difference between P(y) and P(m/2^-75), since
      Total error < 2^-62.93 */
 }
 
+static inline void dint_fromd (dint64_t *a, double b);
+static void log_2 (dint64_t *r, dint64_t *x);
+static inline double dint_tod (dint64_t *a);
+
+/* accurate path, using Tom Hubrecht's code below */
+static double
+cr_log_accurate (double x)
+{
+  dint64_t X, Y;
+
+  dint_fromd (&X, x);
+  log_2(&Y, &X);
+  return dint_tod (&Y);
+}
+
 double
 cr_log (double x)
 {
@@ -182,9 +199,9 @@ cr_log (double x)
   }
   v.u -= (int64_t) e << 52;
   e -= bias;
-  /* now x = m*2^e with 1 <= m < 2 */
+  /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
   double h, l;
-  // if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, m);
+  if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
   cr_log_fast (&h, &l, v);
   double err = 0x1.0dp-63; /* 2^-62.93 < err (maximal error for cr_log_fast) */
   if (e != 0)
@@ -209,9 +226,216 @@ cr_log (double x)
        Total < 2^-84.98 */
     err += 0x1.04p-85; /* 2^-84.98 < 1.04e-85 */
   }
-  // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
+  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left = h + (l - err), right = h + (l + err);
+  if (x == TRACE) printf ("left=%la right=%la\n", left, right);
   if (left == right)
+  {
+    if (x == TRACE) printf ("fast path succeeded\n");
     return h + l;
-  return 0;
+  }
+  if (x == TRACE) printf ("fast path failed\n");
+  return cr_log_accurate (x);
+}
+
+/* the following code was copied from Tom Hubrecht's implementation of
+   correctly rounded pow for CORE-MATH */
+
+// Approximation for the second iteration
+static inline void p_2(dint64_t *r, dint64_t *z) {
+  cp_dint(r, &P_2[0]);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[1], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[2], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[3], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[4], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[5], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[6], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[7], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[8], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[9], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[10], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[11], r);
+
+  mul_dint(r, z, r);
+  add_dint(r, &P_2[12], r);
+
+  mul_dint(r, z, r);
+}
+
+static void log_2(dint64_t *r, dint64_t *x) {
+#if DEBUG > 0
+  printf("Calcul du logarithme :\n");
+  printf("  x := ");
+  print_dint(x);
+  printf("\n");
+#endif
+
+  int64_t E = x->ex;
+
+  // Find the lookup index
+  uint16_t i = x->hi >> 55;
+
+  if (x->hi > 0xb504f333f9de6484) {
+    E++;
+    i = i >> 1;
+  }
+
+  x->ex = x->ex - E;
+
+#if DEBUG > 0
+  printf("  E := %ld\n\n", E);
+#endif
+
+  dint64_t z;
+  mul_dint(&z, x, &_INVERSE_2[i - 128]);
+
+#if DEBUG > 0
+  printf("  y := ");
+  print_dint(x);
+  printf("  i := %d\n", i);
+  printf("  r_i := ");
+  print_dint(&_INVERSE_2[i - 128]);
+  printf("  y·r_i := ");
+  print_dint(&z);
+  printf("\n");
+#endif
+
+  add_dint(&z, &M_ONE, &z);
+
+#if DEBUG > 0
+  printf("  z := ");
+  print_dint(&z);
+  printf("\n");
+#endif
+
+  // E·log(2)
+  mul_dint_2(r, E, &LOG2);
+
+#if DEBUG > 0
+  printf("  E·log(2) := ");
+  print_dint(r);
+  printf("\n");
+#endif
+
+#if DEBUG > 0
+  printf("  -log(r_i) := ");
+  print_dint(&_LOG_INV_2[i - 128]);
+  printf("  E·log(2) - log(r_i) := ");
+  print_dint(r);
+  printf("\n");
+#endif
+
+  dint64_t p;
+
+  p_2(&p, &z);
+
+  add_dint(&p, &_LOG_INV_2[i - 128], &p);
+
+#if DEBUG > 0
+  printf("  log(1 + z) := ");
+  print_dint(&p);
+  printf("\n");
+#endif
+
+  add_dint(r, &p, r);
+
+#if DEBUG > 0
+  printf("  log(x) := ");
+  print_dint(r);
+  printf("\n");
+#endif
+}
+
+typedef union {
+  double f;
+  uint64_t u;
+} f64_u;
+
+// Extract both the mantissa and exponent of a double
+static inline void fast_extract(int64_t *e, uint64_t *m, double x) {
+  f64_u _x = {.f = x};
+
+  *e = (_x.u >> 52) & 0x7ff;
+  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
+  *e = *e - 0x3ff;
+}
+
+// Convert a double to the corresponding dint64_t value
+static inline void dint_fromd(dint64_t *a, double b) {
+  fast_extract(&a->ex, &a->hi, b);
+
+  uint32_t t = __builtin_clzl(a->hi);
+
+  a->sgn = b < 0.0;
+  a->hi = a->hi << t;
+  a->ex = a->ex - (t > 11 ? t - 12 : 0);
+  a->lo = 0;
+}
+
+// Convert a dint64_t value to a double
+// assuming the input is not in the subnormal range
+static inline double dint_tod(dint64_t *a) {
+
+  f64_u r = {.u = (a->hi >> 11) | (0x3ffl << 52)};
+
+  double rd = 0.0;
+  if ((a->hi >> 10) & 0x1)
+    rd += 0x1p-53;
+
+  if (a->hi & 0x3ff || a->lo)
+    rd += 0x1p-54;
+
+  r.f += rd;
+  r.u = r.u | a->sgn << 63;
+
+  f64_u e;
+
+  if (a->ex > -1023) { // The result is a normal double
+    if (a->ex > 1023)
+      if (a->ex == 1024) {
+        r.f = r.f * 0x1p+1;
+        e.f = 0x1p+1023;
+      } else {
+        r.f = 0x1.fffffffffffffp+1023;
+        e.f = 0x1.fffffffffffffp+1023;
+      }
+    else
+      e.u = ((a->ex + 1023) & 0x7ff) << 52;
+  } else {
+    if (a->ex < -1074) {
+      if (a->ex == -1075) {
+        r.f = r.f * 0x1p-1;
+        e.f = 0x1p-1074;
+      } else {
+        r.f = 0x0.0000000000001p-1022;
+        e.f = 0x0.0000000000001p-1022;
+      }
+    } else {
+      e.u = 1l << (a->ex + 1074);
+    }
+  }
+
+  return r.f * e.f;
 }
