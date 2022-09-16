@@ -197,8 +197,7 @@ static inline void mul_dint(dint64_t *r, const dint64_t *a, const dint64_t *b) {
   // code uint64_t l = ((u128)(a->lo) * (u128)(b->lo)) >> 64; m.l += l; m.h +=
   // (m.l < l);
   t.h += addu_128(m1, m2, &m);
-  t.l += m.h;
-  t.h += (t.l < m.h);
+  t.r += m.h;
 
   // Ensure that r->hi starts with a 1
   uint64_t ex = !(t.h >> 63);
