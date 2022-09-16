@@ -28,8 +28,8 @@ SOFTWARE.
 #include <stdint.h>
 #include "dint.h"
 
-#define TRACE 0x1p0
-#define TRACEM 0x1p0
+// #define TRACE 0x1p0
+// #define TRACEM 0x1p0
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -266,13 +266,17 @@ cr_log (double x)
   // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left = h + (l - err), right = h + (l + err);
   // if (x == TRACE) printf ("left=%la right=%la\n", left, right);
-  if (left == right)
+  if (__builtin_expect(left == right, 1))
   {
     // if (x == TRACE) printf ("fast path succeeded\n");
     return left;
   }
   // if (x == TRACE) printf ("fast path failed\n");
   return cr_log_accurate (x);
+  /* on a AMD EPYC 7282 the average reciprocal throughput is 40 cycles,
+     855 cycles for the accurate path only, and 30.8 cycles if we disable
+     the accurate path (the probability of failure of the rounding test
+     is about 1%) */
 }
 
 /* the following code was copied from Tom Hubrecht's implementation of
