@@ -269,7 +269,7 @@ double cr_exp(double x){
   static const double ch[] = {0x1p+0, 0x1p-1, 0x1.5555555aaaaaep-3, 0x1.55555551c98cp-5};
   double p = dx*((ch[0] + dx*ch[1]) + dx2*(ch[2] + dx*ch[3]));
   double fh = th, fl = tl + th*p;
-  if(__builtin_expect(ie<-1022, 0)){
+  if(__builtin_expect(ie<=-1022, 0)){
     double vh = fh + fl; fl += fh - vh;
     ie += 512;
     vh *= 0x1p-512;
