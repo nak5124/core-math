@@ -226,16 +226,16 @@ cr_log_fast (double *h, double *l, int *e, d64u64 v)
   double z = __builtin_fma (r, y, -1.0); /* exact */
   // if (v.f == TRACEM) printf ("z=%la\n", z);
   /* evaluate P(z) */
-  double ph, pl;
+  double ph, pl, z2 = z * z;
   ph = __builtin_fma (P[8], z, P[7]);
-  ph = __builtin_fma (ph, z, P[6]);
-  ph = __builtin_fma (ph, z, P[5]);
-  ph = __builtin_fma (ph, z, P[4]);
-  ph = __builtin_fma (ph, z, P[3]);
-  ph = __builtin_fma (ph, z, P[2]);
-  ph = __builtin_fma (ph, z, P[1]);
+  double p56 = __builtin_fma (P[6], z, P[5]);
+  ph = __builtin_fma (ph, z2, p56);
+  double p34 = __builtin_fma (P[4], z, P[3]);
+  ph = __builtin_fma (ph, z2, p34);
+  double p12 = __builtin_fma (P[2], z, P[1]);
+  ph = __builtin_fma (ph, z2, p12);
   // if (v.f == TRACEM) printf ("ph=%la z=%la P[0]=%la\n", ph, z, P[0]);
-  ph = ph * z * z;
+  ph *= z2;
   // if (v.f == TRACEM) printf ("ph=%la\n", ph);
   /* add z since P[0]=1 */
   fast_two_sum (&ph, &pl, z, ph);
@@ -327,8 +327,8 @@ cr_log (double x)
   double h, l;
   // if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
   cr_log_fast (&h, &l, &e, v);
-  /* err=0x1.a0p-67 fails for x=0x1.9403fd0ee51c8p-2 (rndz) */
-  double err = 0x1.a1p-67;
+  /* err=0x1.4ap-66 fails for x=0x1.78019d3b1d6b3p+359 (rndz) */
+  double err = 0x1.4bp-66;
 
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
      11 bits. We store log2_h on 42 bits, so that e*log2_h is exact. */
