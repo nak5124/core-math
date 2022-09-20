@@ -28,8 +28,8 @@ SOFTWARE.
 #include <stdint.h>
 #include "dint.h"
 
-// #define TRACE 0x1p0
-// #define TRACEM 0x1p0
+// #define TRACE 0x1.c19bdd1656c31p+0
+// #define TRACEM 0x1.c19bdd1656c31p+0
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -58,105 +58,192 @@ fast_two_sum (double *hi, double *lo, double a, double b)
      |(a+b)-(hi+lo)| <= 2^-104 min(|a+b|,|hi|) */
 }
 
-/* for 0 <= i < 64, red1[i] is such that max(abs(m*red1[i]-2^58))
-   is minimized for m[i] <= m < m[i+1], with m[i] = 2^52+i*2^46 */
-static int
-red1[64] = {64, 63, 62, 61, 60, 59, 58, 57, 56, 56, 55, 54, 54, 53, 52, 52, 51, 50, 50, 49, 48, 48, 47, 47, 46, 46, 45, 45, 44, 44, 43, 43, 42, 42, 42, 41, 41, 40, 40, 40, 39, 39, 38, 38, 38, 37, 37, 37, 36, 36, 36, 35, 35, 35, 35, 34, 34, 34, 33, 33, 33, 33, 32, 32};
+/* for 90 <= i <= 181, r[i] = _INVERSE[i-90] is a 9-bit approximation of
+   1/x[i], where i*2^-7 <= x[i] < (i+1)*2^-7.
+   More precisely r[i] is a 9-bit value such that r[i]*y-1 is representable
+   exactly on 53 bits for for any y, i*2^-7 <= y < (i+1)*2^-7.
+   Moreover |r[i]*y-1| < 0.007813. */
+static const double _INVERSE[92]= {
+    0x1.69p+0, 0x1.66p+0, 0x1.62p+0, 0x1.5ep+0, 0x1.5ap+0, 0x1.58p+0, 0x1.54p+0,
+    0x1.5p+0, 0x1.4cp+0, 0x1.4ap+0, 0x1.46p+0, 0x1.42p+0, 0x1.4p+0, 0x1.3cp+0,
+    0x1.3ap+0, 0x1.36p+0, 0x1.34p+0, 0x1.3p+0, 0x1.2ep+0, 0x1.2cp+0, 0x1.28p+0,
+    0x1.26p+0, 0x1.24p+0, 0x1.2p+0, 0x1.1ep+0, 0x1.1cp+0, 0x1.1ap+0, 0x1.16p+0,
+    0x1.14p+0, 0x1.12p+0, 0x1.1p+0, 0x1.0ep+0, 0x1.0cp+0, 0x1.0ap+0, 0x1.08p+0,
+    0x1.06p+0, 0x1.04p+0, 0x1.02p+0, 0x1.fep-1, 0x1.fap-1, 0x1.f6p-1, 0x1.f2p-1,
+    0x1.eep-1, 0x1.eap-1, 0x1.e8p-1, 0x1.e4p-1, 0x1.ep-1, 0x1.dcp-1, 0x1.dap-1,
+    0x1.d6p-1, 0x1.d2p-1, 0x1.cfp-1, 0x1.ccp-1, 0x1.c8p-1, 0x1.c6p-1, 0x1.c2p-1,
+    0x1.cp-1, 0x1.bcp-1, 0x1.bap-1, 0x1.b6p-1, 0x1.b4p-1, 0x1.bp-1, 0x1.aep-1,
+    0x1.abp-1, 0x1.a8p-1, 0x1.a6p-1, 0x1.a3p-1, 0x1.ap-1, 0x1.9ep-1, 0x1.9bp-1,
+    0x1.98p-1, 0x1.96p-1, 0x1.93p-1, 0x1.91p-1, 0x1.8ep-1, 0x1.8cp-1, 0x1.8ap-1,
+    0x1.87p-1, 0x1.85p-1, 0x1.83p-1, 0x1.8p-1, 0x1.7ep-1, 0x1.7cp-1, 0x1.7ap-1,
+    0x1.78p-1, 0x1.76p-1, 0x1.73p-1, 0x1.71p-1, 0x1.6fp-1, 0x1.6dp-1, 0x1.6bp-1,
+    0x1.6ap-1,
+};
 
-/* for 0 <= i < 64, logred1[i] = {h,l} is an approximation of log(red1[i]/64),
-   with h an integer multiple of 2^-52, and l an integer multiple of 2^-104,
-   with |log(red1[i]/64) - (h+l)| <= 2^-105 */
-static double
-logred1[64][2] = {{0x0p3, 0x0p3}, {-0x1.020565893584p-6, -0x1.d27c8e8416e7p-56}, {-0x1.0415d89e7444p-5, -0x1.1c05cf1d7536p-55}, {-0x1.894aa149fb34p-5, -0x1.9a8be97660a2p-56}, {-0x1.08598b59e3ap-4, -0x1.a228ff66fd40cp-54}, {-0x1.4d3115d207ebp-4, 0x1.d12c17a70f7a8p-55}, {-0x1.9335e5d59499p-4, 0x1.d478a85704cccp-54}, {-0x1.da727638446ap-4, -0x1.2803f4e2e66p-55}, {-0x1.1178e8227e478p-3, -0x1.ef19c5a0fe398p-54}, {-0x1.1178e8227e478p-3, -0x1.ef19c5a0fe398p-54}, {-0x1.365fcb0159018p-3, 0x1.d057dcb48d768p-55}, {-0x1.5bf406b543dbp-3, -0x1.fb8292ecfc82p-55}, {-0x1.5bf406b543dbp-3, -0x1.fb8292ecfc82p-55}, {-0x1.823c16551a3cp-3, -0x1.bb734c63d062p-55}, {-0x1.a93ed3c8ad9ep-3, -0x1.b795f53bd2e4p-54}, {-0x1.a93ed3c8ad9ep-3, -0x1.b795f53bd2e4p-54}, {-0x1.d1037f2655e78p-3, -0x1.ac0c524848e34p-54}, {-0x1.f991c6cb3b378p-3, -0x1.7d99419be6028p-55}, {-0x1.f991c6cb3b378p-3, -0x1.7d99419be6028p-55}, {-0x1.1178e8227e47cp-2, 0x1.0e63a5f01c6ap-57}, {-0x1.269621134db94p-2, 0x1.87c41489893f4p-54}, {-0x1.269621134db94p-2, 0x1.87c41489893f4p-54}, {-0x1.3c25277333184p-2, 0x1.2ad27e50a8ecp-56}, {-0x1.3c25277333184p-2, 0x1.2ad27e50a8ecp-56}, {-0x1.522ae0738a3d8p-2, 0x1.8f7e9b38a698p-57}, {-0x1.522ae0738a3d8p-2, 0x1.8f7e9b38a698p-57}, {-0x1.68ac83e9c6a14p-2, -0x1.a64eadd74018p-58}, {-0x1.68ac83e9c6a14p-2, -0x1.a64eadd74018p-58}, {-0x1.7fafa3bd8151cp-2, 0x1.219024acd3b8p-58}, {-0x1.7fafa3bd8151cp-2, 0x1.219024acd3b8p-58}, {-0x1.973a3431356acp-2, -0x1.cec5afd260f9p-54}, {-0x1.973a3431356acp-2, -0x1.cec5afd260f9p-54}, {-0x1.af5295248cddp-2, -0x1.9d56c45dd3e8p-56}, {-0x1.af5295248cddp-2, -0x1.9d56c45dd3e8p-56}, {-0x1.af5295248cddp-2, -0x1.9d56c45dd3e8p-56}, {-0x1.c7ff9c74554c8p-2, -0x1.2447d5b6ca368p-54}, {-0x1.c7ff9c74554c8p-2, -0x1.2447d5b6ca368p-54}, {-0x1.e148a1a2726ccp-2, -0x1.94df8cdd6c81p-54}, {-0x1.e148a1a2726ccp-2, -0x1.94df8cdd6c81p-54}, {-0x1.e148a1a2726ccp-2, -0x1.94df8cdd6c81p-54}, {-0x1.fb358af7a4884p-2, -0x1.7e8f05924d26p-57}, {-0x1.fb358af7a4884p-2, -0x1.7e8f05924d26p-57}, {-0x1.0ae76e2d054fap-1, -0x1.0d710fcfc4e1p-55}, {-0x1.0ae76e2d054fap-1, -0x1.0d710fcfc4e1p-55}, {-0x1.0ae76e2d054fap-1, -0x1.0d710fcfc4e1p-55}, {-0x1.188ee40f23ca6p-1, -0x1.89df1568ca0bp-55}, {-0x1.188ee40f23ca6p-1, -0x1.89df1568ca0bp-55}, {-0x1.188ee40f23ca6p-1, -0x1.89df1568ca0bp-55}, {-0x1.269621134db92p-1, -0x1.e0efadd9db028p-55}, {-0x1.269621134db92p-1, -0x1.e0efadd9db028p-55}, {-0x1.269621134db92p-1, -0x1.e0efadd9db028p-55}, {-0x1.35028ad9d8c86p-1, 0x1.f01ab6065516p-56}, {-0x1.35028ad9d8c86p-1, 0x1.f01ab6065516p-56}, {-0x1.35028ad9d8c86p-1, 0x1.f01ab6065516p-56}, {-0x1.35028ad9d8c86p-1, 0x1.f01ab6065516p-56}, {-0x1.43d9ff2f923c4p-1, -0x1.9ec2dfbeb8238p-54}, {-0x1.43d9ff2f923c4p-1, -0x1.9ec2dfbeb8238p-54}, {-0x1.43d9ff2f923c4p-1, -0x1.9ec2dfbeb8238p-54}, {-0x1.5322e26867858p-1, 0x1.99dd16d4567acp-54}, {-0x1.5322e26867858p-1, 0x1.99dd16d4567acp-54}, {-0x1.5322e26867858p-1, 0x1.99dd16d4567acp-54}, {-0x1.5322e26867858p-1, 0x1.99dd16d4567acp-54}, {-0x1.62e42fefa39fp-1, 0x1.950d871319ffp-54}, {-0x1.62e42fefa39fp-1, 0x1.950d871319ffp-54}};
+/* For 90 <= i <= 181, (h,l) = _LOG_INV[i-90] is a double-double nearest
+   approximation of -log(_INVERSE[i-90]) */
+static const double _LOG_INV[92][2] = {
+    {-0x1.5ff3070a793d4p-2, 0x1.bc60efafc6f6ep-57},
+    {-0x1.5767717455a6cp-2, -0x1.526adb283660cp-56},
+    {-0x1.4be5f957778a1p-2, 0x1.259b35b04813dp-57},
+    {-0x1.404308686a7e4p-2, 0x1.0bcfb6082ce6dp-56},
+    {-0x1.347dd9a987d55p-2, 0x1.4dd4c580919f8p-57},
+    {-0x1.2e8e2bae11d31p-2, 0x1.8f4cdb95ebdf9p-56},
+    {-0x1.22941fbcf7966p-2, 0x1.76f5eb09628afp-56},
+    {-0x1.1675cababa60ep-2, -0x1.ce63eab883717p-61},
+    {-0x1.0a324e27390e3p-2, -0x1.7dcfde8061c03p-56},
+    {-0x1.0402594b4d041p-2, 0x1.28ec217a5022dp-57},
+    {-0x1.ef0adcbdc5936p-3, -0x1.48637950dc20dp-57},
+    {-0x1.d5c216b4fbb91p-3, -0x1.6e443597e4d4p-57},
+    {-0x1.c8ff7c79a9a22p-3, 0x1.4f689f8434012p-57},
+    {-0x1.af3c94e80bff3p-3, 0x1.398cff3641985p-58},
+    {-0x1.a23bc1fe2b563p-3, -0x1.93711b07a998cp-59},
+    {-0x1.87fa06520c911p-3, 0x1.bf7fdbfa08d9ap-57},
+    {-0x1.7ab890210d909p-3, -0x1.be36b2d6a0608p-59},
+    {-0x1.5ff3070a793d4p-3, 0x1.bc60efafc6f6ep-58},
+    {-0x1.526e5e3a1b438p-3, 0x1.746ff8a470d3ap-57},
+    {-0x1.44d2b6ccb7d1ep-3, -0x1.9f4f6543e1f88p-57},
+    {-0x1.29552f81ff523p-3, -0x1.301771c407dbfp-57},
+    {-0x1.1b72ad52f67ap-3, -0x1.483023472cd74p-58},
+    {-0x1.0d77e7cd08e59p-3, -0x1.9a5dc5e9030acp-57},
+    {-0x1.e27076e2af2e6p-4, 0x1.61578001e0162p-60},
+    {-0x1.c5e548f5bc743p-4, -0x1.5d617ef8161b1p-60},
+    {-0x1.a926d3a4ad563p-4, -0x1.942f48aa70ea9p-58},
+    {-0x1.8c345d6319b21p-4, 0x1.4a697ab3424a9p-61},
+    {-0x1.51b073f06183fp-4, -0x1.a49e39a1a8be4p-58},
+    {-0x1.341d7961bd1d1p-4, 0x1.b599f227becbbp-58},
+    {-0x1.16536eea37ae1p-4, 0x1.79da3e8c22cdap-60},
+    {-0x1.f0a30c01162a6p-5, -0x1.85f325c5bbacdp-59},
+    {-0x1.b42dd711971bfp-5, 0x1.eb9759c130499p-60},
+    {-0x1.77458f632dcfcp-5, -0x1.18d3ca87b9296p-59},
+    {-0x1.39e87b9febd6p-5, 0x1.5bfa937f551bbp-59},
+    {-0x1.f829b0e7833p-6, -0x1.33e3f04f1ef23p-60},
+    {-0x1.7b91b07d5b11bp-6, 0x1.5b602ace3a51p-60},
+    {-0x1.fc0a8b0fc03e4p-7, 0x1.83092c59642a1p-62},
+    {-0x1.fe02a6b106789p-8, 0x1.e44b7e3711ebfp-67},
+    {0x1.0080559588b35p-8, 0x1.f96638cf63677p-62},
+    {0x1.82448a388a2aap-7, 0x1.04b16137f09ap-62},
+    {0x1.432a925980cc1p-6, -0x1.8cdaf39004192p-60},
+    {0x1.c63d2ec14aaf2p-6, -0x1.ce030a686bd86p-60},
+    {0x1.252f32f8d183fp-5, -0x1.947f792615916p-59},
+    {0x1.67c94f2d4bb58p-5, 0x1.0413e6505e603p-59},
+    {0x1.894aa149fb343p-5, 0x1.a8be97660a23dp-60},
+    {0x1.ccb73cdddb2ccp-5, -0x1.e48fb0500efd4p-59},
+    {0x1.08598b59e3a07p-4, -0x1.dd7009902bf32p-58},
+    {0x1.2aa04a44717a5p-4, -0x1.d15d38d2fa3f7p-58},
+    {0x1.3bdf5a7d1ee64p-4, 0x1.7a976d3b5b45fp-59},
+    {0x1.5e95a4d9791cbp-4, 0x1.f38745c5c450ap-58},
+    {0x1.8197e2f40e3fp-4, 0x1.b9f2dffbeed43p-60},
+    {0x1.9c0c32d4d2548p-4, 0x1.fb0be3ccc1532p-59},
+    {0x1.b6ac88dad5b1cp-4, -0x1.0057eed1ca59fp-59},
+    {0x1.da727638446a2p-4, 0x1.401fa71733019p-58},
+    {0x1.ec739830a112p-4, -0x1.a2bf991780d3fp-59},
+    {0x1.08598b59e3a07p-3, -0x1.dd7009902bf32p-57},
+    {0x1.1178e8227e47cp-3, -0x1.0e63a5f01c691p-58},
+    {0x1.23d712a49c202p-3, -0x1.6e38161051d69p-57},
+    {0x1.2d1610c86813ap-3, -0x1.499a3f25af95fp-58},
+    {0x1.3fb45a59928ccp-3, -0x1.d87e6a354d056p-57},
+    {0x1.4913d8333b561p-3, -0x1.0d5604930f135p-58},
+    {0x1.5bf406b543db2p-3, -0x1.1f5b44c0df7e7p-61},
+    {0x1.6574ebe8c133ap-3, -0x1.d34f0f4621bedp-60},
+    {0x1.73cb9074fd14dp-3, -0x1.521a000b4cf01p-57},
+    {0x1.823c16551a3c2p-3, -0x1.1232ce70be781p-57},
+    {0x1.8beafeb38fe8cp-3, 0x1.55aa8b6997a4p-58},
+    {0x1.9a8778debaa38p-3, 0x1.f47dfd871f87fp-57},
+    {0x1.a93ed3c8ad9e3p-3, 0x1.bcafa9de97203p-57},
+    {0x1.b31d8575bce3dp-3, -0x1.6353ab386a94dp-57},
+    {0x1.c2028ab17f9b4p-3, 0x1.f11aa3853a5f1p-57},
+    {0x1.d1037f2655e7bp-3, 0x1.60629242471a2p-57},
+    {0x1.db13db0d4894p-3, 0x1.aa11d49f96cb9p-58},
+    {0x1.ea4449f04aaf5p-3, -0x1.d33919ab94074p-57},
+    {0x1.f474b134df229p-3, -0x1.27c77ded76aadp-58},
+    {0x1.01eae5626c691p-2, -0x1.18290bd2932e2p-59},
+    {0x1.07138604d5862p-2, 0x1.cdb16ed4e9138p-56},
+    {0x1.0c42d676162e3p-2, 0x1.162c79d5d11eep-58},
+    {0x1.14167ef367783p-2, 0x1.e0936abd4fa6ep-62},
+    {0x1.1956d3b9bc2fap-2, 0x1.7b9d68d50a15dp-56},
+    {0x1.1e9e1678899f4p-2, 0x1.512c3749a1e4ep-56},
+    {0x1.269621134db92p-2, 0x1.e0efadd9db02bp-56},
+    {0x1.2bef07cdc9354p-2, -0x1.82dad7fd86088p-56},
+    {0x1.314f1e1d35ce4p-2, -0x1.3d69909e5c3dcp-56},
+    {0x1.36b6776be1117p-2, -0x1.324f0e883858ep-58},
+    {0x1.3c25277333184p-2, -0x1.2ad27e50a8ec6p-56},
+    {0x1.419b423d5e8c7p-2, 0x1.0dbb243827392p-57},
+    {0x1.49da7f3bcc41fp-2, -0x1.9964a168ccacap-57},
+    {0x1.4f637ebba981p-2, -0x1.58cb3124b9245p-56},
+    {0x1.54f431b7be1a9p-2, -0x1.aacfdbbdab914p-56},
+    {0x1.5a8cadbbedfa1p-2, -0x1.e6c2bdfb3e037p-58},
+    {0x1.602d08af091ecp-2, -0x1.6e8920c09b73fp-58},
+    {0x1.630030b3aac49p-2, 0x1.dc18ce51fff99p-57},
+};
 
-/* for 0 <= j < 140, red2[j] is such that max(abs(m*red2[j]-2^75))
-   is minimized for m[j] <= m < m[j+1], with m[j] = (4025+j)*2^46 */
-static int
-red2[140] = {133368, 133334, 133301, 133268, 133235, 133202, 133169, 133136, 133103, 133070, 133037, 133004, 132971, 132938, 132905, 132872, 132840, 132807, 132774, 132741, 132708, 132675, 132643, 132610, 132577, 132544, 132512, 132479, 132446, 132414, 132381, 132348, 132316, 132283, 132251, 132218, 132185, 132153, 132120, 132088, 132055, 132023, 131990, 131958, 131926, 131893, 131861, 131828, 131796, 131764, 131731, 131699, 131667, 131634, 131602, 131570, 131538, 131505, 131473, 131441, 131409, 131377, 131345, 131312, 131280, 131248, 131216, 131184, 131152, 131120, 131088, 131056, 131024, 130992, 130960, 130928, 130896, 130864, 130832, 130801, 130769, 130737, 130705, 130673, 130641, 130610, 130578, 130546, 130514, 130483, 130451, 130419, 130388, 130356, 130324, 130293, 130261, 130229, 130198, 130166, 130135, 130103, 130072, 130040, 130009, 129977, 129946, 129914, 129883, 129851, 129820, 129789, 129757, 129726, 129695, 129663, 129632, 129601, 129569, 129538, 129507, 129476, 129444, 129413, 129382, 129351, 129320, 129289, 129257, 129226, 129195, 129164, 129133, 129102, 129071, 129040, 129009, 128978, 128947, 128916};
+/* The following is a degree-8 polynomial generated by Sollya over
+   [-0.00750732421875000,0.00781249999999989],
+   with relative error < 2^-73.16.
+   The polynomial is P[0]*x + P[1]*x^2 + ... + P[6]*x^7 + P[7]*x^8. */
+static const double P[] = {0x1p0,                 /* degree 1 */
+                           -0x1p-1,               /* degree 2 */
+                           0x1.55555555555a1p-2,  /* degree 3 */
+                           -0x1.fffffffffee25p-3, /* degree 4 */
+                           0x1.9999998adf45ap-3,  /* degree 5 */
+                           -0x1.5555564e9a9c7p-3, /* degree 6 */
+                           0x1.2498db82df163p-3,  /* degree 7 */
+                           -0x1.ffa17cd90a7f5p-4}; /* degree 8 */
 
-/* for 0 <= j < 140, logred2[j] = {h,l} is an approximation of log(red2[j]/2^17),
-   with h an integer multiple of 2^-52, and l an integer multiple of 2^-104,
-   with |log(red2[j]/2^17) - (h+l)| <= 2^-105 */
-static double
-logred2[140][2] = {{0x1.1c83e8e4fffcp-6, 0x1.4a649b2148174p-54}, {0x1.185681008e7p-6, 0x1.fe9244a51b118p-54}, {0x1.14484a56728cp-6, -0x1.dab74b011438cp-54}, {0x1.1039d1de2dcp-6, 0x1.94d9b74a862p-57}, {0x1.0c2b178f6804p-6, 0x1.b6aac03b232p-54}, {0x1.081c1b61c7b4p-6, 0x1.e277680a193ccp-54}, {0x1.040cdd4cf194p-6, 0x1.20c57c5f1055p-54}, {0x1.fffaba9111ap-7, 0x1.5dc3c54caa378p-55}, {0x1.f7db36985ep-7, -0x1.caba49985fd3p-54}, {0x1.efbb2e9f0838p-7, -0x1.3fcdcc681b57p-55}, {0x1.e79aa2944d18p-7, 0x1.77952b71f1378p-54}, {0x1.df799267664p-7, 0x1.f08a2a17ad28p-55}, {0x1.d757fe078a1p-7, 0x1.2b26263c73294p-54}, {0x1.cf35e563ebcp-7, -0x1.09644373368cp-56}, {0x1.c713486bbb48p-7, 0x1.66153805d395p-56}, {0x1.bef0270e2578p-7, 0x1.e45b1aeff8b4p-57}, {0x1.b70ba73ae378p-7, -0x1.593fa5a75fb78p-54}, {0x1.aee780e453dp-7, -0x1.688660f0e78fp-55}, {0x1.a6c2d5f654c8p-7, -0x1.7b04632f02e48p-54}, {0x1.9e9da660066p-7, 0x1.256868de0b6ep-56}, {0x1.9677f210857p-7, 0x1.baec64f23bd4p-58}, {0x1.8e51b8f6eb88p-7, 0x1.437f3543d1c68p-55}, {0x1.866a39055838p-7, -0x1.7948d3c578b8p-58}, {0x1.7e42fa2c323p-7, 0x1.92d07be612428p-54}, {0x1.761b3656b008p-7, -0x1.d61c0ef67323p-56}, {0x1.6df2ed73de7p-7, 0x1.750f514e3481cp-54}, {0x1.66096d772e18p-7, 0x1.ecb798a90d92p-57}, {0x1.5de01e504758p-7, -0x1.ae9cde8b3aef8p-54}, {0x1.55b649e9a7c8p-7, -0x1.d6e70cdbfe7e8p-55}, {0x1.4dcb4a353828p-7, 0x1.7bc43d68ff9acp-54}, {0x1.45a06f271b8p-7, 0x1.2412cbed5a974p-54}, {0x1.3d750ea6cp-7, 0x1.f0ddf7fe707ep-57}, {0x1.35888ea912d8p-7, 0x1.f8b95b2c2da08p-55}, {0x1.2d5c271d99c8p-7, -0x1.bb37052259d6cp-54}, {0x1.256ea7ed4d68p-7, -0x1.fb81d12261b48p-55}, {0x1.1d4139148338p-7, 0x1.d3a5f5433b348p-55}, {0x1.1513447531b8p-7, -0x1.e7f58d2e9355p-54}, {0x1.0d244408f1c8p-7, 0x1.5af8c2fcbcffp-54}, {0x1.04f547b8504p-7, 0x1.bb4184fedce3cp-54}, {0x1.fa0a8ef0532p-8, -0x1.3a8bb947269bp-55}, {0x1.e9aa86678b7p-8, -0x1.a522bcf330a6p-56}, {0x1.d9c885be7a6p-8, 0x1.f467983a7fb4p-55}, {0x1.c9666cc9173p-8, 0x1.4d76c2c65a374p-54}, {0x1.b9826b761bbp-8, 0x1.d3258947c1e54p-54}, {0x1.a99d6d90388p-8, -0x1.9001f4ca70d8p-58}, {0x1.99383f10963p-8, -0x1.25e34c2c6dde4p-54}, {0x1.89513fbfb1bp-8, -0x1.92c5de88ca6e8p-55}, {0x1.78e9ff86e56p-8, 0x1.b0bce63025d14p-54}, {0x1.6900fe495edp-8, 0x1.49caeadff3dcp-58}, {0x1.5916ffd9e35p-8, -0x1.e736a595b0c9p-55}, {0x1.48aca825a6dp-8, 0x1.94e2e7a1ace2p-55}, {0x1.38c0a707bbep-8, 0x1.b88c7146a87p-55}, {0x1.28d3a85858p-8, 0x1.32ca3894d5484p-54}, {0x1.186637fe16fp-8, -0x1.9db9f7984dbcp-57}, {0x1.087735de08ap-8, -0x1.b233fdbd4279p-55}, {0x1.f10e6b998e8p-9, 0x1.99c0e19fb5698p-55}, {0x1.d12c6f5565p-9, 0x1.4576a055dc558p-55}, {0x1.b0494eb95e6p-9, 0x1.778858e930118p-54}, {0x1.9063498deep-9, -0x1.63d8865506458p-54}, {0x1.707b4780d22p-9, 0x1.e509a49a3fcbp-56}, {0x1.509148529a8p-9, 0x1.aeafa608e18p-63}, {0x1.30a54bc3cacp-9, -0x1.8fdfd3560e8f8p-54}, {0x1.10b75194da8p-9, 0x1.e1b595450c988p-55}, {0x1.df8fa31ba88p-10, 0x1.0b73d948f8a58p-54}, {0x1.9fab96dbb3cp-10, 0x1.e0bbae6e15d08p-54}, {0x1.5fc38dd9c34p-10, 0x1.63765fe8bf4p-59}, {0x1.1fd78796664p-10, 0x1.85bfdedb4492p-55}, {0x1.bfcf0724298p-11, -0x1.62ea24b2d4c1p-55}, {0x1.3fe7029a5c8p-11, 0x1.46d6550e8172p-55}, {0x1.7fee011fecp-12, -0x1.f3da8c861458p-55}, {0x1.fff8002aa8p-14, 0x1.aab110e6678bp-54}, {-0x1.0004001556p-13, 0x1.553bbb110c7fp-56}, {-0x1.8012012014p-12, -0x1.0613acbcf76ep-54}, {-0x1.4019029af9p-11, 0x1.5c807d230a938p-54}, {-0x1.c0310726818p-11, -0x1.4f241e016a61p-54}, {-0x1.202887999a8p-10, 0x1.3a6c156950404p-54}, {-0x1.603c8de0e98p-10, 0x1.ebe193def6e74p-54}, {-0x1.a05496e9a6p-10, 0x1.add98ca8dc6p-60}, {-0x1.e070a33460cp-10, 0x1.75392455b7e98p-55}, {-0x1.0f47d198becp-9, 0x1.76bb696aa587p-54}, {-0x1.2f59cbaf1bep-9, -0x1.01ce9a670e088p-54}, {-0x1.4f6dc82595cp-9, 0x1.a611b7ad40f7p-55}, {-0x1.6f83c73ca46p-9, 0x1.9d25ca9757d2p-57}, {-0x1.8f9bc934cc2p-9, -0x1.951185341598cp-54}, {-0x1.afb5ce4e9dap-9, 0x1.bc29c49db91ep-56}, {-0x1.ced0eeb9136p-9, 0x1.ba47b5ae63158p-55}, {-0x1.eeeeeaba07ep-9, -0x1.382db953a78ep-54}, {-0x1.0787754e4d5p-8, 0x1.bc6646de7677p-56}, {-0x1.17987750c62p-8, 0x1.d7058b9158af8p-54}, {-0x1.2729e77a61cp-8, -0x1.1a03dcfde50a8p-55}, {-0x1.373ce5ed653p-8, 0x1.295852b0c06ccp-54}, {-0x1.4750e6d1da1p-8, -0x1.d9f78e1daa68p-55}, {-0x1.56e53e423e1p-8, -0x1.62bf1b529d6a8p-54}, {-0x1.66fb3c54f4bp-8, 0x1.4f628884ad56p-55}, {-0x1.77123d3994bp-8, -0x1.f0975c302825cp-54}, {-0x1.86a97d06321p-8, 0x1.1bb14bc402cp-58}, {-0x1.96c27bd7352p-8, 0x1.7da31f4ab1f08p-55}, {-0x1.a6dc7ddacfap-8, 0x1.3310362bb74cp-55}, {-0x1.b676a719b2cp-8, 0x1.3498c30071788p-55}, {-0x1.c692a7c83c2p-8, -0x1.a9415ef965004p-54}, {-0x1.d62ebffa027p-8, -0x1.fb5b68d37a42p-54}, {-0x1.e64cbfd2128p-8, 0x1.1138c113c0b44p-54}, {-0x1.f5eac77175cp-8, -0x1.ebad95e6b08p-63}, {-0x1.03056378e998p-7, 0x1.ad2d42334782p-54}, {-0x1.0ad55f3cdd68p-7, 0x1.5b129be549068p-55}, {-0x1.12e65f10adc8p-7, -0x1.a62370435a11p-54}, {-0x1.1ab753066e68p-7, 0x1.d46281a7af788p-54}, {-0x1.22c9532d7318p-7, -0x1.e96f3a849bf1p-55}, {-0x1.2a9b3f92a2p-7, 0x1.4e3d853bb2fb8p-54}, {-0x1.32ae404c8558p-7, 0x1.ecc3ae2d922c8p-54}, {-0x1.3a81255edbp-7, 0x1.7b32008ddee6p-54}, {-0x1.425484e53408p-7, -0x1.aa30274aca84p-56}, {-0x1.4a6904e8aafp-7, 0x1.a8a070b3b9584p-54}, {-0x1.523d5d786cd8p-7, -0x1.cb8395e889e4cp-54}, {-0x1.5a1230a9a468p-7, -0x1.d57212b481908p-54}, {-0x1.62283084eee8p-7, 0x1.d90f66bee01f8p-55}, {-0x1.69fdfd1c04d8p-7, 0x1.3f41c6cb876p-60}, {-0x1.71d444821bf8p-7, -0x1.54075429ae77cp-54}, {-0x1.79ebc4c3c958p-7, 0x1.9fdc4bd21b294p-54}, {-0x1.81c305ec67ep-7, 0x1.1bce74b43cac8p-55}, {-0x1.899ac211ac9p-7, 0x1.0bc0f8a954678p-54}, {-0x1.9172f942aa8p-7, -0x1.5dd03a2a1c744p-54}, {-0x1.998c798d4458p-7, 0x1.be533990c3a34p-54}, {-0x1.a165aafc51bp-7, 0x1.df3752c57cd5p-55}, {-0x1.a93f57a4df2p-7, -0x1.657db5a92422cp-54}, {-0x1.b1197f960b08p-7, 0x1.5a763218bb16cp-54}, {-0x1.b8f422def67p-7, -0x1.b926d2001b67p-56}, {-0x1.c0cf418ec548p-7, -0x1.dc44d2233dbd8p-55}, {-0x1.c8ebc1b3b688p-7, -0x1.593da636bbf4cp-54}, {-0x1.d0c7db5b0da8p-7, 0x1.426370b4d4eep-56}, {-0x1.d8a4709741f8p-7, 0x1.b199dab13c874p-54}, {-0x1.e08181778298p-7, -0x1.423fd87688478p-55}, {-0x1.e85f0e0b0188p-7, -0x1.732b221c01cfp-56}, {-0x1.f03d1660f38p-7, -0x1.d9045b3d7a158p-54}, {-0x1.f81b9a889018p-7, -0x1.a00bb40f2832p-56}, {-0x1.fffa9a9111a8p-7, 0x1.511e1daf00398p-54}, {-0x1.03ed0b44daacp-6, 0x1.01f6a89c181fcp-54}, {-0x1.07dd0740dd94p-6, 0x1.593c480e90c1p-56}, {-0x1.0bcd414432f4p-6, 0x1.3b04523ae5e18p-55}, {-0x1.0fbdb9567d98p-6, -0x1.8e3c214b11e84p-54}};
+// Multiply exactly a and b, such that *hi + *lo = a * b.
+static inline void a_mul(double *hi, double *lo, double a, double b) {
+  *hi = a * b;
+  *lo = __builtin_fma(a, b, -*hi);
+}
 
-/* given 1 <= x < 2, put in h+l a double-double approximation of log(x),
-   with absolute error less than 2^-62.93 (see details below), where x=v.f.
-   We also have |l| < 2^-50. */
+/* Given 1 <= x < 2, where x = v.f:
+ * if x < sqrt(2): put in h+l a double-double approximation of log(x)
+   and leaves e unchanged
+ * if x > sqrt(2): put in h+l a double-double approximation of log(x/2),
+   and increases e by 1
+*/
 static void
-cr_log_fast (double *h, double *l, d64u64 v)
+cr_log_fast (double *h, double *l, int *e, d64u64 v)
 {
-  int64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
-  /* m/2^52 = x */
-  int i = (v.u >> 46) & 0x3f; /* 0 <= i < 64 */
-  // if (x == TRACEM) printf ("x=%la m=%ld i=%d\n", x, m, i);
-  m = m * (int64_t) red1[i];
-  /* now m/2^58 = x * red1[i]/2^6 */
-  // if (x == TRACEM) printf	("red1[i]=%d m=%ld\n", red1[i], m);
-  /* -0x11c00000000000 <= m - 2^58 <= 0x113fffffffffdd */
-  int j = (m >> 46) - 4025; /* 0 <= j <= 139 */
-  m = m * (int64_t) red2[j];
-  // if (x == TRACEM) printf ("j=%d red2[j]=%d m=%ld\n", j, red2[j], m);
-  /* -0x42a1000000000000 <= m - 2^75 <= 0x430bfffffffdf708
-     (where the 2^75 disappeared mod 2^64) */
-  /* now 1+m/2^75 = x * red1[i]/2^6 * red2[i]/2^17
-     thus log(x) = -log(red1[i]/2^6) - log(red2[i]/2^17) + log(1+m/2^75) */
-  double y = m * 0x1p-75; /* rounding error < 2^-65 since m has at most 63
-                             bits, thus at most the low 10 bits are lost */
-  /* We use the following degree-4 polynomial generated by Sollya over
-     [-0.00012709, 0.00012789], with maximal absolute error < 2^-69.90:
-     c[0]*y + c[1]*y^2 + c[2]*y^3 + c[3]*y^4 */
-  // if (x == TRACEM) printf ("y=%la\n", y);
-  double c[4] = {1.0, -0x1.0000000000033p-1, 0x1.5555558631a59p-2,
-                 -0x1.ffffb56b03d95p-3};
-  double yy = y * y; /* error < ulp(yy) <= 2^-78 */
-  // if (x == TRACEM) printf ("yy=%la\n", yy);
-  double c23 = c[2] + y * c[3]; /* err(y*c[3]) < 2^-67, c23 is in the same binade as c[2],
-                                   thus err(c23) <= ulp(c[2]) + 2^-67 <= 2^-54 + 2^-67
-                                   <= 2^-53.99 and |c23| < 2^-1.58 */
-  // if (x == TRACEM) printf ("c23=%la\n", c23);
-  double c01 = c[0] + y * c[1]; /* err(y*c[1]) < 2^-66, c01 might be in the [1,2) binade,
-                                   thus err(c01) <= ulp(1) + 2^-66 <= 2^-52 + 2^-66
-                                   <= 2^-51.99 */
-  // if (x == TRACEM) printf ("c01=%la\n", c01);
-  double p = c01 + yy * c23; /* |yy*c23| < 2^-27.44 thus err(yy*c23) <= 2^-80
-                                p is at most in the [1,2) binade,
-                                thus err(p) <= ulp(1) + 2^-80 <= 2^-52+2^-80 <= 2^-51.99 */
-  p = y * p; /* now |p|<0.000128 thus rounding error bounded by ulp(0.000128) < 2^-65 */
-  /* Now p approximates log(1+m/2^75), with total error bounded by:
-c     - 2^-65 for the difference between P(y) and P(m/2^-75), since
-       |y - m/2^75| < 2^-65 and |P(y)-P(y')| <= |y-y'| * P'(t) for t in (y,y')
-     - 2^-69.90 for the Sollya approximation error
-     - 2^-92.51 for the error on yy multiplied by max(c23)*ymax
-     - 2^-92.78 for the error on c23 multiplied by y^3
-     - 2^-64.92 for the error on c01 multiplied by y
-     - 2^-64.92 for the error on p (before y*p) multiplied by y
-     - 2^-65 for the final rounding error on y * p
-     This gives a bound of 2^-62.94 for |p - log(1+m/2^75)| for the last value of m.
-   */
-  // if (x == TRACEM) printf ("p=%la\n", p);
-  *h = - logred1[i][0] - logred2[j][0]; /* no rounding error since both logred1[i][0]
-                                           and logred2[j][0] are integer multiples of
-                                           2^-52, with multipliers at most 2^52 */
-  // if (x == TRACEM) printf ("logred1[i][0]=%la\n", logred1[i][0]);
-  // if (x == TRACEM) printf ("logred2[j][0]=%la\n", logred2[j][0]);
-  *l = - logred1[i][1] - logred2[j][1]; /* idem: both logred1[i][1]
-                                           and logred2[j][1] are integer multiples of
-                                           2^-104, with multipliers at most 2^52 */
+  uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
+  /* x = m/2^52 */
+  //  if (v.f == TRACEM) printf ("m=%lu\n", m);
+  /* if x > sqrt(2), we divide it by 2 to avoid cancellation */
+  int c = m >= 0x16a09e667f3bcd;
+  *e += c;
+  // if (v.f == TRACEM) printf ("c=%d\n", c);
+  static const double cy[] = {1.0, 0.5};
+  static const uint64_t cm[] = {45, 46};
 
-  double ll;
-  fast_two_sum (h, &ll, *h, p);
-  *l += ll;
-  // if (x == TRACEM) printf ("h=%la l=%la\n", *h, *l);
-  /* Total approximation error:
-     a) error in log(red1[i]/64) < 2^-105
-     b) error in log(red2[j]/2^17) < 2^-105
-     c) error in p < 2^-62.94
-     d) error in fast_two_sum < 2^-104 |h| <= 2^-104*log(2) <= 2^-104.52
-     e) error in *l + ll: since |h| < log(2) < 1, we have |ll| < ulp(log(2)) <= 2^-53
-        and |*l| <= 2*2^-104*2^52 = 2^-51, thus |*l + ll| <= 2^-50 and that error is
-        less than 2^-103
-     Total error < 2^-62.93 */
+  int i = m >> cm[c];
+  // if (v.f == TRACEM) printf ("i=%d\n", i);
+  double y = v.f * cy[c];
+  // if (v.f == TRACEM) printf ("y=%la\n", y);
+  double r = (_INVERSE - 90)[i];
+  double l1 = (_LOG_INV - 90)[i][0];
+  double l2 = (_LOG_INV - 90)[i][1];
+  // if (v.f == TRACEM) printf ("r=%la\n", r);
+  double z = __builtin_fma (r, y, -1.0); /* exact */
+  // if (v.f == TRACEM) printf ("z=%la\n", z);
+  /* evaluate P(z) */
+  double ph, pl;
+  ph = __builtin_fma (P[8], z, P[7]);
+  ph = __builtin_fma (ph, z, P[6]);
+  ph = __builtin_fma (ph, z, P[5]);
+  ph = __builtin_fma (ph, z, P[4]);
+  ph = __builtin_fma (ph, z, P[3]);
+  ph = __builtin_fma (ph, z, P[2]);
+  ph = __builtin_fma (ph, z, P[1]);
+  // if (v.f == TRACEM) printf ("ph=%la z=%la P[0]=%la\n", ph, z, P[0]);
+  ph = ph * z * z;
+  // if (v.f == TRACEM) printf ("ph=%la\n", ph);
+  /* add z since P[0]=1 */
+  fast_two_sum (&ph, &pl, z, ph);
+  // if (v.f == TRACEM) printf ("log(1+z): h=%la l=%la\n", ph, pl);
+  /* add l1 + l2 */
+  fast_two_sum (h, l, l1, ph);
+  *l += pl + l2;
+  // if (v.f == TRACEM) printf ("log(y): h=%la l=%la\n", *h, *l);
 }
 
 static inline void dint_fromd (dint64_t *a, double b);
@@ -239,30 +326,30 @@ cr_log (double x)
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
   double h, l;
   // if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
-  cr_log_fast (&h, &l, v);
-  double err = 0x1.0dp-63; /* 2^-62.93 < err (maximal error for cr_log_fast) */
-  if (e != 0)
-  {
-    /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
-       11 bits. We store log2_h on 42 bits, so that e*log2_h is exact. */
-    static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
-    /* |log(2) - (h+l)| < 2^-102.01 */
-    double hh = e * log2_h; /* exact */
-    double ll = __builtin_fma (e, log2_l, l);
-    /* we have |l| < 2^-50 (from the analysis of cr_log_fast)
-       and |e*log2_l| <= 1074*0x1.ef35793c7673p-45
-       thus |ll| < 2^-33.9 and err(ll) <= ulp(2^-33.9) = 2^-86 */
-    fast_two_sum (&h, &l, hh, h); /* rounding error bounded by 2^-104*|hh| < 2^-94.45 */
-    l += ll; /* |l| < 2^-50 and |ll| < 2^-33.9 thus |l+ll| < 2^-33.8
-                and the rounding error is less than ulp(2^-33.8) = 2^-86 */
-    /* Additional rounding error:
-       - e times the approximation error on log2_h+log2_l: 1074*2^-102.01 < 2^-91.94
-       - error on ll < 2^-86
-       - error in the fast_two_sum < 2^-94.45
-       - error in l + ll < 2^-86
-       Total < 2^-84.98 */
-    err += 0x1.04p-85; /* 2^-84.98 < 1.04e-85 */
-  }
+  cr_log_fast (&h, &l, &e, v);
+  /* err=0x1.a0p-67 fails for x=0x1.9403fd0ee51c8p-2 (rndz) */
+  double err = 0x1.a1p-67;
+
+  /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
+     11 bits. We store log2_h on 42 bits, so that e*log2_h is exact. */
+  static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
+  /* |log(2) - (h+l)| < 2^-102.01 */
+  double hh = e * log2_h; /* exact */
+  double ll = __builtin_fma (e, log2_l, l);
+  /* we have |l| < 2^-50 (from the analysis of cr_log_fast)
+     and |e*log2_l| <= 1074*0x1.ef35793c7673p-45
+     thus |ll| < 2^-33.9 and err(ll) <= ulp(2^-33.9) = 2^-86 */
+  fast_two_sum (&h, &l, hh, h); /* rounding error bounded by 2^-104*|hh| < 2^-94.45 */
+  l += ll; /* |l| < 2^-50 and |ll| < 2^-33.9 thus |l+ll| < 2^-33.8
+              and the rounding error is less than ulp(2^-33.8) = 2^-86 */
+  /* Additional rounding error:
+     - e times the approximation error on log2_h+log2_l: 1074*2^-102.01 < 2^-91.94
+     - error on ll < 2^-86
+     - error in the fast_two_sum < 2^-94.45
+     - error in l + ll < 2^-86
+     Total < 2^-84.98 */
+  err += 0x1.04p-85; /* 2^-84.98 < 1.04e-85 */
+
   // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left = h + (l - err), right = h + (l + err);
   // if (x == TRACE) printf ("left=%la right=%la\n", left, right);
@@ -273,10 +360,6 @@ cr_log (double x)
   }
   // if (x == TRACE) printf ("fast path failed\n");
   return cr_log_accurate (x);
-  /* on a AMD EPYC 7282 the average reciprocal throughput is 40 cycles,
-     855 cycles for the accurate path only, and 30.8 cycles if we disable
-     the accurate path (the probability of failure of the rounding test
-     is about 1%) */
 }
 
 /* the following code was copied from Tom Hubrecht's implementation of
