@@ -487,12 +487,12 @@ static const double _LOG_INV[363][2] = {
    [-0.00202941894531250,0.00212097167968735],
    with absolute error < 2^-70.278.
    The polynomial is P[0]*x + P[1]*x^2 + ... + P[5]*x^6. */
-static const double P[] = {0x1p0,                 /* degree 1 */
-                           -0x1.ffffffffffffap-2, /* degree 2 */
-                           0x1.555555554f4d8p-2,  /* degree 3 */
-                           -0x1.0000000537df6p-2, /* degree 4 */
-                           0x1.999a14758b084p-3,  /* degree 5 */
-                           -0x1.55362255e0f63p-3, /* degree 6 */
+static const double P[6] = {0x1p0,                 /* degree 1 */
+                            -0x1.ffffffffffffap-2, /* degree 2 */
+                            0x1.555555554f4d8p-2,  /* degree 3 */
+                            -0x1.0000000537df6p-2, /* degree 4 */
+                            0x1.999a14758b084p-3,  /* degree 5 */
+                            -0x1.55362255e0f63p-3, /* degree 6 */
 };
 
 // Multiply exactly a and b, such that *hi + *lo = a * b.
@@ -529,9 +529,8 @@ cr_log_fast (double *h, double *l, int *e, d64u64 v)
   double ph, pl;
   double z2 = z * z; /* |z2| < 2^-17.7 thus the rounding error on z2 is
                         bounded by ulp(2^-17.7) = 2^-70. */
-  double p56 = __builtin_fma (P[6], z, P[5]);
   double p34 = __builtin_fma (P[4], z, P[3]);
-  ph = __builtin_fma (p56, z2, p34);
+  ph = __builtin_fma (P[5], z2, p34);
   double p12 = __builtin_fma (P[2], z, P[1]);
   ph = __builtin_fma (ph, z2, p12);
   ph *= z2;
