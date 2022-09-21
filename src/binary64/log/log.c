@@ -608,28 +608,31 @@ cr_log_accurate (double x)
 double
 cr_log (double x)
 {
-  if (x <= 0.0)
-  {
-    /* f(x<0) is NaN, f(+/-0) is -Inf and raises DivByZero */
-    if (x < 0)
-      return 0.0 / 0.0;
-    else
-      return 1.0 / -0.0;
-  }
   /* now x > 0 */
   d64u64 v = {.f = x};
-  int e = (v.u >> 52) - 0x3ff, bias = 0;
-  if (e == 0x400) /* +Inf or NaN */
-    return x;
-  /* now 0 < x < +Inf */
-  if (e == -0x3ff)
+  int e = v.u >> 52;
+  if (e >= 0x7ff || e == 0) /* x <= 0 or NaN/Inf or subnormal */
   {
-    v.f *= 0x1p52;
-    bias = 52;
-    e = (v.u >> 52) - 0x3ff;
+    if (x <= 0.0)
+    {
+      /* f(x<0) is NaN, f(+/-0) is -Inf and raises DivByZero */
+      if (x < 0)
+        return 0.0 / 0.0;
+      else
+        return 1.0 / -0.0;
+    }
+    if (e == 0x7ff) /* +Inf or NaN */
+      return x;
+    if (e == 0) /* subnormal */
+    {
+      v.f *= 0x1p52;
+      e = (v.u >> 52) - 0x3ff - 52;
+    }
   }
-  v.u -= (int64_t) e << 52;
-  e -= bias;
+  else /* x > 0 and normal */
+    e -= 0x3ff;
+  /* normalize v in [1,2) */
+  v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
   double h, l;
   // if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
