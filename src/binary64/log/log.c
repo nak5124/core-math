@@ -525,8 +525,10 @@ cr_log_fast (double *h, double *l, int *e, d64u64 v)
   double l1 = (_LOG_INV - OFFSET)[i][0];
   double l2 = (_LOG_INV - OFFSET)[i][1];
   double z = __builtin_fma (r, y, -1.0); /* exact */
-  /* evaluate P(z) */
-  double ph, pl, z2 = z * z;
+  /* evaluate P(z), for |z| < 0.00212097167968735 < 2^-8.88 */
+  double ph, pl;
+  double z2 = z * z; /* |z2| < 2^-17.7 thus the rounding error on z2 is
+                        bounded by ulp(2^-17.7) = 2^-70. */
   double p56 = __builtin_fma (P[6], z, P[5]);
   double p34 = __builtin_fma (P[4], z, P[3]);
   ph = __builtin_fma (p56, z2, p34);
