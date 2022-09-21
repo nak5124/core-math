@@ -28,9 +28,6 @@ SOFTWARE.
 #include <stdint.h>
 #include "dint.h"
 
-// #define TRACE 0x1.c19bdd1656c31p+0
-// #define TRACEM 0x1.c19bdd1656c31p+0
-
 typedef union { double f; uint64_t u; } d64u64;
 
 /* Add a + b exactly, such that *hi + *lo = a + b.
@@ -515,25 +512,19 @@ cr_log_fast (double *h, double *l, int *e, d64u64 v)
 {
   uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
   /* x = m/2^52 */
-  //  if (v.f == TRACEM) printf ("m=%lu\n", m);
   /* if x > sqrt(2), we divide it by 2 to avoid cancellation */
   int c = m >= 0x16a09e667f3bcd;
   *e += c;
-  // if (v.f == TRACEM) printf ("c=%d\n", c);
   static const double cy[] = {1.0, 0.5};
   static const uint64_t cm[] = {43, 44};
 
   int i = m >> cm[c];
-  // if (v.f == TRACEM) printf ("i=%d\n", i);
   double y = v.f * cy[c];
-  // if (v.f == TRACEM) printf ("y=%la\n", y);
 #define OFFSET 362
   double r = (_INVERSE - OFFSET)[i];
   double l1 = (_LOG_INV - OFFSET)[i][0];
   double l2 = (_LOG_INV - OFFSET)[i][1];
-  // if (v.f == TRACEM) printf ("r=%la\n", r);
   double z = __builtin_fma (r, y, -1.0); /* exact */
-  // if (v.f == TRACEM) printf ("z=%la\n", z);
   /* evaluate P(z) */
   double ph, pl, z2 = z * z;
   double p56 = __builtin_fma (P[6], z, P[5]);
@@ -541,16 +532,12 @@ cr_log_fast (double *h, double *l, int *e, d64u64 v)
   ph = __builtin_fma (p56, z2, p34);
   double p12 = __builtin_fma (P[2], z, P[1]);
   ph = __builtin_fma (ph, z2, p12);
-  // if (v.f == TRACEM) printf ("ph=%la z=%la P[0]=%la\n", ph, z, P[0]);
   ph *= z2;
-  // if (v.f == TRACEM) printf ("ph=%la\n", ph);
   /* add z since P[0]=1 */
   fast_two_sum (&ph, &pl, z, ph);
-  // if (v.f == TRACEM) printf ("log(1+z): h=%la l=%la\n", ph, pl);
   /* add l1 + l2 */
   fast_two_sum (h, l, l1, ph);
   *l += pl + l2;
-  // if (v.f == TRACEM) printf ("log(y): h=%la l=%la\n", *h, *l);
 }
 
 static inline void dint_fromd (dint64_t *a, double b);
@@ -599,9 +586,7 @@ cr_log_accurate (double x)
 
   dint_fromd (&X, x);
   /* x = (-1)^sgn*2^ex*(hi/2^63+lo/2^127) */
-  // if (x == TRACE) printf ("X=(%lu,%ld,%lu,%lu)\n", X.sgn, X.ex, X.hi, X.lo);
   log_2 (&Y, &X);
-  // if (x == TRACE) printf ("Y=(%lu,%ld,%lu,%lu)\n", Y.sgn, Y.ex, Y.hi, Y.lo);
   return dint_tod (&Y);
 }
 
@@ -633,7 +618,6 @@ cr_log (double x)
   v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
   double h, l;
-  // if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
   cr_log_fast (&h, &l, &e, v);
   /* err=0x1.21p-69 + ... fails for x=0x1.830124938cfeap-85 (rndz) */
   static double err = 0x1.22p-69 + 0x1.04p-85;
@@ -658,15 +642,9 @@ cr_log (double x)
      - error in l + ll < 2^-86
      Total < 2^-84.98 < 1.04e-85 */
 
-  // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left = h + (l - err), right = h + (l + err);
-  // if (x == TRACE) printf ("left=%la right=%la\n", left, right);
   if (left == right)
-  {
-    // if (x == TRACE) printf ("fast path succeeded\n");
     return left;
-  }
-  // if (x == TRACE) printf ("fast path failed\n");
   return cr_log_accurate (x);
 }
 
