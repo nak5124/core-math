@@ -327,8 +327,9 @@ cr_log (double x)
   double h, l;
   // if (x == TRACE) printf ("x=%la e=%d m=%la\n", x, e, v.f);
   cr_log_fast (&h, &l, &e, v);
-  /* err=0x1.4ap-66 fails for x=0x1.78019d3b1d6b3p+359 (rndz) */
-  double err = 0x1.4bp-66;
+  /* err=0x1.4ap-66 + ... fails for x=0x1.78019d3b1d6b3p+359 (rndz) */
+  static double err = 0x1.4bp-66 + 0x1.04p-85;
+  /* 0x1.04p-85 is the maximal error for the addition of e*log(2) below */
 
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
      11 bits. We store log2_h on 42 bits, so that e*log2_h is exact. */
@@ -347,13 +348,12 @@ cr_log (double x)
      - error on ll < 2^-86
      - error in the fast_two_sum < 2^-94.45
      - error in l + ll < 2^-86
-     Total < 2^-84.98 */
-  err += 0x1.04p-85; /* 2^-84.98 < 1.04e-85 */
+     Total < 2^-84.98 < 1.04e-85 */
 
   // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left = h + (l - err), right = h + (l + err);
   // if (x == TRACE) printf ("left=%la right=%la\n", left, right);
-  if (__builtin_expect(left == right, 1))
+  if (left == right)
   {
     // if (x == TRACE) printf ("fast path succeeded\n");
     return left;
