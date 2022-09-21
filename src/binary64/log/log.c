@@ -529,10 +529,10 @@ cr_log_fast (double *h, double *l, int *e, d64u64 v)
   double ph, pl;
   double z2 = z * z; /* |z2| < 2^-17.7 thus the rounding error on z2 is
                         bounded by ulp(2^-17.7) = 2^-70. */
-  double p34 = __builtin_fma (P[4], z, P[3]);
-  ph = __builtin_fma (P[5], z2, p34);
-  double p12 = __builtin_fma (P[2], z, P[1]);
-  ph = __builtin_fma (ph, z2, p12);
+  double p45 = __builtin_fma (P[5], z, P[4]);
+  double p23 = __builtin_fma (P[3], z, P[2]);
+  ph = __builtin_fma (p45, z2, p23);
+  ph = __builtin_fma (ph, z, P[1]);
   ph *= z2;
   /* add z since P[0]=1 */
   fast_two_sum (&ph, &pl, z, ph);
@@ -620,8 +620,8 @@ cr_log (double x)
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
   double h, l;
   cr_log_fast (&h, &l, &e, v);
-  /* err=0x1.21p-69 + ... fails for x=0x1.830124938cfeap-85 (rndz) */
-  static double err = 0x1.22p-69 + 0x1.04p-85;
+  /* err=0x1.c3p-70 + ... fails for x=0x1.830124938cfeap-85 (rndz) */
+  static double err = 0x1.c4p-70 + 0x1.04p-85;
   /* 0x1.04p-85 is the maximal error for the addition of e*log(2) below */
 
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
