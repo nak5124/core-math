@@ -610,8 +610,8 @@ cr_log (double x)
 {
   /* now x > 0 */
   d64u64 v = {.f = x};
-  int e = v.u >> 52;
-  if (e >= 0x7ff || e == 0) /* x <= 0 or NaN/Inf or subnormal */
+  int e = (v.u >> 52) - 0x3ff;
+  if (e >= 0x400 || e == -0x3ff) /* x <= 0 or NaN/Inf or subnormal */
   {
     if (x <= 0.0)
     {
@@ -621,16 +621,14 @@ cr_log (double x)
       else
         return 1.0 / -0.0;
     }
-    if (e == 0x7ff) /* +Inf or NaN */
+    if (e == 0x400) /* +Inf or NaN */
       return x;
-    if (e == 0) /* subnormal */
+    if (e == -0x3ff) /* subnormal */
     {
       v.f *= 0x1p52;
       e = (v.u >> 52) - 0x3ff - 52;
     }
   }
-  else /* x > 0 and normal */
-    e -= 0x3ff;
   /* normalize v in [1,2) */
   v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
