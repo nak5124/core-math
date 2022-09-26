@@ -563,15 +563,15 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      is exact. */
   static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
   /* |log(2) - (h+l)| < 2^-102.01 */
-  double hh = e * log2_h; /* exact */
-  /* hh is an integer multiple of 2^-42, with |hh| <= 1074*log2_h
+  /* let hh = e * log2_h: hh is an integer multiple of 2^-42,
+     with |hh| <= 1074*log2_h
      = 3274082061039582*2^-42. l1 is also an integer multiple of 2^-42,
      with |l1| <= 1524716581803*2^-42. Thus hh+l1 is an integer multiple of
      2^-42, with 2^42*|hh+l1| <= 3275606777621385 < 2^52, thus hh+l1 is exactly
      representable. */
 
-  /* add l1 */
-  fast_two_sum (h, l, hh + l1, z);
+  double ee = e;
+  fast_two_sum (h, l, __builtin_fma (ee, log2_h, l1), z);
   /* here |hh+l1|+|z| <= 3275606777621385*2^-42 + 0.0022 < 745
      thus |h| < 745, and the additional error from the fast_two_sum() call is
      bounded by 2^-104*745 < 2^-94.4. */
@@ -584,11 +584,11 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      error on ph + ... is bounded by ulp(2^-18.7) = 2^-71, which yields a
      cumulated error bound of 2^-71 + 2^-95 < 2^-70.99. */
 
-  *l = __builtin_fma (e, log2_l, *l);
+  *l = __builtin_fma (ee, log2_l, *l);
   /* let l_in be the input value of *l, and l_out the output value.
      We have |l_in| < 2^-18.7 (from above)
      and |e*log2_l| <= 1074*0x1.ef35793c7673p-45
-     thus |l_out| < 2^-18.69 and err(ll) <= ulp(2^-18.69) = 2^-71 */
+     thus |l_out| < 2^-18.69 and err(l_out) <= ulp(2^-18.69) = 2^-71 */
 
   /* The absolute error on h + l is bounded by:
      2^-70.278 from the error in the Sollya polynomial
