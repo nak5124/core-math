@@ -504,7 +504,7 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
 }
 
 /* Given 1 <= x < 2, where x = v.f, put in h+l a double-double approximation
-   of log(2^e*x), with absolute error bounded by 2^-68.44 (details below).
+   of log(2^e*x), with absolute error bounded by 2^-68.22 (details below).
 */
 static void
 cr_log_fast (double *h, double *l, int e, d64u64 v)
@@ -558,61 +558,48 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      2^-71 + err(ph1)*z2 + ph1*err(z2) <
      2^-71 + 2^-52.99*4.5e-6 + 0.501*2^-70 < 2^-69.32. */
 
-  /* We have to add:
-   * z + ph which approximates log(1+x)
-   * e * log2_h + e * log2_l which approximates e*log(2)
-   * l1 + l2 which approximates -log(r) */
-  if (v.f == 0x1.a6ae5142326b5p+0) printf ("z=%la ph=%la e=%d l1=%la l2=%la\n", z, ph, e, l1, l2);
-
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
-     11 bits. We store log2_h on 42 bits, so that e*log2_h is exact.
-     log2_h is an integer multiple of 2^-42. */
+     11 bits. log2_h is an integer multiple of 2^-42, so that e*log2_h
+     is exact. */
   static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
   /* |log(2) - (h+l)| < 2^-102.01 */
   double hh = e * log2_h; /* exact */
   /* hh is an integer multiple of 2^-42, with |hh| <= 1074*log2_h
-     <= 3274082061039582*2^42. l1 is also an integer multiple of 2^-42,
-     with |l1| <= 1524716581803*2^42. Thus hh+l1 is an integer multiple of
-     2^-42, with |hh+l1| <= 3275606777621385 < 2^52, thus hh+l1 is exactly
+     = 3274082061039582*2^-42. l1 is also an integer multiple of 2^-42,
+     with |l1| <= 1524716581803*2^-42. Thus hh+l1 is an integer multiple of
+     2^-42, with 2^42*|hh+l1| <= 3275606777621385 < 2^52, thus hh+l1 is exactly
      representable. */
 
   /* add l1 */
-  if (v.f == 0x1.a6ae5142326b5p+0) printf ("hh+l1=%la z=%la\n", hh+l1, z);
   fast_two_sum (h, l, hh + l1, z);
-  /* here |l1| < 0.35 (obtained for the largest value of i),
-     thus |h| < 0.35 + 0.0022 = 0.3522, and the additional error from the
-     fast_two_sum() call is bounded by 2^-104*0.3522 < 2^-105. */
-  /* add ph + l2 */
+  /* here |hh+l1|+|z| <= 3275606777621385*2^-42 + 0.0022 < 745
+     thus |h| < 745, and the additional error from the fast_two_sum() call is
+     bounded by 2^-104*745 < 2^-94.4. */
+  /* add ph + l2 to l */
   *l = ph + (*l + l2);
-  /* here at input |ph| < 2.26e-6, |l| < ulp(h) = 2^-54, and |l2| < 2^-55,
-     thus |*l + l2| < 2^-53.4, and the rounding error on *l + l2 is bounded
-     by ulp(2^-53.4) = 2^-106.
-     Now |ph + (*l + l2)| < 2.26e-6 + 2^-53.4 < 2^-18.7, thus the rounding
+  /* here |ph| < 2.26e-6, |l| < ulp(h) = 2^-43, and |l2| < 2^-43,
+     thus |*l + l2| < 2^-42, and the rounding error on *l + l2 is bounded
+     by ulp(2^-43) = 2^-95 (*l + l2 cannot be >= 2^-42).
+     Now |ph + (*l + l2)| < 2.26e-6 + 2^-42 < 2^-18.7, thus the rounding
      error on ph + ... is bounded by ulp(2^-18.7) = 2^-71, which yields a
-     cumulated error bound of 2^-71 + 2^-106 < 2^-70.99. */
+     cumulated error bound of 2^-71 + 2^-95 < 2^-70.99. */
+
+  *l = __builtin_fma (e, log2_l, *l);
+  /* let l_in be the input value of *l, and l_out the output value.
+     We have |l_in| < 2^-18.7 (from above)
+     and |e*log2_l| <= 1074*0x1.ef35793c7673p-45
+     thus |l_out| < 2^-18.69 and err(ll) <= ulp(2^-18.69) = 2^-71 */
 
   /* The absolute error on h + l is bounded by:
      2^-70.278 from the error in the Sollya polynomial
      2^-69.32 from the rounding errors in the polynomial evaluation
-     2^-105 from the fast_two_sum call
-     2^-70.99 from the *l = ph + (*l + l2) instruction.
-     This gives an absolute error bounded by < 2^-68.44.
+     2^-94.4 from the fast_two_sum call
+     2^-70.99 from the *l = ph + (*l + l2) instruction
+     2^-71 from the last __builtin_fma call.
+     This gives an absolute error bounded by < 2^-68.22.
   */
-  /* absolute error bounded by 2^-68.44 < 0x1.7ap-69 */
 
-  double ll = __builtin_fma (e, log2_l, *l);
-  /* we have |l| < 2^-50 (from the analysis of cr_log_fast)
-     and |e*log2_l| <= 1074*0x1.ef35793c7673p-45
-     thus |ll| < 2^-33.9 and err(ll) <= ulp(2^-33.9) = 2^-86 */
-  //  fast_two_sum (h, l, hh, *h); /* rounding error bounded by 2^-104*|hh| < 2^-94.45 */
-  *l += ll; /* |l| < 2^-50 and |ll| < 2^-33.9 thus |l+ll| < 2^-33.8
-               and the rounding error is less than ulp(2^-33.8) = 2^-86 */
-  /* Additional rounding error:
-     - e times the approximation error on log2_h+log2_l: 1074*2^-102.01 < 2^-91.94
-     - error on ll < 2^-86
-     - error in the fast_two_sum < 2^-94.45
-     - error in l + ll < 2^-86
-     Total < 2^-84.98 < 1.04e-85 */
+  /* absolute error bounded by 2^-68.22 < 0x1.b8p-69 */
 }
 
 static inline void dint_fromd (dint64_t *a, double b);
@@ -695,13 +682,10 @@ cr_log (double x)
   double h, l;
   cr_log_fast (&h, &l, e, v);
 
-  static double err = 0x1.7ap-69 + 0x1.04p-85;
-  /* 0x1.04p-85 is the maximal error for the addition of e*log(2) in
-     cr_log_fast */
+  static double err = 0x1.68p-69; /* maximal absolute error from cr_log_fast */
 
-  /* Note: the error analysis is quite tight since if we replace the 0x1.7ap-69
-     term by 0x1.3fp-69 (approximately 2^-68.68), it fails for
-     x=0x1.71f7c59ede8ep+125 (rndz) */
+  /* Note: the error analysis is quite tight since if we replace the 0x1.68p-69
+     bound by 0x1.3fp-69, it fails for x=0x1.71f7c59ede8ep+125 (rndz) */
 
   double left = h + (l - err), right = h + (l + err);
   if (left == right)
