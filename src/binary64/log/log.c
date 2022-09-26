@@ -557,8 +557,28 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      multiplied by ph1, we get for the total error on ph2 the following bound:
      2^-71 + err(ph1)*z2 + ph1*err(z2) <
      2^-71 + 2^-52.99*4.5e-6 + 0.501*2^-70 < 2^-69.32. */
+
+  /* We have to add:
+   * z + ph which approximates log(1+x)
+   * e * log2_h + e * log2_l which approximates e*log(2)
+   * l1 + l2 which approximates -log(r) */
+  if (v.f == 0x1.a6ae5142326b5p+0) printf ("z=%la ph=%la e=%d l1=%la l2=%la\n", z, ph, e, l1, l2);
+
+  /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
+     11 bits. We store log2_h on 42 bits, so that e*log2_h is exact.
+     log2_h is an integer multiple of 2^-42. */
+  static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
+  /* |log(2) - (h+l)| < 2^-102.01 */
+  double hh = e * log2_h; /* exact */
+  /* hh is an integer multiple of 2^-42, with |hh| <= 1074*log2_h
+     <= 3274082061039582*2^42. l1 is also an integer multiple of 2^-42,
+     with |l1| <= 1524716581803*2^42. Thus hh+l1 is an integer multiple of
+     2^-42, with |hh+l1| <= 3275606777621385 < 2^52, thus hh+l1 is exactly
+     representable. */
+
   /* add l1 */
-  fast_two_sum (h, l, l1, z);
+  if (v.f == 0x1.a6ae5142326b5p+0) printf ("hh+l1=%la z=%la\n", hh+l1, z);
+  fast_two_sum (h, l, hh + l1, z);
   /* here |l1| < 0.35 (obtained for the largest value of i),
      thus |h| < 0.35 + 0.0022 = 0.3522, and the additional error from the
      fast_two_sum() call is bounded by 2^-104*0.3522 < 2^-105. */
@@ -580,17 +600,11 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
   */
   /* absolute error bounded by 2^-68.44 < 0x1.7ap-69 */
 
-  /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
-     11 bits. We store log2_h on 42 bits, so that e*log2_h is exact.
-     log2_h is an integer multiple of 2^-42. */
-  static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
-  /* |log(2) - (h+l)| < 2^-102.01 */
-  double hh = e * log2_h; /* exact */
   double ll = __builtin_fma (e, log2_l, *l);
   /* we have |l| < 2^-50 (from the analysis of cr_log_fast)
      and |e*log2_l| <= 1074*0x1.ef35793c7673p-45
      thus |ll| < 2^-33.9 and err(ll) <= ulp(2^-33.9) = 2^-86 */
-  fast_two_sum (h, l, hh, *h); /* rounding error bounded by 2^-104*|hh| < 2^-94.45 */
+  //  fast_two_sum (h, l, hh, *h); /* rounding error bounded by 2^-104*|hh| < 2^-94.45 */
   *l += ll; /* |l| < 2^-50 and |ll| < 2^-33.9 thus |l+ll| < 2^-33.8
                and the rounding error is less than ulp(2^-33.8) = 2^-86 */
   /* Additional rounding error:
