@@ -514,7 +514,7 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
   /* x = m/2^52 */
   /* if x > sqrt(2), we divide it by 2 to avoid cancellation */
   int c = m >= 0x16a09e667f3bcd;
-  e += c;
+  e += c; /* now -1074 <= e <= 1024 */
   static const double cy[] = {1.0, 0.5};
   static const uint64_t cm[] = {43, 44};
 
@@ -682,13 +682,13 @@ cr_log (double x)
   }
   /* normalize v in [1,2) */
   v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
-  /* now x = m*2^e with 1 <= m < 2 (m = v.f) */
+  /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
   double h, l;
   cr_log_fast (&h, &l, e, v);
 
-  static double err = 0x1.68p-69; /* maximal absolute error from cr_log_fast */
+  static double err = 0x1.b8p-69; /* maximal absolute error from cr_log_fast */
 
-  /* Note: the error analysis is quite tight since if we replace the 0x1.68p-69
+  /* Note: the error analysis is quite tight since if we replace the 0x1.b8p-69
      bound by 0x1.3fp-69, it fails for x=0x1.71f7c59ede8ep+125 (rndz) */
 
   double left = h + (l - err), right = h + (l + err);
