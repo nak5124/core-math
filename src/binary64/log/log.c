@@ -603,7 +603,10 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      This gives an absolute error bounded by < 2^-68.22.
   */
 
-  /* absolute error bounded by 2^-68.22 < 0x1.b8p-69 */
+  /* Absolute error bounded by 2^-68.22 < 0x1.b8p-69.
+     Using the Gappa tool (https://gappa.gitlabpages.inria.fr/) we can
+     improve the bound to 2.89253666698316e-21 < 0x1.b6p-69
+     (see file gappa.sage). */
 }
 
 static inline void dint_fromd (dint64_t *a, double b);
@@ -686,9 +689,9 @@ cr_log (double x)
   double h, l;
   cr_log_fast (&h, &l, e, v);
 
-  static double err = 0x1.b8p-69; /* maximal absolute error from cr_log_fast */
+  static double err = 0x1.b6p-69; /* maximal absolute error from cr_log_fast */
 
-  /* Note: the error analysis is quite tight since if we replace the 0x1.b8p-69
+  /* Note: the error analysis is quite tight since if we replace the 0x1.b6p-69
      bound by 0x1.3fp-69, it fails for x=0x1.71f7c59ede8ep+125 (rndz) */
 
   double left = h + (l - err), right = h + (l + err);
