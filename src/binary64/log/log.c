@@ -697,6 +697,7 @@ cr_log (double x)
   double left = h + (l - err), right = h + (l + err);
   if (left == right)
     return left;
+  /* the probability of failure of the fast path is about 2^-11.5 */
   return cr_log_accurate (x);
 }
 
