@@ -1,6 +1,6 @@
-/* Correctly-rounded exponential of binary64 value.
+/* Correctly-rounded arc-sine function for binary32 value.
 
-Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann (Inria).
+Copyright (c) 2022 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -21,25 +21,21 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
+SOFTWARE. */
 
 #include <mpfr.h>
 #include "fenv_mpfr.h"
 
 /* code from MPFR */
 double
-ref_exp (double x)
+ref_asin (double x)
 {
   mpfr_t y;
-  mpfr_exp_t emin = mpfr_get_emin ();
-  mpfr_set_emin (-1073);
   mpfr_init2 (y, 53);
   mpfr_set_d (y, x, MPFR_RNDN);
-  int inex = mpfr_exp (y, y, rnd2[rnd]);
+  int inex = mpfr_asin (y, y, rnd2[rnd]);
   mpfr_subnormalize (y, inex, rnd2[rnd]);
   double ret = mpfr_get_d (y, MPFR_RNDN);
   mpfr_clear (y);
-  mpfr_set_emin (emin);
   return ret;
 }
