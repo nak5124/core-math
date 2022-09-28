@@ -606,7 +606,20 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
   /* Absolute error bounded by 2^-68.22 < 0x1.b8p-69.
      Using the Gappa tool (https://gappa.gitlabpages.inria.fr/) we can
      improve the bound to 2.89253666698316e-21 < 0x1.b6p-69
-     (see file gappa.sage). */
+     (see file gappa.sage).
+
+     What we proved with gappa (see file log1_template.g):
+     for each interval i, 362 <= i <= 724:
+     if y is a binary64 number in the range i*2^-9 <= y < (i+1)*2^-9,
+     if -1074 <= e <= 1024, assuming the absolute error from the Sollya
+     polynomial is bounded by 2^-70.278, the difference between log(2)
+     and log2_h + log2_l is bounded by 1.95853e-31, and the maximal
+     difference between -log(r) and l1+l2 is bounded by 2^-96, then
+     (a) z is exact
+     (b) we have the following bounds:
+     -2.4696201316824195e-21 <= h + l - log(2^e*y) <= 2.89253666698316e-21
+     with the largest bounds obtained for i=369, RNDD (left bound) and
+     RNDZ (right bound). */
 }
 
 static inline void dint_fromd (dint64_t *a, double b);
