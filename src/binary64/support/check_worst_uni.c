@@ -31,6 +31,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <fenv.h>
+#include <omp.h>
 
 #include "function_under_test.h"
 
@@ -43,38 +44,67 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 
-void
-doloop(void)
+static void
+readstdin(double **result, int *count)
 {
   char *buf = NULL;
   size_t buflength = 0;
   ssize_t n;
-  double x, z1, z2;
-  int count = 0, failures = 0;
+  int allocated = 512;
 
-  ref_init();
-  ref_fesetround(rnd);
+  *count = 0;
+  if (NULL == (*result = malloc(allocated * sizeof(double)))) {
+    fprintf(stderr, "malloc failed\n");
+    exit(1);
+  }
 
   while ((n = getline(&buf, &buflength, stdin)) >= 0) {
     if (n > 0 && buf[0] == '#') continue;
-    if (sscanf(buf, "%la", &x) == 1) {
-      z1 = ref_function_under_test(x);
-      fesetround(rnd1[rnd]);
-      z2 = cr_function_under_test(x);
-      if (z1 != z2) {
-        printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
-        fflush(stdout);
-#ifdef DO_NOT_ABORT
-        failures ++;
-#else
+    if (*count >= allocated) {
+      int newsize = 2 * allocated;
+      double *newresult = realloc(*result, newsize * sizeof(double));
+      if (NULL == newresult) {
+        fprintf(stderr, "realloc(%d) failed\n", newsize);
         exit(1);
-#endif
       }
-      count++;
+      allocated = newsize;
+      *result = newresult;
+    }
+    double *item = *result + *count;
+    if (sscanf(buf, "%la", item) == 1) {
+      (*count)++;
     }
   }
-  free(buf);
+}
 
+void
+doloop(void)
+{
+  double *items;
+  int count, failures = 0;
+
+  readstdin(&items, &count);
+
+#pragma omp parallel for reduction(+: failures)
+  for (int i = 0; i < count; i++) {
+    double x = items[i];
+    ref_init();
+    ref_fesetround(rnd);
+    double z1 = ref_function_under_test(x);
+    fesetround(rnd1[rnd]);
+    double z2 = cr_function_under_test(x);
+    if (z1 != z2) {
+      printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
+      fflush(stdout);
+#ifdef DO_NOT_ABORT
+      failures ++;
+#else
+      exit(1);
+#endif
+    }
+  }
+
+  free(items);
   printf("%d tests passed, %d failure(s)\n", count, failures);
 }
 
