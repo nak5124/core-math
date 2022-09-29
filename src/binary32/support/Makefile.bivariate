@@ -9,13 +9,13 @@ TYPE_UNDER_TEST := float
 all:: check_worst
 
 check_worst: check_worst.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
-	$(CC) -o $@ $^ -lmpfr -lm
+	$(CC) -fopenmp -o $@ $^ -lmpfr -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -I ../support -c -o $@ $<
 
 check_worst.o: ../support/check_worst.c
-	$(CC) $(CFLAGS) $(CORE_MATH_DEFINES) -I . -c -o $@ $<
+	$(CC) -fopenmp $(CFLAGS) $(CORE_MATH_DEFINES) -I . -c -o $@ $<
 
 clean::
 	rm -f *.o check_worst

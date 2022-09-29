@@ -31,6 +31,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <fenv.h>
+#include <omp.h>
 
 #include "function_under_test.h"
 
@@ -43,34 +44,65 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 
-void
-doloop(void)
+typedef float float2[2];
+
+static void
+readstdin(float2 **result, int *count)
 {
   char *buf = NULL;
   size_t buflength = 0;
   ssize_t n;
-  float x, y, z1, z2;
-  int count = 0;
+  int allocated = 512;
 
-  ref_init();
-  ref_fesetround(rnd);
+  *count = 0;
+  if (NULL == (*result = malloc(allocated * sizeof(float2)))) {
+    fprintf(stderr, "malloc failed\n");
+    exit(1);
+  }
 
   while ((n = getline(&buf, &buflength, stdin)) >= 0) {
     if (n > 0 && buf[0] == '#') continue;
-    if (sscanf(buf, "%a,%a", &x, &y) == 2) {
-      z1 = ref_function_under_test(x, y);
-      fesetround(rnd1[rnd]);
-      z2 = cr_function_under_test(x, y);
-      if (z1 != z2) {
-        printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
-        fflush(stdout);
+    if (*count >= allocated) {
+      int newsize = 2 * allocated;
+      float2 *newresult = realloc(*result, newsize * sizeof(float2));
+      if (NULL == newresult) {
+        fprintf(stderr, "realloc(%d) failed\n", newsize);
         exit(1);
       }
-      count++;
+      allocated = newsize;
+      *result = newresult;
+    }
+    float2 *item = *result + *count;
+    if (sscanf(buf, "%a,%a", &(*item)[0], &(*item)[1]) == 2) {
+      (*count)++;
     }
   }
-  free(buf);
+}
 
+void
+doloop(void)
+{
+  float2 *items;
+  int count;
+
+  readstdin(&items, &count);
+
+#pragma omp parallel for
+  for (int i = 0; i < count; i++) {
+    float x = items[i][0], y = items[i][1];
+    ref_init();
+    ref_fesetround(rnd);
+    float z1 = ref_function_under_test(x, y);
+    fesetround(rnd1[rnd]);
+    float z2 = cr_function_under_test(x, y);
+    if (z1 != z2) {
+      printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
+      fflush(stdout);
+      exit(1);
+    }
+  }
+
+  free(items);
   printf("%d tests passed\n", count);
 }
 
