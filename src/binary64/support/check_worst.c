@@ -31,6 +31,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <fenv.h>
+#include <omp.h>
 
 #include "function_under_test.h"
 
@@ -43,34 +44,65 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 
-void
-doloop(void)
+typedef double double2[2];
+
+static void
+readstdin(double2 **result, int *count)
 {
   char *buf = NULL;
   size_t buflength = 0;
   ssize_t n;
-  double x, y, z1, z2;
-  int count = 0;
+  int allocated = 512;
 
-  ref_init();
-  ref_fesetround(rnd);
+  *count = 0;
+  if (NULL == (*result = malloc(allocated * sizeof(double2)))) {
+    fprintf(stderr, "malloc failed\n");
+    exit(1);
+  }
 
   while ((n = getline(&buf, &buflength, stdin)) >= 0) {
     if (n > 0 && buf[0] == '#') continue;
-    if (sscanf(buf, "%la,%la", &x, &y) == 2) {
-      z1 = ref_function_under_test(x, y);
-      fesetround(rnd1[rnd]);
-      z2 = cr_function_under_test(x, y);
-      if (z1 != z2) {
-        printf("FAIL x=%la y=%la ref=%la z=%la\n", x, y, z1, z2);
-        fflush(stdout);
+    if (*count >= allocated) {
+      int newsize = 2 * allocated;
+      double2 *newresult = realloc(*result, newsize * sizeof(double2));
+      if (NULL == newresult) {
+        fprintf(stderr, "realloc(%d) failed\n", newsize);
         exit(1);
       }
-      count++;
+      allocated = newsize;
+      *result = newresult;
+    }
+    double2 *item = *result + *count;
+    if (sscanf(buf, "%la,%la", &(*item)[0], &(*item)[1]) == 2) {
+      (*count)++;
     }
   }
-  free(buf);
+}
 
+void
+doloop(void)
+{
+  double2 *items;
+  int count;
+
+  readstdin(&items, &count);
+
+#pragma omp parallel for
+  for (int i = 0; i < count; i++) {
+    double x = items[i][0], y = items[i][1];
+    ref_init();
+    ref_fesetround(rnd);
+    double z1 = ref_function_under_test(x, y);
+    fesetround(rnd1[rnd]);
+    double z2 = cr_function_under_test(x, y);
+    if (z1 != z2) {
+      printf("FAIL x=%la y=%la ref=%la z=%la\n", x, y, z1, z2);
+      fflush(stdout);
+      exit(1);
+    }
+  }
+
+  free(items);
   printf("%d tests passed\n", count);
 }
 
