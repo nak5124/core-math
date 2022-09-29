@@ -30,7 +30,7 @@ SOFTWARE.
 
 typedef union { double f; uint64_t u; } d64u64;
 
-/* Add a + b exactly, such that *hi + *lo = a + b.
+/* Add a + b, such that *hi + *lo approximates a + b.
    Assumes |a| >= |b|.  */
 static void
 fast_two_sum (double *hi, double *lo, double a, double b)
