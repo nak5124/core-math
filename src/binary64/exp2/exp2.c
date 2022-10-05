@@ -44,12 +44,12 @@ fast_two_sum (double *hi, double *lo, double a, double b)
      e is always exact), and lo = -2^52 + 2^-105, thus
      hi + lo = 1 + 2^-105 <> a + b = 1 + 2^-200.
      A bound on the error is given
-     in "Tight interval inclusions with compensated algorithms"
-     by Stef Graillat and Fabienne Jézéquel,
-     IEEE Transactions on Computers, 2020. Proposition 3.2 says that
-     the difference between a+b and hi+lo is bounded by 4u^2|a+b|
-     and also by 4u^2|hi|. Here u=2^-53, thus we get:
-     |(a+b)-(hi+lo)| <= 2^-104 min(|a+b|,|hi|) */
+     in "Note on FastTwoSum with Directed Roundings"
+     by Paul Zimmermann, https://hal.inria.fr/hal-03798376, 2022.
+     Theorem 1 says that
+     the difference between a+b and hi+lo is bounded by 2u^2|a+b|
+     and also by 2u^2|hi|. Here u=2^-53, thus we get:
+     |(a+b)-(hi+lo)| <= 2^-105 min(|a+b|,|hi|) */
 }
 
 /* h + l <- a * b
@@ -716,10 +716,10 @@ cr_exp2 (double x)
   /* At input |yh * h| < 2^-2*2^-7 = 2^-9 thus the rounding error on yh * h is
      bounded by 2^-62. This rounding error is multiplied by h < 2^-7 below
      thus contributes to < 2^-69 to the final error.
-     The fast_two_sum error is bounded by 2^-104 |yh| (for the result yh),
+     The fast_two_sum error is bounded by 2^-105 |yh| (for the result yh),
      thus since |yh| <= o(p[1] + 2^-9) <= 2^-0.52, the fast_two_sum error is
-     bounded by 2^-104.52. Since this error is multiplied by h < 2^-7 below,
-     it contributes to < 2^-111.52 to the final error. */
+     bounded by 2^-105.52. Since this error is multiplied by h < 2^-7 below,
+     it contributes to < 2^-112.52 to the final error. */
   yl += p1l;
   /* |yl| < 2^-53 and |p1l| < 2^-55 thus the rounding error in yl += p1l
      is bounded by 2^-105 (we might have an exponent jump). This error is
@@ -738,16 +738,16 @@ cr_exp2 (double x)
   u = yl + t;
   /* now |yh| < 2 and |yl| < 2^-52, with |t| < 2^-58, thus |yl+t| < 2^-51
      and the rounding error in u = yl + t is bounded by 2^-104.
-     The error in fast_two_sum is bounded by 2^-104 |yh| <= 2^-103. */
+     The error in fast_two_sum is bounded by 2^-105 |yh| <= 2^-104. */
   /* now (yh,yl) approximates 2^h to about 68 bits of accuracy:
      2^-68.99 from the rounding errors for evaluating p[2] + ...
      2^-69 from the rounding error in yh * h in the 1st fast_two_sum
-     2^-111.52 from the error in the 1st fast_two_sum
+     2^-112.52 from the error in the 1st fast_two_sum
      2^-112 from the rounding error in yl += p1l
      2^-112 from the rounding error in yl * h
      2^-111 from the rounding error in t += yl * h
      2^-104 from the rounding error in u = yl + t
-     2^-103 from the error in the 2nd fast_two_sum
+     2^-104 from the error in the 2nd fast_two_sum
      Total absolute error < 2^-67.99 on yh+u here (with respect to 2^h).
   */
 
