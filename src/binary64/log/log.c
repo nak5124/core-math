@@ -47,12 +47,12 @@ fast_two_sum (double *hi, double *lo, double a, double b)
      e is always exact), and lo = -2^52 + 2^-105, thus
      hi + lo = 1 + 2^-105 <> a + b = 1 + 2^-200.
      A bound on the error is given
-     in "Tight interval inclusions with compensated algorithms"
-     by Stef Graillat and Fabienne Jézéquel,
-     IEEE Transactions on Computers, 2020. Proposition 3.2 says that
-     the difference between a+b and hi+lo is bounded by 4u^2|a+b|
-     and also by 4u^2|hi|. Here u=2^-53, thus we get:
-     |(a+b)-(hi+lo)| <= 2^-104 min(|a+b|,|hi|) */
+     in "Note on FastTwoSum with Directed Roundings"
+     by Paul Zimmermann, https://hal.inria.fr/hal-03798376, 2022.
+     Theorem 1 says that
+     the difference between a+b and hi+lo is bounded by 2u^2|a+b|
+     and also by 2u^2|hi|. Here u=2^-53, thus we get:
+     |(a+b)-(hi+lo)| <= 2^-105 min(|a+b|,|hi|) */
 }
 
 /* For 362 <= i <= 724, r[i] = _INVERSE[i-362] is a 10-bit approximation of
@@ -575,7 +575,7 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
   fast_two_sum (h, l, __builtin_fma (ee, log2_h, l1), z);
   /* here |hh+l1|+|z| <= 3275606777621385*2^-42 + 0.0022 < 745
      thus |h| < 745, and the additional error from the fast_two_sum() call is
-     bounded by 2^-104*745 < 2^-94.4. */
+     bounded by 2^-105*745 < 2^-95.4. */
   /* add ph + l2 to l */
   *l = ph + (*l + l2);
   /* here |ph| < 2.26e-6, |l| < ulp(h) = 2^-43, and |l2| < 2^-43,
@@ -597,7 +597,7 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
               (|e| <= 1074 and |log(2)-(log2_h + log2_l)| < 2^-102.01)
      2^-96 for the maximal difference |l1 + l2 - (-log(r))|
      2^-69.32 from the rounding errors in the polynomial evaluation
-     2^-94.4 from the fast_two_sum call
+     2^-95.4 from the fast_two_sum call
      2^-70.99 from the *l = ph + (*l + l2) instruction
      2^-71 from the last __builtin_fma call.
      This gives an absolute error bounded by < 2^-68.22.
