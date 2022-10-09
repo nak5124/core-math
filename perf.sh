@@ -67,6 +67,10 @@ proc_rdtsc () {
     process_rdtsc_stat
 }
 
+has_symbol () {
+    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$f" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
+}
+
 RANDOMS_FILE="$(mktemp /tmp/core-math.XXXXXX)"
 LOG_FILE="$(mktemp /tmp/core-math.XXXXXX)"
 trap "rm -f $RANDOMS_FILE $LOG_FILE" 0
@@ -136,14 +140,18 @@ fi
 
 if [ -n "$BACKUP_LIBM" ]; then
     export LIBM="$BACKUP_LIBM"
-    PERF_ARGS="${PERF_ARGS} --libc"
-    make -s clean
-    make -s perf
-    if [ "$CORE_MATH_PERF_MODE" = perf ]; then
-	proc_perf
-
-    elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
-	PERF_ARGS="${PERF_ARGS} --rdtsc"
-	proc_rdtsc
+    if has_symbol; then
+	PERF_ARGS="${PERF_ARGS} --libc"
+	make -s clean
+	make -s perf
+	if [ "$CORE_MATH_PERF_MODE" = perf ]; then
+	    proc_perf
+	    
+	elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
+	    PERF_ARGS="${PERF_ARGS} --rdtsc"
+	    proc_rdtsc
+	fi
+    elif [ -z "$CORE_MATH_QUIET" ]; then
+        echo "$f is not present in $LIBM; skipping" >&2
     fi
 fi
