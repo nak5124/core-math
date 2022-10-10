@@ -65,3 +65,42 @@ def doitall(i0=362):
    Hi = -infinity
    for i in [i0..724]:
       Lo, Hi = doitall_i(i,Lo=Lo,Hi=Hi)
+
+# find smallest |z|
+# 362 0x1.6a94016a94016p-1 -0x1.dep-54
+# 366 0x1.6ea28d118b474p-1 -0x1p-60
+def find_smallest_z():
+   zmin = infinity
+   for i in [362..724]:
+      r = RR(INVERSE[i-362],16)
+      # z = r*t-1
+      t = RR(1/r)
+      while r.exact_rational()*t.exact_rational()>=1:
+         t = t.nextbelow()
+      z = fma(r,t,RR(-1))
+      if z!=0 and abs(z)<zmin:
+         zmin = abs(z)
+         print (i, get_hex(t), get_hex(z))
+      t = t.nextabove()
+      z = fma(r,t,RR(-1))
+      if z==0:
+         t = t.nextabove()
+         z = fma(r,t,RR(-1))
+      assert z>0, "z>0"
+      if z!=0 and abs(z)<zmin:
+         zmin = abs(z)
+         print (i, get_hex(t), get_hex(z))
+
+# 512 0x1.ff8p-1 1024
+# r is a multiple of 2^-10
+# t is a multiple of 2^-53
+# thus r*t-1 is a multiple of 2^-63
+def find_ulp_r():
+   dmax = 1
+   for i in [362..724]:
+      r = RR(INVERSE[i-362],16)
+      R = r.exact_rational()
+      d = R.denom()
+      if d > dmax:
+         dmax = d
+         print (i, get_hex(r), d)
