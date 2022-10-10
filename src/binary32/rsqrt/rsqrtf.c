@@ -1,7 +1,8 @@
+#include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
 
-typedef union {float f; unsigned u;} b32u32_u;
+typedef union {float f; uint32_t u;} b32u32_u;
 
 float cr_rsqrtf(float x){
   double xd = x;

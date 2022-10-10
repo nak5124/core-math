@@ -36,6 +36,9 @@ ref_rsqrt (float x)
   mpfr_init2 (y, 24);
   mpfr_set_flt (y, x, MPFR_RNDN);
   mpfr_rec_sqrt (y, y, rnd2[rnd]);
+  /* since |x| < 2^128 for non-zero x, we have 2^-64 < 1/sqrt(x),
+     thus no underflow can happen, and there is no need to call
+     mpfr_subnormalize */
   float ret = mpfr_get_flt (y, MPFR_RNDN);
   mpfr_clear (y);
   return ret;
