@@ -36,7 +36,7 @@ collect_perf_stat () {
     fi
     local i=1
     while [ $i -le $S ]; do
-        perf stat -e cycles -x " " ./perf $PERF_ARGS &>> $LOG_FILE
+        perf stat -e cycles -x " " $CORE_MATH_LAUNCHER ./perf $PERF_ARGS &>> $LOG_FILE
         if [ -z "$CORE_MATH_QUIET" ]; then
             prog_bar $S $i
         fi
@@ -55,7 +55,7 @@ collect_rdtsc_stat () {
     echo -n "" > $LOG_FILE
     local i=1
     while [ $i -le $S ]; do
-        ./perf $PERF_ARGS &>> $LOG_FILE
+        $CORE_MATH_LAUNCHER ./perf $PERF_ARGS &>> $LOG_FILE
         i=$(( i + 1 ))
     done
 }
