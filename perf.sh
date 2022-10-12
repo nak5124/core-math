@@ -32,15 +32,15 @@ prog_bar () {
 collect_perf_stat () {
     echo -n "" > $LOG_FILE
     if [ -z "$CORE_MATH_QUIET" ]; then
-	prog_bar $S 0
+        prog_bar $S 0
     fi
     local i=1
     while [ $i -le $S ]; do
-	perf stat -e cycles -x " " ./perf $PERF_ARGS &>> $LOG_FILE
-	if [ -z "$CORE_MATH_QUIET" ]; then
-	    prog_bar $S $i
-	fi
-	i=$(( i + 1 ))
+        perf stat -e cycles -x " " ./perf $PERF_ARGS &>> $LOG_FILE
+        if [ -z "$CORE_MATH_QUIET" ]; then
+            prog_bar $S $i
+        fi
+        i=$(( i + 1 ))
     done
 }
 process_perf_stat () {
@@ -55,8 +55,8 @@ collect_rdtsc_stat () {
     echo -n "" > $LOG_FILE
     local i=1
     while [ $i -le $S ]; do
-	./perf $PERF_ARGS &>> $LOG_FILE
-	i=$(( i + 1 ))
+        ./perf $PERF_ARGS &>> $LOG_FILE
+        i=$(( i + 1 ))
     done
 }
 process_rdtsc_stat () {
@@ -109,9 +109,9 @@ if [ -z "$CORE_MATH_QUIET" ]; then
     str_dot=""
     i=1
     while [ $i -le $S ]; do
-	str_hsh="${str_hsh}#"
-	str_dot="${str_dot}."
-	i=$(( i + 1 ))
+        str_hsh="${str_hsh}#"
+        str_dot="${str_dot}."
+        i=$(( i + 1 ))
     done
 fi
 
@@ -141,16 +141,16 @@ fi
 if [ -n "$BACKUP_LIBM" ]; then
     export LIBM="$BACKUP_LIBM"
     if has_symbol; then
-	PERF_ARGS="${PERF_ARGS} --libc"
-	make -s clean
-	make -s perf
-	if [ "$CORE_MATH_PERF_MODE" = perf ]; then
-	    proc_perf
-	    
-	elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
-	    PERF_ARGS="${PERF_ARGS} --rdtsc"
-	    proc_rdtsc
-	fi
+        PERF_ARGS="${PERF_ARGS} --libc"
+        make -s clean
+        make -s perf
+        if [ "$CORE_MATH_PERF_MODE" = perf ]; then
+            proc_perf
+
+        elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
+            PERF_ARGS="${PERF_ARGS} --rdtsc"
+            proc_rdtsc
+        fi
     elif [ -z "$CORE_MATH_QUIET" ]; then
         echo "$f is not present in $LIBM; skipping" >&2
     fi
