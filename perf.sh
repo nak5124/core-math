@@ -1,11 +1,13 @@
 #!/bin/bash
 # Usage: ./perf.sh acos
 
+set -e
+
 S=20 # trial
 N=100000 # count
 M=500 # repeat
 
-read -r -d '' prog_end <<EOF
+{ read -r -d '' prog_end || true; } <<EOF
 END {
   s = 0;
   nout = int(5*i/100);
