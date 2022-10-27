@@ -1,4 +1,8 @@
 #!/bin/bash
+# To use check.sh with GNU MPFR installed in a non-standard
+# place, say /tmp/include and /tmp/lib, use the following
+# (LD_LIBRARY_PATH is needed because of dynamic linking):
+# LD_LIBRARY_PATH=/tmp/lib CFLAGS=-I/tmp/include LDFLAGS=-L/tmp/lib ./check.sh ...
 
 MAKE=make
 

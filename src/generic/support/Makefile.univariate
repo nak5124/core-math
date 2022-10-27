@@ -12,7 +12,7 @@ LIBM += -lm
 all:: perf
 
 perf: perf.o $(FUNCTION_UNDER_TEST).o
-	$(CC) -o $@ $^ $(LIBM)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBM)
 
 perf.o: ../../generic/support/perf_univariate.c
 	$(CC) $(CFLAGS) $(PERF_DEFINES) -I ../../generic/$(notdir $(CURDIR)) -c -o $@ $<
