@@ -9,8 +9,8 @@ if [ -z "$LAST_COMMIT" ]; then
     fi
 fi
 
-FUNCTIONS_EXHAUSTIVE=(acosf acoshf asinf asinhf atanf atanhf cbrtf erff erfc expf exp10f exp2f expm1f logf log10f log1pf log2f sinf sinhf tanf tanhf)
-FUNCTIONS_WORST=(atan2f hypotf cbrt)
+FUNCTIONS_EXHAUSTIVE=(acosf acoshf asinf asinhf atanf atanhf cbrtf cosf coshf erff erfcf expf exp10f exp2f expm1f logf log10f log1pf log2f rsqrtf sinf sinhf sinpif tanf tanhf)
+FUNCTIONS_WORST=(acos asin atan2f cbrt exp exp2 hypotf log rsqrt)
 FUNCTIONS_SPECIAL=(hypotf)
 
 echo "Reference commit is $LAST_COMMIT"
