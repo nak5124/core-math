@@ -73,7 +73,13 @@ float cr_cospif(float x){
   }
   int32_t m = (ix.u&~0u>>9)|1<<23, s = 143 - e;
   if(__builtin_expect(s<0, 0)){
-    if(__builtin_expect(s<-6, 0)) return 1.0f;
+    if(__builtin_expect(s<-7, 0)) return 1.0f;
+    if(__builtin_expect(s<-6, 0)){
+      if(m&1)
+	return -1.0f;
+      else
+	return 1.0f;
+    }
     int32_t iq = m<<(-s-1);
     return S[(iq+32)&127];
   } else if(__builtin_expect(s>30, 0)){
