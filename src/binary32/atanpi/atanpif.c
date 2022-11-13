@@ -47,8 +47,9 @@ float cr_atanpif(float x){
     return sx - (0x1.5555555555555p-2*sx)*(x*x);
   }
   unsigned ax = t.u&(~0u>>1);
-  if(__builtin_expect(ax == 0x3fa267ddu, 0)) return __builtin_copysign(0x1.267004p-2,x) - __builtin_copysign(0x1p-55,x);
-  if(__builtin_expect(ax == 0x3f693531u, 0)) return __builtin_copysign(0x1.e1a662p-3,x) + __builtin_copysign(0x1p-28,x);
+  if(__builtin_expect(ax == 0x3fa267ddu, 0)) return __builtin_copysignf(0x1.267004p-2f,x) - __builtin_copysignf(0x1p-55f,x);
+  if(__builtin_expect(ax == 0x3f693531u, 0)) return __builtin_copysignf(0x1.e1a662p-3f,x) + __builtin_copysignf(0x1p-28f,x);
+  if(__builtin_expect(ax == 0x3f800000u, 0)) return __builtin_copysignf(0x1p-2f,x);
   if(gt) z = 1/z;
   double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
   static const double cn[] =
