@@ -50,9 +50,16 @@ collect_perf_stat () {
 process_perf_stat () {
     sort -g -k 1 $LOG_FILE | awk "/cycles/{a[i++]=\$1/(${N}*${M});} ${prog_end}"
 }
+perform_perf_stat () {
+    perf stat -e cycles -x " " $CORE_MATH_LAUNCHER ./perf $PERF_ARGS 2>&1 | awk "/cycles/{print \$1/(${N}*${M})}"
+}
 proc_perf () {
-    collect_perf_stat
-    process_perf_stat
+    if [ -z "$CORE_MATH_SIMPLE_STAT" ]; then
+        collect_perf_stat
+        process_perf_stat
+    else
+        perform_perf_stat
+    fi
 }
 
 collect_rdtsc_stat () {
@@ -72,9 +79,16 @@ collect_rdtsc_stat () {
 process_rdtsc_stat () {
     sort -g $LOG_FILE | awk "{a[i++]=\$1;} ${prog_end}"
 }
+perform_rdtsc_stat () {
+    $CORE_MATH_LAUNCHER ./perf $PERF_ARGS
+}
 proc_rdtsc () {
-    collect_rdtsc_stat
-    process_rdtsc_stat
+    if [ -z "$CORE_MATH_SIMPLE_STAT" ]; then
+        collect_rdtsc_stat
+        process_rdtsc_stat
+    else
+        perform_rdtsc_stat
+    fi
 }
 
 has_symbol () {
