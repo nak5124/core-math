@@ -55,9 +55,15 @@ proc_perf () {
 
 collect_rdtsc_stat () {
     echo -n "" > $LOG_FILE
+    if [ -z "$CORE_MATH_QUIET" ]; then
+        prog_bar $S 0
+    fi
     local i=1
     while [ $i -le $S ]; do
         $CORE_MATH_LAUNCHER ./perf $PERF_ARGS &>> $LOG_FILE
+        if [ -z "$CORE_MATH_QUIET" ]; then
+            prog_bar $S $i
+        fi
         i=$(( i + 1 ))
     done
 }
