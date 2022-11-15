@@ -48,7 +48,7 @@ collect_perf_stat () {
     done
 }
 process_perf_stat () {
-    sort -g -k 1 $LOG_FILE | awk "/cycles:u/{a[i++]=\$1/(${N}*${M});} ${prog_end}"
+    sort -g -k 1 $LOG_FILE | awk "/cycles/{a[i++]=\$1/(${N}*${M});} ${prog_end}"
 }
 proc_perf () {
     collect_perf_stat
