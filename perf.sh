@@ -3,6 +3,8 @@
 
 set -e
 
+export LC_ALL=C.UTF-8
+
 S=20 # trial
 N=100000 # count
 M=500 # repeat
