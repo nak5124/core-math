@@ -89,7 +89,9 @@ f=$1
 u="$(echo src/binary*/*/$f.c)"
 
 if [ -z "$CORE_MATH_PERF_MODE" ]; then
-    echo 'CORE_MATH_PERF_MODE (perf or rdtsc) environment variable is not set. The default is perf.'
+    if [ -z "$CORE_MATH_QUIET" ]; then
+        echo 'CORE_MATH_PERF_MODE (perf or rdtsc) environment variable is not set. The default is perf.'
+    fi
     CORE_MATH_PERF_MODE=perf
 fi
 
