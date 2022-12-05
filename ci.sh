@@ -9,7 +9,7 @@ if [ -z "$LAST_COMMIT" ]; then
     fi
 fi
 
-FUNCTIONS_EXHAUSTIVE=(acosf acoshf acospif asinf asinhf asinpif atanf atanhf cbrtf cosf coshf cospif erff erfcf expf exp10f exp2f expm1f logf log10f log1pf log2f rsqrtf sinf sinhf sinpif tanf tanhf tanpif)
+FUNCTIONS_EXHAUSTIVE=(acosf acoshf acospif asinf asinhf asinpif atanf atanhf cbrtf cosf coshf cospif erff erfcf expf exp10f exp10m1f exp2f exp2m1f expm1f logf log10f log1pf log2f rsqrtf sinf sinhf sinpif tanf tanhf tanpif)
 FUNCTIONS_WORST=(acos asin atan2f cbrt exp exp2 hypotf log rsqrt)
 FUNCTIONS_SPECIAL=(hypotf)
 
