@@ -9,5 +9,5 @@ fi
 for u in src/binary*/*/Makefile; do
     f="$(sed -n 's/FUNCTION_UNDER_TEST := //p' $u)"
     echo -n "$f "
-    CORE_MATH_QUIET=1 ./perf.sh $f | xargs echo
+    CORE_MATH_SIMPLE_STAT=1 CORE_MATH_QUIET=1 ./perf.sh $f | xargs echo
 done
