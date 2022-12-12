@@ -29,6 +29,7 @@ SOFTWARE.
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <fenv.h>
 #include <omp.h>
@@ -79,6 +80,17 @@ readstdin(float2 **result, int *count)
   }
 }
 
+static inline uint32_t
+asuint (float f)
+{
+  union
+  {
+    float f;
+    uint32_t i;
+  } u = {f};
+  return u.i;
+}
+
 void
 doloop(void)
 {
@@ -95,7 +107,7 @@ doloop(void)
     float z1 = ref_function_under_test(x, y);
     fesetround(rnd1[rnd]);
     float z2 = cr_function_under_test(x, y);
-    if (z1 != z2) {
+    if (asuint (z1) != asuint (z2)) {
       printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
       fflush(stdout);
       exit(1);

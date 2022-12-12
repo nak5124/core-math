@@ -39,6 +39,17 @@ double cr_cbrt (double);
 int rnd = 0;
 int verbose = 0;
 
+static inline uint64_t
+asuint64 (double f)
+{
+  union
+  {
+    double f;
+    uint64_t i;
+  } u = {f};
+  return u.i;
+}
+
 static void
 doit (double x)
 {
@@ -46,7 +57,7 @@ doit (double x)
   z1 = ref_cbrt (x);
   fesetround(rnd1[rnd]);
   z2 = cr_cbrt (x);
-  if (z1 != z2) {
+  if (asuint64 (z1) != asuint64 (z2)) {
     printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
     fflush(stdout);
     exit(1);

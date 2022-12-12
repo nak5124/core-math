@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
@@ -38,6 +39,17 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd = 0;
 int verbose = 0;
 
+static inline uint64_t
+asuint64 (double f)
+{
+  union
+  {
+    double f;
+    uint64_t i;
+  } u = {f};
+  return u.i;
+}
+
 static void
 check_subnormal (int64_t n, int e)
 {
@@ -45,7 +57,7 @@ check_subnormal (int64_t n, int e)
   double y1 = ref_exp2 (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_exp2 (x);
-  if (y1 != y2)
+  if (asuint64 (y1) != asuint64 (y2))
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);

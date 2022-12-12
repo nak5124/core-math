@@ -56,6 +56,17 @@ asfloat (uint32_t n)
   return u.x;
 }
 
+static inline uint32_t
+asuint (float f)
+{
+  union
+  {
+    float f;
+    uint32_t i;
+  } u = {f};
+  return u.i;
+}
+
 void
 doit (uint32_t n)
 {
@@ -66,23 +77,14 @@ doit (uint32_t n)
   y = ref_function_under_test (x);
   fesetround (rnd1[rnd]);
   z = cr_function_under_test (x);
-  if (y != z)
+  /* Note: the test y != z would not distinguish +0 and -0, instead we compare
+     the 32-bit encodings. */
+  if (asuint (y) != asuint (z))
   {
     printf ("FAIL x=%a ref=%a y=%a\n", x, y, z);
     fflush (stdout);
     if (!keep) exit (1);
   }
-}
-
-static inline uint32_t
-asuint (float f)
-{
-  union
-  {
-    float f;
-    uint32_t i;
-  } u = {f};
-  return u.i;
 }
 
 int
