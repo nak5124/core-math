@@ -44,6 +44,17 @@ extern int verbose;
 
 char RND[] = "NZUD";
 
+static inline uint64_t
+asuint64 (double f)
+{
+  union
+  {
+    double f;
+    uint64_t i;
+  } u = {f};
+  return u.i;
+}
+
 static void
 doit (double x, double y)
 {
@@ -51,7 +62,7 @@ doit (double x, double y)
   z1 = ref_hypot (x, y);
   fesetround (rnd1[rnd]);
   z2 = cr_hypot (x, y);
-  if (z1 != z2) {
+  if (asuint64 (z1) != asuint64 (z2)) {
     printf("FAIL x=%la y=%la ref=%la z=%la RND%c\n", x, y, z1, z2, RND[rnd]);
     fflush(stdout);
     exit(1);

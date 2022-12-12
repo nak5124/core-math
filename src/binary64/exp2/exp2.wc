@@ -68917,3 +68917,5 @@
 0x1.ee88559d92443p-21
 0x1.ed4a67da1b6b3p-21
 0x1.ef2b8dfe4ba39p-21
+# check sign of 0
+-0x1p1023

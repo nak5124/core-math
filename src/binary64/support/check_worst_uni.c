@@ -29,6 +29,7 @@ SOFTWARE.
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <fenv.h>
 #include <omp.h>
@@ -77,6 +78,17 @@ readstdin(double **result, int *count)
   }
 }
 
+static inline uint64_t
+asuint64 (double f)
+{
+  union
+  {
+    double f;
+    uint64_t i;
+  } u = {f};
+  return u.i;
+}
+
 void
 doloop(void)
 {
@@ -93,7 +105,8 @@ doloop(void)
     double z1 = ref_function_under_test(x);
     fesetround(rnd1[rnd]);
     double z2 = cr_function_under_test(x);
-    if (z1 != z2) {
+    /* Note: the test z1 != z2 would not distinguish +0 and -0. */
+    if (asuint64 (z1) != asuint64 (z2)) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
       fflush(stdout);
 #ifdef DO_NOT_ABORT

@@ -41,6 +41,17 @@ extern int rnd1[];
 extern int rnd;
 extern int verbose;
 
+static inline uint32_t
+asuint (float f)
+{
+  union
+  {
+    float f;
+    uint32_t i;
+  } u = {f};
+  return u.i;
+}
+
 static void
 doit (float x, float y)
 {
@@ -48,7 +59,7 @@ doit (float x, float y)
   z1 = ref_hypot(x, y);
   fesetround(rnd1[rnd]);
   z2 = cr_hypotf(x, y);
-  if (z1 != z2) {
+  if (asuint (z1) != asuint (z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
     exit(1);

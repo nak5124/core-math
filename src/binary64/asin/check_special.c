@@ -44,13 +44,24 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd = 0;
 int verbose = 0;
 
+static inline uint64_t
+asuint64 (double f)
+{
+  union
+  {
+    double f;
+    uint64_t i;
+  } u = {f};
+  return u.i;
+}
+
 static void
 check_random (double x)
 {
   double y1 = ref_asin (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_asin (x);
-  if (y1 != y2)
+  if (asuint64 (y1) != asuint64 (y2))
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
