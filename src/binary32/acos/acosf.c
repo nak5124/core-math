@@ -35,8 +35,8 @@ float cr_acosf(float x){
   int e = (t.u>>23)&0xff;
   double r;
   if(__builtin_expect(e>=127, 0)){
-    if(t.u == (0x7f<<23)) return 0.0f; // x=1
-    if(t.u == (0x17f<<23)) return pi;  // x=-1
+    if(t.u == (0x7fu<<23)) return 0.0f; // x=1
+    if(t.u == (0x17fu<<23)) return pi;  // x=-1
     if(e==0xff && (t.u<<9)) return x; // nan
     errno = EDOM;
     feraiseexcept(FE_INVALID);
