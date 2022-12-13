@@ -31,12 +31,13 @@ typedef union {float f; unsigned u;} b32u32_u;
 
 float cr_acosf(float x){
   const double pi = 0x1.921fb54442d18p+1;
+  const float pih = 0x1.921fb6p+1, pil = -0x1.777a5cp-24;
   b32u32_u t = {.f = x};
   int e = (t.u>>23)&0xff;
   double r;
   if(__builtin_expect(e>=127, 0)){
     if(t.u == (0x7fu<<23)) return 0.0f; // x=1
-    if(t.u == (0x17fu<<23)) return pi;  // x=-1
+    if(t.u == (0x17fu<<23)) return pih + pil;  // x=-1
     if(e==0xff && (t.u<<9)) return x; // nan
     errno = EDOM;
     feraiseexcept(FE_INVALID);
