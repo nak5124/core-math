@@ -128,6 +128,7 @@ float cr_logf(float x) {
   double Lh = ln2h * e, Ll = ln2l * e;
   b64u64_u res = {.f =  __builtin_fma(z, c0, Ll-lix[j]) + Lh};
   if(__builtin_expect((res.u&0xfffffffl) == 0, 0)){
+    if (x == 1.0f)  return 0.0f;
     if(xd.f + 0x1p-54 == xd.f - 0x1p-54){ // round-to-nearest mode
       if     (x == 0x1.827a74p-7f)  return -0x1.1c2b1ep+2f;
       else if(x == 0x1.2f1fd6p+3f)  return  0x1.1fcbcep+1f;

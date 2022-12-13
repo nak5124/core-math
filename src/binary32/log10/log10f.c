@@ -100,6 +100,7 @@ float cr_log10f(float x) {
     0x1.82448a3d8a2aap-7, 0x1.010157586de71p-7, 0x1.0080559488b35p-8, 0x0p+0 };
 
   static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
+    {{0x1.0p+0f}, 0, 0},
     {{0x1.4p+3f}, 1, 0},
     {{0x1.9p+6f}, 2, 0},
     {{0x1.f4p+9f}, 3, 0},

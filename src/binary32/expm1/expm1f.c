@@ -50,8 +50,10 @@ float cr_expm1f(float x){
     if(ax>(0xffu<<23)) return x; // nan
     return q[0][0] + q[0][1];
   } else if (__builtin_expect(ax<0x3e000000u, 1)){ // x < 0.125
-    if (__builtin_expect(ax<0x32000000u, 0)) // x < 2^-25
+    if (__builtin_expect(ax<0x32000000u, 0)){ // x < 2^-25
+      if(__builtin_expect(ax==0x0u, 0)) return x; // x = +-0
       return __builtin_fmaf(x,x,x);
+    }
     static const double p[] =
       {0x1.ffffffffffff6p-2, 0x1.5555555555572p-3, 0x1.5555555566a8fp-5, 0x1.11111110f18aep-7,
        0x1.6c16bf78e5645p-10, 0x1.a01a03fd7c6cdp-13, 0x1.a0439d78f6d66p-16, 0x1.71de38ef84d8cp-19};
