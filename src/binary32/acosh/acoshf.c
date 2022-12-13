@@ -276,8 +276,10 @@ cr_acoshf (float x)
 {
   /* deal here with NaN, +Inf and -Inf */
 
-  if (x < 0x1p0f) /* acosh(x) is NaN for x < 1 */
+  if (x <= 0x1p0f){ /* acosh(x) is NaN for x < 1 */
+    if(x == 0x1p0f) return 0.0f;
     return sqrtf (-0x1p0f);
+  }
 
   /* use Equation (17.1.2) from [1]: acosh(x) = log (x + sqrt(x^2-1)) */
   double y;

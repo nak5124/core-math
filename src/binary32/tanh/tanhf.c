@@ -37,8 +37,10 @@ float cr_tanhf(float x){
     return ir[ux>>31]; // +-inf
   }
   if (__builtin_expect(e<115, 0)){
-    if (__builtin_expect(e<102, 0))
+    if (__builtin_expect(e<102, 0)){
+      if(__builtin_expect((ux<<1)==0, 0)) return x;
       return __builtin_fmaf(-x, __builtin_fabsf(x), x);
+    }
     float x2 = x*x;
     return __builtin_fmaf(x, -0x1.555556p-2f*x2, x);
   }
