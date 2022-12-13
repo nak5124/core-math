@@ -37,7 +37,8 @@ float cr_acospif(float x){
   b32u32_u t = {.f = x};
   int e = (t.u>>23)&0xff;
   if(__builtin_expect(e>=127, 0)){
-    if(ax == 1.0f) return 0.5f - __builtin_copysignf(0.5f, x);
+    if(x == 1.0f) return 0.0f;
+    if(x ==-1.0f) return 1.0f;
     if(e==0xff && (t.u<<9)) return x; // nan
     errno = EDOM;
     feraiseexcept(FE_INVALID);

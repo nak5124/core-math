@@ -71,22 +71,18 @@ float cr_cospif(float x){
     }
     return x;
   }
-  int32_t m = (ix.u&~0u>>9)|1<<23, s = 143 - e;
-  if(__builtin_expect(s<0, 0)){
-    if(__builtin_expect(s<-7, 0)) return 1.0f;
-    if(__builtin_expect(s<-6, 0)){
-      if(m&1)
-	return -1.0f;
-      else
-	return 1.0f;
-    }
-    int32_t iq = m<<(-s-1);
+  int32_t m = (ix.u&~0u>>9)|1<<23, s = 143 - e, p = e - 112;
+  if(__builtin_expect(p<0, 0)) return __builtin_fmaf(-0x1.3bd3ccp+2f*x, x, 1.0f);
+  if(__builtin_expect(p>31, 0)) {
+    if(__builtin_expect(p>63, 0)) return 1.0f;
+    int32_t iq = m << (p - 32);
     return S[(iq+32)&127];
-  } else if(__builtin_expect(s>30, 0)){
-    return __builtin_fmaf(-0x1.3bd3ccp+2f*x, x, 1.0f);
   }
-
-  int32_t k = m<<(31-s);
+  int32_t k = m << p;
+  if(__builtin_expect(k==0, 0)){
+    int32_t iq = m >> -p;
+    return S[(iq+32)&127];
+  }
   double z = k, z2 = z*z;
   double fs = sn[0] + z2*(sn[1] + z2*sn[2]);
   double fc = cn[0] + z2*(cn[1] + z2*cn[2]);

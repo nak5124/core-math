@@ -340,6 +340,7 @@ cr_asinhf (float x)
   /* use asinh(x) ~ x - x^3/6 + 3x^5/40 -5x^7/112 */
   if (xx < 0x1.0c214cp-5)
   {
+    if(x == 0.0f) return x;
     y = (double) x;
     double z = xx * xx;
     double t = c5 + c7 * z;
