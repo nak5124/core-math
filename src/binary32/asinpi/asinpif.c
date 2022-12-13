@@ -104,7 +104,7 @@ float cr_asinpif(float x){
     c0 += c2*z2;
     c4 += c6*z2;
     c0 += c4*z4;
-    double r = __builtin_copysign(0.5, x) - c0*__builtin_copysign(f, x);
+    double r = __builtin_fma(-c0, __builtin_copysign(f, x), __builtin_copysign(0.5, x));
     return r;
   }
 }
