@@ -658,10 +658,12 @@ cr_exp2 (double x)
 
     if (x >= 1024.) /* 2^x > 2^1024*(1-2^-54) */
       return xmax + xmax;
-    else if (x < -1075.) /* 2^x < 2^-1075 */
+    else if (x < -1074.) /* 2^x < 2^-1074 */
     {
       static const double xmin = 0x1p-1074;
-      return xmin / 2.0;
+      if(x < -1075.) /* 2^x < 2^-1075 */
+	return xmin/2;
+      return xmin*(1.0 + 0.5*(x+1074));
     }
     /* otherwise go through the main path */
   }
