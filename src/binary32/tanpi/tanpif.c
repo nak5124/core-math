@@ -65,6 +65,7 @@ float cr_tanpif(float x){
     int32_t iq = m<<(-s-1);
     double ts = T[iq&63];
     if(ts>1e3) return ((iq&64)?-1.0f:1.0f)/0.0f;
+    if(ts==0.0f) return ((iq&64)?-ts:ts)*__builtin_copysignf(1.0f,x);
     return ts;
   } else if(__builtin_expect(s>29, 0)){
     double z = x, z2 = z*z, r = z * (0x1.921fb54442d17p+1 + z2 *  0x1.4abbcfa8c7acfp+3);
