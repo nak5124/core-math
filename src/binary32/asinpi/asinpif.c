@@ -48,13 +48,7 @@ float cr_asinpif(float x){
   static const double ch[][8] = {
     {0x1.45f306dc9c882p-2, 0x1.b2995e7b7dc2fp-5, 0x1.8723a1cf50c7ep-6, 0x1.d1a4591d16a29p-7,
     0x1.3ce3aa68ddaeep-7, 0x1.d3182ab0cc1bfp-8, 0x1.62b379a8b88e3p-8, 0x1.6811411fcfec2p-8},
-    {
-#ifdef __FMA__
-      0x1.ffffffffd3cdap-2
-#else
-      0x1.ffffffffd3cdbp-2
-#endif
-      , -0x1.17cc1b3355fdcp-4, 0x1.d067a1e8d5a99p-6, -0x1.08e16fb09314ap-6,
+    {0x1.ffffffffd3cdap-2, -0x1.17cc1b3355fdcp-4, 0x1.d067a1e8d5a99p-6, -0x1.08e16fb09314ap-6,
     0x1.5eed43d42dcb2p-7, -0x1.f58baca7acc71p-8, 0x1.5dab64e2dcf15p-8, -0x1.59270e30797acp-9},
     {0x1.fffffff7c4617p-2, -0x1.17cc149ded3a2p-4, 0x1.d0654d4cb2c1ap-6, -0x1.08c3ba713d33ap-6,
     0x1.5d2053481079cp-7, -0x1.e485ebc545e7ep-8, 0x1.303baca167dddp-8, -0x1.dee8d16d06b38p-10},
