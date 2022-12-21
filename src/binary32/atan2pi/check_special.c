@@ -61,7 +61,7 @@ check_random ()
       z = cr_atan2pif (y, x);
       if (z != t)
       {
-        printf("FAIL x=%a y=%a ref=%a z=%a rnd=%d\n", x, y, t, z, rnd);
+        printf("FAIL y=%a x=%a ref=%a z=%a rnd=%d\n", y, x, t, z, rnd);
         exit (1);
       }
     }

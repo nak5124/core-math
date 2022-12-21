@@ -1,4 +1,5 @@
 # worst cases with at least 44 identical bits after the round bit
+# beware: the following are x,y pairs, but the function is called with y first
 0x1.01754cp+20,-0x6.a1105p+20
 0x1.0c9078p-4,0x7.6b21dp+20
 0x1.0d4f16p+32,-0xc.66b13p+20
