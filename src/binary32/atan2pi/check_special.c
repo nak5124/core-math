@@ -29,49 +29,116 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
+#include <omp.h>
+#include <mpfr.h>
 
 float cr_atan2pif (float, float);
-float ref_atan2pi (float, float);
-int ref_fesetround (int);
 void ref_init (void);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
+int rnd2[] = { MPFR_RNDN, MPFR_RNDZ, MPFR_RNDU, MPFR_RNDD };
 
 int rnd = 0;
+
 int verbose = 0;
 
+/* reference code using MPFR */
+static float
+ref_atan2pi (float y, float x, int rnd)
+{
+  mpfr_t xi, yi;
+  mpfr_inits2 (24, xi, yi, NULL);
+  mpfr_set_flt (xi, x, MPFR_RNDN);
+  mpfr_set_flt (yi, y, MPFR_RNDN);
+  int inex = mpfr_atan2pi (xi, yi, xi, rnd2[rnd]);
+  mpfr_subnormalize (xi, inex, rnd2[rnd]);
+  float ret = mpfr_get_flt (xi, MPFR_RNDN);
+  mpfr_clears (xi, yi, NULL);
+  return ret;
+}
+
 static void
-check_random ()
+check_random (int i)
 {
   float x, y, z, t;
+  struct drand48_data buffer[1];
   ref_init ();
+  srand48_r (i, buffer);
   while (1)
   {
-    x = ldexp (drand48 (), -149 + (lrand48 () % 277));
-    if (lrand48 () & 1)
+    double u;
+    long l;
+    drand48_r (buffer, &u);
+    lrand48_r (buffer, &l);
+    x = ldexp (u, -149 + (l % 277));
+    lrand48_r (buffer, &l);
+    if (l & 1)
       x = -x;
-    y = ldexp (drand48 (), -149 + (lrand48 () % 277));
-    if (lrand48 () & 1)
+    drand48_r (buffer, &u);
+    lrand48_r (buffer, &l);
+    y = ldexp (u, -149 + (l % 277));
+    lrand48_r (buffer, &l);
+    if (l & 1)
       y = -y;
-    for (rnd = 0; rnd < 4; rnd++)
+    t = ref_atan2pi (y, x, rnd);
+    fesetround (rnd1[rnd]);
+    z = cr_atan2pif (y, x);
+    if (z != t)
     {
-      ref_fesetround (rnd);
-      fesetround (rnd1[rnd]);
-      t = ref_atan2pi (y, x);
-      z = cr_atan2pif (y, x);
-      if (z != t)
-      {
-        printf("FAIL y=%a x=%a ref=%a z=%a rnd=%d\n", y, x, t, z, rnd);
-        exit (1);
-      }
+      printf ("FAIL y=%a x=%a ref=%a z=%a\n", y, x, t, z);
+      exit (1);
     }
   }
 }
 
 int
-main ()
+main (int argc, char *argv[])
 {
+  while (argc >= 2)
+    {
+      if (strcmp (argv[1], "--rndn") == 0)
+        {
+          rnd = 0;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--rndz") == 0)
+        {
+          rnd = 1;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--rndu") == 0)
+        {
+          rnd = 2;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--rndd") == 0)
+        {
+          rnd = 3;
+          argc --;
+          argv ++;
+        }
+      else if (strcmp (argv[1], "--verbose") == 0)
+        {
+          verbose = 1;
+          argc --;
+          argv ++;
+        }
+      else
+        {
+          fprintf (stderr, "Error, unknown option %s\n", argv[1]);
+          exit (1);
+        }
+    }
+
+  int nthreads;
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
   /* check random values */
-  check_random ();
+#pragma omp parallel for
+  for (int i = 0; i < nthreads; i++)
+    check_random (i);
   return 0;
 }
