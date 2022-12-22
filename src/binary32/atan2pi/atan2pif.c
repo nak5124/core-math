@@ -157,9 +157,9 @@ float cr_atan2pif(float y, float x){
 	tth.u &= (uint64_t) 0x7ff<<52;
 	tth.u -= (uint64_t) 24<<52;
 	if(__builtin_fabs(tm)>tth.f)
-	  tm *= 1.25;
+	  tm *= 1.01;
 	else
-	  tm *= 0.75;
+	  tm *= 1/1.01;
       }
       r = th + tm;
     }
