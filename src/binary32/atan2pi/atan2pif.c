@@ -116,7 +116,7 @@ float cr_atan2pif(float y, float x){
   b64u64_u res = {.f = r};
   if(__builtin_expect((res.u<<1) > 0x6d40000000000000 && ((res.u + 8)&0xfffffff) <= 16, 0)){
     if(ax==ay) {
-      static const double off2[] = {0.25f, 0.75f, -0.25f, -0.75f};
+      static const double off2[] = {0.25, 0.75, -0.25, -0.75};
       r = off2[(uy>>31)*2 + (ux>>31)];
     } else {
       double zh,zl;
