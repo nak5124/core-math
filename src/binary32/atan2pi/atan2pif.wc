@@ -1,5 +1,6 @@
 # worst cases with at least 44 identical bits after the round bit
-# beware: the following are x,y pairs, but the function is called with y first
+# beware: since check.sh --worst is generic for all bivariate function
+# we should put the first argument of atan2pi (called y) first
 0x1.01754cp+20,-0x6.a1105p+20
 0x1.0c9078p-4,0x7.6b21dp+20
 0x1.0d4f16p+32,-0xc.66b13p+20
@@ -644,7 +645,7 @@
 0x1.fffffep127,-0x1p-149
 -0x1.fffffep127,0x1p-149
 -0x1.fffffep127,-0x1p-149
-# non-regression test
+# non-regression tests
 0x1.8p-148,0x1.20f90cp+1
 0x1.8p-148,-0x1.20f90cp+1
 -0x1.8p-148,0x1.20f90cp+1
@@ -653,3 +654,4 @@
 0x1.20f90cp+1,-0x1.8p-148
 -0x1.20f90cp+1,0x1.8p-148
 -0x1.20f90cp+1,-0x1.8p-148
+0x1.83dcdap-43,0x1.28e1ecp+87
