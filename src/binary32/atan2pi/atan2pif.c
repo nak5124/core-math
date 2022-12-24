@@ -154,7 +154,7 @@ float cr_atan2pif(float y, float x){
       double th = rf, dh = sh - th, tm = dh + sl;
       b64u64_u tth = {.f = th};
       if(th + th*0x1p-60 == th - th*0x1p-60){
-	uint64_t k = !(tth.u<<12);
+	uint64_t k = !(tth.u<<12) && tm*th<0;
 	tth.u &= 0x7ffl<<52;
 	tth.u -= (24 + k)<<52;
 	if(__builtin_fabs(tm)>tth.f)
