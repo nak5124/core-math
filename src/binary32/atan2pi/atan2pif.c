@@ -152,17 +152,13 @@ float cr_atan2pif(float y, float x){
       double sh = ph + off[i], sl = ((off[i] - sh) + ph) + pl;
       float rf = sh;
       double th = rf, dh = sh - th, tm = dh + sl;
-      b64u64_u tth = {.f = th};
-      if(th + th*0x1p-60 == th - th*0x1p-60){
-	uint64_t k = !(tth.u<<12) && tm*th<0;
-	tth.u &= 0x7ffl<<52;
-	tth.u -= (24 + k)<<52;
-	if(__builtin_fabs(tm)>tth.f)
-	  tm *= 1.01;
-	else
-	  tm *= 1/1.01;
-      }
       r = th + tm;
+      b64u64_u d = {.f = r - th};
+      if( !(d.u<<12) ) {
+	double ad = __builtin_fabs(d.f), am = __builtin_fabs(tm);
+	if(ad > am) r -= d.f*0x1p-10;
+	if(ad < am) r += d.f*0x1p-10;
+      }
     }
   }
   return r;
