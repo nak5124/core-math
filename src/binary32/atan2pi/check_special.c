@@ -27,6 +27,8 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <unistd.h>
 #include <fenv.h>
 #include <math.h>
 #include <omp.h>
@@ -57,37 +59,49 @@ ref_atan2pi (float y, float x, int rnd)
   return ret;
 }
 
+typedef union { uint32_t n; float x; } union_t;
+
+static float
+asfloat (uint32_t n)
+{
+  union_t u;
+  u.n = n;
+  return u.x;
+}
+
+static void
+check (float y, float x)
+{
+  float z, t;
+  t = ref_atan2pi (y, x, rnd);
+  z = cr_atan2pif (y, x);
+  if ((isnan (t) && !isnan(z)) || (!isnan (t) && isnan(z)) ||
+      (!isnan (t) && !isnan(z) && z != t))
+  {
+    printf ("FAIL y=%a x=%a ref=%a z=%a\n", y, x, t, z);
+    exit (1);
+  }
+}
+
 static void
 check_random (int i)
 {
-  float x, y, z, t;
+  long l;
+  float x, y;
   struct drand48_data buffer[1];
   ref_init ();
+  fesetround (rnd1[rnd]);
   srand48_r (i, buffer);
   while (1)
   {
-    double u;
-    long l;
-    drand48_r (buffer, &u);
     lrand48_r (buffer, &l);
-    x = ldexp (u, -149 + (l % 277));
+    y = asfloat (l);
     lrand48_r (buffer, &l);
-    if (l & 1)
-      x = -x;
-    drand48_r (buffer, &u);
-    lrand48_r (buffer, &l);
-    y = ldexp (u, -149 + (l % 277));
-    lrand48_r (buffer, &l);
-    if (l & 1)
-      y = -y;
-    t = ref_atan2pi (y, x, rnd);
-    fesetround (rnd1[rnd]);
-    z = cr_atan2pif (y, x);
-    if (z != t)
-    {
-      printf ("FAIL y=%a x=%a ref=%a z=%a\n", y, x, t, z);
-      exit (1);
-    }
+    x = asfloat (l);
+    check (y, x);
+    check (y, -x);
+    check (-y, x);
+    check (-y, -x);
   }
 }
 
@@ -139,6 +153,6 @@ main (int argc, char *argv[])
   /* check random values */
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
-    check_random (i);
+    check_random (getpid () + i);
   return 0;
 }
