@@ -36,7 +36,9 @@ SOFTWARE.
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#ifdef __x86_64__
 #include <x86intrin.h>
+#endif
 
 #include "random_under_test.h"
 
