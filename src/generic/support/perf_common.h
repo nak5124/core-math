@@ -35,7 +35,8 @@ int* __errno () { return &errno; }
 #endif
 
 #ifdef __aarch64__
-/* Replacement for __rdtsc builtin. */
+/* Replacement for __rdtsc builtin. Contributed by Tue Ly, under
+   MIT license. */
 inline uint64_t __rdtsc(void) {
   uint64_t clock_counter, clock_freq;
 
