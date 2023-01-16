@@ -40,7 +40,7 @@ inline uint64_t __rdtsc(void) {
   uint64_t clock_counter, clock_freq;
 
   asm volatile ("isb; mrs %0, cntvct_el0" : "=r" (clock_counter));
-  asm volatile ("isb; mrs %0, cntfrq_el0" : "=r" (clock_freq));
+  asm volatile ("mrs %0, cntfrq_el0" : "=r" (clock_freq));
 
   return clock_counter * (1000000000 / clock_freq);
 }
