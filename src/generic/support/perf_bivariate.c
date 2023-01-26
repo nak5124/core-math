@@ -36,7 +36,7 @@ SOFTWARE.
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#ifdef __x86__64__
+#ifdef __x86_64__
 #include <x86intrin.h>
 #endif
 
