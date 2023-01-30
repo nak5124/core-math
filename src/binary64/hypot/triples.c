@@ -35,8 +35,8 @@ SOFTWARE.
 
 double cr_hypot (double, double);
 double ref_hypot (double, double);
-int ref_fesetround (int);
-void ref_init (void);
+extern void ref_init (void);
+extern int ref_fesetround (int);
 
 extern int rnd1[];
 extern int rnd;
