@@ -150,7 +150,7 @@ double cr_hypot(double x, double y){
   asm("":"=x"(xd):"0"(u):);
   asm("":"=x"(yd):"0"(v):);
   __m128i de = (__m128i)xd - (__m128i)yd;
-  if(__builtin_expect(de[0]>(27l<<52),0)) return __builtin_fma(0x1p-27, yi.f, xi.f);
+  if(__builtin_expect(de[0]>(27l<<52),0)) return __builtin_fma(0x1p-27, v, u);
   ey = ((__m128i)yd)[0];
   if(__builtin_expect(!(ey>>52),0)){
     ex = ((__m128i)xd)[0];
