@@ -118,7 +118,7 @@ static const double _INVERSE[363]= {
 /* For 362 <= i <= 724, (h,l) = _LOG_INV[i-362] is a double-double
    approximation of -log(r) with r=INVERSE[i-362]), with h an integer multiple
    of 2^-42, and |l| < 2^-43. The maximal difference between -log(r) and h+l
-   is bounded by 2^-96. */
+   is bounded by 1/2 ulp(l) < 2^-97. */
 static const double _LOG_INV[363][2] = {
     {-0x1.615ddb4becp-2, -0x1.3c7ca90bc04b2p-46},
     {-0x1.5e87b20c29p-2, -0x1.527d18f7738fap-44},
@@ -595,7 +595,7 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      2^-70.278 from the error in the Sollya polynomial
      2^-91.94 for the maximal difference |e*(log(2)-(log2_h + log2_l))|
               (|e| <= 1074 and |log(2)-(log2_h + log2_l)| < 2^-102.01)
-     2^-96 for the maximal difference |l1 + l2 - (-log(r))|
+     2^-97 for the maximal difference |l1 + l2 - (-log(r))|
      2^-69.32 from the rounding errors in the polynomial evaluation
      2^-95.4 from the fast_two_sum call
      2^-70.99 from the *l = ph + (*l + l2) instruction
