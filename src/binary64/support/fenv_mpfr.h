@@ -3,7 +3,7 @@
 
 mpfr_rnd_t rnd2[] = { MPFR_RNDN, MPFR_RNDZ, MPFR_RNDU, MPFR_RNDD };
 
-int rnd = 0; /* default is to nearest */
+static int rnd = 0; /* default is to nearest */
 
 int ref_fesetround(int rounding_mode)
 {

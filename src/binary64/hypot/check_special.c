@@ -38,11 +38,11 @@ extern double cr_hypot (double, double);
 extern int ref_fesetround (int);
 extern void ref_init (void);
 extern mpfr_rnd_t rnd2[];
-extern int rnd;
 extern double ref_hypot (double, double);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
+int rnd;
 int verbose = 0;
 
 typedef union {double f; uint64_t u;} b64u64_u;

@@ -43,7 +43,7 @@ void ref_init (void);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
-extern int rnd;
+int rnd;
 
 typedef double double2[2];
 
