@@ -675,7 +675,6 @@ cr_log_accurate (double x)
 double
 cr_log (double x)
 {
-  /* now x > 0 */
   d64u64 v = {.f = x};
   int e = (v.u >> 52) - 0x3ff;
   if (e >= 0x400 || e == -0x3ff) /* x <= 0 or NaN/Inf or subnormal */
@@ -696,6 +695,7 @@ cr_log (double x)
       e = (v.u >> 52) - 0x3ff - 52;
     }
   }
+  /* now x > 0 */
   /* normalize v in [1,2) */
   v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
