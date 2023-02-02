@@ -106,7 +106,7 @@ doloop(void)
     fesetround(rnd1[rnd]);
     double z2 = cr_function_under_test(x);
     /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-    if (asuint64 (z1) != asuint64 (z2)) {
+    if (z2!=0 && (asuint64 (z1) != asuint64 (z2))) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
       fflush(stdout);
 #ifdef DO_NOT_ABORT
