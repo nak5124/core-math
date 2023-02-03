@@ -97,9 +97,15 @@ static const dint64_t ONE = {
 static const dint64_t M_ONE = {
     .hi = 0x8000000000000000, .lo = 0x0, .ex = 0, .sgn = 0x1};
 
-/* the following is an approximation of log10(2) */
+/* the following is an approximation of log(2), with absolute error less
+   than 2^-129.97 */
 static const dint64_t LOG2 = {
-    .hi = 0x9a209a84fbcff798, .lo = 0x8f8959ac0b7c9178, .ex = -2, .sgn = 0x0};
+    .hi = 0xb17217f7d1cf79ab, .lo = 0xc9e3b39803f2f6af, .ex = -1, .sgn = 0x0};
+
+/* the following is an approximation of 1/log(10), with absolute error
+   less than 2^-131.72 */
+static const dint64_t ONE_OVER_LOG10 = {
+  .hi = 0xde5bd8a937287195, .lo = 0x355baaafad33dc32, .ex = -2, .sgn = 0x0};
 
 static const dint64_t LOG2_INV = {
     .hi = 0xb8aa3b295c17f0bb, .lo = 0xbe87fed0691d3e89, .ex = 12, .sgn = 0x0};

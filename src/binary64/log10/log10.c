@@ -655,7 +655,7 @@ cr_log10_fast (double *h, double *l, int e, d64u64 v)
 }
 
 static inline void dint_fromd (dint64_t *a, double b);
-static void log_10 (dint64_t *r, dint64_t *x);
+static void accurate_log (dint64_t *r, dint64_t *x);
 static inline double dint_tod (dint64_t *a);
 
 /* accurate path, using Tom Hubrecht's code below (adapted for log10) */
@@ -664,43 +664,42 @@ cr_log10_accurate (double x)
 {
   dint64_t X, Y;
 
-#define EXCEPTIONS 27
+#define EXCEPTIONS 19
   static double T[EXCEPTIONS][3] = {
-    { 0x1p0, 0x0p0, 0x0p0 },
-    { 0x1.fffffffffff7p-1, -0x1.2000000000029p-46, 0x1.fffffffffe1ap-100 },
-    { 0x1.fffffffffff5p-1, -0x1.600000000003dp-46, 0x1.fffffffffc88bp-100 },
-    { 0x1.fffffffffff3p-1, -0x1.a000000000055p-46, 0x1.fffffffffa475p-100 },
-    { 0x1.fffffffffff1p-1, -0x1.e000000000071p-46, 0x1.fffffffff736p-100 },
-    { 0x1.ffffffffffffep-1, -0x1.0000000000001p-52, 0x1.fffffffffffffp-106 },
-    { 0x1.fffffffffff6p-1, -0x1.4000000000032p-46, -0x1.4d555555555a3p-139 },
-    { 0x1.fffffffffffp-1, -0x1.000000000004p-45, -0x1.55555555555d5p-137 },
-    { 0x1.ffffffffffeep-1, -0x1.2000000000051p-45, -0x1.e6000000000cdp-137 },
-    { 0x1.fffffffffff4p-1, -0x1.8000000000048p-46, -0x1.2000000000051p-138 },
-    { 0x1.fffffffffff2p-1, -0x1.c000000000062p-46, -0x1.c9555555555ebp-138 },
-    { 0x1.ffffffffffeap-1, -0x1.6000000000079p-45, -0x1.bbaaaaaaaab8fp-136 },
-    { 0x1.ffffffffffe8p-1, -0x1.800000000009p-45, -0x1.20000000000a2p-135 },
-    { 0x1.ffffffffffff8p-1, -0x1.0000000000002p-50, -0x1.5555555555559p-152 },
-    { 0x1.ffffffffffffcp-1, -0x1.0000000000001p-51, -0x1.5555555555557p-155 },
-    { 0x1.fffffffffffc8p-1, -0x1.c000000000019p-48, 0x1.ffffffffff8dbp-102 },
-    { 0x1.fffffffffffd8p-1, -0x1.400000000000dp-48, 0x1.ffffffffffd65p-102 },
-    { 0x1.ffffffffffff4p-1, -0x1.8000000000005p-50, 0x1.fffffffffffb8p-104 },
-    { 0x1.fffffffffff9p-1, -0x1.c000000000031p-47, -0x1.c9555555555ap-141 },
-    { 0x1.fffffffffffap-1, -0x1.8000000000024p-47, -0x1.2000000000029p-141 },
-    { 0x1.fffffffffffbp-1, -0x1.4000000000019p-47, -0x1.4d5555555557cp-142 },
-    { 0x1.fffffffffffcp-1, -0x1.000000000001p-47, -0x1.5555555555575p-143 },
-    { 0x1.fffffffffffdp-1, -0x1.8000000000012p-48, -0x1.2000000000014p-144 },
-    { 0x1.fffffffffffep-1, -0x1.0000000000008p-48, -0x1.5555555555565p-146 },
-    { 0x1.fffffffffffe8p-1, -0x1.8000000000009p-49, -0x1.200000000000ap-147 },
-    { 0x1.ffffffffffffp-1, -0x1.0000000000004p-49, -0x1.555555555555dp-149 },
-    { 0x1.fffffffffff8p-1, -0x1.000000000002p-46, -0x1.5555555555595p-140 },
+    { 0x1p0, 0, 0 }, /* 1 */
+    { 0x1.4p+3, 1, 0 }, /* 10 */
+    { 0x1.9p+6, 2, 0 }, /* 100 */
+    { 0x1.f4p+9, 3, 0 }, /* 10^3 */
+    { 0x1.388p+13, 4, 0 }, /* 10^4 */
+    { 0x1.86ap+16, 5, 0 }, /* 10^5 */
+    { 0x1.e848p+19, 6, 0 }, /* 10^6 */
+    { 0x1.312dp+23, 7, 0 }, /* 10^7 */
+    { 0x1.7d784p+26, 8, 0 }, /* 10^8 */
+    /* the accurate code returns the correct rounding for 10^9,
+       whatever the rounding mode */
+    { 0x1.2a05f2p+33, 10, 0 }, /* 10^10 */
+    /* same for 10^11 */
+    { 0x1.d1a94a2p+39, 12, 0 }, /* 10^12 */
+    { 0x1.2309ce54p+43, 13, 0 }, /* 10^13 */
+    /* same for 10^14 */
+    { 0x1.c6bf52634p+49, 15, 0 }, /* 10^15 */
+    { 0x1.1c37937e08p+53, 16, 0 }, /* 10^16 */
+    { 0x1.6345785d8ap+56, 17, 0 }, /* 10^17 */
+    /* same for 10^18 */
+    { 0x1.158e460913dp+63, 19, 0 }, /* 10^19 */
+    { 0x1.5af1d78b58c4p+66, 20, 0 }, /* 10^20 */
+    { 0x1.b1ae4d6e2ef5p+69, 21, 0 }, /* 10^21 */
+    { 0x1.0f0cf064dd592p+73, 22, 0 }, /* 10^22 */
   };
-  for (int i = 0; i < EXCEPTIONS; i++)
+  for (int i = 0; i < 19; i++)
     if (x == T[i][0])
       return T[i][1] + T[i][2];
 
   dint_fromd (&X, x);
   /* x = (-1)^sgn*2^ex*(hi/2^63+lo/2^127) */
-  log_10 (&Y, &X);
+  accurate_log (&Y, &X);
+  /* multiply by 1/log(10) */
+  mul_dint (&Y, &ONE_OVER_LOG10, &Y);
   return dint_tod (&Y);
 }
 
@@ -798,7 +797,7 @@ static inline void p_2(dint64_t *r, dint64_t *z) {
   mul_dint(r, z, r);
 }
 
-static void log_10 (dint64_t *r, dint64_t *x) {
+static void accurate_log (dint64_t *r, dint64_t *x) {
 #if DEBUG > 0
   printf("Calcul du logarithme :\n");
   printf("  x := ");
@@ -844,7 +843,7 @@ static void log_10 (dint64_t *r, dint64_t *x) {
   printf("\n");
 #endif
 
-  // E·log10(2)
+  // E·log(2)
   mul_dint_2(r, E, &LOG2);
 
 #if DEBUG > 0
