@@ -73,6 +73,10 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
   return xi.f;
 }
 
+/* Here the square root is refined by Newton iterations: x^2+y^2 is exact
+   and fits in a 128-bit integer, so the approximation is squared (which
+   also fits in a 128-bit integer), compared and adjusted if necessary using
+   the exact value of x^2+y^2. */
 static double  __attribute__((noinline)) as_hypot_hard(double x, double y){
   double op = 1.0 + 0x1p-54, om = 1.0 - 0x1p-54;
   b64u64_u xi = {.f = x}, yi = {.f = y};
