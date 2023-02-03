@@ -736,7 +736,9 @@ cr_log10 (double x)
 
   // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
 
-  /* maximal absolute error from cr_log10_fast: 2^-69.14 < 1.d1p-70 */
+  /* Maximal absolute error from cr_log10_fast: 2^-69.14 < 1.d1p-70.
+     This bound is relatively tight, since for 0x1.59p-70 it fails
+     for x=0x1.8301ae420f027p+864 (rndz). */
   static double err = 0x1.d1p-70;
 
   double left = h + (l - err), right = h + (l + err);
@@ -747,7 +749,6 @@ cr_log10 (double x)
   }
   // if (x == TRACE) printf ("rounding test failed\n");
   /* the probability of failure of the fast path is about 2^-11.5 */
-  return 0;
   return cr_log10_accurate (x);
 }
 
