@@ -28,8 +28,6 @@ SOFTWARE.
 #include <stdint.h>
 #include "dint.h"
 
-#define TRACE 0x0.012592b80ce2cp-1022
-
 typedef union { double f; uint64_t u; } d64u64;
 
 /* Add a + b, such that *hi + *lo approximates a + b.
@@ -570,7 +568,10 @@ cr_log10_fast (double *h, double *l, int e, d64u64 v)
   ph *= z2;
   /* let ph2 be the value at output of the above instruction:
      |ph2| < |z2| * |ph1| < 4.5e-6 * 0.501 < 2.26e-6 thus the
-     rounding error on ph2 is bounded by ulp(2.26e-6) = 2^-71. */
+     rounding error on ph2 is bounded by ulp(2.26e-6) = 2^-71.
+     In addition we have the rounding error on z2 multiplied by ph1,
+     which gives 0.501*2^-70 < 2^-70.99.
+     The total error for this instruction is 2^-71+2^-70.99 < 2^-69.99. */
 
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
      11 bits. log2_h is exactly representable on 42 bits, so that e*log2_h
@@ -613,14 +614,14 @@ cr_log10_fast (double *h, double *l, int e, d64u64 v)
              approximating P[2]+z*P[3]+z^2*P[4]+z^3*P[5]
      2^-70.76 for the rounding error in the second ph value
              approximating P[1]+z*P[2]+...+z^4*P[5]
-     2^-71 for the rounding error in ph *= z2
+     2^-69.99 for the rounding error in ph *= z2
      2^-91.94 for the maximal difference |e*(log(2)-(log2_h + log2_l))|
               (|e| <= 1074 and |log(2)-(log2_h + log2_l)| < 2^-102.01)
      2^-97 for the maximal difference |l1 + l2 - (-log(r))|
      2^-95.4 from the fast_two_sum call
      2^-70.99 from the *l = ph + (*l + l2) instruction
      2^-71 from the last __builtin_fma call.
-     This gives an absolute error bounded by < 2^-68.45.
+     This gives an absolute error bounded by < 2^-68.22.
   */
   
   /* Divide h+l by log(10), by multiplying by approximation of 1/log(10). */
@@ -631,7 +632,7 @@ cr_log10_fast (double *h, double *l, int e, d64u64 v)
   d_mul (h, l, *h, *l, ONE_OVER_LOG10_H, ONE_OVER_LOG10_L);
   /* We have the following errors:
      - the error on h_in + l_in multiplied by ONE_OVER_LOG10_H+ONE_OVER_LOG10_L
-       which yields 2^-68.45*(ONE_OVER_LOG10_H+ONE_OVER_LOG10_L) < 2^-69.65
+       which yields 2^-68.22*(ONE_OVER_LOG10_H+ONE_OVER_LOG10_L) < 2^-69.42
      - the approximation error on ONE_OVER_LOG10_H+ONE_OVER_LOG10_L multiplied
        by h_in + l_in, which yields 2^-111.05*(745+2^-18.7) < 2^-101.5
      - the neglected term l_in * ONE_OVER_LOG10_L in d_mul(), which is bounded
@@ -650,7 +651,7 @@ cr_log10_fast (double *h, double *l, int e, d64u64 v)
        This gives a bound of 2^-71 for the rounding errors of the two fma's.
 
      This yields a total absolute error bounded by
-     2^-69.65 + 2^-101.5 + 2^-75.03 + 2^-71 < 2^-69.14.
+     2^-69.42 + 2^-101.5 + 2^-75.03 + 2^-71 < 2^-68.98.
    */
 }
 
@@ -735,18 +736,14 @@ cr_log10 (double x)
 
   // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
 
-  /* Maximal absolute error from cr_log10_fast: 2^-69.14 < 1.d1p-70.
+  /* Maximal absolute error from cr_log10_fast: 2^-68.98 < 1.04p-69.
      This bound is relatively tight, since for 0x1.59p-70 it fails
      for x=0x1.8301ae420f027p+864 (rndz). */
-  static double err = 0x1.d1p-70;
+  static double err = 0x1.04p-69;
 
   double left = h + (l - err), right = h + (l + err);
   if (left == right)
-  {
-    // if (x == TRACE) printf ("rounding test succedded\n");
     return left;
-  }
-  // if (x == TRACE) printf ("rounding test failed\n");
   /* the probability of failure of the fast path is about 2^-11.5 */
   return cr_log10_accurate (x);
 }
