@@ -655,10 +655,10 @@ cr_log10_fast (double *h, double *l, int e, d64u64 v)
 }
 
 static inline void dint_fromd (dint64_t *a, double b);
-static void log_2 (dint64_t *r, dint64_t *x);
+static void log_10 (dint64_t *r, dint64_t *x);
 static inline double dint_tod (dint64_t *a);
 
-/* accurate path, using Tom Hubrecht's code below */
+/* accurate path, using Tom Hubrecht's code below (adapted for log10) */
 static double
 cr_log10_accurate (double x)
 {
@@ -700,7 +700,7 @@ cr_log10_accurate (double x)
 
   dint_fromd (&X, x);
   /* x = (-1)^sgn*2^ex*(hi/2^63+lo/2^127) */
-  log_2 (&Y, &X);
+  log_10 (&Y, &X);
   return dint_tod (&Y);
 }
 
@@ -798,7 +798,7 @@ static inline void p_2(dint64_t *r, dint64_t *z) {
   mul_dint(r, z, r);
 }
 
-static void log_2(dint64_t *r, dint64_t *x) {
+static void log_10 (dint64_t *r, dint64_t *x) {
 #if DEBUG > 0
   printf("Calcul du logarithme :\n");
   printf("  x := ");
