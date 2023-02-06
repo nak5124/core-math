@@ -97,6 +97,8 @@ static const dint64_t ONE = {
 static const dint64_t M_ONE = {
     .hi = 0x8000000000000000, .lo = 0x0, .ex = 0, .sgn = 0x1};
 
+/* the following is an approximation of log(2), with absolute error less
+   than 2^-129.97 */
 static const dint64_t LOG2 = {
     .hi = 0xb17217f7d1cf79ab, .lo = 0xc9e3b39803f2f6af, .ex = -1, .sgn = 0x0};
 
