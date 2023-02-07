@@ -1,0 +1,2 @@
+#define cr_function_under_test cr_log1p
+#define ref_function_under_test ref_log1p
