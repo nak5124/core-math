@@ -58,7 +58,7 @@ fast_two_sum (double *hi, double *lo, double a, double b)
 /* For 362 <= i <= 724, r[i] = _INVERSE[i-362] is a 10-bit approximation of
    1/x[i], where i*2^-9 <= x[i] < (i+1)*2^-9.
    More precisely r[i] is a 10-bit value such that r[i]*y-1 is representable
-   exactly on 53 bits for for any y, i*2^-9 <= y < (i+1)*2^-9.
+   exactly on 53 bits for any y, i*2^-9 <= y < (i+1)*2^-9.
    Moreover |r[i]*y-1| <= 0.00212097167968735. */
 static const double _INVERSE[363]= {
     0x1.698p+0, 0x1.688p+0, 0x1.678p+0, 0x1.668p+0, 0x1.658p+0, 0x1.648p+0, 0x1.638p+0,
