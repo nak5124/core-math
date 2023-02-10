@@ -674,93 +674,48 @@ cr_log1p_accurate (double x)
   return dint_tod (&Y);
 }
 
-/* given x > -1, put in c an approximation of the correction factor log(1+1/x),
-   and return a bound on the maximal absolute error so that:
-   err1 + err2 + err3 < err with
-   - |h + l - log(1+x)| < err1
-   - |c - log(1+1/x)| < err2
-   - the rounding error in l+c is bounded by err3 */
-static double
-correction (double *c, double x)
-{
-  double u = 1.0 / x;
-  if (x >= 0x1p35)
-  {
-    /* Approximate log(1+1/x) by 1/x, with error bounded by 1/(2x^2),
-       thus by 2^-71. The rounding error in 1/x is bounded by
-       1/2 ulp(2^-35) = 2^-88. Since |l| < 2^-18.69 from the analysis
-       of cr_log_fast(), we have |l+c| < 2^-18.68 and the rounding error
-       in l+c is bounded by 2^-71.
-       This yields a total error:
-       err < 0x1.b6p-69 + 2^-71 + 2^-88 + 2^-71 < 2^-67.85 */
-    *c = u;
-    return 0x1.1dep-68; /* 2^-67.85 < 1.1dep-68 */
-  }
-  else if (x >= 0x1p22)
-  {
-    /* Let u = 1/x, 2^-35 < u <= 2^-22, we approximate log(1+u) by
-       a degree-2 polynomial (see P1.sollya) with maximal absolute
-       error 2^-72.584. */
-    *c = __builtin_fma (-0x1.fffff8000b591p-2, u, 0x1.fffffffffffap-1);
-    *c = __builtin_fma (*c, u, 0x1.55973a3a700f1p-73);
-    return 0x1.b6p-69;
-  }
-  else if (x >= 0x1p16)
-  {
-    /* Let u = 1/x, 2^-22 < u <= 2^-16, we approximate log(1+u) by
-       a degree-3 polynomial (see P2.sollya) with maximal absolute
-       error 2^-72.941. */
-    *c = __builtin_fma (0x1.555357718ba1cp-2, u, -0x1.fffffffec25e2p-2);
-    *c = __builtin_fma (*c, u, 0x1.ffffffffffffep-1);
-    *c = __builtin_fma (*c, u, 0x1.2bee23bbe606p-73);
-    return 0x1.b6p-69;
-  }
-  else if (x >= 0x1p12)
-  {
-    /* Let u = 1/x, 2^-16 < u <= 2^-12, we approximate log(1+u) by
-       a degree-4 polynomial (see P3.sollya) with maximal absolute
-       error 2^-71.572. */
-    *c = __builtin_fma (-0x1.ffbd6d9f785dfp-3, u, 0x1.55555364d9657p-2);
-    *c = __builtin_fma (*c, u, -0x1.fffffffff392fp-2);
-    *c = __builtin_fma (*c, u, 0x1.fffffffffffffp-1);
-    *c = __builtin_fma (*c, u, 0x1.840123717697cp-70);
-    return 0x1.b6p-69;
-  }
-  else if (x >= 0x1p9)
-  {
-    /* Let u = 1/x, 2^-10 < u <= 2^-9, we approximate log(1+u) by
-       a degree-5 polynomial (see P5.sollya) with maximal absolute
-       error 2^-73.543. */
-    *c = __builtin_fma (0x1.969c4d48ec08ap-3, u, -0x1.fffd3ae2c4419p-3);
-    *c = __builtin_fma (*c, u, 0x1.555554a7ffcdcp-2);
-    *c = __builtin_fma (*c, u, -0x1.ffffffffd0e1dp-2);
-    *c = __builtin_fma (*c, u, 0x1.fffffffffffcap-1);
-    *c = __builtin_fma (*c, u, 0x1.979c1f8bd6f04p-60);
-    return 0x1.b6p-69;
-  }
-  *c = 0;
-  return 0;
-}
-
 /* given x > -1, put in (h,l) a double-double approximation of log(1+x),
    and return a bound err on the maximal absolute error so that:
    |h + l - log(1+x)| < err */
 static double
 cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
 {
-  cr_log_fast (h, l, e, v);
   /* for x > 0x1.6a5df33e01575p+101, log(x) and log1p(x) round to the same
      value */
   if (x > 0x1.6a5df33e01575p+101)
+  {
+    cr_log_fast (h, l, e, v);
     return 0x1.b6p-69; /* error bound from cr_log, see ../log/log.c */
-  int bug = x == TRACE;
-  if (bug) printf ("h=%la l=%la\n", *h, *l);
-  double c, err;
-  err = correction (&c, x);
-  if (bug) printf ("c=%la\n", c);
+  }
+
+  /* (xh,xl) <- 1+x */
+  double xh, xl;
+  if (x > 1.0)
+    fast_two_sum (&xh, &xl, x, 1.0);
+  else
+    fast_two_sum (&xh, &xl, 1.0, x);
+
+  v.f = xh;
+  e = (v.u >> 52) - 0x3ff;
+  v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
+  cr_log_fast (h, l, e, v);
+
+  if (xl == 0) /* x+1 = xh exactly, thus we can call cr_log_fast on xh */
+    return 0x1.b6p-69; /* error bound from cr_log */
+
+  /* now xl is not zero: log(xh+xl) = log(xh) + log(1+xl/xh) */
+  double c = xl / xh; /* xh cannot be zero since xl <> 0 */
+  /* Since |xl| < ulp(xh), we have |xl| < 2^-52 |xh|,
+     thus |c| < 2^-52, and since |log(1+x)-x| < x^2 for |x| < 0.5,
+     we have |log(1+c)-c)| < c^2 < 2^-104. */
   *l += c;
-  if (bug) printf ("h=%la l=%la\n", *h, *l);
-  return err;
+  /* Since |l_in| < 2^-18.69 (from the analysis of cr_log_fast, see file
+     ../log/log.c), and |c| < 2^-52, we have |l| < 2^-18.68, thus the
+     rounding error in *l += c is bounded by ulp(2^-18.68) = 2^-71.
+     The total absolute error is thus bounded by:
+     0x1.b6p-69 + 2^-104 + 2^-71 < 2^-68.02. */
+
+  return 0x1f9p-69; /* 2^-68.02 < 0x1f9p-69 */
 }
 
 double
@@ -769,7 +724,7 @@ cr_log1p (double x)
   int bug = x == TRACE;
   d64u64 v = {.f = x};
   int e = (v.u >> 52) - 0x3ff;
-  if (e == 0x400 || x <= -1.0) /* NaN/Inf or x <= -1 */
+  if (e == 0x400 || e == 0xc00 || x <= -1.0) /* NaN/Inf or x <= -1 */
   {
     if (x <= -1.0) /* we use the fact that NaN < -1 is false */
     {
