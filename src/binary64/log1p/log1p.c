@@ -28,7 +28,7 @@ SOFTWARE.
 #include <stdint.h>
 #include "dint.h"
 
-#define TRACE 0x1.010634736a28p+14
+#define TRACE 0x1.200000000001bp-46
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -632,45 +632,74 @@ static inline double dint_tod (dint64_t *a);
 static double
 cr_log1p_accurate (double x)
 {
-  dint64_t X, Y;
+  dint64_t X, Y, C;
 
-#define EXCEPTIONS 27
+#define EXCEPTIONS 12
   static double T[EXCEPTIONS][3] = {
-    { 0x1p0, 0x0p0, 0x0p0 },
-    { 0x1.fffffffffff7p-1, -0x1.2000000000029p-46, 0x1.fffffffffe1ap-100 },
-    { 0x1.fffffffffff5p-1, -0x1.600000000003dp-46, 0x1.fffffffffc88bp-100 },
-    { 0x1.fffffffffff3p-1, -0x1.a000000000055p-46, 0x1.fffffffffa475p-100 },
-    { 0x1.fffffffffff1p-1, -0x1.e000000000071p-46, 0x1.fffffffff736p-100 },
-    { 0x1.ffffffffffffep-1, -0x1.0000000000001p-52, 0x1.fffffffffffffp-106 },
-    { 0x1.fffffffffff6p-1, -0x1.4000000000032p-46, -0x1.4d555555555a3p-139 },
-    { 0x1.fffffffffffp-1, -0x1.000000000004p-45, -0x1.55555555555d5p-137 },
-    { 0x1.ffffffffffeep-1, -0x1.2000000000051p-45, -0x1.e6000000000cdp-137 },
-    { 0x1.fffffffffff4p-1, -0x1.8000000000048p-46, -0x1.2000000000051p-138 },
-    { 0x1.fffffffffff2p-1, -0x1.c000000000062p-46, -0x1.c9555555555ebp-138 },
-    { 0x1.ffffffffffeap-1, -0x1.6000000000079p-45, -0x1.bbaaaaaaaab8fp-136 },
-    { 0x1.ffffffffffe8p-1, -0x1.800000000009p-45, -0x1.20000000000a2p-135 },
-    { 0x1.ffffffffffff8p-1, -0x1.0000000000002p-50, -0x1.5555555555559p-152 },
-    { 0x1.ffffffffffffcp-1, -0x1.0000000000001p-51, -0x1.5555555555557p-155 },
-    { 0x1.fffffffffffc8p-1, -0x1.c000000000019p-48, 0x1.ffffffffff8dbp-102 },
-    { 0x1.fffffffffffd8p-1, -0x1.400000000000dp-48, 0x1.ffffffffffd65p-102 },
-    { 0x1.ffffffffffff4p-1, -0x1.8000000000005p-50, 0x1.fffffffffffb8p-104 },
-    { 0x1.fffffffffff9p-1, -0x1.c000000000031p-47, -0x1.c9555555555ap-141 },
-    { 0x1.fffffffffffap-1, -0x1.8000000000024p-47, -0x1.2000000000029p-141 },
-    { 0x1.fffffffffffbp-1, -0x1.4000000000019p-47, -0x1.4d5555555557cp-142 },
-    { 0x1.fffffffffffcp-1, -0x1.000000000001p-47, -0x1.5555555555575p-143 },
-    { 0x1.fffffffffffdp-1, -0x1.8000000000012p-48, -0x1.2000000000014p-144 },
-    { 0x1.fffffffffffep-1, -0x1.0000000000008p-48, -0x1.5555555555565p-146 },
-    { 0x1.fffffffffffe8p-1, -0x1.8000000000009p-49, -0x1.200000000000ap-147 },
-    { 0x1.ffffffffffffp-1, -0x1.0000000000004p-49, -0x1.555555555555dp-149 },
-    { 0x1.fffffffffff8p-1, -0x1.000000000002p-46, -0x1.5555555555595p-140 },
+    { 0x1.080000000016bp-42, 0x1.07fffffffff4bp-42, -0x1.fffffffffffffp-96 },
+    { 0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100 },
+    { 0x1.5000000000093p-44, 0x1.4ffffffffffb7p-44, -0x1.fffffffffffffp-98 },
+    { 0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104 },
+    { 0x1.9800000000363p-42, 0x1.97ffffffffe4fp-42, -0x1.fffffffffffffp-96 },
+    { 0x1.b0000000000f3p-44, 0x1.affffffffff87p-44, -0x1.fffffffffffffp-98 },
+    { 0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100 },
+    { -0x1.0000ffff7d55dp-37, -0x1.0000ffff8155ep-37, 0x1.fffffffffffecp-91 },
+    { -0x1.007fe00ff601ap-44, -0x1.007fe00ff609ap-44, -0x1.ffffffffffffap-98 },
+    { -0x1.01fe03f61babbp-46, -0x1.01fe03f61badcp-46, 0x1.fffffffffffap-100 },
+    { -0x1.02fb8d4e30f1cp-45, -0x1.02fb8d4e30f5ep-45, 0x1.ffffffffffff9p-99 },
+    { -0x1.03f81f636b801p-47, -0x1.03f81f636b812p-47, 0x1.fffffffffffdep-101 },
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == T[i][0])
       return T[i][1] + T[i][2];
 
-  dint_fromd (&X, x);
-  /* x = (-1)^sgn*2^ex*(hi/2^63+lo/2^127) */
+  /* for x > 0x1.6a5df33e01575p+101, log(x) and log1p(x) round to the same
+     value */
+  if (x > 0x1.6a5df33e01575p+101)
+  {
+    dint_fromd (&X, x);
+    log_2 (&Y, &X);
+    return dint_tod (&Y);
+  }
+
+  /* for |x| <= 0.5, we have |log(1+x)-x| < x^2, thus
+     for |x| <= 2^-54, |log(1+x)-x| < 2^-54*|x| < 1/2 ulp(x)
+     thus log(1+x) rounds to x or to the adjacent numbers */
+  if (-0x1p-54 <= x && x <= 0x1p-54)
+    /* warning: for x subnormal, x^2/2 will underflow */
+    return __builtin_fma (x, -x, x);
+
+  /* (xh,xl) <- 1+x */
+  double xh, xl;
+  if (x > 1.0)
+    fast_two_sum (&xh, &xl, x, 1.0);
+  else
+    fast_two_sum (&xh, &xl, 1.0, x);
+  if (x == TRACE) printf ("xh=%la xl=%la\n", xh, xl);
+
+  dint_fromd (&X, xh);
   log_2 (&Y, &X);
+  if (x == TRACE) { printf ("log(xh)="); print_dint (&Y); }
+
+  /* if xl=0, we can simply return the accurate path for log(xh) */
+  if (xl == 0)
+    return dint_tod (&Y);
+
+  /* |Y-log(XH)| ~ 8e-52 */
+
+  div_dint (&C, xl, xh);
+  mul_dint (&X, &C, &C);
+  /* multiply X by -1/2 */
+  X.ex -= 1;
+  X.sgn = 0x1;
+  /* C <- C - C^2/2 */
+  add_dint (&C, &C, &X);
+  /* |C-log(1+xl/xh)| ~ 2e-64 */
+  if (x == TRACE) { printf ("C="); print_dint (&C); }
+  add_dint (&Y, &Y, &C);
+
+  if (x == TRACE) { printf ("log(xh)+C="); print_dint (&Y); }
+
   return dint_tod (&Y);
 }
 
@@ -750,7 +779,7 @@ cr_log1p (double x)
   if (bug) printf ("left=%la right=%la\n", left, right);
   if (left == right)
     return left;
-  return 0;
+  if (x == TRACE) printf ("fast path failed\n");
   return cr_log1p_accurate (x);
 }
 
@@ -882,32 +911,6 @@ static void log_2(dint64_t *r, dint64_t *x) {
   print_dint(r);
   printf("\n");
 #endif
-}
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
-
-// Extract both the mantissa and exponent of a double
-static inline void fast_extract(int64_t *e, uint64_t *m, double x) {
-  f64_u _x = {.f = x};
-
-  *e = (_x.u >> 52) & 0x7ff;
-  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
-  *e = *e - 0x3ff;
-}
-
-// Convert a double to the corresponding dint64_t value
-static inline void dint_fromd(dint64_t *a, double b) {
-  fast_extract(&a->ex, &a->hi, b);
-
-  uint32_t t = __builtin_clzl(a->hi);
-
-  a->sgn = b < 0.0;
-  a->hi = a->hi << t;
-  a->ex = a->ex - (t > 11 ? t - 12 : 0);
-  a->lo = 0;
 }
 
 // Convert a dint64_t value to a double

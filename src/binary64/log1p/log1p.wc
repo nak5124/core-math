@@ -1,4 +1,7 @@
+0x1.94d915fa88734p-51
 0x1.010634736a28p+14
+-0x0.1bc6879ea14c5p-1022
+0x0.02efe618534fbp-1022
 # worst cases for atan(x) computed by Vincent Lefèvre
 # (https://www.vinc17.net/research/testlibm/testlibm-data.xz)
 # update from 2020-11-27
