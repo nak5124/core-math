@@ -249,10 +249,58 @@ static inline void mul_dint_2(dint64_t *r, int64_t b, const dint64_t *a) {
   r->ex = a->ex + 64 - m;
 };
 
+typedef union {
+  double f;
+  uint64_t u;
+} f64_u;
+
+// Extract both the mantissa and exponent of a double
+static inline void fast_extract(int64_t *e, uint64_t *m, double x) {
+  f64_u _x = {.f = x};
+
+  *e = (_x.u >> 52) & 0x7ff;
+  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
+  *e = *e - 0x3ff;
+}
+
+// Convert a double to the corresponding dint64_t value
+static inline void dint_fromd(dint64_t *a, double b) {
+  fast_extract(&a->ex, &a->hi, b);
+
+  uint32_t t = __builtin_clzl(a->hi);
+
+  a->sgn = b < 0.0;
+  a->hi = a->hi << t;
+  a->ex = a->ex - (t > 11 ? t - 12 : 0);
+  a->lo = 0;
+}
+
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
   printf("{.hi=0x%lx, .lo=0x%lx, .ex=%ld, .sgn=0x%lx}\n", a->hi, a->lo, a->ex,
          a->sgn);
+}
+
+/* put in r an approximation of 1/a, assuming a is not zero */
+static inline void inv_dint (dint64_t *r, double a)
+{
+  dint64_t q, A;
+  dint_fromd (r, 1.0 / a); /* accurate to about 53 bits */
+  /* we use Newton's iteration: r -> r + r*(1-a*r) */
+  dint_fromd (&A, -a);
+  mul_dint (&q, &A, r);    /* -a*r */
+  add_dint (&q, &ONE, &q); /* 1-a*r */
+  mul_dint (&q, r, &q);    /* r*(1-a*r) */
+  add_dint (r, r, &q);
+}
+
+/* put in r an approximation of b/a, assuming a is not zero */
+static inline void div_dint (dint64_t *r, double b, double a)
+{
+  dint64_t B;
+  inv_dint (r, a);
+  dint_fromd (&B, b);
+  mul_dint (r, r, &B);
 }
 
 /*
