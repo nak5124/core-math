@@ -26,9 +26,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <assert.h>
+#include <math.h>
 #include "dint.h"
-
-#define TRACE 0x1.200000000001bp-46
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -506,28 +506,11 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
   *lo = __builtin_fma(a, b, -*hi);
 }
 
-/* Given 1 <= x < 2, where x = v.f, put in h+l a double-double approximation
-   of log(2^e*x), with absolute error bounded by 2^-68.22 (details below).
-*/
-static void
-cr_log_fast (double *h, double *l, int e, d64u64 v)
+/* return an approximation of log(z)-z for |z| < 0.00212097167968735,
+   with absolute error bounded by 2^-68.72 */
+static double
+p_1 (double z)
 {
-  uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
-  /* x = m/2^52 */
-  /* if x > sqrt(2), we divide it by 2 to avoid cancellation */
-  int c = m >= 0x16a09e667f3bcd;
-  e += c; /* now -1074 <= e <= 1024 */
-  static const double cy[] = {1.0, 0.5};
-  static const uint64_t cm[] = {43, 44};
-
-  int i = m >> cm[c];
-  double y = v.f * cy[c];
-#define OFFSET 362
-  double r = (_INVERSE - OFFSET)[i];
-  double l1 = (_LOG_INV - OFFSET)[i][0];
-  double l2 = (_LOG_INV - OFFSET)[i][1];
-  double z = __builtin_fma (r, y, -1.0); /* exact */
-  /* evaluate P(z), for |z| < 0.00212097167968735 */
   double ph; /* will hold the value of P(z)-z */
   double z2 = z * z; /* |z2| < 4.5e-6 thus the rounding error on z2 is
                         bounded by ulp(4.5e-6) = 2^-70. */
@@ -560,6 +543,35 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      multiplied by ph1, we get for the total error on ph2 the following bound:
      2^-71 + err(ph1)*z2 + ph1*err(z2) <
      2^-71 + 2^-52.99*4.5e-6 + 0.501*2^-70 < 2^-69.32. */
+
+  /* Adding the maximal error 2^-70.278 from the Sollya polynomial, we get
+     an error < 2^-69.32 + 2^-70.278 < 2^-68.72. */
+  return ph;
+}
+
+/* Given 1 <= x < 2, where x = v.f, put in h+l a double-double approximation
+   of log(2^e*x), with absolute error bounded by 2^-68.22 (details below).
+*/
+static void
+cr_log_fast (double *h, double *l, int e, d64u64 v)
+{
+  uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
+  /* x = m/2^52 */
+  /* if x > sqrt(2), we divide it by 2 to avoid cancellation */
+  int c = m >= 0x16a09e667f3bcd;
+  e += c; /* now -1074 <= e <= 1024 */
+  static const double cy[] = {1.0, 0.5};
+  static const uint64_t cm[] = {43, 44};
+
+  int i = m >> cm[c];
+  double y = v.f * cy[c];
+#define OFFSET 362
+  double r = (_INVERSE - OFFSET)[i];
+  double l1 = (_LOG_INV - OFFSET)[i][0];
+  double l2 = (_LOG_INV - OFFSET)[i][1];
+  double z = __builtin_fma (r, y, -1.0); /* exact */
+  /* evaluate P(z), for |z| < 0.00212097167968735 */
+  double ph = p_1 (z);
 
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
      11 bits. log2_h is an integer multiple of 2^-42, so that e*log2_h
@@ -594,11 +606,11 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
      thus |l_out| < 2^-18.69 and err(l_out) <= ulp(2^-18.69) = 2^-71 */
 
   /* The absolute error on h + l is bounded by:
-     2^-70.278 from the error in the Sollya polynomial
+     2^-68.72 from the error in the Sollya polynomial plus the rounding errors
+              in ph = p_1 (z)
      2^-91.94 for the maximal difference |e*(log(2)-(log2_h + log2_l))|
               (|e| <= 1074 and |log(2)-(log2_h + log2_l)| < 2^-102.01)
      2^-97 for the maximal difference |l1 + l2 - (-log(r))|
-     2^-69.32 from the rounding errors in the polynomial evaluation
      2^-95.4 from the fast_two_sum call
      2^-70.99 from the *l = ph + (*l + l2) instruction
      2^-71 from the last __builtin_fma call.
@@ -634,20 +646,40 @@ cr_log1p_accurate (double x)
 {
   dint64_t X, Y, C;
 
-#define EXCEPTIONS 12
+#define EXCEPTIONS 16
   static double T[EXCEPTIONS][3] = {
+    /* for following x, log1p(x) has 77 identical bits after the round bit */
     { 0x1.080000000016bp-42, 0x1.07fffffffff4bp-42, -0x1.fffffffffffffp-96 },
+    /* for following x, log1p(x) has 89 identical bits after the round bit */
     { 0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100 },
+    /* for following x, log1p(x) has 82 identical bits after the round bit */
     { 0x1.5000000000093p-44, 0x1.4ffffffffffb7p-44, -0x1.fffffffffffffp-98 },
+    /* for following x, log1p(x) has 99 identical bits after the round bit */
     { 0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104 },
+    /* for following x, log1p(x) has 75 identical bits after the round bit */
     { 0x1.9800000000363p-42, 0x1.97ffffffffe4fp-42, -0x1.fffffffffffffp-96 },
+    /* for following x, log1p(x) has 81 identical bits after the round bit */
     { 0x1.b0000000000f3p-44, 0x1.affffffffff87p-44, -0x1.fffffffffffffp-98 },
+    /* for following x, log1p(x) has 86 identical bits after the round bit */
     { 0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100 },
-    { -0x1.0000ffff7d55dp-37, -0x1.0000ffff8155ep-37, 0x1.fffffffffffecp-91 },
-    { -0x1.007fe00ff601ap-44, -0x1.007fe00ff609ap-44, -0x1.ffffffffffffap-98 },
-    { -0x1.01fe03f61babbp-46, -0x1.01fe03f61badcp-46, 0x1.fffffffffffap-100 },
-    { -0x1.02fb8d4e30f1cp-45, -0x1.02fb8d4e30f5ep-45, 0x1.ffffffffffff9p-99 },
-    { -0x1.03f81f636b801p-47, -0x1.03f81f636b812p-47, 0x1.fffffffffffdep-101 },
+    /* for following x, log1p(x) has 77 identical bits after the round bit */
+    { -0x1.07ffffffffe95p-42, -0x1.08000000000b5p-42, -0x1.fffffffffffffp-96 },
+    /* for following x, log1p(x) has 89 identical bits after the round bit */
+    { -0x1.1ffffffffffe5p-46, -0x1.200000000000dp-46, -0x1.fffffffffffffp-100 },
+    /* for following x, log1p(x) has 82 identical bits after the round bit */
+    { -0x1.4ffffffffff6dp-44, -0x1.5000000000049p-44, -0x1.fffffffffffffp-98 },
+    /* for following x, log1p(x) has 99 identical bits after the round bit */
+    { -0x1.7fffffffffffdp-50, -0x1.8000000000001p-50, -0x1.fffffffffffffp-104 },
+    /* for following x, log1p(x) has 75 identical bits after the round bit */
+    { -0x1.97ffffffffc9dp-42, -0x1.98000000001b1p-42, -0x1.fffffffffffffp-96 },
+    /* for following x, log1p(x) has 81 identical bits after the round bit */
+    { -0x1.affffffffff0dp-44, -0x1.b000000000079p-44, -0x1.fffffffffffffp-98 },
+    /* for following x, log1p(x) has 86 identical bits after the round bit */
+    { -0x1.dffffffffffb5p-46, -0x1.e000000000025p-46, -0x1.fffffffffffffp-100 },
+    /* for following x, log1p(x) has 50 identical bits after the round bit */
+    { -0x1.c559493ed3a9p-9, -0x1.c622754f12eecp-9, 0x1.ffffffffffffcp-63 },
+    /* for following x, log1p(x) has 48 identical bits after the round bit */
+    { -0x1.ec50c1d0101dfp-9, -0x1.ed3e0b991b5dbp-9, 0x1.fffffffffffe6p-63 },
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == T[i][0])
@@ -665,21 +697,27 @@ cr_log1p_accurate (double x)
   /* for |x| <= 0.5, we have |log(1+x)-x| < x^2, thus
      for |x| <= 2^-54, |log(1+x)-x| < 2^-54*|x| < 1/2 ulp(x)
      thus log(1+x) rounds to x or to the adjacent numbers */
-  if (-0x1p-54 <= x && x <= 0x1p-54)
+  if (-0x1p-53 <= x && x <= 0x1p-53)
+  {
     /* warning: for x subnormal, x^2/2 will underflow */
-    return __builtin_fma (x, -x, x);
+    if (-0x1p-54 <= x && x <= 0x1p-54)
+      return __builtin_fma (x, -x, x);
+    else /* 2^-54 < |x| <= 2^-53 thus 0.5*x will not underflow */
+      return __builtin_fma (x, -0.5*x, x);
+  }
 
   /* (xh,xl) <- 1+x */
   double xh, xl;
   if (x > 1.0)
     fast_two_sum (&xh, &xl, x, 1.0);
   else
+    /* for small x, fast_two_sum is exact because the exponent difference
+       between 1 and x does not exceed 53 (we have treated |x| <= 2^-53
+       above). */
     fast_two_sum (&xh, &xl, 1.0, x);
-  if (x == TRACE) printf ("xh=%la xl=%la\n", xh, xl);
 
   dint_fromd (&X, xh);
   log_2 (&Y, &X);
-  if (x == TRACE) { printf ("log(xh)="); print_dint (&Y); }
 
   /* if xl=0, we can simply return the accurate path for log(xh) */
   if (xl == 0)
@@ -695,10 +733,7 @@ cr_log1p_accurate (double x)
   /* C <- C - C^2/2 */
   add_dint (&C, &C, &X);
   /* |C-log(1+xl/xh)| ~ 2e-64 */
-  if (x == TRACE) { printf ("C="); print_dint (&C); }
   add_dint (&Y, &Y, &C);
-
-  if (x == TRACE) { printf ("log(xh)+C="); print_dint (&Y); }
 
   return dint_tod (&Y);
 }
@@ -715,6 +750,18 @@ cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
   {
     cr_log_fast (h, l, e, v);
     return 0x1.b6p-69; /* error bound from cr_log, see ../log/log.c */
+  }
+
+  if (-0.00212097167968735 < x && x < 0.00212097167968735)
+  {
+    double p = p_1 (x); /* relative error < 2^-60.308 (see P.sollya) */
+    fast_two_sum (h, l, x, p); /* error < 2^-105*|h| */
+    /* since |x| < 0.00212097167968735, we have |p|/x < 0.00106,
+       thus |p|/h < 0.00106/(1-0.00106) < 0.00107, and the relative
+       error of 2^-60.308 for p converts into a relative error less than
+       0.00107*2^-60.308 < 2^-70.176 over h.
+       Thus the total relative error (against h) is bounded by
+       
   }
 
   /* (xh,xl) <- 1+x */
@@ -750,7 +797,6 @@ cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
 double
 cr_log1p (double x)
 {
-  int bug = x == TRACE;
   d64u64 v = {.f = x};
   int e = (v.u >> 52) - 0x3ff;
   if (e == 0x400 || e == 0xc00 || x <= -1.0) /* NaN/Inf or x <= -1 */
@@ -771,15 +817,12 @@ cr_log1p (double x)
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
   double h, l, err;
   err = cr_log1p_fast (&h, &l, x, e, v);
-  if (bug) printf ("cr_log1p: h=%la l=%la\n", h, l);
   if (err == 0)
     return 0;
 
   double left = h + (l - err), right = h + (l + err);
-  if (bug) printf ("left=%la right=%la\n", left, right);
   if (left == right)
     return left;
-  if (x == TRACE) printf ("fast path failed\n");
   return cr_log1p_accurate (x);
 }
 
@@ -852,7 +895,7 @@ static void log_2(dint64_t *r, dint64_t *x) {
 #if DEBUG > 0
   printf("  E := %ld\n\n", E);
 #endif
-
+  
   dint64_t z;
   mul_dint(&z, x, &_INVERSE_2[i - 128]);
 
