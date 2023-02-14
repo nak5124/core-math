@@ -34,7 +34,8 @@ ref_log1p (double x)
   mpfr_t y;
   mpfr_init2 (y, 53);
   mpfr_set_d (y, x, MPFR_RNDN);
-  mpfr_log1p (y, y, rnd2[rnd]);
+  int inex = mpfr_log1p (y, y, rnd2[rnd]);
+  mpfr_subnormalize (y, inex, rnd2[rnd]);
   double ret = mpfr_get_d (y, MPFR_RNDN);
   mpfr_clear (y);
   return ret;
