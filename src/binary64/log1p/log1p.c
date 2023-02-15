@@ -492,7 +492,7 @@ static const double _LOG_INV[363][2] = {
    and relative error < 2^-70.467.
    The polynomial is P[0]*x + P[1]*x^2 + ... + P[6]*x^7.
    The algorithm assumes that P[0]=1. */
-static const double P[6] = {0x1p0,                 /* degree 1 */
+static const double P[7] = {0x1p0,                 /* degree 1 */
                             -0x1p-1,               /* degree 2 */
                             0x1.555555555555p-2,   /* degree 3 */
                             -0x1.fffffffff572dp-3, /* degree 4 */
@@ -733,8 +733,7 @@ cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
        thus |p|/h < 0.00106/(1-0.00106) < 0.00107, and the relative
        error of 2^-60.308 for p converts into a relative error less than
        0.00107*2^-60.308 < 2^-70.176 over h.
-       Thus the total relative error (against h) is bounded by
-       
+       Thus the total relative error (against h) is bounded by */
   }
 
   /* (xh,xl) <- 1+x */
