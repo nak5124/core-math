@@ -30,7 +30,7 @@ SOFTWARE.
 #include <math.h>
 #include "dint.h"
 
-#define TRACE 0x1.003ff5333549cp-11
+#define TRACE 0x1.1f95f5d97b4b6p-6
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -514,26 +514,18 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
 static void
 p_1 (double *h, double *l, double z)
 {
-  double z2 = z * z;
+  double z2h, z2l;
+  a_mul (&z2h, &z2l, z, z); /* exact: z2h+z2l = z*z */
   double p56 = __builtin_fma (P[6], z, P[5]);
-  if (z == 0x1.003ff5333549cp-11) printf ("p56=%la\n", p56);
   double p34 = __builtin_fma (P[4], z, P[3]);
-  if (z == 0x1.003ff5333549cp-11) printf ("p34=%la\n", p34);
-  *h = __builtin_fma (P[2], z, P[1]);
-  if (z == 0x1.003ff5333549cp-11) printf ("h=%la\n", *h);
-  /* let P[1]+z*P[2] = h + e */
-  *l = P[1] - *h; /* by Sterbenz' theorem P[1]-h is exact, thus l = e-z*P[2] */
-  if (z == 0x1.003ff5333549cp-11) printf ("l=%la\n", *l);
-  *l = __builtin_fma (P[2], z, *l);
-  /* now l=o(e) thus |P[1]+z*P[2] - (h + l)| < ulp(l) */
-  if (z == 0x1.003ff5333549cp-11) printf ("l=%la\n", *l);
-  double lo = __builtin_fma (p56, z2, p34);
-  if (z == 0x1.003ff5333549cp-11) printf ("lo=%la\n", lo);
-  lo = __builtin_fma (lo, z2, *l);
-  if (z == 0x1.003ff5333549cp-11) printf ("lo=%la\n", lo);
-  /* multiply h+lo by z^2 */
-  a_mul (h, l, *h, z2);
-  *l += lo * z2;
+  double ph = __builtin_fma (p56, z2h, p34);
+  /* ph approximates P[3]+P[4]*z+P[5]*z^2+P[6]*z^3 */
+  ph = __builtin_fma (ph, z, P[2]);
+  /* ph approximates P[2]+P[3]*z+P[4]*z^2+P[5]*z^3+P[6]*z^4 */
+  ph *= z2h;
+  /* ph approximates P[2]*z^2+P[3]*z^3+P[4]*z^4+P[5]*z^5+P[6]*z^6 */
+  fast_two_sum (h, l, -0.5 * z2h, ph * z);
+  *l += -0.5 * z2l;
 }
 
 /* Given 1 <= x < 2, where x = v.f, put in h+l a double-double approximation
@@ -740,15 +732,27 @@ cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
     return 0x1.b6p-69; /* error bound from cr_log, see ../log/log.c */
   }
 
-  if (-0.00212097167968735 < x && x < 0.00212097167968735)
+  if (-0.03125 < x && x < 0.03125) // 2^-5
   {
     double lo;
-    if (x == TRACE) printf ("case x tiny\n");
-    p_1 (h, &lo, x); /* relative error < 2^-60.308 (see P.sollya) */
-    if (x == TRACE) printf ("h=%la lo=%la\n", *h, lo);
+    /* taken the following from the accurate path */
+    if (-0x1p-53 <= x && x <= 0x1p-53)
+    {
+      if (-0x1p-54 <= x && x <= 0x1p-54)
+        *h = __builtin_fma (x, -x, x);
+      else
+        *h = __builtin_fma (x, -0.5*x, x);
+      *l = 0;
+      return 0;
+    }
+    p_1 (h, &lo, x);
     fast_two_sum (h, l, x, *h);
     *l += lo;
-    return 0x1.b6p-69; /* FIXME: recompute that error bound */
+    /* from analyze_x_plus_p1(rel=true,Xmax=2^-5.) in the accompanying file
+       log1p.sage, the relative error is bounded by 2^-61.19 with respect to
+       h. We use the fact that we don't need the return value err to be
+       positive, since we add/subtract it in the rounding test. */
+    return 0x1.c1p-62 * *h; /* 2^-61.19 < 1.c1p-62 */
   }
 
   /* (xh,xl) <- 1+x */
@@ -778,7 +782,7 @@ cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
      The total absolute error is thus bounded by:
      0x1.b6p-69 + 2^-104 + 2^-71 < 2^-68.02. */
 
-  return 0x1f9p-69; /* 2^-68.02 < 0x1f9p-69 */
+  return 0x1.f9p-69; /* 2^-68.02 < 0x1.f9p-69 */
 }
 
 double
@@ -804,12 +808,33 @@ cr_log1p (double x)
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
   double h, l, err;
   err = cr_log1p_fast (&h, &l, x, e, v);
-  if (err == 0)
-    return 0;
 
   double left = h + (l - err), right = h + (l + err);
+#define LOG_FAILURES
+#ifdef LOG_FAILURES
+  static int count = 0, failures = 0;
+  static FILE *fp;
+  if (count++ == 0) fp = fopen("/tmp/log", "w");
+  if (count % 10000000 == 0) fprintf (fp, "%f%% failures\n",
+                                  100.0 * (double) failures / (double) count);
+#endif
   if (left == right)
     return left;
+#ifdef LOG_FAILURES
+  failures ++;
+#endif
+#if 0 /* fast path fails for those values */
+LOG 0x1.3e7bdee9c8d6fp-1 13
+LOG 0x1.bfb8c073f5abdp-3 12
+LOG 0x1.8854664d9ed8cp-2 15
+LOG 0x1.059ce533072f5p-1 20
+LOG 0x1.80313e1bb5962p-5 11
+LOG 0x1.4ca4c22b14967p-7 8
+LOG -0x1.449f663a6c97bp-3 13
+LOG 0x1.324cbb06babap-1 13
+LOG 0x1.21a784cb69515p-7 8
+LOG -0x1.817600f288cfcp-5 11
+#endif
   return cr_log1p_accurate (x);
 }
 

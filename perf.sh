@@ -97,7 +97,7 @@ has_symbol () {
 
 RANDOMS_FILE="$(mktemp /tmp/core-math.XXXXXX)"
 LOG_FILE="$(mktemp /tmp/core-math.XXXXXX)"
-trap "rm -f $RANDOMS_FILE $LOG_FILE" 0
+# trap "rm -f $RANDOMS_FILE $LOG_FILE" 0
 
 f=$1
 u="$(echo src/binary*/*/$f.c)"
