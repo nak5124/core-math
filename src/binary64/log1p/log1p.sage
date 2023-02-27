@@ -41,7 +41,7 @@ def RIFulp(x):
 # (1.14506750044579e-322, -1.?e-602)
 # Xmax=0.00212097167968735
 # analyze_p1(Xmax/2,Xmax,rel=true,verbose=true)
-# (1.34747385904737e-21, -0.00001?)
+# (2.76450182935071e-24, 1.?e-6)
 def analyze_p1(zmin,zmax,rel=true,verbose=false):
    P = ["0x1p0","-0x1p-1","0x1.555555555555p-2","-0x1.fffffffff572dp-3","0x1.999999a2d7868p-3","-0x1.5555c0d31b08ep-3","0x1.2476b9058e396p-3"]
    P = [RR(x,16) for x in P]
@@ -54,88 +54,113 @@ def analyze_p1(zmin,zmax,rel=true,verbose=false):
       err0 = err0*1.0011*z.abs().upper()
    if verbose:
       print ("err0=", log(err0)/log(2.))
-   # z2 = z * z
-   z2 = z*z
-   err_z2 = RIFulp(z2)
+   # a_mul (&z2h, &z2l, z, z)
+   z2h = z*z
+   u = RIFulp(z2h)
+   z2l = RIF(-u,u)
+   err_z2h = RIFulp(z2h)
    # p56 = __builtin_fma (P[6], z, P[5])
    p56 = P[6]*z+P[5]
-   err1 = RIFulp(p56)*z2.abs().upper()^3
+   err1 = RIFulp(p56)*z.abs().upper()^6
    if verbose:
       print ("err1=", log(err1)/log(2.))
    # p34 = __builtin_fma (P[4], z, P[3])
    p34 = P[4]*z+P[3]
-   err2 = RIFulp(p34)*z2.abs().upper()^2
+   err2 = RIFulp(p34)*z.abs().upper()^4
    if verbose:
       print ("err2=", log(err2)/log(2.))
-   # p12 = __builtin_fma (P[2], z, P[1])
-   p12 = P[2]*z+P[1]
-   err3 = RIFulp(p12)*z2.abs().upper()
+   # ph = __builtin_fma (p56, z2h, p34)
+   ph = p56*z2h+p34
+   err3 = (RIFulp(ph)+p56.abs().upper()*err_z2h)*z.abs().upper()^4
    if verbose:
       print ("err3=", log(err3)/log(2.))
-   # ph = __builtin_fma (p56, z2, p34)
-   ph = p56*z2+p34
-   err4 = (RIFulp(ph)+p56.abs().upper()*err_z2)*z2.abs().upper()^2
+   # ph = __builtin_fma (ph, z, P[2])
+   ph_in = ph
+   ph = ph*z+P[2]
+   err4 = RIFulp(ph)*z.abs().upper()*z.abs().upper()^3
    if verbose:
       print ("err4=", log(err4)/log(2.))
-   # ph = __builtin_fma (ph, z2, p12)
+   # ph *= z2h
    ph_in = ph
-   ph = ph*z2+p12
-   err5 = (RIFulp(ph)+ph_in.abs().upper()*err_z2)*z2.abs().upper()
+   ph = ph*z2h
+   err5 = (RIFulp(ph)+ph_in.abs().upper()*err_z2h)*z.abs().upper()
    if verbose:
       print ("err5=", log(err5)/log(2.))
-   # ph *= z2
-   ph_in = ph
-   ph = ph*z2
-   err6 = RIFulp(ph)+ph_in.abs().upper()*err_z2
+   # fast_two_sum (h, l, -0.5 * z2h, ph * z)
+   t = ph*z
+   h = RIF(-0.5)*z2h+t
+   u = RIFulp(h)
+   l = RIF(-u,u)
+   err6 = RIFulp(t)+h.abs().upper()*2^-105   
    if verbose:
       print ("err6=", log(err6)/log(2.))
-   err = err0+err1+err2+err3+err4+err5+err6
+   # *l += -0.5 * z2l
+   l = l+RIF(-0.5)*z2l
+   err7 = RIFulp(l)
+   if verbose:
+      print ("err7=", log(err7)/log(2.))
+   err = err0+err1+err2+err3+err4+err5+err6+err7
    if verbose:
       print ("err=", log(err)/log(2.))
-   return err, ph
+   return err, h, l
 
 # analyse the error of cr_log1p_fast() for |x| < 0.00212097167968735      
 # analyze_x_plus_p1()
-# e= 0 err= -68.8748330313666
+# e= 0 err= -78.3681972481953
 # analyze_x_plus_p1(rel=true)
-# e= 0 err= -58.9943804324056
-def analyze_x_plus_p1(rel=false,verbose_e=[]):
-   Xmax = 0.00212097167968735
+# e= 0 err= -68.3751331997836
+def analyze_x_plus_p1(rel=false,verbose_e=[],Xmax=0.00212097167968735):
    maxerr = 0
-   for e in range(0,-1067,-1):
+   assert 0<Xmax<=1, "0<Xmax<=1"
+   for e in range(0,-1075,-1):
       # consider 2^e*[Xmax/2,Xmax]
       xmin = Xmax*2^(e-1)
       xmax = Xmax*2^e
+      if xmax<2^-1074:
+         break
+      # p_1 (h, &lo, x)
       if e in verbose_e:
-         err1, p = analyze_p1(xmin,xmax,rel=rel,verbose=true)
+         err1, h, lo = analyze_p1(xmin,xmax,rel=rel,verbose=true)
          print ("err1=", log(err1)/log(2.))
       else:
-         err1, p = analyze_p1(xmin,xmax,rel=rel)
+         err1, h, lo = analyze_p1(xmin,xmax,rel=rel)
       x = RIF(xmin,xmax)
-      # fast_two_sum (h, l, x, p)
-      h = x + p
+      # fast_two_sum (h, l, x, *h)
+      h = x + h
+      u = RIFulp(h)
+      l = RIF(-u,u)
       err2 = h.abs().upper()*2^-105
       if e in verbose_e:
          print ("err2=", log(err2)/log(2.))
-      err = err1+err2
+      # *l += lo
+      l += lo
+      err3 = RIFulp(l)
+      err = err1+err2+err3
       if rel:
          err = err/h.abs().lower()
       if err>maxerr:
          print ("e=", e, "err=", log(err)/log(2.))
          maxerr = err
+      # same for negative values
       xmin,xmax = -xmax,-xmin
+      # p_1 (h, &lo, x)
       if e in verbose_e:
-         err1, p = analyze_p1(xmin,xmax,rel=rel,verbose=true)
+         err1, h, lo = analyze_p1(xmin,xmax,rel=rel,verbose=true)
          print ("err1=", log(err1)/log(2.))
       else:
-         err1, p = analyze_p1(xmin,xmax,rel=rel)
+         err1, h, lo = analyze_p1(xmin,xmax,rel=rel)
       x = RIF(xmin,xmax)
-      # fast_two_sum (h, l, x, p)
-      h = x + p
+      # fast_two_sum (h, l, x, *h)
+      h = x + h
+      u = RIFulp(h)
+      l = RIF(-u,u)
       err2 = h.abs().upper()*2^-105
       if e in verbose_e:
          print ("err2=", log(err2)/log(2.))
-      err = err1+err2
+      # *l += lo
+      l += lo
+      err3 = RIFulp(l)
+      err = err1+err2+err3
       if rel:
          err = err/h.abs().lower()
       if err>maxerr:
