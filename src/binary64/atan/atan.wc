@@ -56698,3 +56698,5 @@
 -0x1p+1022
 0x1p+1023
 -0x1p+1023
+# non-regression tests
+0x1.b880844f10722p+7
