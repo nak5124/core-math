@@ -26,11 +26,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#include <assert.h>
-#include <math.h>
 #include "dint.h"
-
-#define TRACE 0x1.05a3c9c8f3d35p-6
 
 typedef union { double f; uint64_t u; } d64u64;
 
@@ -840,31 +836,8 @@ cr_log1p (double x)
   err = cr_log1p_fast (&h, &l, x, e, v);
 
   double left = h + (l - err), right = h + (l + err);
-#define LOG_FAILURES
-#ifdef LOG_FAILURES
-  static int count = 0, failures = 0;
-  static FILE *fp;
-  if (count++ == 0) fp = fopen("/tmp/log", "w");
-  if (count % 10000000 == 0) fprintf (fp, "%f%% failures\n",
-                                  100.0 * (double) failures / (double) count);
-#endif
   if (left == right)
     return left;
-#ifdef LOG_FAILURES
-  failures ++;
-#endif
-#if 0 /* fast path fails for those values */
-LOG 0x1.3e7bdee9c8d6fp-1 13
-LOG 0x1.bfb8c073f5abdp-3 12
-LOG 0x1.8854664d9ed8cp-2 15
-LOG 0x1.059ce533072f5p-1 20
-LOG 0x1.80313e1bb5962p-5 11
-LOG 0x1.4ca4c22b14967p-7 8
-LOG -0x1.449f663a6c97bp-3 13
-LOG 0x1.324cbb06babap-1 13
-LOG 0x1.21a784cb69515p-7 8
-LOG -0x1.817600f288cfcp-5 11
-#endif
   return cr_log1p_accurate (x);
 }
 
