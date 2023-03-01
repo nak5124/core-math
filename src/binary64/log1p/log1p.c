@@ -749,19 +749,12 @@ cr_log1p_accurate (double x)
 
 /* given x > -1, put in (h,l) a double-double approximation of log(1+x),
    and return a bound err on the maximal absolute error so that:
-   |h + l - log(1+x)| < err */
+   |h + l - log(1+x)| < err.
+   We have x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
 static double
 cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
 {
-  /* for x > 0x1.6a5df33e01575p+101, log(x) and log1p(x) round to the same
-     value */
-  if (x > 0x1.6a5df33e01575p+101)
-  {
-    cr_log_fast (h, l, e, v);
-    return 0x1.02p-70; /* error bound from cr_log_fast: 2^-69.99 < 1.02p-70 */
-  }
-
-  if (-0.03125 < x && x < 0.03125) // 2^-5
+  if (e < -5) /* e <= -6 thus |x| < 2^-5 */
   {
     double lo;
     /* taken the following from the accurate path */
@@ -782,6 +775,14 @@ cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
        h. We use the fact that we don't need the return value err to be
        positive, since we add/subtract it in the rounding test. */
     return 0x1.d1p-62 * *h; /* 2^-61.14 < 0x1.d1p-62 */
+  }
+
+  /* for x > 0x1.6a5df33e01575p+101, log(x) and log1p(x) round to the same
+     value */
+  if (x > 0x1.6a5df33e01575p+101)
+  {
+    cr_log_fast (h, l, e, v);
+    return 0x1.02p-70; /* error bound from cr_log_fast: 2^-69.99 < 1.02p-70 */
   }
 
   /* (xh,xl) <- 1+x */
