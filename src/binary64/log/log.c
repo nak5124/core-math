@@ -58,7 +58,7 @@ fast_two_sum (double *hi, double *lo, double a, double b)
 /* For 362 <= i <= 724, r[i] = _INVERSE[i-362] is a 10-bit approximation of
    1/x[i], where i*2^-9 <= x[i] < (i+1)*2^-9.
    More precisely r[i] is a 10-bit value such that r[i]*y-1 is representable
-   exactly on 53 bits for for any y, i*2^-9 <= y < (i+1)*2^-9.
+   exactly on 53 bits for any y, i*2^-9 <= y < (i+1)*2^-9.
    Moreover |r[i]*y-1| <= 0.00212097167968735. */
 static const double _INVERSE[363]= {
     0x1.698p+0, 0x1.688p+0, 0x1.678p+0, 0x1.668p+0, 0x1.658p+0, 0x1.648p+0, 0x1.638p+0,
@@ -632,39 +632,8 @@ cr_log_accurate (double x)
 {
   dint64_t X, Y;
 
-#define EXCEPTIONS 27
-  static double T[EXCEPTIONS][3] = {
-    { 0x1p0, 0x0p0, 0x0p0 },
-    { 0x1.fffffffffff7p-1, -0x1.2000000000029p-46, 0x1.fffffffffe1ap-100 },
-    { 0x1.fffffffffff5p-1, -0x1.600000000003dp-46, 0x1.fffffffffc88bp-100 },
-    { 0x1.fffffffffff3p-1, -0x1.a000000000055p-46, 0x1.fffffffffa475p-100 },
-    { 0x1.fffffffffff1p-1, -0x1.e000000000071p-46, 0x1.fffffffff736p-100 },
-    { 0x1.ffffffffffffep-1, -0x1.0000000000001p-52, 0x1.fffffffffffffp-106 },
-    { 0x1.fffffffffff6p-1, -0x1.4000000000032p-46, -0x1.4d555555555a3p-139 },
-    { 0x1.fffffffffffp-1, -0x1.000000000004p-45, -0x1.55555555555d5p-137 },
-    { 0x1.ffffffffffeep-1, -0x1.2000000000051p-45, -0x1.e6000000000cdp-137 },
-    { 0x1.fffffffffff4p-1, -0x1.8000000000048p-46, -0x1.2000000000051p-138 },
-    { 0x1.fffffffffff2p-1, -0x1.c000000000062p-46, -0x1.c9555555555ebp-138 },
-    { 0x1.ffffffffffeap-1, -0x1.6000000000079p-45, -0x1.bbaaaaaaaab8fp-136 },
-    { 0x1.ffffffffffe8p-1, -0x1.800000000009p-45, -0x1.20000000000a2p-135 },
-    { 0x1.ffffffffffff8p-1, -0x1.0000000000002p-50, -0x1.5555555555559p-152 },
-    { 0x1.ffffffffffffcp-1, -0x1.0000000000001p-51, -0x1.5555555555557p-155 },
-    { 0x1.fffffffffffc8p-1, -0x1.c000000000019p-48, 0x1.ffffffffff8dbp-102 },
-    { 0x1.fffffffffffd8p-1, -0x1.400000000000dp-48, 0x1.ffffffffffd65p-102 },
-    { 0x1.ffffffffffff4p-1, -0x1.8000000000005p-50, 0x1.fffffffffffb8p-104 },
-    { 0x1.fffffffffff9p-1, -0x1.c000000000031p-47, -0x1.c9555555555ap-141 },
-    { 0x1.fffffffffffap-1, -0x1.8000000000024p-47, -0x1.2000000000029p-141 },
-    { 0x1.fffffffffffbp-1, -0x1.4000000000019p-47, -0x1.4d5555555557cp-142 },
-    { 0x1.fffffffffffcp-1, -0x1.000000000001p-47, -0x1.5555555555575p-143 },
-    { 0x1.fffffffffffdp-1, -0x1.8000000000012p-48, -0x1.2000000000014p-144 },
-    { 0x1.fffffffffffep-1, -0x1.0000000000008p-48, -0x1.5555555555565p-146 },
-    { 0x1.fffffffffffe8p-1, -0x1.8000000000009p-49, -0x1.200000000000ap-147 },
-    { 0x1.ffffffffffffp-1, -0x1.0000000000004p-49, -0x1.555555555555dp-149 },
-    { 0x1.fffffffffff8p-1, -0x1.000000000002p-46, -0x1.5555555555595p-140 },
-  };
-  for (int i = 0; i < EXCEPTIONS; i++)
-    if (x == T[i][0])
-      return T[i][1] + T[i][2];
+  if (x == 1.0)
+    return 0.0;
 
   dint_fromd (&X, x);
   /* x = (-1)^sgn*2^ex*(hi/2^63+lo/2^127) */
