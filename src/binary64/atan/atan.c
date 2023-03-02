@@ -246,7 +246,7 @@ double cr_atan(double x){
   double h2 = h*h, h4 = h2*h2;
   double f = (ch[0] + h2*ch[1]) + h4*(ch[2] + h2*ch[3]);
   al = __builtin_fma(h, f, al);
-  double e = h*0x3.6p-52;
+  double e = h*0x3.72p-52;
   double ub = (al + e) + ah, lb = (al - e) + ah;
   if(__builtin_expect(ub == lb, 1)) return ub;
   return as_atan_refine2(x, ub);
