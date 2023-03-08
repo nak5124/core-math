@@ -29,10 +29,12 @@ SOFTWARE.
    [1] IA-64 and Elementary Functions, Peter Markstein,
        Hewlett-Packard Professional Books, 2000, Chapter 16. */
 
-#define TRACE -0x1.21a0d7b7f3335p-1010
+#define TRACE 0x1.04b2e7a155193p+5
 
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
+#include <assert.h>
 
 /* For 0 <= i < 256, T[i] = {xi, si, ei} such that xi is near i*2^8/magic
    with magic = 0x1.70f77fc88ae3cp6, and si,si+ei approximate sinh(xi),cosh(xi)
@@ -565,6 +567,529 @@ static const double U[256][3] = {
    {0x1.61da5cdc19ac9p+1, 0x1.f9d8d5325e4ccp+2, 0x1.fde12c712bbddp+2}, /* i=255 */
 };
 
+static const double Tl[256][2] = {
+   {0x0p+0, 0x0p+0}, /* i=0 */
+   {0x1.06aceafcaf699p-68, 0x1.89951332da0f8p-60}, /* i=1 */
+   {-0x1.8908874e7cf5fp-63, -0x1.0a4b871342323p-63}, /* i=2 */
+   {-0x1.4ffcceae426f7p-60, -0x1.1ecf389f4e1cbp-68}, /* i=3 */
+   {0x1.4ebc34cc22f4fp-55, -0x1.d328ffac3f7adp-71}, /* i=4 */
+   {-0x1.5d23181c86ca5p-52, 0x1.98a48963b343bp-77}, /* i=5 */
+   {0x1.a54ae33997becp-47, 0x1.2b27d74d5e2bp-79}, /* i=6 */
+   {0x1.ed3724ec15057p-43, -0x1.723b02b47a002p-84}, /* i=7 */
+   {-0x1.ef3d2b27d318bp-42, -0x1.63098ba71cd3fp-87}, /* i=8 */
+   {-0x1.dafca840f6054p-38, 0x1.2a18eedcecd0ep-92}, /* i=9 */
+   {0x1.5ac56fdf3db22p-33, 0x1.863ead7dc0445p-96}, /* i=10 */
+   {0x1.0fde24da43facp-27, -0x1.42fb46ff1f236p-100}, /* i=11 */
+   {0x1.90bd1d0f98439p-23, 0x1.1090ef61fcdp-106}, /* i=12 */
+   {-0x1.b9f6238f23666p-23, 0x1.f41b9508bcp-109}, /* i=13 */
+   {-0x1.f355b53ba7163p-16, 0x1.c1d0fc3ep-111}, /* i=14 */
+   {-0x1.3edecec95bd27p-13, -0x1.82e5cp-119}, /* i=15 */
+   {0x1.1c6067dbca196p-7, 0x1.bfc4p-119}, /* i=16 */
+   {-0x1.a2585e249841ep-3, 0x1.dap-125}, /* i=17 */
+   {-0x1.1ea4f401a237ap+1, 0x0p+0}, /* i=18 */
+   {0x1.a5dc4fa9d2411p+2, 0x0p+0}, /* i=19 */
+   {-0x1.baefb695ffbd9p+9, 0x0p+0}, /* i=20 */
+   {0x1.ca3c0a142ce4p+10, -0x1p-116}, /* i=21 */
+   {-0x1.9299545111483p+9, 0x1p-112}, /* i=22 */
+   {0x1.64520f059e7d6p+21, 0x0p+0}, /* i=23 */
+   {-0x1.04c70c6690d06p+25, 0x0p+0}, /* i=24 */
+   {0x1.7b97fcc17e8d4p+28, 0x0p+0}, /* i=25 */
+   {0x1.58c3230f19effp+31, 0x0p+0}, /* i=26 */
+   {0x1.a939ec6223421p+37, 0x0p+0}, /* i=27 */
+   {-0x1.2e45eb231611p+41, 0x0p+0}, /* i=28 */
+   {-0x1.88e6636b240f3p+45, 0x0p+0}, /* i=29 */
+   {0x1.b4cef1da1d5d2p+49, 0x0p+0}, /* i=30 */
+   {-0x1.7e339a620344ap+51, 0x0p+0}, /* i=31 */
+   {0x1.091c5336824f9p+57, 0x0p+0}, /* i=32 */
+   {0x1.4df2d9154c47ap+61, 0x0p+0}, /* i=33 */
+   {0x1.758ef6205a121p+62, 0x0p+0}, /* i=34 */
+   {-0x1.418a1efe98babp+69, 0x0p+0}, /* i=35 */
+   {0x1.b4fa83a196d3ep+71, 0x0p+0}, /* i=36 */
+   {0x1.51f15b1c1d96fp+77, 0x0p+0}, /* i=37 */
+   {0x1.9c030768f6835p+79, 0x0p+0}, /* i=38 */
+   {0x1.ee7c914f81c64p+83, 0x0p+0}, /* i=39 */
+   {0x1.77730570a3fd8p+89, 0x0p+0}, /* i=40 */
+   {0x1.9b712e3a55c38p+93, 0x0p+0}, /* i=41 */
+   {0x1.f6e7d065cae93p+96, 0x0p+0}, /* i=42 */
+   {-0x1.8c16e27b3f96cp+100, 0x0p+0}, /* i=43 */
+   {0x1.1d2d00d1352a5p+105, 0x0p+0}, /* i=44 */
+   {-0x1.161c8d5cabaeap+107, 0x0p+0}, /* i=45 */
+   {0x1.768f5b026ea75p+113, 0x0p+0}, /* i=46 */
+   {0x1.e30c8b9543f51p+116, 0x0p+0}, /* i=47 */
+   {-0x1.6e6b658417995p+118, 0x0p+0}, /* i=48 */
+   {-0x1.e6dc7bdf696a5p+116, 0x0p+0}, /* i=49 */
+   {0x1.38cdc947ca647p+129, 0x0p+0}, /* i=50 */
+   {0x1.bd7257c83a429p+133, 0x0p+0}, /* i=51 */
+   {0x1.74c3a2c6d3b7ap+137, 0x0p+0}, /* i=52 */
+   {-0x1.407d1b51ac29bp+140, 0x0p+0}, /* i=53 */
+   {0x1.39184547dd6a3p+143, 0x0p+0}, /* i=54 */
+   {-0x1.a85a84babd68ap+149, 0x0p+0}, /* i=55 */
+   {-0x1.ce237fd8c7bd9p+153, 0x0p+0}, /* i=56 */
+   {-0x1.fd780c721f974p+157, 0x0p+0}, /* i=57 */
+   {-0x1.8ee943fe05ae5p+159, 0x0p+0}, /* i=58 */
+   {-0x1.3185f017f792cp+163, 0x0p+0}, /* i=59 */
+   {-0x1.2e6fff5246abep+168, 0x0p+0}, /* i=60 */
+   {0x1.84fadfe9c8801p+173, 0x0p+0}, /* i=61 */
+   {-0x1.a3115b0a299a3p+177, 0x0p+0}, /* i=62 */
+   {0x1.78c7132c77e36p+179, 0x0p+0}, /* i=63 */
+   {0x1.6335df1d6ff7p+185, 0x0p+0}, /* i=64 */
+   {-0x1.efe70270275abp+188, 0x0p+0}, /* i=65 */
+   {-0x1.601d7ae443ac8p+193, 0x0p+0}, /* i=66 */
+   {-0x1.848648afb8f7cp+197, 0x0p+0}, /* i=67 */
+   {0x1.70a36cb771e8ap+200, 0x0p+0}, /* i=68 */
+   {-0x1.5fe13bc5c698bp+205, 0x0p+0}, /* i=69 */
+   {0x1.4cc2f6c46e884p+209, 0x0p+0}, /* i=70 */
+   {0x1.85143897bfcb3p+213, 0x0p+0}, /* i=71 */
+   {-0x1.574380474c2c3p+217, 0x0p+0}, /* i=72 */
+   {0x1.3a26181c01c5p+220, 0x0p+0}, /* i=73 */
+   {0x1.2135695fef858p+224, 0x0p+0}, /* i=74 */
+   {0x1.a98f09bf039e5p+226, 0x0p+0}, /* i=75 */
+   {-0x1.8e5f124a8b5cap+233, 0x0p+0}, /* i=76 */
+   {0x1.c099cec491868p+237, 0x0p+0}, /* i=77 */
+   {0x1.393238ff0cf95p+240, 0x0p+0}, /* i=78 */
+   {-0x1.27f7d0129f616p+245, 0x0p+0}, /* i=79 */
+   {-0x1.7e862a141287ep+249, 0x0p+0}, /* i=80 */
+   {0x1.0a6aabd7ef2d3p+252, 0x0p+0}, /* i=81 */
+   {0x1.9a192cefed2c8p+254, 0x0p+0}, /* i=82 */
+   {0x1.04ba9e7be17a2p+260, 0x0p+0}, /* i=83 */
+   {-0x1.ac9d5056e072fp+264, 0x0p+0}, /* i=84 */
+   {0x1.ebed498c90296p+267, 0x0p+0}, /* i=85 */
+   {-0x1.073cf09f94b4p+273, 0x0p+0}, /* i=86 */
+   {-0x1.0e7a8d8dfb6f2p+277, 0x0p+0}, /* i=87 */
+   {0x1.60457faaff744p+281, 0x0p+0}, /* i=88 */
+   {0x1.8c7b06f501a21p+285, 0x0p+0}, /* i=89 */
+   {0x1.9f4cd6bbc700dp+288, 0x0p+0}, /* i=90 */
+   {0x1.94a17df9c7111p+293, 0x0p+0}, /* i=91 */
+   {0x1.df796a889cad7p+297, 0x0p+0}, /* i=92 */
+   {0x1.3186799828a96p+300, 0x0p+0}, /* i=93 */
+   {0x1.39f0b43095221p+305, 0x0p+0}, /* i=94 */
+   {0x1.be328b9869745p+309, 0x0p+0}, /* i=95 */
+   {-0x1.2bbd18bec103bp+312, 0x0p+0}, /* i=96 */
+   {-0x1.371bb1c77f8d9p+317, 0x0p+0}, /* i=97 */
+   {0x1.9187e473e7d61p+321, 0x0p+0}, /* i=98 */
+   {-0x1.660f94553432bp+325, 0x0p+0}, /* i=99 */
+   {0x1.b6147c209db17p+329, 0x0p+0}, /* i=100 */
+   {0x1.ecb0b92979a72p+331, 0x0p+0}, /* i=101 */
+   {0x1.6f168b702c752p+337, 0x0p+0}, /* i=102 */
+   {-0x1.cef356609e9ebp+339, 0x0p+0}, /* i=103 */
+   {-0x1.b54ab55486df6p+341, 0x0p+0}, /* i=104 */
+   {-0x1.af8f935f7d7bfp+348, 0x0p+0}, /* i=105 */
+   {0x1.0c00faf62e0ep+353, 0x0p+0}, /* i=106 */
+   {-0x1.e15d89f2c724dp+357, 0x0p+0}, /* i=107 */
+   {-0x1.c9ace414e8aedp+360, 0x0p+0}, /* i=108 */
+   {0x1.790056ad98112p+362, 0x0p+0}, /* i=109 */
+   {-0x1.8ae45b93f311fp+369, 0x0p+0}, /* i=110 */
+   {-0x1.37242e076a43p+372, 0x0p+0}, /* i=111 */
+   {-0x1.ca66feca54132p+376, 0x0p+0}, /* i=112 */
+   {0x1.7604774d52754p+381, 0x0p+0}, /* i=113 */
+   {-0x1.6a7fdc4304ac1p+384, 0x0p+0}, /* i=114 */
+   {0x1.b8637cc5db9b8p+388, 0x0p+0}, /* i=115 */
+   {-0x1.a3235cf1f5a78p+393, 0x0p+0}, /* i=116 */
+   {-0x1.0363aee3502d1p+397, 0x0p+0}, /* i=117 */
+   {0x1.85a3b78f500e1p+399, 0x0p+0}, /* i=118 */
+   {-0x1.406fffe30718ep+401, 0x0p+0}, /* i=119 */
+   {-0x1.de6174e7029dp+408, 0x0p+0}, /* i=120 */
+   {-0x1.e743484ceb813p+413, 0x0p+0}, /* i=121 */
+   {-0x1.265014585e72fp+417, 0x0p+0}, /* i=122 */
+   {0x1.8c853c28cb54fp+417, 0x0p+0}, /* i=123 */
+   {0x1.761fcfdcef49ap+425, 0x0p+0}, /* i=124 */
+   {-0x1.ad4c92d4da216p+429, 0x0p+0}, /* i=125 */
+   {0x1.8862be6323cfp+430, 0x0p+0}, /* i=126 */
+   {-0x1.40ad5db43b071p+437, 0x0p+0}, /* i=127 */
+   {0x1.183b55c3e537p+441, 0x0p+0}, /* i=128 */
+   {-0x1.7ecc50aa1b5e4p+445, 0x0p+0}, /* i=129 */
+   {0x1.b52473193b2bep+449, 0x0p+0}, /* i=130 */
+   {0x1.14051eda2b5a5p+452, 0x0p+0}, /* i=131 */
+   {0x1.dcf7d3fe8329cp+456, 0x0p+0}, /* i=132 */
+   {0x1.713d6ae750bebp+459, 0x0p+0}, /* i=133 */
+   {0x1.965fb0d5960bdp+463, 0x0p+0}, /* i=134 */
+   {-0x1.e91505912444bp+467, 0x0p+0}, /* i=135 */
+   {0x1.88df51e9006a1p+473, 0x0p+0}, /* i=136 */
+   {0x1.56422c18b1842p+474, 0x0p+0}, /* i=137 */
+   {-0x1.f383324f3d451p+481, 0x0p+0}, /* i=138 */
+   {-0x1.a21db13716722p+483, 0x0p+0}, /* i=139 */
+   {-0x1.2c4b4ef450de7p+487, 0x0p+0}, /* i=140 */
+   {-0x1.3ab80887843fcp+488, 0x0p+0}, /* i=141 */
+   {0x1.cc5a7cb69910cp+497, 0x0p+0}, /* i=142 */
+   {-0x1.e45df8e510fb6p+500, 0x0p+0}, /* i=143 */
+   {-0x1.ee490a7742a19p+504, 0x0p+0}, /* i=144 */
+   {-0x1.18b91bd8eec7ap+508, 0x0p+0}, /* i=145 */
+   {0x1.8836bfd42bc1p+511, 0x0p+0}, /* i=146 */
+   {0x1.4360e3d1d609dp+515, 0x0p+0}, /* i=147 */
+   {-0x1.eeb5b22d6405fp+521, 0x0p+0}, /* i=148 */
+   {-0x1.0fc1574af0f85p+525, 0x0p+0}, /* i=149 */
+   {-0x1.1d925d1ea1f7ep+529, 0x0p+0}, /* i=150 */
+   {0x1.6906f51679338p+529, 0x0p+0}, /* i=151 */
+   {-0x1.323927ed9b402p+536, 0x0p+0}, /* i=152 */
+   {0x1.413f32cc6add8p+541, 0x0p+0}, /* i=153 */
+   {0x1.f4b84588f4b9bp+543, 0x0p+0}, /* i=154 */
+   {0x1.00ca2bd8d771bp+549, 0x0p+0}, /* i=155 */
+   {-0x1.75e41da870bfep+551, 0x0p+0}, /* i=156 */
+   {-0x1.71abdf57f3e44p+556, 0x0p+0}, /* i=157 */
+   {-0x1.08aa0167dafa3p+561, 0x0p+0}, /* i=158 */
+   {0x1.5ccdd597524a7p+565, 0x0p+0}, /* i=159 */
+   {-0x1.257c128b16a3bp+569, 0x0p+0}, /* i=160 */
+   {0x1.99f6ec0510a89p+571, 0x0p+0}, /* i=161 */
+   {-0x1.9cbc7c8bb05ddp+574, 0x0p+0}, /* i=162 */
+   {-0x1.5247bbaa9ad87p+580, 0x0p+0}, /* i=163 */
+   {-0x1.3041f9ad336afp+584, 0x0p+0}, /* i=164 */
+   {0x1.d1d7e443e6455p+588, 0x0p+0}, /* i=165 */
+   {0x1.01bf5ae72de35p+593, 0x0p+0}, /* i=166 */
+   {-0x1.0221ccceecd2cp+596, 0x0p+0}, /* i=167 */
+   {-0x1.2c667b5bcf6e5p+599, 0x0p+0}, /* i=168 */
+   {0x1.a7b4e60920109p+603, 0x0p+0}, /* i=169 */
+   {0x1.e9491f1f0f2cdp+606, 0x0p+0}, /* i=170 */
+   {0x1.f90ee22052cf4p+610, 0x0p+0}, /* i=171 */
+   {0x1.a6ca24fe9290dp+617, 0x0p+0}, /* i=172 */
+   {-0x1.7265b2e1e0024p+620, 0x0p+0}, /* i=173 */
+   {0x1.8d9bfeac5d692p+625, 0x0p+0}, /* i=174 */
+   {-0x1.4a7b3e833c947p+628, 0x0p+0}, /* i=175 */
+   {0x1.571055c21341dp+632, 0x0p+0}, /* i=176 */
+   {-0x1.9e1fcda7c36fcp+637, 0x0p+0}, /* i=177 */
+   {0x1.f9d708bb93e7cp+641, 0x0p+0}, /* i=178 */
+   {-0x1.e5258660c8389p+645, 0x0p+0}, /* i=179 */
+   {-0x1.e406c88e3a56bp+649, 0x0p+0}, /* i=180 */
+   {-0x1.3b29f64d9fc24p+653, 0x0p+0}, /* i=181 */
+   {0x1.23b4636765f1cp+654, 0x0p+0}, /* i=182 */
+   {0x1.056a65c464405p+660, 0x0p+0}, /* i=183 */
+   {0x1.c9c4b633bda9bp+665, 0x0p+0}, /* i=184 */
+   {0x1.1cd75ebe86c9p+667, 0x0p+0}, /* i=185 */
+   {-0x1.ee0a21be5723dp+672, 0x0p+0}, /* i=186 */
+   {-0x1.96a2eedd5af78p+669, 0x0p+0}, /* i=187 */
+   {-0x1.214900d86efep+681, 0x0p+0}, /* i=188 */
+   {-0x1.35c5cbc382dbap+684, 0x0p+0}, /* i=189 */
+   {-0x1.78dc634f77139p+688, 0x0p+0}, /* i=190 */
+   {-0x1.638236a772c9fp+691, 0x0p+0}, /* i=191 */
+   {-0x1.7421a8ece234dp+696, 0x0p+0}, /* i=192 */
+   {0x1.8cc2f1b6c340ep+700, 0x0p+0}, /* i=193 */
+   {-0x1.7b0b22f29fc26p+705, 0x0p+0}, /* i=194 */
+   {0x1.cecc491832d13p+704, 0x0p+0}, /* i=195 */
+   {0x1.f67ce173b0d05p+711, 0x0p+0}, /* i=196 */
+   {0x1.1c7f01f22bee3p+714, 0x0p+0}, /* i=197 */
+   {-0x1.0bbf8b14a2cf3p+718, 0x0p+0}, /* i=198 */
+   {0x1.11c0bdd3625efp+721, 0x0p+0}, /* i=199 */
+   {0x1.cd9a3fcbca22ap+729, 0x0p+0}, /* i=200 */
+   {0x1.2a8fa60062e02p+732, 0x0p+0}, /* i=201 */
+   {-0x1.4c459f92f4782p+736, 0x0p+0}, /* i=202 */
+   {-0x1.a5f12240609e8p+740, 0x0p+0}, /* i=203 */
+   {0x1.fac2281dcd501p+744, 0x0p+0}, /* i=204 */
+   {0x1.9bd7e4cf7c3c9p+747, 0x0p+0}, /* i=205 */
+   {0x1.2c16a1542ba2fp+753, 0x0p+0}, /* i=206 */
+   {-0x1.328a72b57ddedp+756, 0x0p+0}, /* i=207 */
+   {-0x1.8ccf6f5340f04p+760, 0x0p+0}, /* i=208 */
+   {0x1.b01921d47da4dp+763, 0x0p+0}, /* i=209 */
+   {-0x1.dc1bbfe6fa924p+768, 0x0p+0}, /* i=210 */
+   {-0x1.44d29a0adf1b2p+773, 0x0p+0}, /* i=211 */
+   {0x1.2fa8c6902b4e4p+777, 0x0p+0}, /* i=212 */
+   {0x1.e0970bcbcfa3dp+781, 0x0p+0}, /* i=213 */
+   {0x1.9aa21255fdf03p+784, 0x0p+0}, /* i=214 */
+   {-0x1.8eb87c961f527p+788, 0x0p+0}, /* i=215 */
+   {-0x1.4288c548a39d1p+792, 0x0p+0}, /* i=216 */
+   {0x1.8b8b3b9842aedp+797, 0x0p+0}, /* i=217 */
+   {0x1.7140767725542p+801, 0x0p+0}, /* i=218 */
+   {-0x1.73aac8e435bfap+803, 0x0p+0}, /* i=219 */
+   {0x1.bfdbc5451fd4ep+809, 0x0p+0}, /* i=220 */
+   {-0x1.7782ca8657155p+812, 0x0p+0}, /* i=221 */
+   {-0x1.904f1fbd3be86p+817, 0x0p+0}, /* i=222 */
+   {-0x1.b1cc912730d28p+821, 0x0p+0}, /* i=223 */
+   {0x1.ea7f86a0e9014p+825, 0x0p+0}, /* i=224 */
+   {0x1.5f00241477d19p+829, 0x0p+0}, /* i=225 */
+   {0x1.40d4bfddd6e0dp+833, 0x0p+0}, /* i=226 */
+   {0x1.ffd47987dfc74p+837, 0x0p+0}, /* i=227 */
+   {0x1.9f24294062598p+839, 0x0p+0}, /* i=228 */
+   {0x1.e57e3109b9fa4p+844, 0x0p+0}, /* i=229 */
+   {-0x1.ad8e9c94e3977p+849, 0x0p+0}, /* i=230 */
+   {-0x1.8286a2957e77bp+853, 0x0p+0}, /* i=231 */
+   {-0x1.24364d6e33b21p+856, 0x0p+0}, /* i=232 */
+   {0x1.0cd24e0be255cp+861, 0x0p+0}, /* i=233 */
+   {0x1.11a1d20168abep+865, 0x0p+0}, /* i=234 */
+   {-0x1.37111513f699fp+869, 0x0p+0}, /* i=235 */
+   {0x1.81482d1952c3ap+869, 0x0p+0}, /* i=236 */
+   {0x1.d512d5dd7e3cbp+877, 0x0p+0}, /* i=237 */
+   {0x1.a0d6f12d9f5a3p+881, 0x0p+0}, /* i=238 */
+   {0x1.14ac9b109e7d4p+876, 0x0p+0}, /* i=239 */
+   {-0x1.e65eb1e11b6b6p+889, 0x0p+0}, /* i=240 */
+   {0x1.5cf8a97a38767p+887, 0x0p+0}, /* i=241 */
+   {0x1.cd78e41263d53p+897, 0x0p+0}, /* i=242 */
+   {0x1.5520738a9eaadp+900, 0x0p+0}, /* i=243 */
+   {0x1.0270ea47ee714p+897, 0x0p+0}, /* i=244 */
+   {-0x1.103da3ae27153p+909, 0x0p+0}, /* i=245 */
+   {0x1.0becb01dbdae2p+911, 0x0p+0}, /* i=246 */
+   {0x1.a4cfe7792b76cp+916, 0x0p+0}, /* i=247 */
+   {-0x1.f18ce502a948ep+919, 0x0p+0}, /* i=248 */
+   {-0x1.6f785ea892c19p+924, 0x0p+0}, /* i=249 */
+   {0x1.5df0ca797ea65p+929, 0x0p+0}, /* i=250 */
+   {-0x1.591b32bdcaa3cp+933, 0x0p+0}, /* i=251 */
+   {0x1.c833cdff5a68cp+937, 0x0p+0}, /* i=252 */
+   {0x1.03f99b046bf52p+938, 0x0p+0}, /* i=253 */
+   {-0x1.d1b74f3418125p+944, 0x0p+0}, /* i=254 */
+   {0x1.3300ca4eeb124p+950, 0x0p+0}, /* i=255 */
+};
+
+/* The following table is used in the accurate path only.
+   For each i, 0 <= i < 256, let {xi, si, ci} be the U[i] values,
+   such that si and ci approximate sinh(xi) and cosh(xi) with a few
+   extra bits, then si + Ul[i][0] and ci + Ul[i][1] approximate
+   sinh(xi) and cosh(xi) with at least 107 bits. */
+static const double Ul[256][2] = {
+   {0x0p+0, 0x0p+0}, /* i=0 */
+   {-0x1.cc125d97df011p-76, -0x1.e6bae12de82cep-70}, /* i=1 */
+   {0x1.3ccb2ec84fef7p-74, -0x1.214c0f6243bf1p-69}, /* i=2 */
+   {0x1.328b4447edb91p-73, -0x1.37c82afda7a01p-69}, /* i=3 */
+   {-0x1.74d7fe5518d25p-75, -0x1.11f607ae2cde9p-74}, /* i=4 */
+   {-0x1.2e6777af8f956p-73, -0x1.722cdf5535915p-69}, /* i=5 */
+   {-0x1.4724f85331debp-72, -0x1.bc554e7043e93p-71}, /* i=6 */
+   {-0x1.472b41d2ad023p-72, 0x1.7288b26e249e1p-70}, /* i=7 */
+   {-0x1.9ed70f51c86bdp-72, -0x1.8f18378e01e5ap-69}, /* i=8 */
+   {-0x1.a6d5c74d86fbfp-73, -0x1.c4c5abf61be2fp-68}, /* i=9 */
+   {-0x1.8e2f60ccf0ep-74, 0x1.eef11e1433e5ep-69}, /* i=10 */
+   {-0x1.48ae0c5dc539ep-74, 0x1.893cdf7644233p-68}, /* i=11 */
+   {0x1.6f1ee297d3926p-73, 0x1.dbd2342cdb67cp-68}, /* i=12 */
+   {-0x1.ad7ce28818a42p-71, -0x1.001de84c33ebep-68}, /* i=13 */
+   {0x1.5a95ca4cd554bp-71, 0x1.5325fb0983637p-68}, /* i=14 */
+   {0x1.6b57ac86c26ap-72, 0x1.055cf2d647ce8p-68}, /* i=15 */
+   {-0x1.e38790b732c1ep-71, -0x1.8ef89ce2deaf8p-69}, /* i=16 */
+   {-0x1.13d88555cac7ep-72, -0x1.0c000fa79a59p-71}, /* i=17 */
+   {-0x1.755a4311e4e9fp-71, -0x1.a285e9c8a99c1p-68}, /* i=18 */
+   {0x1.338d9ce94afcap-72, -0x1.e69c8f1ed4087p-69}, /* i=19 */
+   {-0x1.b92cde07ec9ffp-76, -0x1.c2dad21d7af5p-69}, /* i=20 */
+   {-0x1.f00e1d3d82fb4p-71, 0x1.854ab1b25b9a1p-69}, /* i=21 */
+   {0x1.085e8eb198df9p-73, 0x1.8c42c2affc91ep-69}, /* i=22 */
+   {0x1.28e352f80f835p-74, 0x1.6560d765ba457p-69}, /* i=23 */
+   {0x1.02ef6173e691ep-71, 0x1.82e6789526f88p-68}, /* i=24 */
+   {-0x1.017ef0841fc9cp-72, -0x1.2acc54b4e9badp-68}, /* i=25 */
+   {-0x1.f12b54da4033fp-72, -0x1.4310364c95805p-68}, /* i=26 */
+   {0x1.d0b3fd87e7afap-71, 0x1.367e3ccd75e3cp-73}, /* i=27 */
+   {-0x1.938b79aff153cp-70, 0x1.372447031d65dp-68}, /* i=28 */
+   {-0x1.9f09c78d32486p-70, -0x1.e181580c918a3p-70}, /* i=29 */
+   {0x1.7c129882a5acdp-71, -0x1.7c85c981c523fp-68}, /* i=30 */
+   {-0x1.6a180abacb43p-70, 0x1.9008be87e0532p-70}, /* i=31 */
+   {-0x1.0c526fe4ad3ebp-70, -0x1.f2db715e739b1p-70}, /* i=32 */
+   {0x1.73cfba2fc09ffp-70, -0x1.7215e5a6ca2d5p-68}, /* i=33 */
+   {-0x1.a14c16f18882ep-70, 0x1.88eef9e5b3b48p-68}, /* i=34 */
+   {0x1.ef5358b0ceb7ep-70, 0x1.16331868d74bep-68}, /* i=35 */
+   {0x1.cbe0d9b08abd7p-71, -0x1.66b4ec4fdd4b1p-71}, /* i=36 */
+   {-0x1.bf3acf5f270dcp-71, 0x1.685bbecc9be3bp-70}, /* i=37 */
+   {0x1.0dc7f2135ecdep-70, 0x1.1df766fd7d268p-68}, /* i=38 */
+   {0x1.090f84b454a71p-73, -0x1.6412b8d647b4cp-68}, /* i=39 */
+   {-0x1.d937e126f1f3cp-70, 0x1.82467d5d48dfp-68}, /* i=40 */
+   {0x1.2738b7a69d56dp-73, 0x1.062d5e7880c54p-68}, /* i=41 */
+   {0x1.4d6b12b0c8c0ap-70, -0x1.6e28f42d0960fp-69}, /* i=42 */
+   {0x1.049d671ae067ap-70, 0x1.1612ff6f67f64p-69}, /* i=43 */
+   {0x1.cb771c76288f6p-71, -0x1.82ec50b7f0089p-68}, /* i=44 */
+   {0x1.52ca9d90f7528p-70, -0x1.75f26f51d468cp-69}, /* i=45 */
+   {-0x1.6a2eaca17a392p-69, 0x1.4853472d30cdfp-68}, /* i=46 */
+   {-0x1.f0887113aa8fp-69, 0x1.4bcfa25631485p-68}, /* i=47 */
+   {0x1.e6d0ace27787p-69, -0x1.7edef64fc2f8p-68}, /* i=48 */
+   {0x1.49cd697517a38p-71, -0x1.75d1f59cf8abfp-69}, /* i=49 */
+   {-0x1.73efa25622adp-69, -0x1.a952d25b21519p-68}, /* i=50 */
+   {0x1.b9e75c4884d9fp-69, 0x1.06e3134e2dc3dp-68}, /* i=51 */
+   {0x1.265ec3d975f37p-71, -0x1.a74fc524a225cp-68}, /* i=52 */
+   {-0x1.017e9656aae28p-70, -0x1.d51eaaa1fbcf4p-68}, /* i=53 */
+   {0x1.d5dcf496804ecp-71, -0x1.3420021010f52p-68}, /* i=54 */
+   {0x1.68332b7843a68p-69, 0x1.e5ee05a2ff4c6p-72}, /* i=55 */
+   {-0x1.c393559e63409p-70, -0x1.fd6cc2fbaedbfp-69}, /* i=56 */
+   {-0x1.e0117d5ce5d8ep-69, -0x1.f3f817b59cd74p-70}, /* i=57 */
+   {-0x1.2a221ac26ad0ep-70, -0x1.a5a5863196c38p-68}, /* i=58 */
+   {0x1.62165ba7420cap-72, -0x1.383e8717ad9afp-68}, /* i=59 */
+   {0x1.55ceaa5fe7bd7p-70, -0x1.14122ad82aea2p-68}, /* i=60 */
+   {-0x1.e1530f3507293p-73, -0x1.dd9736fc563d9p-70}, /* i=61 */
+   {-0x1.773970fbd9fe5p-71, -0x1.5f4b88b364a8cp-69}, /* i=62 */
+   {0x1.f1e0036196355p-69, 0x1.43d7ecc5e4b51p-71}, /* i=63 */
+   {0x1.4f59720a80328p-71, 0x1.86ee268ac871ap-68}, /* i=64 */
+   {0x1.0dce78b1dac7p-71, -0x1.9d8e94061981ap-71}, /* i=65 */
+   {-0x1.2636a58d352a1p-69, 0x1.eada01ac29d3fp-70}, /* i=66 */
+   {0x1.1558d5ba99a0ep-69, 0x1.f10e345d561aep-69}, /* i=67 */
+   {-0x1.5e7646f3fa106p-72, 0x1.9a49f50b08977p-68}, /* i=68 */
+   {0x1.cfec9abbfa9c5p-69, 0x1.f2825f240381bp-68}, /* i=69 */
+   {-0x1.062ec8f4ff2a3p-69, -0x1.5c68279d24b9fp-69}, /* i=70 */
+   {-0x1.4b8df7407da8fp-69, -0x1.c48b19e1c19aap-70}, /* i=71 */
+   {0x1.c45158849e884p-70, -0x1.0a01a7dd0e4f7p-68}, /* i=72 */
+   {-0x1.d0fefbcc2b263p-72, 0x1.f0ff44eb35c4fp-68}, /* i=73 */
+   {0x1.9a077f6891fcfp-71, -0x1.0af987229435ap-68}, /* i=74 */
+   {0x1.af925ad7f864dp-69, 0x1.28a8b730e6b5p-68}, /* i=75 */
+   {0x1.9d3fe6fbd6c88p-70, -0x1.5b37df08c8febp-70}, /* i=76 */
+   {0x1.0fd94868678b4p-70, 0x1.36ac7d063279cp-71}, /* i=77 */
+   {-0x1.d03d2796cf2fcp-70, -0x1.55a6897babd2cp-68}, /* i=78 */
+   {0x1.913f2ad422e09p-70, -0x1.cb40ad3af1931p-70}, /* i=79 */
+   {0x1.27858c8a739fp-69, -0x1.b14997740ce95p-69}, /* i=80 */
+   {-0x1.67ac0198a59ep-71, 0x1.2cd04e4856ba8p-68}, /* i=81 */
+   {0x1.4b3f65d0e38b3p-68, -0x1.79409c655d428p-68}, /* i=82 */
+   {0x1.6eeaf79a53e94p-68, 0x1.39950856a04a5p-70}, /* i=83 */
+   {0x1.804dbffe81dffp-69, 0x1.07ffef71a553fp-69}, /* i=84 */
+   {0x1.94edb6860ae1dp-69, -0x1.1f9af00117f2ep-70}, /* i=85 */
+   {-0x1.f202bd7457504p-70, 0x1.078badd30f3dcp-68}, /* i=86 */
+   {-0x1.5d39749775edbp-68, -0x1.66c9cc5599922p-69}, /* i=87 */
+   {0x1.d72c037a3f192p-68, 0x1.c1d10046ca1f3p-68}, /* i=88 */
+   {-0x1.b565b1cb2913bp-68, -0x1.766b3b10f8926p-70}, /* i=89 */
+   {0x1.276bb82261dccp-68, -0x1.9a5b34d1f2bbbp-68}, /* i=90 */
+   {-0x1.e0dea88724c83p-69, -0x1.160398c91afd3p-68}, /* i=91 */
+   {0x1.d02a72c775956p-69, 0x1.dc609bd3a8dd1p-68}, /* i=92 */
+   {0x1.a46da87cd2481p-70, -0x1.f9c6cd1a01069p-69}, /* i=93 */
+   {0x1.06ccc6ea22231p-68, -0x1.59c004d5dac0ap-72}, /* i=94 */
+   {0x1.d57b87eeb3095p-68, 0x1.4178add240981p-68}, /* i=95 */
+   {0x1.151c6e2eb8896p-71, -0x1.27bcaa4710b71p-68}, /* i=96 */
+   {0x1.6f54e01a0f24bp-68, -0x1.7ce4e0b77ab88p-69}, /* i=97 */
+   {0x1.1e875f53e86a4p-69, -0x1.35ef7561ffee3p-68}, /* i=98 */
+   {0x1.56869e7c9b3ebp-68, 0x1.bb23a55e2829p-69}, /* i=99 */
+   {-0x1.e0837b42a9db5p-69, 0x1.de3c949b6cb0fp-69}, /* i=100 */
+   {-0x1.684ffc2464163p-68, -0x1.e6e9c6443c6bbp-68}, /* i=101 */
+   {-0x1.2b328b649f841p-69, 0x1.98cefd79969a4p-68}, /* i=102 */
+   {0x1.70b78cfcdc386p-69, -0x1.6bfc485a682b7p-69}, /* i=103 */
+   {0x1.b9789a650fb4fp-69, -0x1.14bcffed52ae6p-68}, /* i=104 */
+   {-0x1.bd6db7b787a16p-68, -0x1.2c64b6ad16494p-68}, /* i=105 */
+   {0x1.686de4ca7a603p-68, 0x1.fc7fbe61c4358p-68}, /* i=106 */
+   {0x1.6f1e71e9381cbp-69, 0x1.2888ca77f1941p-68}, /* i=107 */
+   {0x1.018ffc3922ca2p-70, 0x1.c7d4555d4515fp-70}, /* i=108 */
+   {-0x1.6bb83a2870605p-68, -0x1.a13872cbb1c49p-68}, /* i=109 */
+   {-0x1.3a4809092959cp-68, 0x1.a8727e5bb1359p-69}, /* i=110 */
+   {0x1.44b989570f03ap-72, -0x1.773b49090f1b5p-68}, /* i=111 */
+   {0x1.bf9d415f380b1p-69, 0x1.fcdb911aba776p-68}, /* i=112 */
+   {-0x1.78947e8ec86c4p-68, 0x1.2d732d1e0ff1bp-70}, /* i=113 */
+   {0x1.c450bf26fdbp-72, 0x1.b393f363cfe96p-70}, /* i=114 */
+   {-0x1.58ede1e4d08cap-70, -0x1.dc557a7f3a0cdp-68}, /* i=115 */
+   {-0x1.3ade92f2f20fep-71, 0x1.7cbf70028ac32p-68}, /* i=116 */
+   {0x1.6af2850ec7013p-69, -0x1.5debce1e979eap-68}, /* i=117 */
+   {-0x1.77a4dd2237364p-68, -0x1.ab9ddaa5c91f9p-69}, /* i=118 */
+   {0x1.472c4b81ec1f9p-68, -0x1.0376f24f0f5e8p-70}, /* i=119 */
+   {0x1.cb226e4e146b2p-68, -0x1.34774e5eb5a55p-68}, /* i=120 */
+   {0x1.60d3cc5e78b84p-72, -0x1.7fead8dab9439p-68}, /* i=121 */
+   {-0x1.5b0dd5b349046p-74, -0x1.c89666d7248fp-68}, /* i=122 */
+   {-0x1.cabc2a182dcd5p-73, 0x1.6cb9c9cee1868p-67}, /* i=123 */
+   {-0x1.21dde36f84edfp-68, -0x1.3fd8d54f2e657p-69}, /* i=124 */
+   {0x1.152f0a1b8f8abp-72, -0x1.7824d08cdd11bp-67}, /* i=125 */
+   {0x1.2f1bcee91346ap-69, 0x1.fe7064492e458p-67}, /* i=126 */
+   {-0x1.8ff2976cd5b7dp-69, 0x1.a76b264983685p-67}, /* i=127 */
+   {-0x1.66d380dbfa8e8p-68, -0x1.f53c0d3e6b761p-69}, /* i=128 */
+   {-0x1.4221057302986p-70, 0x1.342a84158f00ap-67}, /* i=129 */
+   {0x1.bbd7b52fd89acp-68, -0x1.33b68f100c1d3p-69}, /* i=130 */
+   {-0x1.253318bf58a74p-69, -0x1.9b22f6dbb1975p-68}, /* i=131 */
+   {0x1.c2d45ba3c8925p-68, 0x1.afd14d878e80ep-68}, /* i=132 */
+   {-0x1.fae47c181ae8ap-73, -0x1.8a8e55cd9ea65p-69}, /* i=133 */
+   {0x1.7d9b44aca9ffdp-68, 0x1.5ab36aacda9fdp-67}, /* i=134 */
+   {0x1.a1635f46c3c73p-67, 0x1.d53d35bb7af3dp-67}, /* i=135 */
+   {-0x1.f159008ccb386p-67, -0x1.e692594bd6058p-75}, /* i=136 */
+   {0x1.c560f914dcfa8p-68, -0x1.6a5546744d556p-71}, /* i=137 */
+   {-0x1.25d0fc04677e9p-67, 0x1.48d56ce183d72p-67}, /* i=138 */
+   {0x1.026c967d0fa0ap-67, -0x1.305f8f6584843p-67}, /* i=139 */
+   {-0x1.61f689e09b7b7p-67, 0x1.7052c5a36e078p-67}, /* i=140 */
+   {0x1.e13ab843ae38ap-68, -0x1.b1026fbd88c71p-67}, /* i=141 */
+   {-0x1.35d3b72cc77f4p-67, -0x1.039d6e3e9bbdfp-67}, /* i=142 */
+   {-0x1.1acd45619b29cp-68, 0x1.f264e8ef6843ep-68}, /* i=143 */
+   {0x1.227b7e65039b5p-71, 0x1.89e3d02473104p-67}, /* i=144 */
+   {0x1.3c53742654ce8p-68, 0x1.298967bcae5cp-67}, /* i=145 */
+   {-0x1.8e5edf27913cap-67, -0x1.079f21dea984bp-67}, /* i=146 */
+   {0x1.5ec829c41319p-70, -0x1.b757f020a361ap-68}, /* i=147 */
+   {-0x1.473a4895ce42cp-67, -0x1.46fd4f875706dp-67}, /* i=148 */
+   {-0x1.f8e48fb8b7098p-68, -0x1.a3a6adbcdf3c6p-68}, /* i=149 */
+   {-0x1.d9115c90c9c76p-67, -0x1.8b7d870b2e166p-67}, /* i=150 */
+   {0x1.ebefdebbec6c8p-68, 0x1.ea48dc475199cp-67}, /* i=151 */
+   {-0x1.f514e16df0e6p-71, 0x1.63610d3acf335p-69}, /* i=152 */
+   {0x1.b00c6d5b06dcep-67, 0x1.28cbba85bb10bp-67}, /* i=153 */
+   {-0x1.ecbd3229ccd48p-68, -0x1.24112f4e34c1p-67}, /* i=154 */
+   {0x1.f4c87d77a1287p-70, 0x1.29e0a9a2316c4p-70}, /* i=155 */
+   {0x1.06aab3d7df0bp-68, -0x1.ff923267b2b2p-67}, /* i=156 */
+   {-0x1.a9cbb30d5242ap-67, 0x1.83a3104a841d2p-67}, /* i=157 */
+   {0x1.8e094706efef6p-67, 0x1.f3124f93ce90ap-67}, /* i=158 */
+   {0x1.f7f4e2b3e4099p-71, -0x1.5ca141eb05e94p-67}, /* i=159 */
+   {0x1.3278e2eac40d2p-67, 0x1.ed3827305e39fp-67}, /* i=160 */
+   {0x1.85d93b76d923dp-67, 0x1.c09af68541b6fp-68}, /* i=161 */
+   {-0x1.14d580842369ap-71, -0x1.addc56604c424p-67}, /* i=162 */
+   {0x1.ecf4270fc761p-67, 0x1.7bafa99787b3bp-67}, /* i=163 */
+   {-0x1.fd4f5a6592a3dp-68, 0x1.002c0b6a184b9p-67}, /* i=164 */
+   {0x1.842e12a12ba02p-68, 0x1.36eb81b2cf72ap-67}, /* i=165 */
+   {-0x1.930ed923f29fep-67, -0x1.5f7dc8ec587a5p-69}, /* i=166 */
+   {0x1.69a8d7c306946p-67, -0x1.588d09d75476dp-70}, /* i=167 */
+   {-0x1.937b54aaccd26p-67, -0x1.1de002096f057p-67}, /* i=168 */
+   {-0x1.678ab6c1518e1p-67, 0x1.f37798cb941ddp-68}, /* i=169 */
+   {0x1.5a65c38510e4fp-68, 0x1.7603d7b8eac88p-68}, /* i=170 */
+   {0x1.1b51e2d5cd448p-70, -0x1.771b429f5f7dfp-67}, /* i=171 */
+   {-0x1.bad003d32712ep-67, 0x1.7475d162aa50fp-67}, /* i=172 */
+   {-0x1.de3e47d1097c7p-67, 0x1.918c6c3002f58p-71}, /* i=173 */
+   {0x1.dfbf08609e775p-68, -0x1.ed92824d605bp-68}, /* i=174 */
+   {-0x1.ad6437fa1f85ap-68, 0x1.23e6385046864p-67}, /* i=175 */
+   {0x1.c0c7104756a83p-71, 0x1.bd3b4b54a33ddp-69}, /* i=176 */
+   {0x1.3a3a205096b85p-67, -0x1.04e41d5a92e15p-67}, /* i=177 */
+   {0x1.69e87dd7e845bp-67, -0x1.aa376c15f218ap-68}, /* i=178 */
+   {0x1.cf9e0572c5a28p-69, 0x1.3d5f82e004d5ap-67}, /* i=179 */
+   {-0x1.ebe1b26aace86p-67, 0x1.954fd7feff2b2p-67}, /* i=180 */
+   {-0x1.d2d615039e728p-68, 0x1.7b462eea68476p-67}, /* i=181 */
+   {-0x1.75efdeaf95be8p-67, -0x1.922dfa4ee5342p-67}, /* i=182 */
+   {-0x1.9561e9733dce4p-68, -0x1.e1c607e6926e6p-67}, /* i=183 */
+   {-0x1.d331efd9b22adp-68, -0x1.0268cabf573a8p-67}, /* i=184 */
+   {0x1.6b9558896a52ap-68, 0x1.50c3d165671f9p-68}, /* i=185 */
+   {-0x1.5461c2e8f209p-68, -0x1.ce9cda41e4b78p-69}, /* i=186 */
+   {-0x1.52ecd2f1b28e6p-67, 0x1.640be4aaced33p-67}, /* i=187 */
+   {-0x1.fb25cc88bb058p-72, 0x1.916d8f16c9f57p-71}, /* i=188 */
+   {-0x1.bb39ec5635492p-69, 0x1.e70b5d7e588e3p-67}, /* i=189 */
+   {-0x1.2dc57f8bbff1dp-67, -0x1.ad4de04e8783ep-67}, /* i=190 */
+   {-0x1.e544a50e6a4e1p-67, -0x1.e8af0b61eae64p-67}, /* i=191 */
+   {0x1.6f8d95f7b7d8ap-67, 0x1.a18fbe0e630b2p-66}, /* i=192 */
+   {0x1.11d0fb4c9e22ep-67, -0x1.e37c41ec7ed37p-66}, /* i=193 */
+   {0x1.b749a34e9fcfp-67, -0x1.659c2d9aa802ep-66}, /* i=194 */
+   {0x1.17524a7a53ab7p-66, -0x1.c92b551139c6ep-67}, /* i=195 */
+   {-0x1.98de80fdf9bbap-66, -0x1.4f95f0ac2b2f6p-66}, /* i=196 */
+   {0x1.14767c8f68175p-68, -0x1.5c0372562a283p-66}, /* i=197 */
+   {-0x1.8ed7b65e10f11p-70, 0x1.04ff2e73827b6p-66}, /* i=198 */
+   {-0x1.17236edc21eaep-66, 0x1.2779f28c0793ap-66}, /* i=199 */
+   {-0x1.97dd1bef378c6p-68, 0x1.7825e338ebbfp-66}, /* i=200 */
+   {0x1.0dbcc4a11b6c6p-66, -0x1.dba86645731ecp-67}, /* i=201 */
+   {-0x1.ade80167933ep-66, -0x1.7b49cbd6bf449p-67}, /* i=202 */
+   {0x1.1d0f5eb01057fp-66, 0x1.d0cbb8485bp-66}, /* i=203 */
+   {0x1.4e21a78789a2p-66, -0x1.a870dcfba2e4dp-66}, /* i=204 */
+   {0x1.f3de7b834db2cp-68, 0x1.d5fdaf4b32b72p-66}, /* i=205 */
+   {-0x1.b662fede103aap-67, -0x1.0b639090694bbp-69}, /* i=206 */
+   {0x1.eece2c9aadb96p-66, 0x1.ab3d4fa8e3209p-66}, /* i=207 */
+   {0x1.3ad6046d40f2fp-66, 0x1.fa518c90d3476p-67}, /* i=208 */
+   {0x1.fce26d0293bafp-66, -0x1.1f0c499c1e032p-67}, /* i=209 */
+   {-0x1.af9cfcff75aa2p-69, 0x1.da7861b70f94cp-67}, /* i=210 */
+   {0x1.535f439324327p-74, -0x1.ac01f0f30f4f7p-68}, /* i=211 */
+   {-0x1.551b11180dc24p-66, 0x1.17896ba3d64bfp-67}, /* i=212 */
+   {-0x1.8515c37f7ab3dp-69, -0x1.716d33e7f4644p-66}, /* i=213 */
+   {0x1.cb1a5742df5e4p-66, -0x1.833b00f39f422p-68}, /* i=214 */
+   {-0x1.349865bdf3ca2p-67, -0x1.8f3eb1b807d4bp-66}, /* i=215 */
+   {0x1.d4841e5c03886p-67, -0x1.d9b4e24f0a52cp-67}, /* i=216 */
+   {0x1.ed67e6a226b22p-67, -0x1.df43e8c66e09bp-67}, /* i=217 */
+   {0x1.4acd96bbdba46p-66, 0x1.b48461c9c7ac4p-66}, /* i=218 */
+   {0x1.2c7037b093545p-66, -0x1.cc6e9f195c445p-67}, /* i=219 */
+   {-0x1.08f35dedb4d2bp-66, 0x1.99bd323d1bc3ep-66}, /* i=220 */
+   {0x1.aaebc950f0c18p-67, 0x1.1bf195319ec76p-67}, /* i=221 */
+   {0x1.9e31711e53d97p-66, 0x1.5726ba29ad7d5p-68}, /* i=222 */
+   {0x1.57539fa90e376p-67, -0x1.cfa3870763da7p-66}, /* i=223 */
+   {0x1.8f9196766b37dp-66, 0x1.e039261ec688bp-66}, /* i=224 */
+   {0x1.460629ba481ep-66, -0x1.dfd1ff53bd35cp-66}, /* i=225 */
+   {0x1.e9bb7f553c2e3p-69, 0x1.9fa1b1cedc899p-68}, /* i=226 */
+   {-0x1.8fc8acb8d654p-69, -0x1.e5e8d32043c5fp-66}, /* i=227 */
+   {-0x1.77545a7122e97p-67, -0x1.09a861ad3e176p-66}, /* i=228 */
+   {-0x1.30c339d7751e6p-66, -0x1.bd51e18688583p-66}, /* i=229 */
+   {0x1.b8cb9ee7d9d56p-68, 0x1.aa4365284b453p-66}, /* i=230 */
+   {0x1.5decc2000bc2dp-67, 0x1.bc6e6b7efe1a9p-66}, /* i=231 */
+   {0x1.90d40e29f5f78p-66, -0x1.96bbb7e94ccc7p-67}, /* i=232 */
+   {0x1.49c86b672e2bp-66, 0x1.563c7744c3e22p-67}, /* i=233 */
+   {-0x1.748f95d9f2c24p-73, -0x1.a5d2a9a099ec3p-67}, /* i=234 */
+   {-0x1.43b9f8ccd861ep-68, 0x1.d857672a61cf4p-67}, /* i=235 */
+   {-0x1.76509a03a26fap-66, 0x1.073a00ec297f4p-66}, /* i=236 */
+   {0x1.3b51b780082fap-66, 0x1.8d554485f2281p-66}, /* i=237 */
+   {-0x1.6041337ff51b3p-67, -0x1.415b42c7ee528p-67}, /* i=238 */
+   {-0x1.fe3d9aef2a16bp-67, 0x1.1cb154f360a16p-66}, /* i=239 */
+   {-0x1.e3a947c7755d7p-66, 0x1.0ea15b42c2a4ap-66}, /* i=240 */
+   {-0x1.ef6fa277e03dbp-66, 0x1.a6ab313823563p-68}, /* i=241 */
+   {-0x1.35a4876989644p-66, 0x1.71262a515d37cp-67}, /* i=242 */
+   {0x1.e6fdf5e75db62p-68, 0x1.3879e04c3badp-67}, /* i=243 */
+   {0x1.99fa479959c66p-66, 0x1.2970ed1e91f7ep-70}, /* i=244 */
+   {0x1.64315749dd728p-66, 0x1.37f100aa6fad8p-66}, /* i=245 */
+   {0x1.82129a23715p-67, -0x1.24528efb7fc1cp-69}, /* i=246 */
+   {0x1.c8ba561043811p-66, 0x1.7acb675a06241p-66}, /* i=247 */
+   {0x1.a522cdea8728ap-66, 0x1.ad77be86d5005p-67}, /* i=248 */
+   {-0x1.d7a4159ce463dp-67, -0x1.a90efe923ca82p-66}, /* i=249 */
+   {-0x1.41080bc3154c1p-67, -0x1.64b13bcb4353cp-67}, /* i=250 */
+   {0x1.8208fc919f5c7p-66, 0x1.e303aa6f0ce77p-67}, /* i=251 */
+   {0x1.d230feced62c3p-67, -0x1.2bdea323aebfbp-66}, /* i=252 */
+   {0x1.22735252b2117p-66, 0x1.b1f1127396011p-68}, /* i=253 */
+   {-0x1.2933563c665b3p-66, 0x1.742097ecf7f05p-68}, /* i=254 */
+   {-0x1.51d997e2a717fp-66, -0x1.3f830a21eb906p-67}, /* i=255 */
+};
+
 typedef union { double f; uint64_t u; } d64u64;
 
 /* Add a + b, such that *hi + *lo approximates a + b.
@@ -573,6 +1098,8 @@ static void
 fast_two_sum (double *hi, double *lo, double a, double b)
 {
   double e;
+
+  assert (fabs (a) >= fabs (b));
 
   *hi = a + b;
   e = *hi - a; /* exact */
@@ -739,8 +1266,6 @@ eval_C2 (double *h, double *l, double w)
   a_mul (&zh, &zl, w, w); /* zh+zl = w^2 */
   *h = __builtin_fma (C2[4][0], zh, C2[3][0]);
   s_mul (h, l, *h, zh, zl);                     /* multiply by w^2 */
-  fast_sum (h, l, C2[3][0], *h, *l);            /* add C2[3] */
-  d_mul (h, l, *h, *l, zh, zl);                 /* multiply by w^2 */
   fast_sum2 (h, l, C2[2][0], C2[2][1], *h, *l); /* add C2[2] */
   d_mul (h, l, *h, *l, zh, zl);                 /* multiply by w^2 */
   fast_sum2 (h, l, C2[1][0], C2[1][1], *h, *l); /* add C2[1] */
@@ -815,12 +1340,10 @@ cr_sinh_fast (double *h, double *l, double x)
      cancellation, the worst case being for j=1 and w=-0.00543,
      where h1+l1 >= 0.0108414. and h2+l2 >= -0.0054303,
      thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 3.008 */
-     
-  fast_two_sum (h, l, h1, h2);
-  *l += l1 + l2; /* h+l approximates sinh(v) */
-  /* we neglect the rounding errors in fast_two_sum and *l += l1 + l2,
-     which would not change the error bound below, since the above
-     bounds are upper approximations */
+
+  fast_sum2 (h, l, h1, l1, h2, l2); /* h+l approximates sinh(v) */
+  /* the rounding error in fast_sum2() is absorbed in the above
+     error bounds (which are over-estimated) */
   // if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
 
   if (i == 0)
@@ -844,11 +1367,9 @@ cr_sinh_fast (double *h, double *l, double x)
      cancellation, the worst case being for j=1 and w=-0.00543,
      where h1+l1 >= 1.0000735. and h1+l1 >= -0.0000589
      thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 1.000118 */
-  fast_two_sum (&cvh, &cvl, h2, h1); /* here |h2| > |h1| */
-  cvl += l1 + l2; /* cvh+cvl approximates cosh(v) */
-  /* we neglect the rounding errors in fast_two_sum and *l += l1 + l2,
-     which would not change the error bound below, since the above
-     bounds are upper approximations */
+  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
+  /* the rounding errors in fast_sum2 are absorbed in the above error bounds
+     (which are over-estimated) */
   // if (x == TRACE) printf ("cvh=%la cvl=%la\n", cvh, cvl);
 
   /* at this point cvh+cvl approximates cosh(v) with relative error bounded
@@ -872,8 +1393,7 @@ cr_sinh_fast (double *h, double *l, double x)
      < 2^-60.24, and the absolute error on cvh+cvl is bounded by
      1.000118*2^-64.82*8.02 < 2^-61.81. */
 
-  fast_two_sum (&cvh, l, cvh, svh);
-  cvl = *l + (cvl + svl);
+  fast_sum2 (&cvh, &cvl, cvh, cvl, svh, svl);
   /* absolute error on cvh+cvl bounded by (neglecting the error in fast_two_sum
      and cvl = *l + (cvl + svl)):
      2^-60.24+2^-61.81 < 2^-59.82.
@@ -889,8 +1409,7 @@ cr_sinh_fast (double *h, double *l, double x)
   /* |T[i][2] - exp(T[i][0])| < 2^-17 ulp(T[i][2]) <= 2^-69 |T[i][2]|
      and |svh + svl - sinh(v)| < 2^-63.23*|svh + svl| thus
      |h2+l2-exp(T[i][0])*sinh(v)| < 2^-63.20*|h2+l2| */
-  fast_two_sum (h, l, h1, h2);
-  *l += l1 + l2;
+  fast_sum2 (h, l, h1, l1, h2, l2);
 
   /* 2^-59.79 < 0x1.29p-60 and 2^-63.20 < 0x1.bep-64 */
   return 0x1.29p-60 * h1 + 0x1.bep-64 * (h2 > 0 ? h2 : -h2);
@@ -902,6 +1421,7 @@ cr_sinh_accurate (double *h, double *l, double x)
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
+  //  if (x == TRACE) printf ("k=%d i=%d j=%d U[j][0]=%la\n", k, i, j, U[j][0]);
   double v = x - T[i][0];
   double w = v - U[j][0];
   eval_S2 (h, l, w);
@@ -922,10 +1442,88 @@ cr_sinh_accurate (double *h, double *l, double x)
       }
     return;
   }
-  *h = *l = 0;
+
+  double swh, swl, cwh, cwl;
+  swh = *h;
+  swl = *l;
+  if (x == TRACE) printf ("w=%la swh=%la swl=%la\n", w, swh, swl);
+  eval_C2 (&cwh, &cwl, w);
+  if (x == TRACE) printf ("w=%la cwh=%la cwl=%la\n", w, cwh, cwl);
+  double h1, l1, h2, l2;
+  d_mul (&h1, &l1, U[j][1], Ul[j][0], cwh, cwl);
+  // if (x == TRACE) printf ("h1=%la l1=%la\n", h1, l1);
+  d_mul (&h2, &l2, U[j][2], Ul[j][1], swh, swl);
+  // if (x == TRACE) printf ("h2=%la l2=%la\n", h2, l2);
+  fast_sum2 (h, l, h1, l1, h2, l2);
+  if (i == 0)
+  {
+    static double exceptions[][3] = {
+      {0x1.19e03c96f0997p-6, 0x1.19e3cbe7ef607p-6, -0x1.fffffffffffffp-60},
+      {0x1.4169f234f23b9p-2, 0x1.46b7b3b358f99p-2, -0x1.ffffffffffffep-56},
+      {0x1.8c154465149ep-8, 0x1.8c15e26bbaa2p-8, -0x1.fffffffffffffp-62},
+      {0x1.9147ff03dfb3p-1, 0x1.bba4dc4067a68p-1, 0x1p-54},
+      {0x1.9b88da8cd4e51p-3, 0x1.9e4f4a0396a4cp-3, 0x1.fffffffffffffp-57},
+      {0x1.c6adb85d9e00fp-6, 0x1.c6bca941afa85p-6, -0x1.ffffffffffffep-60},
+      {0x1.d3e0d2f5d98d6p-2, 0x1.e45428082fb8cp-2, -0x1.ffffffffffffep-56},
+    };
+    for (int i = 0; i < 7; i++)
+      if (x == exceptions[i][0])
+      {
+        *h = exceptions[i][1];
+        *l = exceptions[i][2];
+        break;
+      }
+    return;
+  }
+
+  double svh, svl, cvh, cvl;
+  svh = *h;
+  svl = *l;
+  if (x == TRACE) printf ("T[i][0]=%la\n", T[i][0]);
+  if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
+  /* svh+svl approximates sinh(v) */
+  d_mul (&h1, &l1, U[j][1], Ul[j][0], swh, swl);
+  d_mul (&h2, &l2, U[j][2], Ul[j][1], cwh, cwl);
+  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
+  fast_sum2 (&cvh, &cvl, cvh, cvl, svh, svl);
+  /* now cvh+cvl approximates cosh(v)+sinh(v) */
+  d_mul (&h1, &l1, T[i][1], Tl[i][0], cvh, cvl);
+  d_mul (&h2, &l2, T[i][2], Tl[i][1], svh, svl);
+  fast_sum2 (h, l, h1, l1, h2, l2);
+  //*h = *l = 0;
 }
 
 #define MASK 0x7fffffffffffffff /* to mask the sign bit */
+
+#if 0
+static void
+printT ()
+{
+  printf ("LOG T0=dict()\n");
+  printf ("LOG T1=dict()\n");
+  printf ("LOG T2=dict()\n");
+  for (int i = 0; i < 256; i++)
+  {
+    printf ("LOG T0[%d]='%la'\n", i, T[i][0]);
+    printf ("LOG T1[%d]='%la'\n", i, T[i][1]);
+    printf ("LOG T2[%d]='%la'\n", i, T[i][2]);
+  }
+}
+
+static void
+printU ()
+{
+  printf ("LOG U0=dict()\n");
+  printf ("LOG U1=dict()\n");
+  printf ("LOG U2=dict()\n");
+  for (int i = 0; i < 256; i++)
+  {
+    printf ("LOG U0[%d]='%la'\n", i, U[i][0]);
+    printf ("LOG U1[%d]='%la'\n", i, U[i][1]);
+    printf ("LOG U2[%d]='%la'\n", i, U[i][2]);
+  }
+}
+#endif
 
 double
 cr_sinh (double x)
@@ -934,6 +1532,12 @@ cr_sinh (double x)
   int e = (v.u >> 52) - 0x3ff;
   int s = v.u >> 63; /* sign bit */
   v.u &= (uint64_t) MASK; /* get absolute value */
+
+#if 0
+  static int count = 0;
+  // if (count++ == 0) printU();
+  if (count++ == 0) printT();
+#endif
 
   if (e == 0x400 || e == 0xc00 || v.f >= 0x1.633ce8fb9f87ep+9)
     /* NaN or overflow */
@@ -966,6 +1570,7 @@ cr_sinh (double x)
     return __builtin_fma (x, 0x1p-54, x);
 
   cr_sinh_accurate (&h, &l, v.f);
+  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   h *= sign[s];
   l *= sign[s];
   return h + l;
