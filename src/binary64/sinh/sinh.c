@@ -29,7 +29,7 @@ SOFTWARE.
    [1] IA-64 and Elementary Functions, Peter Markstein,
        Hewlett-Packard Professional Books, 2000, Chapter 16. */
 
-#define TRACE 0x1.01ae878849e03p-9
+#define TRACE -0x1.21a0d7b7f3335p-1010
 
 #include <stdio.h>
 #include <stdint.h>
@@ -302,266 +302,266 @@ static const double T[256][3] = {
 
 /* For 0 <= i < 256, U[i] = {xi, si, ci} such that xi is near i/magic
    with magic = 0x1.70f77fc88ae3cp6, and si,ci approximate sinh(xi),cosh(xi)
-   with accuracy >= 53+13 bits:
-   |si - sinh(xi)| < 2^(-13-1) ulp(si), |ci - cosh(xi)| < 2^(-13-1) ulp(ci).
-   We have |xi - i/magic| < 6.48-08.
-   Generated with ./buildu 13 with accompanying file buildu.c. */
+   with accuracy >= 53+14 bits:
+   |si - sinh(xi)| < 2^(-14-1) ulp(si), |ci - cosh(xi)| < 2^(-14-1) ulp(ci).
+   We have |xi - i/magic| < 2.30e-07.
+   Generated with ./buildu 14 with accompanying file buildu.c. */
 static const double U[256][3] = {
    {0x0p+0, 0x0p+0, 0x1p+0}, /* i=0 */
    {0x1.633d9a6f0b004p-7, 0x1.633f62784d28p-7, 0x1.0003d9ea4b182p+0}, /* i=1 */
    {0x1.633d9a8bd1d79p-6, 0x1.6344bab917c09p-6, 0x1.000f67c6d8d91p+0}, /* i=2 */
-   {0x1.0a6e34284fdb7p-5, 0x1.0a7a3a8be60f4p-5, 0x1.0022a9eeb6b7dp+0}, /* i=3 */
-   {0x1.633d9aa8d3b5cp-5, 0x1.635a1be1acaafp-5, 0x1.003da0f614334p+0}, /* i=4 */
-   {0x1.bc0d014bb0875p-5, 0x1.bc44ae6fae5dap-5, 0x1.00604dacc37eep+0}, /* i=5 */
-   {0x1.0a6e33ec4cdc9p-4, 0x1.0a9e4f6eb59cdp-4, 0x1.008ab11dc4ca3p+0}, /* i=6 */
-   {0x1.36d5e7228f9b2p-4, 0x1.37224d3398a65p-4, 0x1.00bccc8f8ad67p+0}, /* i=7 */
-   {0x1.633d9ae4dc30ap-4, 0x1.63afa80479dp-4, 0x1.00f6a184d92a4p+0}, /* i=8 */
-   {0x1.8fa54dfc7460cp-4, 0x1.9047b5d2d7426p-4, 0x1.013831b985af3p+0}, /* i=9 */
-   {0x1.bc0d014888254p-4, 0x1.bcebcefa64fcfp-4, 0x1.01817f27bac69p+0}, /* i=10 */
+   {0x1.0a6e34acf683p-5, 0x1.0a7a3b109eadp-5, 0x1.0022a9eed93cfp+0}, /* i=3 */
+   {0x1.633d9b02cb4bdp-5, 0x1.635a1c3bb9e99p-5, 0x1.003da0f6336bcp+0}, /* i=4 */
+   {0x1.bc0d00bf620d4p-5, 0x1.bc44ade32b1b9p-5, 0x1.00604dac869f7p+0}, /* i=5 */
+   {0x1.0a6e350a8c8bp-4, 0x1.0a9e508d905fap-4, 0x1.008ab11eeee96p+0}, /* i=6 */
+   {0x1.36d5e671c3771p-4, 0x1.37224c824a1f1p-4, 0x1.00bccc8eb3f6cp+0}, /* i=7 */
+   {0x1.633d99380441bp-4, 0x1.63afa65604bbp-4, 0x1.00f6a18285549p+0}, /* i=8 */
+   {0x1.8fa54dc51ba9p-4, 0x1.9047b59b3b0bcp-4, 0x1.013831b92f251p+0}, /* i=9 */
+   {0x1.bc0d00f20d1a3p-4, 0x1.bcebcea367b7ep-4, 0x1.01817f2724798p+0}, /* i=10 */
    {0x1.e874b4b1b76bp-4, 0x1.e99d4b3c450dbp-4, 0x1.01d28c040336ep+0}, /* i=11 */
-   {0x1.0a6e33475b967p-3, 0x1.0b2ec095a6016p-3, 0x1.022b5abb3fd66p+0}, /* i=12 */
-   {0x1.20a20d8da4312p-3, 0x1.2196e6deac58p-3, 0x1.028bee023de51p+0}, /* i=13 */
+   {0x1.0a6e34c652ff4p-3, 0x1.0b2ec217dc345p-3, 0x1.022b5ac17e9e5p+0}, /* i=12 */
+   {0x1.20a20d40df20ep-3, 0x1.2196e69123c74p-3, 0x1.028bee00e2863p+0}, /* i=13 */
    {0x1.36d5e77726522p-3, 0x1.3807c357a591ep-3, 0x1.02f448b9f454cp+0}, /* i=14 */
    {0x1.4d09c0e447a93p-3, 0x1.4e8202b9b2d92p-3, 0x1.03646e05258f1p+0}, /* i=15 */
    {0x1.633d9a5b2f6b7p-3, 0x1.650652ae3ac4dp-3, 0x1.03dc614607172p+0}, /* i=16 */
-   {0x1.7971745a0d1adp-3, 0x1.7b956125042fbp-3, 0x1.045c261b790eep+0}, /* i=17 */
-   {0x1.8fa54de66c536p-3, 0x1.922fdae1cb186p-3, 0x1.04e3c05808068p+0}, /* i=18 */
-   {0x1.a5d9279937a8fp-3, 0x1.a8d66e9a205c9p-3, 0x1.05733413aad18p+0}, /* i=19 */
-   {0x1.bc0d01457c823p-3, 0x1.bf89ca9795bd1p-3, 0x1.060a859e3f1eep+0}, /* i=20 */
+   {0x1.797174c5471b2p-3, 0x1.7b95619211b0dp-3, 0x1.045c261df504ap+0}, /* i=17 */
+   {0x1.8fa54e324fd6cp-3, 0x1.922fdb2f21ad9p-3, 0x1.04e3c059e4ec5p+0}, /* i=18 */
+   {0x1.a5d928074d2f3p-3, 0x1.a8d66f0a8dd88p-3, 0x1.057334168590fp+0}, /* i=19 */
+   {0x1.bc0d015c8eaf7p-3, 0x1.bf89caaf334a2p-3, 0x1.060a859ee0738p+0}, /* i=20 */
    {0x1.d240db04ad09p-3, 0x1.d64a9dce02cb2p-3, 0x1.06a9b985ff718p+0}, /* i=21 */
-   {0x1.e874b4a8d6f03p-3, 0x1.ed19974fc917ap-3, 0x1.0750d493ded6fp+0}, /* i=22 */
-   {0x1.fea88e87e59cfp-3, 0x1.01fbb391e5041p-2, 0x1.07ffdbd195273p+0}, /* i=23 */
-   {0x1.0a6e33f16d2ddp-2, 0x1.0d725e52e3859p-2, 0x1.08b6d47d3f7eep+0}, /* i=24 */
+   {0x1.e874b515da9c2p-3, 0x1.ed1997bfea48fp-3, 0x1.0750d49726c2dp+0}, /* i=22 */
+   {0x1.fea88e881397cp-3, 0x1.01fbb391fcb96p-2, 0x1.07ffdbd19699ep+0}, /* i=23 */
+   {0x1.0a6e3484a77c7p-2, 0x1.0d725eeb20cc5p-2, 0x1.08b6d486eedf9p+0}, /* i=24 */
    {0x1.1588209aa7ff5p-2, 0x1.18f124768fcd8p-2, 0x1.0975c41be16fap+0}, /* i=25 */
-   {0x1.20a20d751ce66p-2, 0x1.24785ebf1608ep-2, 0x1.0a3cb06ff0949p+0}, /* i=26 */
-   {0x1.2bbbfa971e2fap-2, 0x1.3008660feabf2p-2, 0x1.0b0b9f77b2414p+0}, /* i=27 */
-   {0x1.36d5e75561c43p-2, 0x1.3ba192c604dedp-2, 0x1.0be297607518cp+0}, /* i=28 */
-   {0x1.41efd407478d8p-2, 0x1.47443e92172f7p-2, 0x1.0cc19ea8247dbp+0}, /* i=29 */
-   {0x1.4d09c0e90ff58p-2, 0x1.52f0c35290e44p-2, 0x1.0da8bc097fe9cp+0}, /* i=30 */
-   {0x1.5823adfb34ac8p-2, 0x1.5ea77af36904bp-2, 0x1.0e97f67921cbbp+0}, /* i=31 */
-   {0x1.633d9a9abf8fap-2, 0x1.6a68bf01cf4eap-2, 0x1.0f8f551baf139p+0}, /* i=32 */
-   {0x1.6e57876ea716p-2, 0x1.7634eab8f933p-2, 0x1.108edf70c6d57p+0}, /* i=33 */
-   {0x1.79717483e44dcp-2, 0x1.820c590621557p-2, 0x1.11969d2a602acp+0}, /* i=34 */
-   {0x1.848b6108b2d76p-2, 0x1.8def643e84c65p-2, 0x1.12a6962420279p+0}, /* i=35 */
+   {0x1.20a20cc654634p-2, 0x1.24785e0950413p-2, 0x1.0a3cb06375a65p+0}, /* i=26 */
+   {0x1.2bbbfaad0523ep-2, 0x1.30086626c39e7p-2, 0x1.0b0b9f795270ep+0}, /* i=27 */
+   {0x1.36d5e645fff22p-2, 0x1.3ba191aa09a3fp-2, 0x1.0be2974b8b8e7p+0}, /* i=28 */
+   {0x1.41efd4926f6ffp-2, 0x1.47443f242e2fdp-2, 0x1.0cc19eb342ce6p+0}, /* i=29 */
+   {0x1.4d09c11390d7p-2, 0x1.52f0c37f5655p-2, 0x1.0da8bc0d044bfp+0}, /* i=30 */
+   {0x1.5823ad1e5ba9cp-2, 0x1.5ea77a09f90b3p-2, 0x1.0e97f66639b8ep+0}, /* i=31 */
+   {0x1.633d9ad484133p-2, 0x1.6a68bf3f16adep-2, 0x1.0f8f5520cb8bep+0}, /* i=32 */
+   {0x1.6e5787aac8c07p-2, 0x1.7634eaf8fe874p-2, 0x1.108edf76452f4p+0}, /* i=33 */
+   {0x1.797174cddd6cap-2, 0x1.820c59552f84cp-2, 0x1.11969d3158fdep+0}, /* i=34 */
+   {0x1.848b5fc227a5bp-2, 0x1.8def62e02f4d7p-2, 0x1.12a6960466b42p+0}, /* i=35 */
    {0x1.8fa54e19d6296p-2, 0x1.99de6921fab7ep-2, 0x1.13bed2a81eeb5p+0}, /* i=36 */
-   {0x1.9abf3ad5df6cfp-2, 0x1.a5d9c2a9af69fp-2, 0x1.14df5b0ee1c8fp+0}, /* i=37 */
-   {0x1.a5d92740863fep-2, 0x1.b1e1cd22b0957p-2, 0x1.1608380678007p+0}, /* i=38 */
+   {0x1.9abf3a3f273cap-2, 0x1.a5d9c206ad55dp-2, 0x1.14df5aff5bf73p+0}, /* i=37 */
+   {0x1.a5d9273eee604p-2, 0x1.b1e1cd20f59b8p-2, 0x1.160838064ccbep+0}, /* i=38 */
    {0x1.b0f314604d197p-2, 0x1.bdf6e65615b31p-2, 0x1.1739729951f9ep+0}, /* i=39 */
-   {0x1.bc0d014a487cap-2, 0x1.ca196a558a11fp-2, 0x1.187313ddc7f26p+0}, /* i=40 */
+   {0x1.bc0d01a423a2cp-2, 0x1.ca196ab7fa281p-2, 0x1.187313e7d4a24p+0}, /* i=40 */
    {0x1.c726ee1426721p-2, 0x1.d649b6aff6ce8p-2, 0x1.19b5254595f8dp+0}, /* i=41 */
    {0x1.d240dafb57c69p-2, 0x1.e288298ac8b0ep-2, 0x1.1affb08866fd3p+0}, /* i=42 */
-   {0x1.dd5ac7bd37a54p-2, 0x1.eed520eb676b8p-2, 0x1.1c52bf90720e4p+0}, /* i=43 */
-   {0x1.e874b491a6d1fp-2, 0x1.fb30fbce64638p-2, 0x1.1dae5c97e2909p+0}, /* i=44 */
+   {0x1.dd5ac800192cep-2, 0x1.eed52135af3c4p-2, 0x1.1c52bf98867c6p+0}, /* i=43 */
+   {0x1.e874b45b14378p-2, 0x1.fb30fb917e023p-2, 0x1.1dae5c9120a4p+0}, /* i=44 */
    {0x1.f38ea183274ecp-2, 0x1.03ce0cb8a6addp-1, 0x1.1f129215b3726p+0}, /* i=45 */
    {0x1.fea88e28e7ebp-2, 0x1.0a0b6c82c1acep-1, 0x1.207f6ab43a80dp+0}, /* i=46 */
    {0x1.04e13d938253fp-1, 0x1.1050cdb18701p-1, 0x1.21f4f182cf184p+0}, /* i=47 */
    {0x1.0a6e33f32e8e2p-1, 0x1.169e603d12f39p-1, 0x1.237331aac51c7p+0}, /* i=48 */
    {0x1.0ffb2a1b141bep-1, 0x1.1cf4549568f3ep-1, 0x1.24fa36a503b4p+0}, /* i=49 */
-   {0x1.1588206345cbcp-1, 0x1.2352dbebe526bp-1, 0x1.268a0c4d5f3c5p+0}, /* i=50 */
-   {0x1.1b1516d9e744ep-1, 0x1.29ba27608db98p-1, 0x1.2822beb043ddep+0}, /* i=51 */
-   {0x1.20a20da446c77p-1, 0x1.302a687241a03p-1, 0x1.29c45a259e721p+0}, /* i=52 */
-   {0x1.262f0413e36ebp-1, 0x1.36a3cfee23014p-1, 0x1.2b6eeb0aafd67p+0}, /* i=53 */
-   {0x1.2bbbfa79c7113p-1, 0x1.3d26900fd8204p-1, 0x1.2d227e4c7493ap+0}, /* i=54 */
-   {0x1.3148f0b1ff49bp-1, 0x1.43b2dad2bd2a8p-1, 0x1.2edf20fa60991p+0}, /* i=55 */
-   {0x1.36d5e74e8e81ep-1, 0x1.4a48e3533529dp-1, 0x1.30a4e0a374956p+0}, /* i=56 */
-   {0x1.3c62ddaa7ddap-1, 0x1.50e8db887b2cp-1, 0x1.3273caba5614bp+0}, /* i=57 */
-   {0x1.41efd421048f1p-1, 0x1.5792f6e62d7ecp-1, 0x1.344bed49f3454p+0}, /* i=58 */
-   {0x1.477ccaa96707ap-1, 0x1.5e4768b784f26p-1, 0x1.362d56846ec2p+0}, /* i=59 */
-   {0x1.4d09c09c74307p-1, 0x1.650663d5eea46p-1, 0x1.381814abe5055p+0}, /* i=60 */
-   {0x1.5296b750e628dp-1, 0x1.6bd01dd8793e2p-1, 0x1.3a0c36fb11b3cp+0}, /* i=61 */
-   {0x1.5823adbc29373p-1, 0x1.72a4c9c34561p-1, 0x1.3c09cc21952ffp+0}, /* i=62 */
-   {0x1.5db0a4110ffaep-1, 0x1.79849c70d6dc1p-1, 0x1.3e10e385bfb48p+0}, /* i=63 */
+   {0x1.158822b8eadccp-1, 0x1.2352de9b8300bp-1, 0x1.268a0cf76641cp+0}, /* i=50 */
+   {0x1.1b1517f85c89ap-1, 0x1.29ba28abec322p-1, 0x1.2822bf038d749p+0}, /* i=51 */
+   {0x1.20a20e5b34bf4p-1, 0x1.302a694708036p-1, 0x1.29c45a5bf4ab2p+0}, /* i=52 */
+   {0x1.262f03e111bc2p-1, 0x1.36a3cfb2b210fp-1, 0x1.2b6eeafb4539bp+0}, /* i=53 */
+   {0x1.2bbbf9f463266p-1, 0x1.3d268f72efac2p-1, 0x1.2d227e23245f4p+0}, /* i=54 */
+   {0x1.3148f074438bbp-1, 0x1.43b2da89b3e1ep-1, 0x1.2edf20e6dcd89p+0}, /* i=55 */
+   {0x1.36d5e750aae26p-1, 0x1.4a48e355b8387p-1, 0x1.30a4e0a422e0fp+0}, /* i=56 */
+   {0x1.3c62dce1be859p-1, 0x1.50e8da982bac4p-1, 0x1.3273ca7849a6bp+0}, /* i=57 */
+   {0x1.41efd58eff412p-1, 0x1.5792f89eeba9p-1, 0x1.344bedc4be853p+0}, /* i=58 */
+   {0x1.477cca35a487cp-1, 0x1.5e47682b42eb4p-1, 0x1.362d565cd5b4cp+0}, /* i=59 */
+   {0x1.4d09c29ecd609p-1, 0x1.65066648fbb9ap-1, 0x1.3818155f39d3ap+0}, /* i=60 */
+   {0x1.5296b73d51261p-1, 0x1.6bd01dc073899p-1, 0x1.3a0c36f41ca63p+0}, /* i=61 */
+   {0x1.5823ad23ec1bap-1, 0x1.72a4c907541f8p-1, 0x1.3c09cbea7a9bcp+0}, /* i=62 */
+   {0x1.5db0a4e2985e8p-1, 0x1.79849d752c1abp-1, 0x1.3e10e3d2ff4dep+0}, /* i=63 */
    {0x1.633d9aa6eddfap-1, 0x1.806fcb40d044cp-1, 0x1.40218ce62e7b4p+0}, /* i=64 */
-   {0x1.68ca910f41c46p-1, 0x1.87668af427651p-1, 0x1.423bd801f5d44p+0}, /* i=65 */
+   {0x1.68ca90c6740c3p-1, 0x1.87668a98839e9p-1, 0x1.423bd7e621fcdp+0}, /* i=65 */
    {0x1.6e57875c4aa11p-1, 0x1.8e69114469bf9p-1, 0x1.445fd511707dep+0}, /* i=66 */
    {0x1.73e47de3bb7c6p-1, 0x1.9577949c798f1p-1, 0x1.468d94b2d9cc3p+0}, /* i=67 */
-   {0x1.7971742e29c0bp-1, 0x1.9c924abf13bd9p-1, 0x1.48c5277f5433ap+0}, /* i=68 */
-   {0x1.7efe6aaada683p-1, 0x1.a3b96af30fb8ep-1, 0x1.4b069eb6ec0a8p+0}, /* i=69 */
-   {0x1.848b61237f588p-1, 0x1.aaed2c0b3ba33p-1, 0x1.4d520ba3f3c23p+0}, /* i=70 */
-   {0x1.8a1857842123fp-1, 0x1.b22dc566c1b64p-1, 0x1.4fa77fea7e103p+0}, /* i=71 */
-   {0x1.8fa54e16931ffp-1, 0x1.b97b6f42d6a5dp-1, 0x1.52070da3baa3fp+0}, /* i=72 */
+   {0x1.7971741ea503fp-1, 0x1.9c924aab25b83p-1, 0x1.48c5277913942p+0}, /* i=68 */
+   {0x1.7efe6b1e54387p-1, 0x1.a3b96b886135ap-1, 0x1.4b069ee6410b5p+0}, /* i=69 */
+   {0x1.848b617db07ecp-1, 0x1.aaed2c80aa79dp-1, 0x1.4d520bc98e186p+0}, /* i=70 */
+   {0x1.8a18576fcbe3p-1, 0x1.b22dc54c18d88p-1, 0x1.4fa77fe1df058p+0}, /* i=71 */
+   {0x1.8fa54d96985dp-1, 0x1.b97b6e99da09dp-1, 0x1.52070d6c8d784p+0}, /* i=72 */
    {0x1.9532447cf6b5cp-1, 0x1.c0d661650ebfbp-1, 0x1.5470c6ef3f0cep+0}, /* i=73 */
-   {0x1.9abf3ac3f1488p-1, 0x1.c83ed4846cee6p-1, 0x1.56e4be67b92e9p+0}, /* i=74 */
-   {0x1.a04c31253e502p-1, 0x1.cfb501fd406b7p-1, 0x1.5963070b821cap+0}, /* i=75 */
+   {0x1.9abf3a9ec54edp-1, 0x1.c83ed452a2f8p-1, 0x1.56e4be5729518p+0}, /* i=74 */
+   {0x1.a04c320307fd9p-1, 0x1.cfb503287b017p-1, 0x1.5963076ff1414p+0}, /* i=75 */
    {0x1.a5d927b80c96p-1, 0x1.d7392368e187ep-1, 0x1.5bebb41a334cp+0}, /* i=76 */
    {0x1.ab661e4dcd2fbp-1, 0x1.decb726d989fep-1, 0x1.5e7ed903870e3p+0}, /* i=77 */
    {0x1.b0f3143cf5e5cp-1, 0x1.e66c28736592ap-1, 0x1.611c894c0ee58p+0}, /* i=78 */
-   {0x1.b6800ad49347ep-1, 0x1.ee1b820771d39p-1, 0x1.63c4d9b7fa2d7p+0}, /* i=79 */
-   {0x1.bc0d0135d0a3p-1, 0x1.f5d9b9286ae17p-1, 0x1.6677de55f85fbp+0}, /* i=80 */
-   {0x1.c199f7cdb50bfp-1, 0x1.fda70a125e0a4p-1, 0x1.6935ac259b63cp+0}, /* i=81 */
-   {0x1.c726ee3e382c1p-1, 0x1.02c1d82ccf045p+0, 0x1.6bfe58163cfb2p+0}, /* i=82 */
-   {0x1.ccb3e4ac25c49p-1, 0x1.06b7f45ffbc9ap+0, 0x1.6ed1f7ab2a3eap+0}, /* i=83 */
-   {0x1.d240dae3ecdfp-1, 0x1.0ab5f800940aep+0, 0x1.71b0a08f25e0bp+0}, /* i=84 */
+   {0x1.b6800bbb04412p-1, 0x1.ee1b8347b1afep-1, 0x1.63c4da272bde9p+0}, /* i=79 */
+   {0x1.bc0d0083b9e94p-1, 0x1.f5d9b82f0bb69p-1, 0x1.6677ddfeb0e3ep+0}, /* i=80 */
+   {0x1.c199f826ee45bp-1, 0x1.fda70a9042719p-1, 0x1.6935ac5203a3bp+0}, /* i=81 */
+   {0x1.c726edc456b4fp-1, 0x1.02c1d7d6291e9p+0, 0x1.6bfe57d8a4393p+0}, /* i=82 */
+   {0x1.ccb3e6dde3caap-1, 0x1.06b7f5f270fe6p+0, 0x1.6ed1f8cb68502p+0}, /* i=83 */
+   {0x1.d240dabda1318p-1, 0x1.0ab5f7e4ed4a5p+0, 0x1.71b0a07b32f34p+0}, /* i=84 */
    {0x1.d7cdd152c608bp-1, 0x1.0ebc021d2f2a3p+0, 0x1.749a69155b5e6p+0}, /* i=85 */
-   {0x1.dd5ac795ff65ep-1, 0x1.12ca316c3056fp+0, 0x1.778f677a7d4c3p+0}, /* i=86 */
-   {0x1.e2e7be08da02cp-1, 0x1.16e0a56ce15eep+0, 0x1.7a8fb2b5ecab6p+0}, /* i=87 */
-   {0x1.e874b49e0c35dp-1, 0x1.1aff7d9275dc9p+0, 0x1.7d9b61df36de5p+0}, /* i=88 */
-   {0x1.ee01ab167280fp-1, 0x1.1f26d96b02229p+0, 0x1.80b28c49457aap+0}, /* i=89 */
-   {0x1.f38ea16fb901p-1, 0x1.2356d8f2b9262p+0, 0x1.83d549bfff0bfp+0}, /* i=90 */
-   {0x1.f91b97d0d8451p-1, 0x1.278f9c87d1714p+0, 0x1.8703b28031fb2p+0}, /* i=91 */
-   {0x1.fea88e57f52ebp-1, 0x1.2bd144c631682p+0, 0x1.8a3ddf1cab558p+0}, /* i=92 */
+   {0x1.dd5ac752265aap-1, 0x1.12ca313a6bde6p+0, 0x1.778f6756135ap+0}, /* i=86 */
+   {0x1.e2e7bf50cc625p-1, 0x1.16e0a65f5b5a5p+0, 0x1.7a8fb3688d299p+0}, /* i=87 */
+   {0x1.e874b5df6fb7ep-1, 0x1.1aff7e81fff22p+0, 0x1.7d9b6290db0d2p+0}, /* i=88 */
+   {0x1.ee01ab8c1d302p-1, 0x1.1f26d9c36b2e9p+0, 0x1.80b28c8b43958p+0}, /* i=89 */
+   {0x1.f38ea22c82baep-1, 0x1.2356d981ba455p+0, 0x1.83d54a2b6bb91p+0}, /* i=90 */
+   {0x1.f91b9771f089ep-1, 0x1.278f9c3f56ca6p+0, 0x1.8703b24968d81p+0}, /* i=91 */
+   {0x1.fea88e813aa91p-1, 0x1.2bd144e5f8dc1p+0, 0x1.8a3ddf34d646ep+0}, /* i=92 */
    {0x1.021ac24954c52p+0, 0x1.301bf21ecbcefp+0, 0x1.8d83e82dff514p+0}, /* i=93 */
    {0x1.04e13d9c92e68p+0, 0x1.346fc62edf0c8p+0, 0x1.90d5e7582573bp+0}, /* i=94 */
-   {0x1.07a7b8cdf366fp+0, 0x1.38cce1c2f92afp+0, 0x1.9433f5c5b2d67p+0}, /* i=95 */
-   {0x1.0a6e33d1151aep+0, 0x1.3d3366628890dp+0, 0x1.979e2d558a00bp+0}, /* i=96 */
-   {0x1.0d34af3aa1ccep+0, 0x1.41a376df5ddfep+0, 0x1.9b14a90dac504p+0}, /* i=97 */
+   {0x1.07a7b811ae1bp+0, 0x1.38cce099b598ep+0, 0x1.9433f4dfa7b51p+0}, /* i=95 */
+   {0x1.0a6e349fabf1fp+0, 0x1.3d3367ab7a06dp+0, 0x1.979e2e5584443p+0}, /* i=96 */
+   {0x1.0d34aedcc3078p+0, 0x1.41a37648a1a5bp+0, 0x1.9b14a897bc0a7p+0}, /* i=97 */
    {0x1.0ffb2a42eb99p+0, 0x1.461d3428c320bp+0, 0x1.9e9782a12dc4ap+0}, /* i=98 */
-   {0x1.12c1a59894972p+0, 0x1.4aa0c1d0f66d4p+0, 0x1.a226d5f7d739ap+0}, /* i=99 */
-   {0x1.1588209b354a9p+0, 0x1.4f2e41978c58p+0, 0x1.a5c2bdaf32036p+0}, /* i=100 */
-   {0x1.184e9c1bb9c3ep+0, 0x1.53c5d7e563042p+0, 0x1.a96b56a46e676p+0}, /* i=101 */
-   {0x1.1b151733df05ep+0, 0x1.5867a69cd6832p+0, 0x1.ad20bbd6acf2fp+0}, /* i=102 */
+   {0x1.12c1a4fa438e8p+0, 0x1.4aa0c0ce5e191p+0, 0x1.a226d52b5f5a5p+0}, /* i=99 */
+   {0x1.158821891b2dbp+0, 0x1.4f2e431f7c5f9p+0, 0x1.a5c2bee6acd49p+0}, /* i=100 */
+   {0x1.184e9c4cc620bp+0, 0x1.53c5d836e51bp+0, 0x1.a96b56e587ae3p+0}, /* i=101 */
+   {0x1.1b15175448e0cp+0, 0x1.5867a6d32c0bfp+0, 0x1.ad20bc024850cp+0}, /* i=102 */
    {0x1.1ddb927f0cadap+0, 0x1.5d13d26dc6a1ap+0, 0x1.b0e30aa4d7b91p+0}, /* i=103 */
-   {0x1.20a20dc3cd10fp+0, 0x1.61ca7ef5e7646p+0, 0x1.b4b25fb677167p+0}, /* i=104 */
-   {0x1.236888d7db1fbp+0, 0x1.668bd03a8f128p+0, 0x1.b88ed82873b3bp+0}, /* i=105 */
-   {0x1.262f03fb07c09p+0, 0x1.6b57eb48aa224p+0, 0x1.bc7892104f6bep+0}, /* i=106 */
-   {0x1.28f57f430f637p+0, 0x1.702ef53a6b9e6p+0, 0x1.c06fabb1e764ep+0}, /* i=107 */
-   {0x1.2bbbfa422dbf5p+0, 0x1.75111297320afp+0, 0x1.c47442fa23696p+0}, /* i=108 */
-   {0x1.2e82758ee39d1p+0, 0x1.79fe6a04e3751p+0, 0x1.c88677b5bac13p+0}, /* i=109 */
+   {0x1.20a20c6aa517dp+0, 0x1.61ca7ca91ed28p+0, 0x1.b4b25dd975f4cp+0}, /* i=104 */
+   {0x1.2368888c49d68p+0, 0x1.668bcfb883326p+0, 0x1.b88ed7be9d421p+0}, /* i=105 */
+   {0x1.262f045c66d9bp+0, 0x1.6b57ebf1b8ee1p+0, 0x1.bc78929a82b57p+0}, /* i=106 */
+   {0x1.28f57fb629cdep+0, 0x1.702ef6040c0e7p+0, 0x1.c06fac57727b1p+0}, /* i=107 */
+   {0x1.2bbbfae83fc8ep+0, 0x1.751113bcb54fcp+0, 0x1.c47443ec26c4fp+0}, /* i=108 */
+   {0x1.2e8275d99a639p+0, 0x1.79fe6a8a20455p+0, 0x1.c88678240c2bep+0}, /* i=109 */
    {0x1.3148f0ac8a94fp+0, 0x1.7ef7209a59a2ep+0, 0x1.cca6688a3f4ffp+0}, /* i=110 */
    {0x1.340f6c2adca41p+0, 0x1.83fb5da54a9f7p+0, 0x1.d0d436141c7ccp+0}, /* i=111 */
    {0x1.36d5e74c4479p+0, 0x1.890b4672e8642p+0, 0x1.d50fff66131bcp+0}, /* i=112 */
    {0x1.399c625e184aep+0, 0x1.8e27028b45aeap+0, 0x1.d959e58eb91c8p+0}, /* i=113 */
-   {0x1.3c62dd8e755cep+0, 0x1.934eb99c69ec7p+0, 0x1.ddb209de497eep+0}, /* i=114 */
-   {0x1.3f2958bcac187p+0, 0x1.9882931f6341p+0, 0x1.e2188d98aeb33p+0}, /* i=115 */
-   {0x1.41efd446dc51ep+0, 0x1.9dc2b7d97eae3p+0, 0x1.e68d933ad7285p+0}, /* i=116 */
-   {0x1.44b64f9b22e9ep+0, 0x1.a30f4f28f2523p+0, 0x1.eb113c30525c5p+0}, /* i=117 */
-   {0x1.477cca8bbcf66p+0, 0x1.a868818365fd3p+0, 0x1.efa3aaef5a4b6p+0}, /* i=118 */
-   {0x1.4a4345a9b5a9p+0, 0x1.adce79311b3bdp+0, 0x1.f445039c642dcp+0}, /* i=119 */
-   {0x1.4d09c0e26590ap+0, 0x1.b3415fa447a07p+0, 0x1.f8f569c4ab493p+0}, /* i=120 */
+   {0x1.3c62dd7d54b1p+0, 0x1.934eb97c7422dp+0, 0x1.ddb209c34dcbfp+0}, /* i=114 */
+   {0x1.3f295899d0e98p+0, 0x1.988292ddbf3adp+0, 0x1.e2188d610f991p+0}, /* i=115 */
+   {0x1.41efd3bc6ccf9p+0, 0x1.9dc2b6d2626ep+0, 0x1.e68d925b17f77p+0}, /* i=116 */
+   {0x1.44b64eaa1de81p+0, 0x1.a30f4d5a9d7e7p+0, 0x1.eb113aa5c8c16p+0}, /* i=117 */
+   {0x1.477cca90e99d2p+0, 0x1.a868818d6aa28p+0, 0x1.efa3aaf7ee5c5p+0}, /* i=118 */
+   {0x1.4a4345a0b34b6p+0, 0x1.adce791f802f3p+0, 0x1.f445038d43f2bp+0}, /* i=119 */
+   {0x1.4d09bf422e1b5p+0, 0x1.b3415c6f4b72bp+0, 0x1.f8f5670102c5ep+0}, /* i=120 */
    {0x1.4fd03c27e95fp+0, 0x1.b8c15ebae7504p+0, 0x1.fdb5017002eb7p+0}, /* i=121 */
-   {0x1.5296b72a6cf9ap+0, 0x1.be4ea0324c387p+0, 0x1.0141f753914cep+1}, /* i=122 */
+   {0x1.5296b7d08e393p+0, 0x1.be4ea18030985p+0, 0x1.0141f7e461c68p+1}, /* i=122 */
    {0x1.555d323f8e424p+0, 0x1.c3e94f778902dp+0, 0x1.03b12b82fb6b9p+1}, /* i=123 */
-   {0x1.5823adb8529d3p+0, 0x1.c991985c350e6p+0, 0x1.0628304f774c8p+1}, /* i=124 */
-   {0x1.5aea28eabc11cp+0, 0x1.cf47a519fc7efp+0, 0x1.08a7181eeb1fbp+1}, /* i=125 */
+   {0x1.5823ad0b8ef69p+0, 0x1.c99196fa5e576p+0, 0x1.06282fb51189bp+1}, /* i=124 */
+   {0x1.5aea29253a95ap+0, 0x1.cf47a592edcb1p+0, 0x1.08a71853d8b76p+1}, /* i=125 */
    {0x1.5db0a41c2a7a4p+0, 0x1.d50ba23af286ap+0, 0x1.0b2df667af392p+1}, /* i=126 */
-   {0x1.60771f64205d7p+0, 0x1.daddbc59526d5p+0, 0x1.0dbcdeb603887p+1}, /* i=127 */
+   {0x1.60771f6b5dacap+0, 0x1.daddbc6893f46p+0, 0x1.0dbcdebcba6d6p+1}, /* i=127 */
    {0x1.633d9a84779aep+0, 0x1.e0be1fc7b32dbp+0, 0x1.1053e484b96c3p+1}, /* i=128 */
    {0x1.660415d058621p+0, 0x1.e6acfa79c93d4p+0, 0x1.12f31c1466062p+1}, /* i=129 */
    {0x1.68ca910cae844p+0, 0x1.ecaa79a50e8b6p+0, 0x1.159a995fbb397p+1}, /* i=130 */
-   {0x1.6b910c5cc21acp+0, 0x1.f2b6cbb982533p+0, 0x1.184a70fa4974p+1}, /* i=131 */
-   {0x1.6e57877e9d96bp+0, 0x1.f8d21ebc71c92p+0, 0x1.1b02b755d0c6p+1}, /* i=132 */
+   {0x1.6b910b91e7a06p+0, 0x1.f2b6c9fd4e6ecp+0, 0x1.184a7034b286fp+1}, /* i=131 */
+   {0x1.6e578721042cbp+0, 0x1.f8d21ded7e9c7p+0, 0x1.1b02b6f987583p+1}, /* i=132 */
    {0x1.711e02af0b799p+0, 0x1.fefca23c1235bp+0, 0x1.1dc381a05c484p+1}, /* i=133 */
-   {0x1.73e47dcf4bf9bp+0, 0x1.029b42b939ce1p+1, 0x1.208ce4f00150bp+1}, /* i=134 */
-   {0x1.76aaf8eb2dca2p+0, 0x1.05bffc3720aaep+1, 0x1.235ef6c712282p+1}, /* i=135 */
+   {0x1.73e47e0880078p+0, 0x1.029b42f9b3d94p+1, 0x1.208ce529ca781p+1}, /* i=134 */
+   {0x1.76aaf8a2ab691p+0, 0x1.05bffbe49990dp+1, 0x1.235ef67ceeda8p+1}, /* i=135 */
    {0x1.797174109567cp+0, 0x1.08ec95ddeaf36p+1, 0x1.2639cced7b822p+1}, /* i=136 */
-   {0x1.7c37ef6a0665fp+0, 0x1.0c212852467d5p+1, 0x1.291d7d8d5c08bp+1}, /* i=137 */
-   {0x1.7efe6a3dbd4a3p+0, 0x1.0f5dcb6cad7e1p+1, 0x1.2c0a1e252f8f6p+1}, /* i=138 */
-   {0x1.81c4e5ccc1ccep+0, 0x1.12a2999307a53p+1, 0x1.2effc68e8995dp+1}, /* i=139 */
-   {0x1.848b6157c034ep+0, 0x1.15efab149f871p+1, 0x1.31fe8cccb8d0cp+1}, /* i=140 */
-   {0x1.8751dc642b357p+0, 0x1.194518ca83027p+1, 0x1.3506876b01dfep+1}, /* i=141 */
+   {0x1.7c37f15f629d9p+0, 0x1.0c212a98283d3p+1, 0x1.291d7f9a7985p+1}, /* i=137 */
+   {0x1.7efe69ca938e5p+0, 0x1.0f5dcae5b408dp+1, 0x1.2c0a1dab1c2ffp+1}, /* i=138 */
+   {0x1.81c4e69bd9ff9p+0, 0x1.12a29a88251b1p+1, 0x1.2effc76cb506p+1}, /* i=139 */
+   {0x1.848b6325176e2p+0, 0x1.15efad3c0f2e5p+1, 0x1.31fe8ec1981c6p+1}, /* i=140 */
+   {0x1.8751dc303f355p+0, 0x1.1945188bd5d35p+1, 0x1.35068731f5d02p+1}, /* i=141 */
    {0x1.8a1857876e063p+0, 0x1.1ca2fd13d90e7p+1, 0x1.3817ce63852e4p+1}, /* i=142 */
-   {0x1.8cded2c2bd649p+0, 0x1.200971e19f17cp+1, 0x1.3b32795915326p+1}, /* i=143 */
-   {0x1.8fa54ddc49eefp+0, 0x1.2378911d7a87dp+1, 0x1.3e569ff3bbe11p+1}, /* i=144 */
-   {0x1.926bc94a9c319p+0, 0x1.26f075ce712f8p+1, 0x1.41845aec9cb23p+1}, /* i=145 */
-   {0x1.9532446f9079bp+0, 0x1.2a7139e60db0ep+1, 0x1.44bbc20a8c794p+1}, /* i=146 */
-   {0x1.97f8bfb2a07b7p+0, 0x1.2dfaf8e16c02ep+1, 0x1.47fcee8ad1492p+1}, /* i=147 */
-   {0x1.9abf3aeaca891p+0, 0x1.318dcdcd1c136p+1, 0x1.4b47f94f37833p+1}, /* i=148 */
-   {0x1.9d85b5f6a068cp+0, 0x1.3529d403752bdp+1, 0x1.4e9cfb8c6b03dp+1}, /* i=149 */
-   {0x1.a04c31158c933p+0, 0x1.38cf27a3b5b42p+1, 0x1.51fc0f384a78p+1}, /* i=150 */
-   {0x1.a312ac64dddb3p+0, 0x1.3c7de4ea9c7e8p+1, 0x1.55654e6fb1eb7p+1}, /* i=151 */
-   {0x1.a5d9279637a5cp+0, 0x1.403627cdf6428p+1, 0x1.58d8d318dc8a9p+1}, /* i=152 */
-   {0x1.a89fa2c5d8fd2p+0, 0x1.43f80d19bd75cp+1, 0x1.5c56b7eb7ea13p+1}, /* i=153 */
-   {0x1.ab661e2e7a491p+0, 0x1.47c3b20f8cd4p+1, 0x1.5fdf1817e1e43p+1}, /* i=154 */
+   {0x1.8cded2771f5abp+0, 0x1.2009718484b8fp+1, 0x1.3b327904009d2p+1}, /* i=143 */
+   {0x1.8fa54db4ff135p+0, 0x1.237890ec9e3f5p+1, 0x1.3e569fc6ff481p+1}, /* i=144 */
+   {0x1.926bc894050bep+0, 0x1.26f074e91f42cp+1, 0x1.41845a1a3f9b8p+1}, /* i=145 */
+   {0x1.953244211d893p+0, 0x1.2a7139828aaf2p+1, 0x1.44bbc1af17faep+1}, /* i=146 */
+   {0x1.97f8c030d80fap+0, 0x1.2dfaf98321b5ap+1, 0x1.47fcef1fb45f8p+1}, /* i=147 */
+   {0x1.9abf3c99be63bp+0, 0x1.318dcffaca8a1p+1, 0x1.4b47fb5196c34p+1}, /* i=148 */
+   {0x1.9d85b616d38ap+0, 0x1.3529d42d8bap+1, 0x1.4e9cfbb34dfddp+1}, /* i=149 */
+   {0x1.a04c314964588p+0, 0x1.38cf27e827ca6p+1, 0x1.51fc0f77a364p+1}, /* i=150 */
+   {0x1.a312acd2acb44p+0, 0x1.3c7de57d0c7ap+1, 0x1.55654ef7733fbp+1}, /* i=151 */
+   {0x1.a5d927b0d2725p+0, 0x1.403627f1cccdfp+1, 0x1.58d8d33a23ab1p+1}, /* i=152 */
+   {0x1.a89fa2ed12739p+0, 0x1.43f80d4f1cdc4p+1, 0x1.5c56b81d22235p+1}, /* i=153 */
+   {0x1.ab661e49a7e19p+0, 0x1.47c3b234e8076p+1, 0x1.5fdf183aade8ap+1}, /* i=154 */
    {0x1.ae2c98bdad4c6p+0, 0x1.4b993270c989bp+1, 0x1.63720d73060bep+1}, /* i=155 */
    {0x1.b0f31409ed2aap+0, 0x1.4f78adf6647eep+1, 0x1.670fb58f32dfp+1}, /* i=156 */
-   {0x1.b3b98fa1dcdfcp+0, 0x1.536241dc9ec12p+1, 0x1.6ab82bb88b28cp+1}, /* i=157 */
-   {0x1.b6800aac026e1p+0, 0x1.57560b1215043p+1, 0x1.6e6b8afbf3044p+1}, /* i=158 */
+   {0x1.b3b98f8d3e99ap+0, 0x1.536241bf681cbp+1, 0x1.6ab82b9d35a8p+1}, /* i=157 */
+   {0x1.b680080bd6e86p+0, 0x1.5756074ffc709p+1, 0x1.6e6b877676cd6p+1}, /* i=158 */
    {0x1.b9468664f02b3p+0, 0x1.5b5429cb9b2p+1, 0x1.7229f181715c1p+1}, /* i=159 */
-   {0x1.bc0d012bb75dfp+0, 0x1.5f5cba70b6951p+1, 0x1.75f379eb0b63ap+1}, /* i=160 */
-   {0x1.bed37bac1d377p+0, 0x1.636fdd056548ap+1, 0x1.79c842478dbb2p+1}, /* i=161 */
-   {0x1.c199f79a9d49dp+0, 0x1.678db373deddfp+1, 0x1.7da86a7b08fb1p+1}, /* i=162 */
-   {0x1.c46072fa71395p+0, 0x1.6bb65a83ad32ap+1, 0x1.81940d9e6be39p+1}, /* i=163 */
-   {0x1.c726ee051cdabp+0, 0x1.6fe9f28e3d06bp+1, 0x1.858b4a2fe906dp+1}, /* i=164 */
+   {0x1.bc0d015d3faeep+0, 0x1.5f5cbab9114fp+1, 0x1.75f37a2f073bbp+1}, /* i=160 */
+   {0x1.bed37b61a6a9ep+0, 0x1.636fdc9782725p+1, 0x1.79c841e02acb3p+1}, /* i=161 */
+   {0x1.c199f6de3162ap+0, 0x1.678db25af6521p+1, 0x1.7da86972655ecp+1}, /* i=162 */
+   {0x1.c460733bd971fp+0, 0x1.6bb65ae630c39p+1, 0x1.81940dfb59432p+1}, /* i=163 */
+   {0x1.c726ed59f7ac1p+0, 0x1.6fe9f189d0686p+1, 0x1.858b4939f2525p+1}, /* i=164 */
    {0x1.c9ed692eb45b3p+0, 0x1.74289c9ec1968p+1, 0x1.898e3f5fdd7a6p+1}, /* i=165 */
-   {0x1.ccb3e42bb128cp+0, 0x1.787278f35db6fp+1, 0x1.8d9d0ba6dd2c2p+1}, /* i=166 */
-   {0x1.cf7a5fb5a188cp+0, 0x1.7cc7a9b555571p+1, 0x1.91b7cf57f2a03p+1}, /* i=167 */
-   {0x1.d240dab72d1f9p+0, 0x1.81284e9341a02p+1, 0x1.95dea876814e7p+1}, /* i=168 */
+   {0x1.ccb3e411b470ep+0, 0x1.787278cb00dcap+1, 0x1.8d9d0b80a65f4p+1}, /* i=166 */
+   {0x1.cf7a5fb981325p+0, 0x1.7cc7a9bb6977bp+1, 0x1.91b7cf5db5a55p+1}, /* i=167 */
+   {0x1.d240db51193b6p+0, 0x1.81284f874a087p+1, 0x1.95dea95e15a0bp+1}, /* i=168 */
    {0x1.d5075667d41b8p+0, 0x1.85948b312b9ccp+1, 0x1.9a11b8d01c1a2p+1}, /* i=169 */
-   {0x1.d7cdd10934bf2p+0, 0x1.8a0c7ed650bddp+1, 0x1.9e511e176d2c3p+1}, /* i=170 */
-   {0x1.da944cbf4a18p+0, 0x1.8e904f6070885p+1, 0x1.a29cfc4af71f5p+1}, /* i=171 */
+   {0x1.d7cdd1f3a32d6p+0, 0x1.8a0c8051b99d4p+1, 0x1.9e511f804693ep+1}, /* i=170 */
+   {0x1.da944cc155361p+0, 0x1.8e904f63c7f03p+1, 0x1.a29cfc4e258efp+1}, /* i=171 */
    {0x1.dd5ac7cab4322p+0, 0x1.93201cc0ff8c1p+1, 0x1.a6f571d09efbp+1}, /* i=172 */
    {0x1.e02142e5dd656p+0, 0x1.97bc0b496e072p+1, 0x1.ab5aa140d5beep+1}, /* i=173 */
-   {0x1.e2e7bdfdd82adp+0, 0x1.9c643e5afd5dp+1, 0x1.afccac58a7a31p+1}, /* i=174 */
-   {0x1.e5ae399c10474p+0, 0x1.a118dabe939a3p+1, 0x1.b44bb63587c3fp+1}, /* i=175 */
-   {0x1.e874b48fa7c3fp+0, 0x1.a5da02acc81a8p+1, 0x1.b8d7df8a5b982p+1}, /* i=176 */
-   {0x1.eb3b2fccfc235p+0, 0x1.aaa7dc64c8221p+1, 0x1.bd714cebc7a1ep+1}, /* i=177 */
-   {0x1.ee01aaf22dbebp+0, 0x1.af828c3f5a3c4p+1, 0x1.c218212610f2ep+1}, /* i=178 */
-   {0x1.f0c82673d6c04p+0, 0x1.b46a386e125d3p+1, 0x1.c6cc80d2ee478p+1}, /* i=179 */
-   {0x1.f38ea128c696ap+0, 0x1.b95f04a8579c3p+1, 0x1.cb8e8e33f9edp+1}, /* i=180 */
-   {0x1.f6551ca842ad1p+0, 0x1.be6119f253f67p+1, 0x1.d05e70a96881bp+1}, /* i=181 */
-   {0x1.f91b97d1b17d6p+0, 0x1.c3709cd9b0fbep+1, 0x1.d53c4b52c3329p+1}, /* i=182 */
-   {0x1.fbe2130de52b4p+0, 0x1.c88db5164b451p+1, 0x1.da28446203c16p+1}, /* i=183 */
-   {0x1.fea88e4e7536ep+0, 0x1.cdb889f18200ap+1, 0x1.df2281a733357p+1}, /* i=184 */
-   {0x1.00b784a83694bp+1, 0x1.d2f142ba05765p+1, 0x1.e42b28ff3e345p+1}, /* i=185 */
+   {0x1.e2e7bc4344e63p+0, 0x1.9c643b707d979p+1, 0x1.afcca98fb555dp+1}, /* i=174 */
+   {0x1.e5ae37622082ep+0, 0x1.a118d6f33eb4ep+1, 0x1.b44bb294f0e3dp+1}, /* i=175 */
+   {0x1.e874b50c1d9fep+0, 0x1.a5da03831ba06p+1, 0x1.b8d7e0577368bp+1}, /* i=176 */
+   {0x1.eb3b3016372bbp+0, 0x1.aaa7dce43428cp+1, 0x1.bd714d65d3e27p+1}, /* i=177 */
+   {0x1.ee01a9dda5dadp+0, 0x1.af828a59294e2p+1, 0x1.c2181f53f326cp+1}, /* i=178 */
+   {0x1.f0c826f66d997p+0, 0x1.b46a395612348p+1, 0x1.c6cc81b18d60ep+1}, /* i=179 */
+   {0x1.f38ea0999ea5ep+0, 0x1.b95f03a75b482p+1, 0x1.cb8e8d3d28fd2p+1}, /* i=180 */
+   {0x1.f6551c6975ca6p+0, 0x1.be6119806970cp+1, 0x1.d05e703be7bcdp+1}, /* i=181 */
+   {0x1.f91b963605abfp+0, 0x1.c37099e71e421p+1, 0x1.d53c487cce6b9p+1}, /* i=182 */
+   {0x1.fbe213bca0067p+0, 0x1.c88db659ecbb3p+1, 0x1.da284599a150cp+1}, /* i=183 */
+   {0x1.fea88df97bf9p+0, 0x1.cdb889527831dp+1, 0x1.df22810df1203p+1}, /* i=184 */
+   {0x1.00b785dd10f72p+1, 0x1.d2f1474a47642p+1, 0x1.e42b2d65ef6c6p+1}, /* i=185 */
    {0x1.021ac25d1ef66p+1, 0x1.d83808e24427ap+1, 0x1.e942625f1dc82p+1}, /* i=186 */
-   {0x1.037dfff2a656cp+1, 0x1.dd8d03d2fcdd3p+1, 0x1.ee6853cc8261cp+1}, /* i=187 */
-   {0x1.04e13d8c06674p+1, 0x1.e2f05d2398d9dp+1, 0x1.f39d256fcea56p+1}, /* i=188 */
-   {0x1.06447b446b2cfp+1, 0x1.e8623ec01f351p+1, 0x1.f8e0ffcb2836ap+1}, /* i=189 */
-   {0x1.07a7b8ca1615ap+1, 0x1.ede2d156e7ebp+1, 0x1.fe340a34ebe9dp+1}, /* i=190 */
-   {0x1.090af65072093p+1, 0x1.f372401230563p+1, 0x1.01cb3738f7fc2p+2}, /* i=191 */
-   {0x1.0a6e341244beap+1, 0x1.f910b6b53624ep+1, 0x1.04842b7198714p+2}, /* i=192 */
+   {0x1.037dfe6f26636p+1, 0x1.dd8cfdfa3f40dp+1, 0x1.ee684e26ccb32p+1}, /* i=187 */
+   {0x1.04e13df1efa17p+1, 0x1.e2f05eb161312p+1, 0x1.f39d26f050449p+1}, /* i=188 */
+   {0x1.06447c012d64ap+1, 0x1.e86241a8a7bf8p+1, 0x1.f8e1029b5d8e5p+1}, /* i=189 */
+   {0x1.07a7b9219ffefp+1, 0x1.ede2d2b3d5001p+1, 0x1.fe340b86b0359p+1}, /* i=190 */
+   {0x1.090af607bd6c6p+1, 0x1.f3723eed54353p+1, 0x1.01cb36ab1f7cp+2}, /* i=191 */
+   {0x1.0a6e32e5fcfedp+1, 0x1.f910b1eee68f4p+1, 0x1.048429212b4fep+2}, /* i=192 */
    {0x1.0bd171a7c237ep+1, 0x1.febe5ee4557ddp+1, 0x1.0744f5f173e58p+2}, /* i=193 */
    {0x1.0d34aed4e9f14p+1, 0x1.023db1ae9145dp+2, 0x1.0a0dab7128eap+2}, /* i=194 */
    {0x1.0e97ecbb7e9f9p+1, 0x1.0523fa831feb4p+2, 0x1.0cde63aa6bccbp+2}, /* i=195 */
-   {0x1.0ffb2a3e6bd8fp+1, 0x1.08121df45e78p+2, 0x1.0fb7320d0e4aep+2}, /* i=196 */
-   {0x1.115e67e3d4fe1p+1, 0x1.0b0833ad50a59p+2, 0x1.12982d97a5f91p+2}, /* i=197 */
-   {0x1.12c1a5eab259bp+1, 0x1.0e065307ef4aep+2, 0x1.15816cfe04761p+2}, /* i=198 */
-   {0x1.1424e37e2a991p+1, 0x1.110c91459bafap+2, 0x1.187304ed3efaap+2}, /* i=199 */
+   {0x1.0ffb2b3d436fp+1, 0x1.0812201157a5ap+2, 0x1.0fb7341acf047p+2}, /* i=196 */
+   {0x1.115e67d11ce25p+1, 0x1.0b0833852848ep+2, 0x1.12982d7098bc2p+2}, /* i=197 */
+   {0x1.12c1a66c9c096p+1, 0x1.0e065421965dcp+2, 0x1.15816e1013d07p+2}, /* i=198 */
+   {0x1.1424e2277b96fp+1, 0x1.110c8e56c8f06p+2, 0x1.187302123c16bp+2}, /* i=199 */
    {0x1.158820c75ceep+1, 0x1.141b060500d77p+2, 0x1.1b6d0c6261145p+2}, /* i=200 */
-   {0x1.16eb5e4f8ca21p+1, 0x1.1731c9fee613p+2, 0x1.1e6f9b70f46a7p+2}, /* i=201 */
-   {0x1.184e9c0c93e4ep+1, 0x1.1a50f4eb9efe8p+2, 0x1.217ac93657a94p+2}, /* i=202 */
-   {0x1.19b1d9daf8294p+1, 0x1.1d789e896d55dp+2, 0x1.248eacd8e551fp+2}, /* i=203 */
-   {0x1.1b151756f5903p+1, 0x1.20a8de402379dp+2, 0x1.27ab5d2da0941p+2}, /* i=204 */
-   {0x1.1c785501ab617p+1, 0x1.23e1cdc64a7bfp+2, 0x1.2ad0f34d44f09p+2}, /* i=205 */
-   {0x1.1ddb9258a5c97p+1, 0x1.272384bd972f9p+2, 0x1.2dff864b90a25p+2}, /* i=206 */
-   {0x1.1f3ecfef4f57ep+1, 0x1.2a6e1d94ece94p+2, 0x1.31372ffc0339p+2}, /* i=207 */
-   {0x1.20a20d927b17dp+1, 0x1.2dc1b12fd6ddp+2, 0x1.347808b31c2fbp+2}, /* i=208 */
-   {0x1.22054b5ad0af8p+1, 0x1.311e596a93d1dp+2, 0x1.37c229bb93e4ep+2}, /* i=209 */
-   {0x1.236888e490abbp+1, 0x1.34842f37abea2p+2, 0x1.3b15ab7e6a87fp+2}, /* i=210 */
-   {0x1.24cbc651916b8p+1, 0x1.37f34d1249f2dp+2, 0x1.3e72a7e7cc15ep+2}, /* i=211 */
-   {0x1.262f042751b02p+1, 0x1.3b6bcebb2a597p+2, 0x1.41d93a260e507p+2}, /* i=212 */
-   {0x1.2792418618803p+1, 0x1.3eedccbdd36ccp+2, 0x1.45497a45db129p+2}, /* i=213 */
+   {0x1.16eb5e7cd41f3p+1, 0x1.1731ca643949ap+2, 0x1.1e6f9bd3b7da1p+2}, /* i=201 */
+   {0x1.184e9c729b846p+1, 0x1.1a50f5d25e14ap+2, 0x1.217aca1760fdp+2}, /* i=202 */
+   {0x1.19b1dae0ff6abp+1, 0x1.1d78a0e051f75p+2, 0x1.248eaf2148676p+2}, /* i=203 */
+   {0x1.1b1517caef957p+1, 0x1.20a8df4c08f6dp+2, 0x1.27ab5e332c21ep+2}, /* i=204 */
+   {0x1.1c78553e32347p+1, 0x1.23e1ce53972d7p+2, 0x1.2ad0f3d74a3abp+2}, /* i=205 */
+   {0x1.1ddb909a1ae42p+1, 0x1.272380a0092a2p+2, 0x1.2dff8245f0a3fp+2}, /* i=206 */
+   {0x1.1f3ed0ff5a611p+1, 0x1.2a6e201d9c828p+2, 0x1.3137327646f57p+2}, /* i=207 */
+   {0x1.20a20e33237e3p+1, 0x1.2dc1b2b302bd1p+2, 0x1.34780a2ddb4dbp+2}, /* i=208 */
+   {0x1.22054ab2c5f21p+1, 0x1.311e57d14ad38p+2, 0x1.37c2282b0276ap+2}, /* i=209 */
+   {0x1.236887f3161fep+1, 0x1.34842ce53f769p+2, 0x1.3b15a938624a4p+2}, /* i=210 */
+   {0x1.24cbc5d6d5733p+1, 0x1.37f34be0f1061p+2, 0x1.3e72a6bcae166p+2}, /* i=211 */
+   {0x1.262f03bb3e1ebp+1, 0x1.3b6bcdab69dcep+2, 0x1.41d9391bbb221p+2}, /* i=212 */
+   {0x1.27924159e429dp+1, 0x1.3eedcc4d7d297p+2, 0x1.454979d7b6ec7p+2}, /* i=213 */
    {0x1.28f57f256b7e3p+1, 0x1.427963ecc49b9p+2, 0x1.48c38487d43eap+2}, /* i=214 */
-   {0x1.2a58bcdc700c7p+1, 0x1.460eaf31e2046p+2, 0x1.4c477350c642ep+2}, /* i=215 */
-   {0x1.2bbbfa65c8598p+1, 0x1.49adc97290f1cp+2, 0x1.4fd56103bc585p+2}, /* i=216 */
+   {0x1.2a58bc6b08b4p+1, 0x1.460eae0b7eaap+2, 0x1.4c47722fe60bap+2}, /* i=215 */
+   {0x1.2bbbfb166f167p+1, 0x1.49adcb420bd0dp+2, 0x1.4fd562cab8c29p+2}, /* i=216 */
    {0x1.2d1f382ea6d2ep+1, 0x1.4d56cfb18a874p+2, 0x1.536d6a19e35d1p+2}, /* i=217 */
    {0x1.2e8275d236b97p+1, 0x1.5109dd1756c31p+2, 0x1.570fa93dbfc5cp+2}, /* i=218 */
    {0x1.2fe5b33be487ep+1, 0x1.54c70de7af432p+2, 0x1.5abc3a327faa1p+2}, /* i=219 */
-   {0x1.3148f0fc7761dp+1, 0x1.588e8076ac9d2p+2, 0x1.5e733ac56e224p+2}, /* i=220 */
-   {0x1.32ac2eed47124p+1, 0x1.5c60517ca7353p+2, 0x1.6234c7321c722p+2}, /* i=221 */
+   {0x1.3148f023a6bbep+1, 0x1.588e7e250eea5p+2, 0x1.5e73387dcc053p+2}, /* i=220 */
+   {0x1.32ac2dde293e1p+1, 0x1.5c604e8e68ef6p+2, 0x1.6234c45037596p+2}, /* i=221 */
    {0x1.340f6c3a6b2c3p+1, 0x1.603c9c18d51cep+2, 0x1.6600fa2411541p+2}, /* i=222 */
    {0x1.3572a9d7666c7p+1, 0x1.642380a9408aap+2, 0x1.69d7f3724b827p+2}, /* i=223 */
-   {0x1.36d5e73db19c1p+1, 0x1.68151bc2a7cc2p+2, 0x1.6db9cf3cf7ee9p+2}, /* i=224 */
+   {0x1.36d5e767ad2adp+1, 0x1.68151c3a9c12dp+2, 0x1.6db9cfb3125c8p+2}, /* i=224 */
    {0x1.383924e2f5214p+1, 0x1.6c118d14443efp+2, 0x1.71a6acb4cf446p+2}, /* i=225 */
-   {0x1.399c6273ff62ep+1, 0x1.7018f264f90fdp+2, 0x1.759ea92c663a2p+2}, /* i=226 */
-   {0x1.3aff9ff5a3fdep+1, 0x1.742b6ac969ec3p+2, 0x1.79a1e341736e6p+2}, /* i=227 */
+   {0x1.399c621b78e6dp+1, 0x1.7018f162936fap+2, 0x1.759ea82dd254fp+2}, /* i=226 */
+   {0x1.3affa08f3fc66p+1, 0x1.742b6c8e99087p+2, 0x1.79a1e5001448ap+2}, /* i=227 */
    {0x1.3c62dd7ccac4ep+1, 0x1.784915dc0d362p+2, 0x1.7db07a181c7c6p+2}, /* i=228 */
-   {0x1.3dc61b4bb6b75p+1, 0x1.7c721418f30fcp+2, 0x1.81ca8db589caep+2}, /* i=229 */
-   {0x1.3f2958e28e2fp+1, 0x1.80a6840ca1c64p+2, 0x1.85f03c38bdf27p+2}, /* i=230 */
-   {0x1.408c96aa6ca66p+1, 0x1.84e68758813d2p+2, 0x1.8a21a6cd1a3e9p+2}, /* i=231 */
-   {0x1.41efd43086dcbp+1, 0x1.89323d588713fp+2, 0x1.8e5eec62db0f7p+2}, /* i=232 */
+   {0x1.3dc61b5627925p+1, 0x1.7c7214386b082p+2, 0x1.81ca8dd492233p+2}, /* i=229 */
+   {0x1.3f295953c0049p+1, 0x1.80a6856577ac9p+2, 0x1.85f03d8ce6b52p+2}, /* i=230 */
+   {0x1.408c9701ca0c6p+1, 0x1.84e6886583b36p+2, 0x1.8a21a7d68ab45p+2}, /* i=231 */
+   {0x1.41efd4028b69ap+1, 0x1.89323cc96b20bp+2, 0x1.8e5eebd59afcp+2}, /* i=232 */
    {0x1.435312322918ep+1, 0x1.8d89c9701e5a8p+2, 0x1.92a82fe68bcfcp+2}, /* i=233 */
-   {0x1.44b64f0299d1ap+1, 0x1.91ed47ca3c5bep+2, 0x1.96fd8d263bfd6p+2}, /* i=234 */
-   {0x1.46198ccd0f64cp+1, 0x1.965ce10dc333cp+2, 0x1.9b5f2c45da709p+2}, /* i=235 */
+   {0x1.44b65018c33d4p+1, 0x1.91ed4b3eaec19p+2, 0x1.96fd908fad69p+2}, /* i=234 */
+   {0x1.46198afe18c5dp+1, 0x1.965cdb3ddf20ap+2, 0x1.9b5f2688144bbp+2}, /* i=235 */
    {0x1.477cca9bd1a24p+1, 0x1.9ad8b4611bdd1p+2, 0x1.9fcd2c09fc7fbp+2}, /* i=236 */
-   {0x1.48e008128b1d5p+1, 0x1.9f60e31eac004p+2, 0x1.a447ad6612ec6p+2}, /* i=237 */
-   {0x1.4a4345547c73dp+1, 0x1.a3f5909a7138cp+2, 0x1.a8ced3435012ap+2}, /* i=238 */
+   {0x1.48e008ed9cc19p+1, 0x1.9f60e5edf8922p+2, 0x1.a447b02cfbf34p+2}, /* i=237 */
+   {0x1.4a43451bdb06fp+1, 0x1.a3f58fde7effp+2, 0x1.a8ced28983037p+2}, /* i=238 */
    {0x1.4ba6833ba59e7p+1, 0x1.a896e2f28d89ep+2, 0x1.ad62c34f63cd1p+2}, /* i=239 */
    {0x1.4d09c0f47afd4p+1, 0x1.ad44fb156485bp+2, 0x1.b2039e19a5d66p+2}, /* i=240 */
    {0x1.4e6cfe8b2083bp+1, 0x1.b1fffd33d8628p+2, 0x1.b6b1876c7dad2p+2}, /* i=241 */
-   {0x1.4fd03c4fb8748p+1, 0x1.b6c80ecf8205cp+2, 0x1.bb6ca461b0d6ep+2}, /* i=242 */
+   {0x1.4fd03b80f7ac6p+1, 0x1.b6c80c0343573p+2, 0x1.bb6ca19cf2073p+2}, /* i=242 */
    {0x1.513379a1812abp+1, 0x1.bb9d528ef212p+2, 0x1.c0351741d81b1p+2}, /* i=243 */
-   {0x1.5296b764b345ep+1, 0x1.c07ff0c6fa786p+2, 0x1.c50b07f6d2871p+2}, /* i=244 */
-   {0x1.53f9f4d8254f6p+1, 0x1.c5700c7247203p+2, 0x1.c9ee99208f74ap+2}, /* i=245 */
-   {0x1.555d328b9dcfep+1, 0x1.ca6dcd985720ap+2, 0x1.cedff260df67p+2}, /* i=246 */
-   {0x1.56c07032cb5d8p+1, 0x1.cf79599b7fc7p+2, 0x1.d3df38bd3b495p+2}, /* i=247 */
-   {0x1.5823adbbc1586p+1, 0x1.d492d714311a1p+2, 0x1.d8ec92702514p+2}, /* i=248 */
-   {0x1.5986eb8532bfbp+1, 0x1.d9ba6ea7fad6ep+2, 0x1.de0827be735b3p+2}, /* i=249 */
-   {0x1.5aea2985d8ed1p+1, 0x1.def047efb756ap+2, 0x1.e3321fe4e20acp+2}, /* i=250 */
-   {0x1.5c4d667c24fdcp+1, 0x1.e43486491b2c2p+2, 0x1.e86a9df04909dp+2}, /* i=251 */
-   {0x1.5db0a43054832p+1, 0x1.e9875903ebd6cp+2, 0x1.edb1d0c6c828ap+2}, /* i=252 */
-   {0x1.5f13e1aceba85p+1, 0x1.eee8e57bb55cbp+2, 0x1.f307dd727cae4p+2}, /* i=253 */
-   {0x1.60771f5105079p+1, 0x1.f4595692cad7ap+2, 0x1.f86cee7a10e6dp+2}, /* i=254 */
+   {0x1.5296b7b80f8fcp+1, 0x1.c07ff1ee06455p+2, 0x1.c50b091ae8dc6p+2}, /* i=244 */
+   {0x1.53f9f4b49a8e3p+1, 0x1.c5700bf31f7ap+2, 0x1.c9ee98a2a7482p+2}, /* i=245 */
+   {0x1.555d326c961cbp+1, 0x1.ca6dcd28210bcp+2, 0x1.cedff1f1bd3b8p+2}, /* i=246 */
+   {0x1.56c06f428bc7cp+1, 0x1.cf79562d54d49p+2, 0x1.d3df355751889p+2}, /* i=247 */
+   {0x1.5823acf21a17dp+1, 0x1.d492d42b23ab3p+2, 0x1.d8ec8f8df23cap+2}, /* i=248 */
+   {0x1.5986ec789f781p+1, 0x1.d9ba7235145d2p+2, 0x1.de082b435dac5p+2}, /* i=249 */
+   {0x1.5aea27b72ad74p+1, 0x1.def0411d1d4d4p+2, 0x1.e3321921ab733p+2}, /* i=250 */
+   {0x1.5c4d67081d394p+1, 0x1.e434885f32266p+2, 0x1.e86aa001c51bap+2}, /* i=251 */
+   {0x1.5db0a47657d24p+1, 0x1.e9875a11f5d89p+2, 0x1.edb1d1d28ad56p+2}, /* i=252 */
+   {0x1.5f13e18f7e376p+1, 0x1.eee8e508fae79p+2, 0x1.f307dd00b4c35p+2}, /* i=253 */
+   {0x1.60771f92133bap+1, 0x1.f45957932a221p+2, 0x1.f86cef785dca5p+2}, /* i=254 */
    {0x1.61da5cdc19ac9p+1, 0x1.f9d8d5325e4ccp+2, 0x1.fde12c712bbddp+2}, /* i=255 */
 };
 
@@ -702,12 +702,11 @@ eval_S2 (double *h, double *l, double w)
   double zh, zl;
   a_mul (&zh, &zl, w, w); /* zh+zl = w^2 */
   *h = __builtin_fma (S2[4][0], zh, S2[3][0]);
+  if (w == TRACE) printf ("h3=%la\n", *h);
   /* We neglect at input S2[4][0]*zl*w^7 which relatively to sinh(w) ~ w
      is less than S2[4][0]*zl*w^7/w < 2^-18.46*2^-68*2^-45.14 = 2^-131.6.
      We have |h| < 2^-12.29, we neglect in output ulp(h)*w^7, which relatively
      to w gives ulp(2^-12.29)*w^6 < 2^-110.14 */
-  s_mul (h, l, *h, zh, zl);                     /* multiply by w^2 */
-  fast_sum (h, l, S2[3][0], *h, *l);            /* add S2[3] */
   d_mul (h, l, *h, *l, zh, zl);                 /* multiply by w^2 */
   fast_sum2 (h, l, S2[2][0], S2[2][1], *h, *l); /* add S2[2] */
   d_mul (h, l, *h, *l, zh, zl);                 /* multiply by w^2 */
@@ -903,14 +902,26 @@ cr_sinh_accurate (double *h, double *l, double x)
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
-  if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   double w = v - U[j][0];
-  if (x == TRACE) printf ("w=%la\n", w);
   eval_S2 (h, l, w);
-  if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
   if (k == 0)
+  {
+    static double exceptions[][3] = {
+      {0x1.1bd15d167005p-11, 0x1.1bd15dff0122ap-11, 0x1.0000000000001p-64},
+      {0x1.92a2ee78ed49cp-23, 0x1.92a2ee78ed4c6p-23, -0x1.0000000000001p-76},
+      {0x1.bcee70ebe7ec9p-25, 0x1.bcee70ebe7ecdp-25, -0x1.fffffffffffffp-79},
+      {0x1.e72460254649ap-19, 0x1.e72460254ae19p-19, 0x1.fffffffffffffp-73},
+    };
+    for (int i = 0; i < 4; i++)
+      if (x == exceptions[i][0])
+      {
+        *h = exceptions[i][1];
+        *l = exceptions[i][2];
+        break;
+      }
     return;
+  }
   *h = *l = 0;
 }
 
@@ -944,9 +955,15 @@ cr_sinh (double x)
   if (left == right)
     return left;
 
-  if (x == TRACE) printf ("fast path failed\n");
+  //  if (x == TRACE) printf ("fast path failed\n");
 
   /* FIXME: update error analysis of fast path with new U[] (k=13) */
+
+  /* Special case for small numbers, to avoid underflow issues in the accurate
+     path: for |x| <= 0x1.7137449123ef6p-26, |sinh(x) - x| < ulp(x)/2,
+     thus sinh(x) rounds to the same value than x + 2^-54*x. */
+  if (v.f <= 0x1.7137449123ef6p-26)
+    return __builtin_fma (x, 0x1p-54, x);
 
   cr_sinh_accurate (&h, &l, v.f);
   h *= sign[s];
