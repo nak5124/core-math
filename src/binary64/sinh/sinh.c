@@ -44,16 +44,15 @@ SOFTWARE.
      both sinh(t) and cosh(t) have some extra bits of accuracy)
 */       
 
-#define TRACE 0x1.8560fe96e572bp+1
-
 #include <stdio.h>
 #include <stdint.h>
-#include <assert.h>
 
 /* For 0 <= i < 256, T[i] = {xi, si, ei} such that xi is near i*2^8/magic
    with magic = 0x1.70f77fc88ae3cp6, and si,si+ei approximate sinh(xi),cosh(xi)
    with accuracy >= 53+16 bits:
    |si - sinh(xi)| < 2^(-16-1) ulp(si), |ci - (si+ei)| < 2^(-16-1) ulp(si+ei).
+   Thus si approximates sinh(xi) with relative error < 2^-17 ulp(si)/si
+   <= 2^-69 (same for ci).
    We have |xi - i*2^8/magic| < 2.36e-8.
    Generated with build_table_T(k=16) from accompanying file sinh.sage.
 */
@@ -320,6 +319,8 @@ static const double T[256][3] = {
    with magic = 0x1.70f77fc88ae3cp6, and sj,cj approximate sinh(xj),cosh(xj)
    with accuracy >= 53+15 bits:
    |sj - sinh(xj)| < 2^(-15-1) ulp(sj), |cj - cosh(xj)| < 2^(-15-1) ulp(cj).
+   Thus sj approximates sinh(xj) with relative error < 2^-16 ulp(sj)/sj
+   <= 2^-68 (same for cj).
    We have |xj - j/magic| < 9.14e-07.
    Generated with ./buildu 15 with accompanying file buildu.c. */
 static const double U[256][3] = {
@@ -1301,13 +1302,11 @@ cr_sinh_fast (double *h, double *l, double x)
                    <= 1/2 + ulp(magic*x) <= 1/2 + 2^-37
      thus |x - k/magic| <= 0.00542055 */
   int i = k >> 8, j = k & 0xff;
-  // if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   /* since x = T[i][0] + v, we approximate sinh(x) as
      sinh(T[i][0])*cosh(v) + cosh(T[i][0])*sinh(v)
      = T[i][1]*cosh(v) + T[i][2]*sinh(v) */
   double w = v - U[j][0];
-  // if (x == TRACE) printf ("x=%la v=%la w=%la\n", x, v, w);
   /* since v = U[j][0] + w, we approximate sinh(v) as
      sinh(U[j][0])*cosh(w) + cosh(U[j][0])*sinh(w)
      = U[j][1]*cosh(w) + U[j][2]*sinh(w), and cosh(v) as
@@ -1315,15 +1314,12 @@ cr_sinh_fast (double *h, double *l, double x)
      = U[j][1]*sinh(w) + U[j][2]*cosh(w) */
 
   /* since |T[i][0] - i*2^8/magic| < 2.36e-8 and
-           |U[j][0] - j/magic| < 1.92e-8, we have:
-     |x - T[i][0] - U[j][0]| < 0.00542055 + 2.36e-8 + 1.92e-8 < 0.00543 */
-
-  // if (x == TRACE) printf ("T[i][0]=%la U[j][0]=%la w=%la\n", T[i][0], U[j][0], w);
+           |U[j][0] - j/magic| < 9.14e-07, we have:
+     |x - T[i][0] - U[j][0]| < 0.00542055 + 2.36e-8 + 9.14e-07 < 0.00543 */
 
   /* we have |w| < 0.00543 */
   double swh, swl, cwh, cwl;
   eval_S (h, l, w);
-  // if (x == TRACE) printf ("swh=%la swl=%la\n", *h, *l);
   /* |h + l - sinh(w)| < 2^-67.99*|h| */
 
   if (k == 0)
@@ -1332,65 +1328,58 @@ cr_sinh_fast (double *h, double *l, double x)
      when 0x1.02p-68 * h is rounded to zero */
 
   eval_C (&cwh, &cwl, w);
-  // if (x == TRACE) printf ("cwh=%la cwl=%la\n", cwh, cwl);
   /* |cwh + cwl - cosh(w)| < 2^-68.04*|cwh+cwl| */
   
   swh = *h;
   swl = *l;
   double svh, svl, cvh, cvl, h1, l1, h2, l2;
   s_mul (&h1, &l1, U[j][1], cwh, cwl); /* U[j][1]*cosh(w) */
-  /* |U[j][1] - sinh(U[j][0])| < 2^-13 ulp(U[j][1]) <= 2^-65 |U[j][1]|
+  /* |U[j][1] - sinh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
      and |cwh + cwl - cosh(w)| < 2^-68.04*|cwh+cwl| thus
-     |h1+l1-sinh(U[j][0])*cosh(w)| < 2^-64.82*|h1+l1| */
-  // if (x == TRACE) printf ("h1=%la l1=%la\n", h1, l1);
+     |h1+l1-sinh(U[j][0])*cosh(w)| < 2^-67.01*|h1+l1| */
   s_mul (&h2, &l2, U[j][2], swh, swl); /* U[j][1]*sinh(w) */
-  // if (x == TRACE) printf ("h2=%la l2=%la\n", h2, l2);
-  /* |U[j][2] - cosh(U[j][0])| < 2^-13 ulp(U[j][1]) <= 2^-65 |U[j][1]|
+  /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
      and |swh + swl - sinh(w)| < 2^-67.99*|swh+swl| thus
-     |h2+l2-cosh(U[j][0])*sinh(w)| < 2^-64.82*|h2+l2| */
-  /* since h1+l1 and h2+l2 have the same relative error bound, that bounds
-     holds for the sum of their absolute values, but we might have
-     cancellation, the worst case being for j=1 and w=-0.00543,
-     where h1+l1 >= 0.0108414. and h2+l2 >= -0.0054303,
-     thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 3.008 */
+     |h2+l2-cosh(U[j][0])*sinh(w)| < 2^-66.99*|h2+l2| */
 
   fast_sum2 (h, l, h1, l1, h2, l2); /* h+l approximates sinh(v) */
-  /* the rounding error in fast_sum2() is absorbed in the above
-     error bounds (which are over-estimated) */
-  // if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
+  /* since h1+l1 and h2+l2 have a relative error bound < 2^-66.99, that bound
+     holds for the sum of their absolute values, but we might have
+     cancellation, the worst case being for j=1 and w=-0.00543,
+     where h1+l1 >= 0.0108414. and h2+l2 >= -0.0054304,
+     thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 3.008,
+     thus |h + l - sinh(v)| < 3.008*2^-66.99 < 2^-65.40.
+     Note: the rounding error in fast_sum2() is absorbed in the above
+     error bound (which is over-estimated). */
 
   if (i == 0)
-    return 0x1.b5p-64 * *h; /* 3.008*2^-64.82 < 0x1.b5p-64 */
+    return 0x1.85p-66 * *h; /* 2^-65.40 < 0x1.85p-66 */
 
   svh = *h;
   svl = *l;
-  // if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
   s_mul (&h1, &l1, U[j][1], swh, swl); /* U[j][1]*sinh(w) */
-  /* |U[j][1] - sinh(U[j][0])| < 2^-13 ulp(U[j][1]) <= 2^-65 |U[j][1]|
+  /* |U[j][1] - sinh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
      and |swh + swl - sinh(w)| < 2^-67.99*|swh+swl| thus
-     |h1+l1-sinh(U[j][0])*sinh(w)| < 2^-64.82*|h1+l1| */
-  // if (x == TRACE) printf ("u=%la h1=%la l1=%la\n", U[j][0], h1, l1);
+     |h1+l1-sinh(U[j][0])*sinh(w)| < 2^-66.99*|h1+l1| */
   s_mul (&h2, &l2, U[j][2], cwh, cwl); /* U[j][2]*cosh(w) */
-  // if (x == TRACE) printf ("h2=%la l2=%la\n", h2, l2);
-  /* |U[j][2] - cosh(U[j][0])| < 2^-13 ulp(U[j][1]) <= 2^-65 |U[j][1]|
+  /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
      and |cwh + cwl - cosh(w)| < 2^-68.04*|cwh+cwl| thus
-     |h2+l2-cosh(U[j][0])*cosh(w)| < 2^-64.82*|h2+l2| */
-  /* since h1+l1 and h2+l2 have the same relative error bound, that bounds
+     |h2+l2-cosh(U[j][0])*cosh(w)| < 2^-67.01*|h2+l2| */
+  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
+  /* since h1+l1 and h2+l2 have a relative error bound < 2^-66.99, that bound
      holds for the sum of their absolute values, but we might have
      cancellation, the worst case being for j=1 and w=-0.00543,
-     where h1+l1 >= 1.0000735. and h1+l1 >= -0.0000589
-     thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 1.000118 */
-  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
-  /* the rounding errors in fast_sum2 are absorbed in the above error bounds
-     (which are over-estimated) */
-  // if (x == TRACE) printf ("cvh=%la cvl=%la\n", cvh, cvl);
+     where h2+l2 >= 1.0000735. and h1+l1 >= -0.0000589
+     thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 1.000118,
+     and |cvh + cvl - cosh(v)| < 1.000118*2^-66.99 < 2^-66.98.
+     Note: he rounding errors in fast_sum2 are absorbed in the above error
+     bound (which is over-estimated) */
 
-  /* at this point cvh+cvl approximates cosh(v) with relative error bounded
-     by 1.000118*2^-64.82 < 2^-64.81, svh+svl approximates sinh(v) with
-     relative error bounded by 3.008*2^-64.82 < 2^-63.23, T[i][1] approximates
-     sinh(T[i][0]) with relative error bounded by 2^-68, T[i][1]+T[i][2]
-     approximates cosh(T[i][0]) with relative error bounded by 2^-68,
-     and we have to compute:
+  /* At this point svh+svl approximates sinh(v) with relative error bounded by
+     2^-65.40, cvh+cvl approximates cosh(v) with relative error bounded
+     by 2^-66.98, T[i][1] approximates sinh(T[i][0]) with relative error
+     bounded by 2^-69, T[i][1]+T[i][2] approximates cosh(T[i][0]) with
+     relative error bounded by 2^-69, and we have to compute:
      T[i][1]*(cvh+cvl) + (T[i][1]+T[i][2])*(svh+svl) =
      T[i][1]*(cvh+cvl+svh+svl) + T[i][2]*(svh+svl) */
 
@@ -1402,30 +1391,30 @@ cr_sinh_fast (double *h, double *l, double x)
        <= 0.00542055 + 255/magic + 2.36e-8 <= 2.77.
      We also have |v| >= 1/magic - (0.00542055 + 2.36e-8) > 0.00542.
      Thus |sinh(v)| < sinh(2.77) < 7.95 and |cosh(v)| < cosh(2.77) < 8.02,
-     the absolute error on svh+svl is bounded by 3.008*2^-64.82*7.95
-     < 2^-60.24, and the absolute error on cvh+cvl is bounded by
-     1.000118*2^-64.82*8.02 < 2^-61.81. */
+     the absolute error on svh+svl is bounded by 2^-65.40*7.95 < 2^-62.40, and
+     the absolute error on cvh+cvl is bounded by 2^-66.98*8.02 < 2^-63.97. */
 
   fast_sum2 (&cvh, &cvl, cvh, cvl, svh, svl);
-  /* absolute error on cvh+cvl bounded by (neglecting the error in fast_two_sum
-     and cvl = *l + (cvl + svl)):
-     2^-60.24+2^-61.81 < 2^-59.82.
+  /* absolute error on cvh+cvl bounded by (neglecting the error in fast_sum2):
+     2^-62.40+2^-63.97 < 2^-61.98.
      Since |v| > 0.00542, the cancellation factor
      (cosh(v)+sinh(v))/(cosh(v)-sinh(v)) is bounded by 1.0109,
-     thus the relative error on cvh+cvl is < 1.0109*2^-59.82 < 2^-59.80. */
+     thus the relative error on cvh+cvl is < 1.0109*2^-61.98 < 2^-61.96. */
 
   s_mul (&h1, &l1, T[i][1], cvh, cvl); /* T[i][1]*(cvh+cvl+svh+svl) */
   /* |T[i][1] - sinh(T[i][0])| < 2^-17 ulp(T[i][1]) <= 2^-69 |T[i][1]|
-     and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-59.80*|cvh + cvl| thus
-     |h1+l1-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-59.79*|h1+l1| */
+     and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-61.96*|cvh + cvl| thus
+     |h1+l1-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-61.94*|h1+l1| */
   s_mul (&h2, &l2, T[i][2], svh, svl); /* T[i][2]*(svh+svl) */
   /* |T[i][2] - exp(T[i][0])| < 2^-17 ulp(T[i][2]) <= 2^-69 |T[i][2]|
-     and |svh + svl - sinh(v)| < 2^-63.23*|svh + svl| thus
-     |h2+l2-exp(T[i][0])*sinh(v)| < 2^-63.20*|h2+l2| */
+     and |svh + svl - sinh(v)| < 2^-65.40*|svh + svl| thus
+     |h2+l2-exp(T[i][0])*sinh(v)| < 2^-65.28*|h2+l2| */
   fast_sum2 (h, l, h1, l1, h2, l2);
 
-  /* 2^-59.79 < 0x1.29p-60 and 2^-63.20 < 0x1.bep-64 */
-  return 0x1.29p-60 * h1 + 0x1.bep-64 * (h2 > 0 ? h2 : -h2);
+  /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
+
+  /* 2^-61.96 < 0x1.08p-62 and 2^-65.28 < 0x1.a6p-66 */
+  return 0x1.08p-62 * h1 + 0x1.a6p-66 * (h2 > 0 ? h2 : -h2);
 }
 
 static void
@@ -1434,11 +1423,8 @@ cr_sinh_accurate (double *h, double *l, double x)
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
-  // if (x == TRACE) printf ("k=%d i=%d j=%d U[j][0]=%la\n", k, i, j, U[j][0]);
   double v = x - T[i][0];
-  // if (x == TRACE) printf ("t=%la v=%la\n", T[i][0], v);
   double w = v - U[j][0];
-  // if (x == TRACE) printf ("u=%la w=%la\n", U[j][0], w);
   eval_S2 (h, l, w);
   if (k == 0)
   {
@@ -1460,14 +1446,10 @@ cr_sinh_accurate (double *h, double *l, double x)
   double swh, swl, cwh, cwl;
   swh = *h;
   swl = *l;
-  // if (x == TRACE) printf ("w=%la swh=%la swl=%la\n", w, swh, swl);
   eval_C2 (&cwh, &cwl, w);
-  // if (x == TRACE) printf ("w=%la cwh=%la cwl=%la\n", w, cwh, cwl);
   double h1, l1, h2, l2;
   d_mul (&h1, &l1, U[j][1], Ul[j][0], cwh, cwl);
-  // if (x == TRACE) printf ("h1=%la l1=%la\n", h1, l1);
   d_mul (&h2, &l2, U[j][2], Ul[j][1], swh, swl);
-  // if (x == TRACE) printf ("h2=%la l2=%la\n", h2, l2);
   fast_sum2 (h, l, h1, l1, h2, l2);
   if (i == 0)
   {
@@ -1556,7 +1538,6 @@ cr_sinh_accurate (double *h, double *l, double x)
   double svh, svl, cvh, cvl;
   svh = *h;
   svl = *l;
-  // if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
   /* svh+svl approximates sinh(v) */
   d_mul (&h1, &l1, U[j][1], Ul[j][0], swh, swl);
   d_mul (&h2, &l2, U[j][2], Ul[j][1], cwh, cwl);
@@ -1625,7 +1606,6 @@ cr_sinh (double x)
   
   double h, l;
   double err = cr_sinh_fast (&h, &l, v.f);
-  // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double sign[] = { 1.0, -1.0 };
   h *= sign[s];
   l *= sign[s];
@@ -1635,10 +1615,6 @@ cr_sinh (double x)
   if (left == right)
     return left;
 
-  // if (x == TRACE) printf ("fast path failed\n");
-
-  /* FIXME: update error analysis of fast path with new U[] (k=13) */
-
   /* Special case for small numbers, to avoid underflow issues in the accurate
      path: for |x| <= 0x1.7137449123ef6p-26, |sinh(x) - x| < ulp(x)/2,
      thus sinh(x) rounds to the same value than x + 2^-54*x. */
@@ -1646,7 +1622,6 @@ cr_sinh (double x)
     return __builtin_fma (x, 0x1p-54, x);
 
   cr_sinh_accurate (&h, &l, v.f);
-  // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   h *= sign[s];
   l *= sign[s];
   return h + l;
