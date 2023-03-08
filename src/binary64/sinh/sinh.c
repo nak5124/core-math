@@ -27,9 +27,24 @@ SOFTWARE.
 
 /* References:
    [1] IA-64 and Elementary Functions, Peter Markstein,
-       Hewlett-Packard Professional Books, 2000, Chapter 16. */
+       Hewlett-Packard Professional Books, 2000, Chapter 16.
 
-#define TRACE 0x1.04b2e7a155193p+5
+   The argument reduction here differs from that proposed in [1]:
+   - we write x = t + u + w where sinh(t), cosh(t), sinh(u), cosh(u)
+     are approximated by a binary64 numbers from a table (produced
+     using Gal's technique, thus with some extra bits of accuracy)
+   - if t=u=0, approximate directly sinh(w) using a minimax polynomial
+   - if t=0, write v=u+w, and approximate sinh(v) as sinh(u)*cosh(w)
+     +cosh(u)*sinh(w) where sinh(u), cosh(u) are from the table, and cosh(w),
+     sinh(w) are approximated using minimax polynomials
+   - otherwise, approximate sinh(t+v) as sinh(t)*cosh(v)+cosh(t)*sinh(v)
+     where sinh(v) is obtained as above, cosh(v) is obtained similarly,
+     and sinh(t), cosh(t) are read from a table (a little variant is used
+     here since it is not always possible to find binary64 values t such that
+     both sinh(t) and cosh(t) have some extra bits of accuracy)
+*/       
+
+#define TRACE 0x1.8560fe96e572bp+1
 
 #include <stdio.h>
 #include <stdint.h>
@@ -301,11 +316,11 @@ static const double T[256][3] = {
    {0x1.61da5cffe0366p+9, 0x1.00b0a5367476ep+1020, 0x1.fe9fa8b27f923p-1022}, /* i=255 */
 };
 
-/* For 0 <= i < 256, U[i] = {xi, si, ci} such that xi is near i/magic
-   with magic = 0x1.70f77fc88ae3cp6, and si,ci approximate sinh(xi),cosh(xi)
+/* For 0 <= j < 256, U[j] = {xj, sj, cj} such that xj is near j/magic
+   with magic = 0x1.70f77fc88ae3cp6, and sj,cj approximate sinh(xj),cosh(xj)
    with accuracy >= 53+15 bits:
-   |si - sinh(xi)| < 2^(-15-1) ulp(si), |ci - cosh(xi)| < 2^(-15-1) ulp(ci).
-   We have |xi - i/magic| < 9.14e-07.
+   |sj - sinh(xj)| < 2^(-15-1) ulp(sj), |cj - cosh(xj)| < 2^(-15-1) ulp(cj).
+   We have |xj - j/magic| < 9.14e-07.
    Generated with ./buildu 15 with accompanying file buildu.c. */
 static const double U[256][3] = {
    {0x0p+0, 0x0p+0, 0x1p+0}, /* i=0 */
@@ -826,10 +841,10 @@ static const double Tl[256][2] = {
 };
 
 /* The following table is used in the accurate path only.
-   For each i, 0 <= i < 256, let {xi, si, ci} be the U[i] values,
-   such that si and ci approximate sinh(xi) and cosh(xi) with a few
-   extra bits, then si + Ul[i][0] and ci + Ul[i][1] approximate
-   sinh(xi) and cosh(xi) with at least 107 bits. */
+   For each j, 0 <= j < 256, let {xj, sj, cj} be the U[j] values,
+   such that sj and cj approximate sinh(xj) and cosh(xj) with a few
+   extra bits, then sj + Ul[j][0] and cj + Ul[j][1] approximate
+   sinh(xj) and cosh(xj) with at least 107 bits. */
 static const double Ul[256][2] = {
    {0x0p+0, 0x0p+0}, /* i=0 */
    {-0x1.cc125d97df011p-76, -0x1.e6bae12de82cep-70}, /* i=1 */
@@ -1228,12 +1243,11 @@ eval_S2 (double *h, double *l, double w)
   double zh, zl;
   a_mul (&zh, &zl, w, w); /* zh+zl = w^2 */
   *h = __builtin_fma (S2[4][0], zh, S2[3][0]);
-  if (w == TRACE) printf ("h3=%la\n", *h);
   /* We neglect at input S2[4][0]*zl*w^7 which relatively to sinh(w) ~ w
      is less than S2[4][0]*zl*w^7/w < 2^-18.46*2^-68*2^-45.14 = 2^-131.6.
      We have |h| < 2^-12.29, we neglect in output ulp(h)*w^7, which relatively
      to w gives ulp(2^-12.29)*w^6 < 2^-110.14 */
-  d_mul (h, l, *h, *l, zh, zl);                 /* multiply by w^2 */
+  s_mul (h, l, *h, zh, zl);                     /* multiply by w^2 */
   fast_sum2 (h, l, S2[2][0], S2[2][1], *h, *l); /* add S2[2] */
   d_mul (h, l, *h, *l, zh, zl);                 /* multiply by w^2 */
   fast_sum2 (h, l, S2[1][0], S2[1][1], *h, *l); /* add S2[1] */
@@ -1420,9 +1434,11 @@ cr_sinh_accurate (double *h, double *l, double x)
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
-  //  if (x == TRACE) printf ("k=%d i=%d j=%d U[j][0]=%la\n", k, i, j, U[j][0]);
+  // if (x == TRACE) printf ("k=%d i=%d j=%d U[j][0]=%la\n", k, i, j, U[j][0]);
   double v = x - T[i][0];
+  // if (x == TRACE) printf ("t=%la v=%la\n", T[i][0], v);
   double w = v - U[j][0];
+  // if (x == TRACE) printf ("u=%la w=%la\n", U[j][0], w);
   eval_S2 (h, l, w);
   if (k == 0)
   {
@@ -1437,17 +1453,16 @@ cr_sinh_accurate (double *h, double *l, double x)
       {
         *h = exceptions[i][1];
         *l = exceptions[i][2];
-        break;
+        return;
       }
-    return;
   }
 
   double swh, swl, cwh, cwl;
   swh = *h;
   swl = *l;
-  if (x == TRACE) printf ("w=%la swh=%la swl=%la\n", w, swh, swl);
+  // if (x == TRACE) printf ("w=%la swh=%la swl=%la\n", w, swh, swl);
   eval_C2 (&cwh, &cwl, w);
-  if (x == TRACE) printf ("w=%la cwh=%la cwl=%la\n", w, cwh, cwl);
+  // if (x == TRACE) printf ("w=%la cwh=%la cwl=%la\n", w, cwh, cwl);
   double h1, l1, h2, l2;
   d_mul (&h1, &l1, U[j][1], Ul[j][0], cwh, cwl);
   // if (x == TRACE) printf ("h1=%la l1=%la\n", h1, l1);
@@ -1462,22 +1477,86 @@ cr_sinh_accurate (double *h, double *l, double x)
       {0x1.9147ff03dfb3p-1, 0x1.bba4dc4067a68p-1, 0x1p-54},
       {0x1.9b88da8cd4e51p-3, 0x1.9e4f4a0396a4cp-3, 0x1.fffffffffffffp-57},
       {0x1.e434bb080b343p-5, 0x1.e47ceb971ab09p-5, 0x1.ffffffffffffep-59},
+      {0x1.6022fb964b354p-7, 0x1.6024b7c5f26c9p-7, 0x1.d1bf08b11060ep-113},
+      {0x1.fae401ab52294p-7, 0x1.fae92e8cd6c2ap-7, 0x1.7e854fd21daf9p-112},
+      {0x1.135e31fdd05d3p-5, 0x1.136b78b25cc57p-5, 0x1.71b117cb2c81fp-113},
+      {0x1.78f6aa58a8224p-5, 0x1.7918b9deef9c8p-5, 0x1.779e541d49396p-111},
+      {0x1.dc00abdea0eaep-5, 0x1.dc4540dcebb2bp-5, 0x1.82c003c1e103dp-111},
+      {0x1.249b20103ea68p-4, 0x1.24dada634b148p-4, 0x1.8bb30e252299ap-110},
+      {0x1.616cc75d49226p-2, 0x1.687bd068c1c1ep-2, 0x1.9c0f093da51fdp-111},
+      {0x1.e6be9678237a2p-2, 0x1.f94840422b64p-2, 0x1.5b943a99b8006p-106},
+      {0x1.a3fc7e4dd47d1p-1, 0x1.d4b21ebf542fp-1, 0x1.ded6353f4d832p-107},
+      {0x1.aa3b649a96091p-1, 0x1.dd32c5ed1e93p-1, 0x1.89a6dcd3d65ap-106},
+      {0x1.dc5059d4e507dp+0, 0x1.9168c60ed5256p+1, 0x1.c584c5cd3ecfep-104},
+      {0x1.dd2e3c85d2b62p-8, 0x1.dd2f50d8b91ddp-8, -0x1.728dfac1eb294p-112},
+      {0x1.e2b6e387ef5bp-8, 0x1.e2b8019489d28p-8, -0x1.fa0df3fbc6b35p-114},
+      {0x1.f887f6af43f73p-8, 0x1.f8893d4c49738p-8, -0x1.0e529966a8342p-111},
+      {0x1.c47a6981ae88fp-6, 0x1.c4892321f02f5p-6, -0x1.1d067422c8b6bp-111},
+      {0x1.e4720b8441721p-5, 0x1.e4ba57841e459p-5, -0x1.5bf569ebe7ebfp-110},
+      {0x1.a00735384ad44p-3, 0x1.a2e533e5b2ea3p-3, -0x1.6fc3324320414p-109},
+      {0x1.e90f16eb88c09p-2, 0x1.fbdd4a37760b7p-2, -0x1.f6968f01db399p-108},
+      {0x1.2f5d3b178914ap+0, 0x1.7b8516ffd2406p+0, -0x1.27e918302273ep-104},
     };
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 24; i++)
       if (x == exceptions[i][0])
       {
         *h = exceptions[i][1];
         *l = exceptions[i][2];
-        break;
+        return;
       }
-    return;
   }
+
+  static double exceptions[][3] = {
+    {0x1.1c11f1687d68fp+7, 0x1.e21f461cfa82bp+203, 0x1.ffffffffffffep+149},
+    {0x1.7f0046225d651p+1, 0x1.3e11487da075dp+3, -0x1.fffffffffffffp-51},
+    {0x1.8560fe96e572bp+1, 0x1.4e65b385b7c53p+3, 0x1.ad8aed0994c2p-101},
+    {0x1.bc3c2d0c95f52p+1, 0x1.00fef7383a978p+4, 0x1.61182ae91b723p-100},
+    {0x1.5ce42e9d0df03p+2, 0x1.d22c2e0cd6bf4p+6, 0x1.4b4a00c36a2adp-97},
+    {0x1.c95ba20925c4bp+2, 0x1.3d52e798431b6p+9, 0x1.b34b670026b37p-95},
+    {0x1.0a19aebb51e9p+3, 0x1.fee8f69c4cd25p+10, 0x1.48bbf8f59b3e9p-95},
+    {0x1.1a3441bc1a6b7p+3, 0x1.a68ae777d2cc9p+11, 0x1.cf1f898fa67ebp-92},
+    {0x1.20e29ea8b51e2p+4, 0x1.08b8abba28abcp+25, 0x1.9b157420749bdp-79},
+    {0x1.c089fcf166171p+4, 0x1.5c452e0e37569p+39, 0x1.3bf07320cd829p-69},
+    {0x1.e42a98b3a0be5p+4, 0x1.938768ca4f8aap+42, 0x1.6d39a3108f2b9p-62},
+    {0x1.04db52248cbb8p+5, 0x1.0794072349523p+46, 0x1.0eaf76f95f673p-57},
+    {0x1.21bc021eeb97ep+5, 0x1.3065064a170fbp+51, 0x1.084083e9e9dd2p-52},
+    {0x1.39fc4d3bb711p+5, 0x1.8a4e90733b95ep+55, 0x1.6e767ed14e448p-50},
+    {0x1.51d0f4f0a901cp+5, 0x1.e4a01c9ddbc87p+59, 0x1.676f36e53deedp-45},
+    {0x1.6ce8416ec0a3fp+5, 0x1.bfa6fb8bb994fp+64, 0x1.2b1c5ece9e743p-39},
+    {0x1.94925476814e9p+5, 0x1.f1b76b88f075p+71, 0x1.b710ac550e46ep-32},
+    {0x1.96d81955b1fd7p+5, 0x1.4a9d153103f65p+72, 0x1.776d7bf831017p-32},
+    {0x1.638099048d4f6p+6, 0x1.2a3f3c4fdc462p+127, 0x1.daed2d108ae4ap+23},
+    {0x1.1f0da93354198p+7, 0x1.0bd73b73fc74cp+206, 0x1.588526e93304cp+102},
+    {0x1.226b70c1a9d7bp+7, 0x1.686ab849bc518p+208, 0x1.658e06041ef5p+105},
+    {0x1.0bc04af1b09f5p+9, 0x1.7b1d97c902985p+771, 0x1.551dfecc05bd4p+666},
+    {0x1.8c0a26d055288p+1, 0x1.6056b06a21918p+3, -0x1.be3740fe7b06dp-102},
+    {0x1.326e2606c8c86p+3, 0x1.c26eeb4c2c18ap+12, -0x1.5ee2f66583a45p-90},
+    {0x1.16369cd53bb69p+4, 0x1.0fbc6c02b1c9p+24, -0x1.90094b292b292p-81},
+    {0x1.4e15feac0d3a6p+4, 0x1.16fa4aa224fdap+29, -0x1.37f58912f1c6fp-74},
+    {0x1.a1e4f11b513d7p+4, 0x1.9a65b6c2e2185p+36, -0x1.bbe5072d0f2f1p-70},
+    {0x1.cb08ac3f4cdf7p+4, 0x1.4f8be4f84d663p+40, -0x1.de033ff070d6bp-63},
+    {0x1.3c895d86e96c9p+5, 0x1.0f33837882a6p+56, -0x1.277dbae956fc4p-49},
+    {0x1.5140272441b93p+5, 0x1.c38b159d44744p+59, -0x1.56d2d5f6a1678p-43},
+    {0x1.6fc71838701e6p+5, 0x1.406f375086cc1p+65, -0x1.644d8f437d059p-39},
+    {0x1.48a6374622156p+6, 0x1.72f930dc88767p+117, -0x1.a66033893e8a6p+13},
+    {0x1.6474c604cc0d7p+6, 0x1.7a8f65ad009bdp+127, -0x1.0b611158ec877p+20},
+    {0x1.07fa29aa7f36cp+8, 0x1.c9ce85bf1aaf8p+379, -0x1.044fc6419c125p+278},
+    {0x1.1debbc1b6dd4cp+8, 0x1.692e3b58bcc99p+411, -0x1.bccab9bd92516p+308},
+    {0x1.204684c1167e9p+8, 0x1.db9797d3d32e8p+414, -0x1.51e78c6bad663p+310},
+    {0x1.01ee19aead26ap+9, 0x1.2c03f281caee1p+743, -0x1.e313f0eaa37cap+640},
+  };
+  for (int i = 0; i < 37; i++)
+    if (x == exceptions[i][0])
+    {
+      *h = exceptions[i][1];
+      *l = exceptions[i][2];
+      return;
+    }
 
   double svh, svl, cvh, cvl;
   svh = *h;
   svl = *l;
-  if (x == TRACE) printf ("T[i][0]=%la\n", T[i][0]);
-  if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
+  // if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
   /* svh+svl approximates sinh(v) */
   d_mul (&h1, &l1, U[j][1], Ul[j][0], swh, swl);
   d_mul (&h2, &l2, U[j][2], Ul[j][1], cwh, cwl);
@@ -1556,7 +1635,7 @@ cr_sinh (double x)
   if (left == right)
     return left;
 
-  //  if (x == TRACE) printf ("fast path failed\n");
+  // if (x == TRACE) printf ("fast path failed\n");
 
   /* FIXME: update error analysis of fast path with new U[] (k=13) */
 
@@ -1567,7 +1646,7 @@ cr_sinh (double x)
     return __builtin_fma (x, 0x1p-54, x);
 
   cr_sinh_accurate (&h, &l, v.f);
-  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
+  // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   h *= sign[s];
   l *= sign[s];
   return h + l;
