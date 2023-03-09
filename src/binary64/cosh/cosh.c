@@ -32,6 +32,8 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 
+#define TRACE 0x1.013065f3561b2p+4
+
 /* For 0 <= i < 256, T[i] = {xi, si, ei} such that xi is near i*2^8/magic
    with magic = 0x1.70f77fc88ae3cp6, and si,si+ei approximate sinh(xi),cosh(xi)
    with accuracy >= 53+16 bits:
@@ -1296,6 +1298,7 @@ cr_cosh_fast (double *h, double *l, double x)
                    <= 1/2 + ulp(magic*x) <= 1/2 + 2^-37
      thus |x - k/magic| <= 0.00542055 */
   int i = k >> 8, j = k & 0xff;
+  if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   /* since x = T[i][0] + v, we approximate sinh(x) as
      sinh(T[i][0])*cosh(v) + cosh(T[i][0])*sinh(v)
@@ -1374,6 +1377,8 @@ cr_cosh_fast (double *h, double *l, double x)
      relative error bounded by 2^-69, and we have to compute:
      (T[i][1]+T[i][2])*(cvh+cvl) + T[i][1]*(svh+svl) =
      T[i][2]*(cvh+cvl) + T[i][1]*(cvh+cvl+svh+svl) */
+  if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
+  if (x == TRACE) printf ("v=%la cvh=%la cvl=%la\n", v, cvh, cvl);
 
   /* since |x - k/magic| <= 0.00542055, |T[i][0] - i*2^8/magic| < 2.36e-8,
      k = i*2^8+j:
@@ -1392,11 +1397,14 @@ cr_cosh_fast (double *h, double *l, double x)
      Since |v| > 0.00542, the cancellation factor
      (cosh(v)+sinh(v))/(cosh(v)-sinh(v)) is bounded by 1.0109,
      thus the relative error on svh+svl is < 1.0109*2^-61.98 < 2^-61.96. */
+  if (x == TRACE) printf ("1400: svh=%la svl=%la\n", svh, svl);
 
   s_mul (&h1, &l1, T[i][2], cvh, cvl); /* T[i][2]*(cvh+cvl) */
+  if (x == TRACE) printf ("T[i][2]=%la\n", T[i][2]);
   /* |T[i][2] - exp(T[i][0])| < 2^-17 ulp(T[i][2]) <= 2^-69 |T[i][2]|
      and |cvh + cvl - cosh(v)| < 2^-66.98*|cvh + cvl| thus
      |h1+l1-exp(T[i][0])*cosh(v)| < 2^-66.66*|h1+l1| */
+  if (x == TRACE) printf ("t=%la h1=%la l1=%la\n", T[i][0], h1, l1);
   s_mul (&h2, &l2, T[i][1], svh, svl); /* T[i][1]*(cvh+cvl+svh+svl) */
   /* |T[i][1] - sinh(T[i][0])| < 2^-17 ulp(T[i][1]) <= 2^-69 |T[i][1]|
      and |svh + svl - (cosh(v)+sinh(v))| < 2^-61.96*|svh + svl| thus
@@ -1405,8 +1413,8 @@ cr_cosh_fast (double *h, double *l, double x)
 
   /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
 
-  /* 2^-61.96 < 0x1.08p-62 and 2^-65.28 < 0x1.a6p-66 */
-  return 0x1.08p-62 * h1 + 0x1.a6p-66 * (h2 > 0 ? h2 : -h2);
+  /* 2^-66.66 < 0x1.45p-67 and 2^-61.94 < 0x1.0bp-62 */
+  return 0x1.45p-67 * h1 + 0x1.0bp-62 * (h2 > 0 ? h2 : -h2);
 }
 
 static void
@@ -1562,6 +1570,7 @@ cr_cosh (double x)
   
   double h, l;
   double err = cr_cosh_fast (&h, &l, v.f);
+  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double sign[] = { 1.0, -1.0 };
   h *= sign[s];
   l *= sign[s];
@@ -1570,6 +1579,8 @@ cr_cosh (double x)
   double right = h + (l + err);
   if (left == right)
     return left;
+
+  if (x == TRACE) printf ("fast path failed\n");
 
   return 0;
 
