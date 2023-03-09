@@ -582,6 +582,13 @@ static const double U[256][3] = {
    {0x1.61da57ecb5a17p+1, 0x1.f9d8c189bc544p+2, 0x1.fde118f05739dp+2}, /* i=255 */
 };
 
+/* The following table is used in the accurate path only.
+   For each i, 0 <= i < 256, let {xi, si, ei} be the T[i] values,
+   such that si and si+ei approximate sinh(xi) and cosh(xi) with a few
+   extra bits, then si + Tl[i][0] and si + ei + Tl[j][1] approximate
+   sinh(xi) and cosh(xi) with at least 107 bits.
+   Generated with build_table_Tl(T0,T1,T2) from the file sinh.sage,
+   where T0,T1,T2 are printed using the printT() routine below. */
 static const double Tl[256][2] = {
    {0x0p+0, 0x0p+0}, /* i=0 */
    {0x1.06aceafcaf699p-68, 0x1.89951332da0f8p-60}, /* i=1 */
@@ -845,7 +852,9 @@ static const double Tl[256][2] = {
    For each j, 0 <= j < 256, let {xj, sj, cj} be the U[j] values,
    such that sj and cj approximate sinh(xj) and cosh(xj) with a few
    extra bits, then sj + Ul[j][0] and cj + Ul[j][1] approximate
-   sinh(xj) and cosh(xj) with at least 107 bits. */
+   sinh(xj) and cosh(xj) with at least 107 bits.
+   Generated with build_table_Ul(U0,U1,U2) from the file sinh.sage,
+   where U0,U1,U2 are printed using the printU() routine below. */
 static const double Ul[256][2] = {
    {0x0p+0, 0x0p+0}, /* i=0 */
    {-0x1.cc125d97df011p-76, -0x1.e6bae12de82cep-70}, /* i=1 */
