@@ -1325,11 +1325,11 @@ cr_cosh_fast (double *h, double *l, double x)
   cwh = *h;
   cwl = *l;
   double svh, svl, cvh, cvl, h1, l1, h2, l2;
-  s_mul (&h1, &l1, U[j][1], cwh, cwl); /* U[j][1]*cosh(w) */
-  /* |U[j][1] - sinh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
+  s_mul (&h1, &l1, U[j][2], cwh, cwl); /* U[j][2]*cosh(w) */
+  /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][2]) <= 2^-68 |U[j][2]|
      and |cwh + cwl - cosh(w)| < 2^-68.04*|cwh+cwl| thus
-     |h1+l1-sinh(U[j][0])*cosh(w)| < 2^-67.01*|h1+l1| */
-  s_mul (&h2, &l2, U[j][2], swh, swl); /* U[j][1]*sinh(w) */
+     |h1+l1-cosh(U[j][0])*cosh(w)| < 2^-67.01*|h1+l1| */
+  s_mul (&h2, &l2, U[j][1], swh, swl); /* U[j][1]*sinh(w) */
   /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
      and |swh + swl - sinh(w)| < 2^-67.99*|swh+swl| thus
      |h2+l2-cosh(U[j][0])*sinh(w)| < 2^-66.99*|h2+l2| */
