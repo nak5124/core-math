@@ -1422,8 +1422,8 @@ cr_sinh_fast (double *h, double *l, double x)
 
   /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
 
-  /* 2^-61.96 < 0x1.08p-62 and 2^-65.28 < 0x1.a6p-66 */
-  return 0x1.08p-62 * h1 + 0x1.a6p-66 * (h2 > 0 ? h2 : -h2);
+  /* 2^-61.94 < 0x1.0bp-62 and 2^-65.28 < 0x1.a6p-66 */
+  return 0x1.0bp-62 * h1 + 0x1.a6p-66 * (h2 > 0 ? h2 : -h2);
 }
 
 static void
