@@ -1332,9 +1332,32 @@ cr_cosh_fast (double *h, double *l, double x)
   s_mul (&h2, &l2, U[j][1], swh, swl); /* U[j][1]*sinh(w) */
   /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
      and |swh + swl - sinh(w)| < 2^-67.99*|swh+swl| thus
-     |h2+l2-cosh(U[j][0])*sinh(w)| < 2^-66.99*|h2+l2| */
+     |h2+l2-sinh(U[j][0])*sinh(w)| < 2^-66.99*|h2+l2| */
 
-  fast_sum2 (h, l, h1, l1, h2, l2); /* h+l approximates sinh(v) */
+  fast_sum2 (h, l, h1, l1, h2, l2); /* h+l approximates cosh(v) */
+  /* since h1+l1 and h2+l2 have a relative error bound < 2^-66.99, that bound
+     holds for the sum of their absolute values, but we might have
+     cancellation, the worst case being for j=1 and w=-0.00543,
+     where h1+l1 >= 1.0000735. and h2+l2 >= -0.0000589
+     thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 1.000118,
+     and |h + l - cosh(v)| < 1.000118*2^-66.99 < 2^-66.98.
+     Note: he rounding errors in fast_sum2 are absorbed in the above error
+     bound (which is over-estimated) */
+
+  if (i == 0)
+    return 0x1.04p-67 * *h; /* 2^-66.98 < 0x1.04p-67 */
+
+  cvh = *h;
+  cvl = *l;
+  s_mul (&h1, &l1, U[j][1], cwh, cwl); /* U[j][1]*cosh(w) */
+  /* |U[j][1] - sinh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
+     and |cwh + cwl - cosh(w)| < 2^-68.04*|cwh+cwl| thus
+     |h1+l1-sinh(U[j][0])*cosh(w)| < 2^-67.01*|h1+l1| */
+  s_mul (&h2, &l2, U[j][2], swh, swl); /* U[j][2]*sinh(w) */
+  /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][2]) <= 2^-68 |U[j][2]|
+     and |swh + swl - sinh(w)| < 2^-67.99*|swh+swl| thus
+     |h2+l2-cosh(U[j][0])*sinh(w)| < 2^-66.99*|h2+l2| */
+  fast_sum2 (&svh, &svl, h1, l1, h2, l2); /* cvh+cvl approximates sinh(v) */
   /* since h1+l1 and h2+l2 have a relative error bound < 2^-66.99, that bound
      holds for the sum of their absolute values, but we might have
      cancellation, the worst case being for j=1 and w=-0.00543,
@@ -1344,36 +1367,13 @@ cr_cosh_fast (double *h, double *l, double x)
      Note: the rounding error in fast_sum2() is absorbed in the above
      error bound (which is over-estimated). */
 
-  if (i == 0)
-    return 0x1.85p-66 * *h; /* 2^-65.40 < 0x1.85p-66 */
-
-  svh = *h;
-  svl = *l;
-  s_mul (&h1, &l1, U[j][1], swh, swl); /* U[j][1]*sinh(w) */
-  /* |U[j][1] - sinh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
-     and |swh + swl - sinh(w)| < 2^-67.99*|swh+swl| thus
-     |h1+l1-sinh(U[j][0])*sinh(w)| < 2^-66.99*|h1+l1| */
-  s_mul (&h2, &l2, U[j][2], cwh, cwl); /* U[j][2]*cosh(w) */
-  /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
-     and |cwh + cwl - cosh(w)| < 2^-68.04*|cwh+cwl| thus
-     |h2+l2-cosh(U[j][0])*cosh(w)| < 2^-67.01*|h2+l2| */
-  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
-  /* since h1+l1 and h2+l2 have a relative error bound < 2^-66.99, that bound
-     holds for the sum of their absolute values, but we might have
-     cancellation, the worst case being for j=1 and w=-0.00543,
-     where h2+l2 >= 1.0000735. and h1+l1 >= -0.0000589
-     thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 1.000118,
-     and |cvh + cvl - cosh(v)| < 1.000118*2^-66.99 < 2^-66.98.
-     Note: he rounding errors in fast_sum2 are absorbed in the above error
-     bound (which is over-estimated) */
-
   /* At this point svh+svl approximates sinh(v) with relative error bounded by
      2^-65.40, cvh+cvl approximates cosh(v) with relative error bounded
      by 2^-66.98, T[i][1] approximates sinh(T[i][0]) with relative error
      bounded by 2^-69, T[i][1]+T[i][2] approximates cosh(T[i][0]) with
      relative error bounded by 2^-69, and we have to compute:
-     T[i][1]*(cvh+cvl) + (T[i][1]+T[i][2])*(svh+svl) =
-     T[i][1]*(cvh+cvl+svh+svl) + T[i][2]*(svh+svl) */
+     (T[i][1]+T[i][2])*(cvh+cvl) + T[i][1]*(svh+svl) =
+     T[i][2]*(cvh+cvl) + T[i][1]*(cvh+cvl+svh+svl) */
 
   /* since |x - k/magic| <= 0.00542055, |T[i][0] - i*2^8/magic| < 2.36e-8,
      k = i*2^8+j:
@@ -1386,21 +1386,21 @@ cr_cosh_fast (double *h, double *l, double x)
      the absolute error on svh+svl is bounded by 2^-65.40*7.95 < 2^-62.40, and
      the absolute error on cvh+cvl is bounded by 2^-66.98*8.02 < 2^-63.97. */
 
-  fast_sum2 (&cvh, &cvl, cvh, cvl, svh, svl);
-  /* absolute error on cvh+cvl bounded by (neglecting the error in fast_sum2):
+  fast_sum2 (&svh, &svl, cvh, cvl, svh, svl);
+  /* absolute error on svh+svl bounded by (neglecting the error in fast_sum2):
      2^-62.40+2^-63.97 < 2^-61.98.
      Since |v| > 0.00542, the cancellation factor
      (cosh(v)+sinh(v))/(cosh(v)-sinh(v)) is bounded by 1.0109,
-     thus the relative error on cvh+cvl is < 1.0109*2^-61.98 < 2^-61.96. */
+     thus the relative error on svh+svl is < 1.0109*2^-61.98 < 2^-61.96. */
 
-  s_mul (&h1, &l1, T[i][1], cvh, cvl); /* T[i][1]*(cvh+cvl+svh+svl) */
-  /* |T[i][1] - sinh(T[i][0])| < 2^-17 ulp(T[i][1]) <= 2^-69 |T[i][1]|
-     and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-61.96*|cvh + cvl| thus
-     |h1+l1-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-61.94*|h1+l1| */
-  s_mul (&h2, &l2, T[i][2], svh, svl); /* T[i][2]*(svh+svl) */
+  s_mul (&h1, &l1, T[i][2], cvh, cvl); /* T[i][2]*(cvh+cvl) */
   /* |T[i][2] - exp(T[i][0])| < 2^-17 ulp(T[i][2]) <= 2^-69 |T[i][2]|
-     and |svh + svl - sinh(v)| < 2^-65.40*|svh + svl| thus
-     |h2+l2-exp(T[i][0])*sinh(v)| < 2^-65.28*|h2+l2| */
+     and |cvh + cvl - cosh(v)| < 2^-66.98*|cvh + cvl| thus
+     |h1+l1-exp(T[i][0])*cosh(v)| < 2^-66.66*|h1+l1| */
+  s_mul (&h2, &l2, T[i][1], svh, svl); /* T[i][1]*(cvh+cvl+svh+svl) */
+  /* |T[i][1] - sinh(T[i][0])| < 2^-17 ulp(T[i][1]) <= 2^-69 |T[i][1]|
+     and |svh + svl - (cosh(v)+sinh(v))| < 2^-61.96*|svh + svl| thus
+     |h2+l2-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-61.94*|h2+l2| */
   fast_sum2 (h, l, h1, l1, h2, l2);
 
   /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
