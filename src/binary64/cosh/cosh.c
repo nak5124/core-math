@@ -32,7 +32,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 
-#define TRACE 0x1.013065f3561b2p+4
+#define TRACE 0x1.0cf01d3f9f5e4p-11
 
 /* For 0 <= i < 256, T[i] = {xi, shi, sli, chi, cli} such that xi is near
    i*2^8/magic with magic = 0x1.70f77fc88ae3cp6, and shi+sli, chi+cli
@@ -1289,7 +1289,7 @@ cr_cosh_fast (double *h, double *l, double x)
                    <= 1/2 + ulp(magic*x) <= 1/2 + 2^-37
      thus |x - k/magic| <= 0.00542055 */
   int i = k >> 8, j = k & 0xff;
-  if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
+  // if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   /* since x = T[i][0] + v, we approximate sinh(x) as
      sinh(T[i][0])*cosh(v) + cosh(T[i][0])*sinh(v)
@@ -1318,6 +1318,8 @@ cr_cosh_fast (double *h, double *l, double x)
   
   cwh = *h;
   cwl = *l;
+  //if (x == TRACE) printf ("w=%la cwh=%la cwl=%la\n", w, cwh, cwl);
+  //if (x == TRACE) printf ("w=%la swh=%la swl=%la\n", w, swh, swl);
   double svh, svl, cvh, cvl, h1, l1, h2, l2;
   s_mul (&h1, &l1, U[j][2], cwh, cwl); /* U[j][2]*cosh(w) */
   /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][2]) <= 2^-68 |U[j][2]|
@@ -1337,7 +1339,7 @@ cr_cosh_fast (double *h, double *l, double x)
      and |h + l - cosh(v)| < 1.000118*2^-66.99 < 2^-66.98.
      Note: he rounding errors in fast_sum2 are absorbed in the above error
      bound (which is over-estimated) */
-
+  
   if (i == 0)
     return 0x1.04p-67 * *h; /* 2^-66.98 < 0x1.04p-67 */
 
@@ -1367,35 +1369,27 @@ cr_cosh_fast (double *h, double *l, double x)
      error bounded by 2^-107, T[i][3]+T[i][4] approximates cosh(T[i][0]) with
      relative error bounded by 2^-107, and we have to compute:
      (T[i][3]+T[i][4])*(cvh+cvl) + (T[i][1]+T[i][2])*(svh+svl) */
-  if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
-  if (x == TRACE) printf ("v=%la cvh=%la cvl=%la\n", v, cvh, cvl);
-
-  /* since |x - k/magic| <= 0.00542055, |T[i][0] - i*2^8/magic| < 8e-14,
-     k = i*2^8+j:
-     |v| = |x - T[i][0]|
-       <= |x - k/magic| + |k/magic - i*2^8/magic| + |i*2^8/magic - T[i][0]|
-       <= 0.00542055 + j/magic + 8e-14
-       <= 0.00542055 + 255/magic + 8e-14 <= 2.77.
-     We also have |v| >= 1/magic - (0.00542055 + 8e-14) > 0.00542.
-     Thus |sinh(v)| < sinh(2.77) < 7.95 and |cosh(v)| < cosh(2.77) < 8.02,
-     the absolute error on svh+svl is bounded by 2^-65.40*7.95 < 2^-62.40, and
-     the absolute error on cvh+cvl is bounded by 2^-66.98*8.02 < 2^-63.97. */
+  //if (x == TRACE) printf ("v=%la cvh=%la cvl=%la\n", v, cvh, cvl);
+  //if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
 
   d_mul (&h1, &l1, T[i][3], T[i][4], cvh, cvl); /* (T[i][3]+T[i][4])*(cvh+cvl) */
   /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
      and |cvh + cvl - cosh(v)| < 2^-66.98*|cvh + cvl| thus
-     |h1+l1-exp(T[i][0])*cosh(v)| < 2^-66.66*|h1+l1| */
-  if (x == TRACE) printf ("t=%la h1=%la l1=%la\n", T[i][0], h1, l1);
-  s_mul (&h2, &l2, T[i][1], svh, svl); /* T[i][1]*(cvh+cvl+svh+svl) */
-  /* |T[i][1] - sinh(T[i][0])| < 2^-17 ulp(T[i][1]) <= 2^-69 |T[i][1]|
-     and |svh + svl - (cosh(v)+sinh(v))| < 2^-61.96*|svh + svl| thus
-     |h2+l2-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-61.94*|h2+l2| */
+     |h1+l1-cosh(T[i][0])*cosh(v)| < 2^-66.97*|h1+l1| */
+  //if (x == TRACE) printf ("t=%la h1=%la l1=%la\n", T[i][0], h1, l1);
+  d_mul (&h2, &l2, T[i][1], T[i][2], svh, svl); /* T[i][1]*(cvh+cvl+svh+svl) */
+  //if (x == TRACE) printf ("t=%la h2=%la l2=%la\n", T[i][0], h2, l2);
+  /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
+     and |svh + svl - sinh(v)| < 2^-65.40*|svh + svl| thus
+     |h2+l2-sinh(T[i][0])*sinh(v)| < 2^-65.39*|h2+l2| */
   fast_sum2 (h, l, h1, l1, h2, l2);
+  /* the error in fast_sum2() is absorbed by the above errors, which are
+     overestimated */
 
   /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
 
-  /* 2^-66.66 < 0x1.45p-67 and 2^-61.94 < 0x1.0bp-62 */
-  return 0x1.45p-67 * h1 + 0x1.0bp-62 * (h2 > 0 ? h2 : -h2);
+  /* 2^-66.97 < 0x1.06p-67 and 2^-65.39 < 0x1.87p-66 */
+  return 0x1.06p-67 * h1 + 0x1.87p-66 * (h2 > 0 ? h2 : -h2);
 }
 
 static void
@@ -1406,14 +1400,14 @@ cr_cosh_accurate (double *h, double *l, double x)
   int i = k >> 8, j = k & 0xff;
   double v = x - T[i][0];
   double w = v - U[j][0];
-  eval_S2 (h, l, w);
+  eval_C2 (h, l, w);
   if (k == 0)
   {
     static double exceptions[][3] = {
-      {0x1.1bd15d167005p-11, 0x1.1bd15dff0122ap-11, 0x1.0000000000001p-64},
-      {0x1.92a2ee78ed49cp-23, 0x1.92a2ee78ed4c6p-23, -0x1.0000000000001p-76},
-      {0x1.bcee70ebe7ec9p-25, 0x1.bcee70ebe7ecdp-25, -0x1.fffffffffffffp-79},
-      {0x1.e72460254649ap-19, 0x1.e72460254ae19p-19, 0x1.fffffffffffffp-73},
+      {0x1.0cf01d3f9f5e4p-11, 0x1.000002350f3dbp+0, 0x1.fffffffffffffp-54},
+      {0x1.10d6a14c0d526p-9, 0x1.000024591a32bp+0, -0x1.fffffffffffffp-54},
+      {0x1.12d0f92fb5032p-19, 0x1.00000000024e1p+0, -0x1.fffffffffffffp-54},
+      {0x1.90b8278768adcp-21, 0x1.00000000004e7p+0, -0x1.fffffffffffffp-54},
     };
     for (int i = 0; i < 4; i++)
       if (x == exceptions[i][0])
@@ -1425,42 +1419,22 @@ cr_cosh_accurate (double *h, double *l, double x)
   }
 
   double swh, swl, cwh, cwl;
-  swh = *h;
-  swl = *l;
-  eval_C2 (&cwh, &cwl, w);
+  cwh = *h;
+  cwl = *l;
+  eval_S2 (&swh, &swl, w);
   double h1, l1, h2, l2;
-  d_mul (&h1, &l1, U[j][1], Ul[j][0], cwh, cwl);
-  d_mul (&h2, &l2, U[j][2], Ul[j][1], swh, swl);
+  d_mul (&h1, &l1, U[j][2], Ul[j][1], cwh, cwl);
+  d_mul (&h2, &l2, U[j][1], Ul[j][0], swh, swl);
   fast_sum2 (h, l, h1, l1, h2, l2);
   if (i == 0)
   {
     static double exceptions[][3] = {
-      {0x1.19e03c96f0997p-6, 0x1.19e3cbe7ef607p-6, -0x1.fffffffffffffp-60},
-      {0x1.8c154465149ep-8, 0x1.8c15e26bbaa2p-8, -0x1.fffffffffffffp-62},
-      {0x1.9147ff03dfb3p-1, 0x1.bba4dc4067a68p-1, 0x1p-54},
-      {0x1.9b88da8cd4e51p-3, 0x1.9e4f4a0396a4cp-3, 0x1.fffffffffffffp-57},
-      {0x1.e434bb080b343p-5, 0x1.e47ceb971ab09p-5, 0x1.ffffffffffffep-59},
-      {0x1.6022fb964b354p-7, 0x1.6024b7c5f26c9p-7, 0x1.d1bf08b11060ep-113},
-      {0x1.fae401ab52294p-7, 0x1.fae92e8cd6c2ap-7, 0x1.7e854fd21daf9p-112},
-      {0x1.135e31fdd05d3p-5, 0x1.136b78b25cc57p-5, 0x1.71b117cb2c81fp-113},
-      {0x1.78f6aa58a8224p-5, 0x1.7918b9deef9c8p-5, 0x1.779e541d49396p-111},
-      {0x1.dc00abdea0eaep-5, 0x1.dc4540dcebb2bp-5, 0x1.82c003c1e103dp-111},
-      {0x1.249b20103ea68p-4, 0x1.24dada634b148p-4, 0x1.8bb30e252299ap-110},
-      {0x1.616cc75d49226p-2, 0x1.687bd068c1c1ep-2, 0x1.9c0f093da51fdp-111},
-      {0x1.e6be9678237a2p-2, 0x1.f94840422b64p-2, 0x1.5b943a99b8006p-106},
-      {0x1.a3fc7e4dd47d1p-1, 0x1.d4b21ebf542fp-1, 0x1.ded6353f4d832p-107},
-      {0x1.aa3b649a96091p-1, 0x1.dd32c5ed1e93p-1, 0x1.89a6dcd3d65ap-106},
-      {0x1.dc5059d4e507dp+0, 0x1.9168c60ed5256p+1, 0x1.c584c5cd3ecfep-104},
-      {0x1.dd2e3c85d2b62p-8, 0x1.dd2f50d8b91ddp-8, -0x1.728dfac1eb294p-112},
-      {0x1.e2b6e387ef5bp-8, 0x1.e2b8019489d28p-8, -0x1.fa0df3fbc6b35p-114},
-      {0x1.f887f6af43f73p-8, 0x1.f8893d4c49738p-8, -0x1.0e529966a8342p-111},
-      {0x1.c47a6981ae88fp-6, 0x1.c4892321f02f5p-6, -0x1.1d067422c8b6bp-111},
-      {0x1.e4720b8441721p-5, 0x1.e4ba57841e459p-5, -0x1.5bf569ebe7ebfp-110},
-      {0x1.a00735384ad44p-3, 0x1.a2e533e5b2ea3p-3, -0x1.6fc3324320414p-109},
-      {0x1.e90f16eb88c09p-2, 0x1.fbdd4a37760b7p-2, -0x1.f6968f01db399p-108},
-      {0x1.2f5d3b178914ap+0, 0x1.7b8516ffd2406p+0, -0x1.27e918302273ep-104},
+      {0x1.03923f2b47c07p-1, 0x1.219c1989e3373p+0, -0x1.fffffffffffffp-54},
+      {0x1.2ff1e16810fe7p-4, 0x1.00b4846f2860fp+0, -0x1.fffffffffffffp-54},
+      {0x1.52268c6359f0ep-1, 0x1.39e464805bf01p+0, -0x1.fffffffffffffp-54},
+      {0x1.b4ae17e3720efp-8, 0x1.0001747116305p+0, -0x1.fffffffffffffp-54},
     };
-    for (int i = 0; i < 24; i++)
+    for (int i = 0; i < 4; i++)
       if (x == exceptions[i][0])
       {
         *h = exceptions[i][1];
@@ -1470,45 +1444,10 @@ cr_cosh_accurate (double *h, double *l, double x)
   }
 
   static double exceptions[][3] = {
-    {0x1.1c11f1687d68fp+7, 0x1.e21f461cfa82bp+203, 0x1.ffffffffffffep+149},
-    {0x1.7f0046225d651p+1, 0x1.3e11487da075dp+3, -0x1.fffffffffffffp-51},
-    {0x1.8560fe96e572bp+1, 0x1.4e65b385b7c53p+3, 0x1.ad8aed0994c2p-101},
-    {0x1.bc3c2d0c95f52p+1, 0x1.00fef7383a978p+4, 0x1.61182ae91b723p-100},
-    {0x1.5ce42e9d0df03p+2, 0x1.d22c2e0cd6bf4p+6, 0x1.4b4a00c36a2adp-97},
-    {0x1.c95ba20925c4bp+2, 0x1.3d52e798431b6p+9, 0x1.b34b670026b37p-95},
-    {0x1.0a19aebb51e9p+3, 0x1.fee8f69c4cd25p+10, 0x1.48bbf8f59b3e9p-95},
-    {0x1.1a3441bc1a6b7p+3, 0x1.a68ae777d2cc9p+11, 0x1.cf1f898fa67ebp-92},
-    {0x1.20e29ea8b51e2p+4, 0x1.08b8abba28abcp+25, 0x1.9b157420749bdp-79},
-    {0x1.c089fcf166171p+4, 0x1.5c452e0e37569p+39, 0x1.3bf07320cd829p-69},
-    {0x1.e42a98b3a0be5p+4, 0x1.938768ca4f8aap+42, 0x1.6d39a3108f2b9p-62},
-    {0x1.04db52248cbb8p+5, 0x1.0794072349523p+46, 0x1.0eaf76f95f673p-57},
-    {0x1.21bc021eeb97ep+5, 0x1.3065064a170fbp+51, 0x1.084083e9e9dd2p-52},
-    {0x1.39fc4d3bb711p+5, 0x1.8a4e90733b95ep+55, 0x1.6e767ed14e448p-50},
-    {0x1.51d0f4f0a901cp+5, 0x1.e4a01c9ddbc87p+59, 0x1.676f36e53deedp-45},
-    {0x1.6ce8416ec0a3fp+5, 0x1.bfa6fb8bb994fp+64, 0x1.2b1c5ece9e743p-39},
-    {0x1.94925476814e9p+5, 0x1.f1b76b88f075p+71, 0x1.b710ac550e46ep-32},
-    {0x1.96d81955b1fd7p+5, 0x1.4a9d153103f65p+72, 0x1.776d7bf831017p-32},
-    {0x1.638099048d4f6p+6, 0x1.2a3f3c4fdc462p+127, 0x1.daed2d108ae4ap+23},
-    {0x1.1f0da93354198p+7, 0x1.0bd73b73fc74cp+206, 0x1.588526e93304cp+102},
-    {0x1.226b70c1a9d7bp+7, 0x1.686ab849bc518p+208, 0x1.658e06041ef5p+105},
-    {0x1.0bc04af1b09f5p+9, 0x1.7b1d97c902985p+771, 0x1.551dfecc05bd4p+666},
-    {0x1.8c0a26d055288p+1, 0x1.6056b06a21918p+3, -0x1.be3740fe7b06dp-102},
-    {0x1.326e2606c8c86p+3, 0x1.c26eeb4c2c18ap+12, -0x1.5ee2f66583a45p-90},
-    {0x1.16369cd53bb69p+4, 0x1.0fbc6c02b1c9p+24, -0x1.90094b292b292p-81},
-    {0x1.4e15feac0d3a6p+4, 0x1.16fa4aa224fdap+29, -0x1.37f58912f1c6fp-74},
-    {0x1.a1e4f11b513d7p+4, 0x1.9a65b6c2e2185p+36, -0x1.bbe5072d0f2f1p-70},
-    {0x1.cb08ac3f4cdf7p+4, 0x1.4f8be4f84d663p+40, -0x1.de033ff070d6bp-63},
-    {0x1.3c895d86e96c9p+5, 0x1.0f33837882a6p+56, -0x1.277dbae956fc4p-49},
-    {0x1.5140272441b93p+5, 0x1.c38b159d44744p+59, -0x1.56d2d5f6a1678p-43},
-    {0x1.6fc71838701e6p+5, 0x1.406f375086cc1p+65, -0x1.644d8f437d059p-39},
-    {0x1.48a6374622156p+6, 0x1.72f930dc88767p+117, -0x1.a66033893e8a6p+13},
-    {0x1.6474c604cc0d7p+6, 0x1.7a8f65ad009bdp+127, -0x1.0b611158ec877p+20},
-    {0x1.07fa29aa7f36cp+8, 0x1.c9ce85bf1aaf8p+379, -0x1.044fc6419c125p+278},
-    {0x1.1debbc1b6dd4cp+8, 0x1.692e3b58bcc99p+411, -0x1.bccab9bd92516p+308},
-    {0x1.204684c1167e9p+8, 0x1.db9797d3d32e8p+414, -0x1.51e78c6bad663p+310},
-    {0x1.01ee19aead26ap+9, 0x1.2c03f281caee1p+743, -0x1.e313f0eaa37cap+640},
+    {0x1.7b50c8f562f3bp+4, 0x1.2688d628ec393p+33, 0x1.fffffffffffffp-21},
+    {0x1.ea5f2f2e4b0c5p+1, 0x1.710db0cd0fed6p+4, -0x1p-49},
   };
-  for (int i = 0; i < 37; i++)
+  for (int i = 0; i < 2; i++)
     if (x == exceptions[i][0])
     {
       *h = exceptions[i][1];
@@ -1517,18 +1456,16 @@ cr_cosh_accurate (double *h, double *l, double x)
     }
 
   double svh, svl, cvh, cvl;
-  svh = *h;
-  svl = *l;
-  /* svh+svl approximates sinh(v) */
-  d_mul (&h1, &l1, U[j][1], Ul[j][0], swh, swl);
-  d_mul (&h2, &l2, U[j][2], Ul[j][1], cwh, cwl);
-  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
-  fast_sum2 (&cvh, &cvl, cvh, cvl, svh, svl);
-  /* now cvh+cvl approximates cosh(v)+sinh(v) */
-  d_mul (&h1, &l1, T[i][1], Tl[i][0], cvh, cvl);
-  d_mul (&h2, &l2, T[i][2], Tl[i][1], svh, svl);
+  cvh = *h;
+  cvl = *l;
+  /* cvh+cvl approximates cosh(v) */
+  d_mul (&h1, &l1, U[j][1], Ul[j][0], cwh, cwl);
+  d_mul (&h2, &l2, U[j][2], Ul[j][1], swh, swl);
+  fast_sum2 (&svh, &svl, h1, l1, h2, l2);
+  /* now svh+svl approximates sinh(v) */
+  d_mul (&h1, &l1, T[i][3], T[i][4], cvh, cvl);
+  d_mul (&h2, &l2, T[i][1], T[i][2], svh, svl);
   fast_sum2 (h, l, h1, l1, h2, l2);
-  //*h = *l = 0;
 }
 
 #define MASK 0x7fffffffffffffff /* to mask the sign bit */
@@ -1538,7 +1475,6 @@ cr_cosh (double x)
 {
   d64u64 v = {.f = x};
   int e = (v.u >> 52) - 0x3ff;
-  int s = v.u >> 63; /* sign bit */
   v.u &= (uint64_t) MASK; /* get absolute value */
 
   if (e == 0x400 || e == 0xc00 || v.f >= 0x1.633ce8fb9f87ep+9)
@@ -1551,28 +1487,20 @@ cr_cosh (double x)
   
   double h, l;
   double err = cr_cosh_fast (&h, &l, v.f);
-  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
-  double sign[] = { 1.0, -1.0 };
-  h *= sign[s];
-  l *= sign[s];
+  //  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   
   double left  = h + (l - err);
   double right = h + (l + err);
   if (left == right)
     return left;
 
-  if (x == TRACE) printf ("fast path failed\n");
+  //if (x == TRACE) printf ("fast path failed\n");
 
-  return 0;
-
-  /* Special case for small numbers, to avoid underflow issues in the accurate
-     path: for |x| <= 0x1.7137449123ef6p-26, |sinh(x) - x| < ulp(x)/2,
-     thus sinh(x) rounds to the same value than x + 2^-54*x. */
-  if (v.f <= 0x1.7137449123ef6p-26)
-    return __builtin_fma (x, 0x1p-54, x);
+  /* Special case for small numbers: for |x| < 0x1p-26, cosh(x) rounds to 1
+     for rounding to nearest, thus cosh(x) rounds either to 1 or next(1). */
+  if (v.f < 0x1p-26)
+    return 1.0 + 0x1p-53;
 
   cr_cosh_accurate (&h, &l, v.f);
-  h *= sign[s];
-  l *= sign[s];
   return h + l;
 }
