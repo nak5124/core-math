@@ -1490,8 +1490,23 @@ cr_sinh_accurate (double *h, double *l, double x)
     {0x1.204684c1167e9p+8, 0x1.db9797d3d32e8p+414, -0x1.51e78c6bad663p+310},
     {0x1.695ff9bffb61p+4, 0x1.7fe814ba7972cp+31, 0x1.d8be643569c5cp-72},
     {0x1.90b2ac532d781p+1, 0x1.6d73411f0097dp+3, 0x1.842ff97646107p-100},
+    {0x1.e07e71bfcf06fp+5, 0x1.91ec4412c344fp+85, 0x1.09d2b56d79a72p-24},
+    {0x1.2da9e5e6af0bp+8, 0x1.27d6fe867d6f6p+434, 0x1.0a1d500c39996p+329},
+    {0x1.9e7b643238a14p+8, 0x1.f5da7fe652978p+596, 0x1.0429700e71228p+493},
+    {0x1.aa6129cdb8218p+8, 0x1.193d3ba630343p+614, 0x1.d25f43a9a73ecp+510},
+    {0x1.54cd1fea7663ap+7, 0x1.c90810d354618p+244, 0x1.2925a9627fb2cp+135},
+    {0x1.556c678d5e976p+7, 0x1.37e7ac4e7f9b3p+245, 0x1.01a99afd82b06p+141},
+    {0x1.7a60ee15e3e9dp+6, 0x1.62e4dc3bbf53fp+135, 0x1.ae7c8eddb6bcbp+29},
+    {0x1.f7216c4b435c9p+5, 0x1.a97e7be23e65ap+89, -0x1.99421ab1db04cp-15},
+    {0x1.26ee1a46d8c8bp+9, 0x1.fbe20477df4a7p+849, -0x1.556f0ed19479ep+745},
+    {0x1.4a869881f72acp+9, 0x1.9ea7540a3d1f9p+952, -0x1.2d3d01e27f50bp+848},
+    {0x1.54ceba01331d5p+8, 0x1.9a86785b5ef3ep+490, -0x1.226a3e36ef7ccp+386},
+    {0x1.c7206c1b753e4p+8, 0x1.8670de0b68cadp+655, -0x1.7599cebd802f7p+548},
+    {0x1.d6479eba7c971p+8, 0x1.62a88613629b6p+677, -0x1.3f69a2085428cp+568},
+    {0x1.eb9914d4ac1c8p+8, 0x1.2b67eff65dce8p+708, -0x1.01c4a555ef227p+603},
+    {0x1.f419d873a3f83p+8, 0x1.685463d30fb69p+720, -0x1.adbe823bd312cp+616},
   };
-  for (int i = 0; i < 24; i++)
+  for (int i = 0; i < 39; i++)
     if (x == exceptions[i][0])
     {
       *h = exceptions[i][1];
