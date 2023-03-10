@@ -20,30 +20,23 @@ def exp_ok(x,k):
 def build_table_T(k=16):
    magic = RR("0x1.70f77fc88ae3cp6",16)
    h = 1/magic
+   R = RealField(107)
+   print ("static const double T[256][5] = {")
    maxerr = 0
-   print ("static const double T[256][3] = {")
    for i in range(256):
-      if i==0:
-         x0 = RR(0)
-      else:
-         x0 = x1 = i*2^8*h
-         # compute the exponent difference between sinh(x0) and exp(-x0)
-         r = sinh(x0)/exp(-x0)
-         diff = ZZ(ceil(log(r)/log(2.)))
-         # we need exp(-xi) accurate to only k-diff bits
-         k1 = max(0,k-diff)
-         while true:
-            if sinh_ok(x0,k) and exp_ok(-x0,k1):
-               break
-            x0 = x0.nextbelow()
-            x1 = x1.nextabove()
-            if sinh_ok(x1,k) and exp_ok(-x1,k1):
-               x0 = x1
-               break
-      maxerr = max(maxerr,abs(x0-i*2^8*h))
-      print ("   {" + get_hex(x0) + ", " + get_hex(sinh(x0)) + ", " + get_hex(exp(-x0)) + "}, /* i=" + str(i) + " */")
+      x = i*2^8*h
+      err = n(x.exact_rational()-i*2^8/magic.exact_rational(),200)
+      maxerr = max(maxerr,RR(abs(err)))
+      s = sinh(R(x))
+      sh = RR(s)
+      sl = RR(s-R(sh))
+      c = cosh(R(x))
+      ch = RR(c)
+      cl = RR(c-R(ch))
+      print ("   {" + get_hex(x) + ", " + get_hex(sh) + ", " + get_hex(sl) + ",")
+      print ("    " + get_hex(ch) + ", " + get_hex(cl) + "}, /* i=" + str(i) + " */")
    print ("};")
-   return maxerr
+   print ("maxerr=", maxerr)
 
 # compute (xi,sinh(xi),cosh(xi)) for xi near i/0x1.70f77fc88ae3cp6
 # such that sinh(xi) and cosh(xi) are accurate to 53+k bits
