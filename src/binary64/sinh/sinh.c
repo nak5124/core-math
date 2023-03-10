@@ -1392,8 +1392,8 @@ cr_sinh_fast (double *h, double *l, double x)
 
   d_mul (&h1, &l1, T[i][1], T[i][2], cvh, cvl);
   /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
-     and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-61.96*|cvh + cvl| thus
-     |h1+l1-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-61.95*|h1+l1| */
+     and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-66.98*|cvh + cvl| thus
+     |h1+l1-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-66.97*|h1+l1| */
   d_mul (&h2, &l2, T[i][3], T[i][4], svh, svl);
   /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
      and |svh + svl - sinh(v)| < 2^-65.40*|svh + svl| thus
@@ -1404,8 +1404,8 @@ cr_sinh_fast (double *h, double *l, double x)
 
   /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
 
-  /* 2^-61.95 < 0x1.0ap-62 and 2^-65.39 < 0x1.87p-66 */
-  return 0x1.0ap-62 * h1 + 0x1.87p-66 * (h2 > 0 ? h2 : -h2);
+  /* 2^-66.97 < 0x1.06p-67 and 2^-65.39 < 0x1.87p-66 */
+  return 0x1.06p-67 * h1 + 0x1.87p-66 * (h2 > 0 ? h2 : -h2);
 }
 
 static void
