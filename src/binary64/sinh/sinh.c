@@ -1379,17 +1379,6 @@ cr_sinh_fast (double *h, double *l, double x)
      relative error bounded by 2^-107, and we have to compute:
      (T[i][1]+T[i][2])*(cvh+cvl) + (T[i][3]+T[i][4])*(svh+svl) */
 
-  /* since |x - k/magic| <= 0.00542055, |T[i][0] - i*2^8/magic| < 8e-14,
-     k = i*2^8+j:
-     |v| = |x - T[i][0]|
-       <= |x - k/magic| + |k/magic - i*2^8/magic| + |i*2^8/magic - T[i][0]|
-       <= 0.00542055 + j/magic + 8e-14
-       <= 0.00542055 + 255/magic + 8e-14 <= 2.77.
-     We also have |v| >= 1/magic - (0.00542055 + 8e-14) > 0.00542.
-     Thus |sinh(v)| < sinh(2.77) < 7.95 and |cosh(v)| < cosh(2.77) < 8.02,
-     the absolute error on svh+svl is bounded by 2^-65.40*7.95 < 2^-62.40, and
-     the absolute error on cvh+cvl is bounded by 2^-66.98*8.02 < 2^-63.97. */
-
   d_mul (&h1, &l1, T[i][1], T[i][2], cvh, cvl);
   /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
      and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-66.98*|cvh + cvl| thus
