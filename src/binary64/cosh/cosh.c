@@ -827,272 +827,6 @@ static const double U[256][3] = {
 };
 
 /* The following table is used in the accurate path only.
-   For each i, 0 <= i < 256, let {xi, si, ei} be the T[i] values,
-   such that si and si+ei approximate sinh(xi) and cosh(xi) with a few
-   extra bits, then si + Tl[i][0] and si + ei + Tl[j][1] approximate
-   sinh(xi) and cosh(xi) with at least 107 bits.
-   Generated with build_table_Tl(T0,T1,T2) from the file sinh.sage,
-   where T0,T1,T2 are printed using the printT() routine below. */
-static const double Tl[256][2] = {
-   {0x0p+0, 0x0p+0}, /* i=0 */
-   {0x1.06aceafcaf699p-68, 0x1.89951332da0f8p-60}, /* i=1 */
-   {-0x1.8908874e7cf5fp-63, -0x1.0a4b871342323p-63}, /* i=2 */
-   {-0x1.4ffcceae426f7p-60, -0x1.1ecf389f4e1cbp-68}, /* i=3 */
-   {0x1.4ebc34cc22f4fp-55, -0x1.d328ffac3f7adp-71}, /* i=4 */
-   {-0x1.5d23181c86ca5p-52, 0x1.98a48963b343bp-77}, /* i=5 */
-   {0x1.a54ae33997becp-47, 0x1.2b27d74d5e2bp-79}, /* i=6 */
-   {0x1.ed3724ec15057p-43, -0x1.723b02b47a002p-84}, /* i=7 */
-   {-0x1.ef3d2b27d318bp-42, -0x1.63098ba71cd3fp-87}, /* i=8 */
-   {-0x1.dafca840f6054p-38, 0x1.2a18eedcecd0ep-92}, /* i=9 */
-   {0x1.5ac56fdf3db22p-33, 0x1.863ead7dc0445p-96}, /* i=10 */
-   {0x1.0fde24da43facp-27, -0x1.42fb46ff1f236p-100}, /* i=11 */
-   {0x1.90bd1d0f98439p-23, 0x1.1090ef61fcdp-106}, /* i=12 */
-   {-0x1.b9f6238f23666p-23, 0x1.f41b9508bcp-109}, /* i=13 */
-   {-0x1.f355b53ba7163p-16, 0x1.c1d0fc3ep-111}, /* i=14 */
-   {-0x1.3edecec95bd27p-13, -0x1.82e5cp-119}, /* i=15 */
-   {0x1.1c6067dbca196p-7, 0x1.bfc4p-119}, /* i=16 */
-   {-0x1.a2585e249841ep-3, 0x1.dap-125}, /* i=17 */
-   {-0x1.1ea4f401a237ap+1, 0x0p+0}, /* i=18 */
-   {0x1.a5dc4fa9d2411p+2, 0x0p+0}, /* i=19 */
-   {-0x1.baefb695ffbd9p+9, 0x0p+0}, /* i=20 */
-   {0x1.ca3c0a142ce4p+10, -0x1p-116}, /* i=21 */
-   {-0x1.9299545111483p+9, 0x1p-112}, /* i=22 */
-   {0x1.64520f059e7d6p+21, 0x0p+0}, /* i=23 */
-   {-0x1.04c70c6690d06p+25, 0x0p+0}, /* i=24 */
-   {0x1.7b97fcc17e8d4p+28, 0x0p+0}, /* i=25 */
-   {0x1.58c3230f19effp+31, 0x0p+0}, /* i=26 */
-   {0x1.a939ec6223421p+37, 0x0p+0}, /* i=27 */
-   {-0x1.2e45eb231611p+41, 0x0p+0}, /* i=28 */
-   {-0x1.88e6636b240f3p+45, 0x0p+0}, /* i=29 */
-   {0x1.b4cef1da1d5d2p+49, 0x0p+0}, /* i=30 */
-   {-0x1.7e339a620344ap+51, 0x0p+0}, /* i=31 */
-   {0x1.091c5336824f9p+57, 0x0p+0}, /* i=32 */
-   {0x1.4df2d9154c47ap+61, 0x0p+0}, /* i=33 */
-   {0x1.758ef6205a121p+62, 0x0p+0}, /* i=34 */
-   {-0x1.418a1efe98babp+69, 0x0p+0}, /* i=35 */
-   {0x1.b4fa83a196d3ep+71, 0x0p+0}, /* i=36 */
-   {0x1.51f15b1c1d96fp+77, 0x0p+0}, /* i=37 */
-   {0x1.9c030768f6835p+79, 0x0p+0}, /* i=38 */
-   {0x1.ee7c914f81c64p+83, 0x0p+0}, /* i=39 */
-   {0x1.77730570a3fd8p+89, 0x0p+0}, /* i=40 */
-   {0x1.9b712e3a55c38p+93, 0x0p+0}, /* i=41 */
-   {0x1.f6e7d065cae93p+96, 0x0p+0}, /* i=42 */
-   {-0x1.8c16e27b3f96cp+100, 0x0p+0}, /* i=43 */
-   {0x1.1d2d00d1352a5p+105, 0x0p+0}, /* i=44 */
-   {-0x1.161c8d5cabaeap+107, 0x0p+0}, /* i=45 */
-   {0x1.768f5b026ea75p+113, 0x0p+0}, /* i=46 */
-   {0x1.e30c8b9543f51p+116, 0x0p+0}, /* i=47 */
-   {-0x1.6e6b658417995p+118, 0x0p+0}, /* i=48 */
-   {-0x1.e6dc7bdf696a5p+116, 0x0p+0}, /* i=49 */
-   {0x1.38cdc947ca647p+129, 0x0p+0}, /* i=50 */
-   {0x1.bd7257c83a429p+133, 0x0p+0}, /* i=51 */
-   {0x1.74c3a2c6d3b7ap+137, 0x0p+0}, /* i=52 */
-   {-0x1.407d1b51ac29bp+140, 0x0p+0}, /* i=53 */
-   {0x1.39184547dd6a3p+143, 0x0p+0}, /* i=54 */
-   {-0x1.a85a84babd68ap+149, 0x0p+0}, /* i=55 */
-   {-0x1.ce237fd8c7bd9p+153, 0x0p+0}, /* i=56 */
-   {-0x1.fd780c721f974p+157, 0x0p+0}, /* i=57 */
-   {-0x1.8ee943fe05ae5p+159, 0x0p+0}, /* i=58 */
-   {-0x1.3185f017f792cp+163, 0x0p+0}, /* i=59 */
-   {-0x1.2e6fff5246abep+168, 0x0p+0}, /* i=60 */
-   {0x1.84fadfe9c8801p+173, 0x0p+0}, /* i=61 */
-   {-0x1.a3115b0a299a3p+177, 0x0p+0}, /* i=62 */
-   {0x1.78c7132c77e36p+179, 0x0p+0}, /* i=63 */
-   {0x1.6335df1d6ff7p+185, 0x0p+0}, /* i=64 */
-   {-0x1.efe70270275abp+188, 0x0p+0}, /* i=65 */
-   {-0x1.601d7ae443ac8p+193, 0x0p+0}, /* i=66 */
-   {-0x1.848648afb8f7cp+197, 0x0p+0}, /* i=67 */
-   {0x1.70a36cb771e8ap+200, 0x0p+0}, /* i=68 */
-   {-0x1.5fe13bc5c698bp+205, 0x0p+0}, /* i=69 */
-   {0x1.4cc2f6c46e884p+209, 0x0p+0}, /* i=70 */
-   {0x1.85143897bfcb3p+213, 0x0p+0}, /* i=71 */
-   {-0x1.574380474c2c3p+217, 0x0p+0}, /* i=72 */
-   {0x1.3a26181c01c5p+220, 0x0p+0}, /* i=73 */
-   {0x1.2135695fef858p+224, 0x0p+0}, /* i=74 */
-   {0x1.a98f09bf039e5p+226, 0x0p+0}, /* i=75 */
-   {-0x1.8e5f124a8b5cap+233, 0x0p+0}, /* i=76 */
-   {0x1.c099cec491868p+237, 0x0p+0}, /* i=77 */
-   {0x1.393238ff0cf95p+240, 0x0p+0}, /* i=78 */
-   {-0x1.27f7d0129f616p+245, 0x0p+0}, /* i=79 */
-   {-0x1.7e862a141287ep+249, 0x0p+0}, /* i=80 */
-   {0x1.0a6aabd7ef2d3p+252, 0x0p+0}, /* i=81 */
-   {0x1.9a192cefed2c8p+254, 0x0p+0}, /* i=82 */
-   {0x1.04ba9e7be17a2p+260, 0x0p+0}, /* i=83 */
-   {-0x1.ac9d5056e072fp+264, 0x0p+0}, /* i=84 */
-   {0x1.ebed498c90296p+267, 0x0p+0}, /* i=85 */
-   {-0x1.073cf09f94b4p+273, 0x0p+0}, /* i=86 */
-   {-0x1.0e7a8d8dfb6f2p+277, 0x0p+0}, /* i=87 */
-   {0x1.60457faaff744p+281, 0x0p+0}, /* i=88 */
-   {0x1.8c7b06f501a21p+285, 0x0p+0}, /* i=89 */
-   {0x1.9f4cd6bbc700dp+288, 0x0p+0}, /* i=90 */
-   {0x1.94a17df9c7111p+293, 0x0p+0}, /* i=91 */
-   {0x1.df796a889cad7p+297, 0x0p+0}, /* i=92 */
-   {0x1.3186799828a96p+300, 0x0p+0}, /* i=93 */
-   {0x1.39f0b43095221p+305, 0x0p+0}, /* i=94 */
-   {0x1.be328b9869745p+309, 0x0p+0}, /* i=95 */
-   {-0x1.2bbd18bec103bp+312, 0x0p+0}, /* i=96 */
-   {-0x1.371bb1c77f8d9p+317, 0x0p+0}, /* i=97 */
-   {0x1.9187e473e7d61p+321, 0x0p+0}, /* i=98 */
-   {-0x1.660f94553432bp+325, 0x0p+0}, /* i=99 */
-   {0x1.b6147c209db17p+329, 0x0p+0}, /* i=100 */
-   {0x1.ecb0b92979a72p+331, 0x0p+0}, /* i=101 */
-   {0x1.6f168b702c752p+337, 0x0p+0}, /* i=102 */
-   {-0x1.cef356609e9ebp+339, 0x0p+0}, /* i=103 */
-   {-0x1.b54ab55486df6p+341, 0x0p+0}, /* i=104 */
-   {-0x1.af8f935f7d7bfp+348, 0x0p+0}, /* i=105 */
-   {0x1.0c00faf62e0ep+353, 0x0p+0}, /* i=106 */
-   {-0x1.e15d89f2c724dp+357, 0x0p+0}, /* i=107 */
-   {-0x1.c9ace414e8aedp+360, 0x0p+0}, /* i=108 */
-   {0x1.790056ad98112p+362, 0x0p+0}, /* i=109 */
-   {-0x1.8ae45b93f311fp+369, 0x0p+0}, /* i=110 */
-   {-0x1.37242e076a43p+372, 0x0p+0}, /* i=111 */
-   {-0x1.ca66feca54132p+376, 0x0p+0}, /* i=112 */
-   {0x1.7604774d52754p+381, 0x0p+0}, /* i=113 */
-   {-0x1.6a7fdc4304ac1p+384, 0x0p+0}, /* i=114 */
-   {0x1.b8637cc5db9b8p+388, 0x0p+0}, /* i=115 */
-   {-0x1.a3235cf1f5a78p+393, 0x0p+0}, /* i=116 */
-   {-0x1.0363aee3502d1p+397, 0x0p+0}, /* i=117 */
-   {0x1.85a3b78f500e1p+399, 0x0p+0}, /* i=118 */
-   {-0x1.406fffe30718ep+401, 0x0p+0}, /* i=119 */
-   {-0x1.de6174e7029dp+408, 0x0p+0}, /* i=120 */
-   {-0x1.e743484ceb813p+413, 0x0p+0}, /* i=121 */
-   {-0x1.265014585e72fp+417, 0x0p+0}, /* i=122 */
-   {0x1.8c853c28cb54fp+417, 0x0p+0}, /* i=123 */
-   {0x1.761fcfdcef49ap+425, 0x0p+0}, /* i=124 */
-   {-0x1.ad4c92d4da216p+429, 0x0p+0}, /* i=125 */
-   {0x1.8862be6323cfp+430, 0x0p+0}, /* i=126 */
-   {-0x1.40ad5db43b071p+437, 0x0p+0}, /* i=127 */
-   {0x1.183b55c3e537p+441, 0x0p+0}, /* i=128 */
-   {-0x1.7ecc50aa1b5e4p+445, 0x0p+0}, /* i=129 */
-   {0x1.b52473193b2bep+449, 0x0p+0}, /* i=130 */
-   {0x1.14051eda2b5a5p+452, 0x0p+0}, /* i=131 */
-   {0x1.dcf7d3fe8329cp+456, 0x0p+0}, /* i=132 */
-   {0x1.713d6ae750bebp+459, 0x0p+0}, /* i=133 */
-   {0x1.965fb0d5960bdp+463, 0x0p+0}, /* i=134 */
-   {-0x1.e91505912444bp+467, 0x0p+0}, /* i=135 */
-   {0x1.88df51e9006a1p+473, 0x0p+0}, /* i=136 */
-   {0x1.56422c18b1842p+474, 0x0p+0}, /* i=137 */
-   {-0x1.f383324f3d451p+481, 0x0p+0}, /* i=138 */
-   {-0x1.a21db13716722p+483, 0x0p+0}, /* i=139 */
-   {-0x1.2c4b4ef450de7p+487, 0x0p+0}, /* i=140 */
-   {-0x1.3ab80887843fcp+488, 0x0p+0}, /* i=141 */
-   {0x1.cc5a7cb69910cp+497, 0x0p+0}, /* i=142 */
-   {-0x1.e45df8e510fb6p+500, 0x0p+0}, /* i=143 */
-   {-0x1.ee490a7742a19p+504, 0x0p+0}, /* i=144 */
-   {-0x1.18b91bd8eec7ap+508, 0x0p+0}, /* i=145 */
-   {0x1.8836bfd42bc1p+511, 0x0p+0}, /* i=146 */
-   {0x1.4360e3d1d609dp+515, 0x0p+0}, /* i=147 */
-   {-0x1.eeb5b22d6405fp+521, 0x0p+0}, /* i=148 */
-   {-0x1.0fc1574af0f85p+525, 0x0p+0}, /* i=149 */
-   {-0x1.1d925d1ea1f7ep+529, 0x0p+0}, /* i=150 */
-   {0x1.6906f51679338p+529, 0x0p+0}, /* i=151 */
-   {-0x1.323927ed9b402p+536, 0x0p+0}, /* i=152 */
-   {0x1.413f32cc6add8p+541, 0x0p+0}, /* i=153 */
-   {0x1.f4b84588f4b9bp+543, 0x0p+0}, /* i=154 */
-   {0x1.00ca2bd8d771bp+549, 0x0p+0}, /* i=155 */
-   {-0x1.75e41da870bfep+551, 0x0p+0}, /* i=156 */
-   {-0x1.71abdf57f3e44p+556, 0x0p+0}, /* i=157 */
-   {-0x1.08aa0167dafa3p+561, 0x0p+0}, /* i=158 */
-   {0x1.5ccdd597524a7p+565, 0x0p+0}, /* i=159 */
-   {-0x1.257c128b16a3bp+569, 0x0p+0}, /* i=160 */
-   {0x1.99f6ec0510a89p+571, 0x0p+0}, /* i=161 */
-   {-0x1.9cbc7c8bb05ddp+574, 0x0p+0}, /* i=162 */
-   {-0x1.5247bbaa9ad87p+580, 0x0p+0}, /* i=163 */
-   {-0x1.3041f9ad336afp+584, 0x0p+0}, /* i=164 */
-   {0x1.d1d7e443e6455p+588, 0x0p+0}, /* i=165 */
-   {0x1.01bf5ae72de35p+593, 0x0p+0}, /* i=166 */
-   {-0x1.0221ccceecd2cp+596, 0x0p+0}, /* i=167 */
-   {-0x1.2c667b5bcf6e5p+599, 0x0p+0}, /* i=168 */
-   {0x1.a7b4e60920109p+603, 0x0p+0}, /* i=169 */
-   {0x1.e9491f1f0f2cdp+606, 0x0p+0}, /* i=170 */
-   {0x1.f90ee22052cf4p+610, 0x0p+0}, /* i=171 */
-   {0x1.a6ca24fe9290dp+617, 0x0p+0}, /* i=172 */
-   {-0x1.7265b2e1e0024p+620, 0x0p+0}, /* i=173 */
-   {0x1.8d9bfeac5d692p+625, 0x0p+0}, /* i=174 */
-   {-0x1.4a7b3e833c947p+628, 0x0p+0}, /* i=175 */
-   {0x1.571055c21341dp+632, 0x0p+0}, /* i=176 */
-   {-0x1.9e1fcda7c36fcp+637, 0x0p+0}, /* i=177 */
-   {0x1.f9d708bb93e7cp+641, 0x0p+0}, /* i=178 */
-   {-0x1.e5258660c8389p+645, 0x0p+0}, /* i=179 */
-   {-0x1.e406c88e3a56bp+649, 0x0p+0}, /* i=180 */
-   {-0x1.3b29f64d9fc24p+653, 0x0p+0}, /* i=181 */
-   {0x1.23b4636765f1cp+654, 0x0p+0}, /* i=182 */
-   {0x1.056a65c464405p+660, 0x0p+0}, /* i=183 */
-   {0x1.c9c4b633bda9bp+665, 0x0p+0}, /* i=184 */
-   {0x1.1cd75ebe86c9p+667, 0x0p+0}, /* i=185 */
-   {-0x1.ee0a21be5723dp+672, 0x0p+0}, /* i=186 */
-   {-0x1.96a2eedd5af78p+669, 0x0p+0}, /* i=187 */
-   {-0x1.214900d86efep+681, 0x0p+0}, /* i=188 */
-   {-0x1.35c5cbc382dbap+684, 0x0p+0}, /* i=189 */
-   {-0x1.78dc634f77139p+688, 0x0p+0}, /* i=190 */
-   {-0x1.638236a772c9fp+691, 0x0p+0}, /* i=191 */
-   {-0x1.7421a8ece234dp+696, 0x0p+0}, /* i=192 */
-   {0x1.8cc2f1b6c340ep+700, 0x0p+0}, /* i=193 */
-   {-0x1.7b0b22f29fc26p+705, 0x0p+0}, /* i=194 */
-   {0x1.cecc491832d13p+704, 0x0p+0}, /* i=195 */
-   {0x1.f67ce173b0d05p+711, 0x0p+0}, /* i=196 */
-   {0x1.1c7f01f22bee3p+714, 0x0p+0}, /* i=197 */
-   {-0x1.0bbf8b14a2cf3p+718, 0x0p+0}, /* i=198 */
-   {0x1.11c0bdd3625efp+721, 0x0p+0}, /* i=199 */
-   {0x1.cd9a3fcbca22ap+729, 0x0p+0}, /* i=200 */
-   {0x1.2a8fa60062e02p+732, 0x0p+0}, /* i=201 */
-   {-0x1.4c459f92f4782p+736, 0x0p+0}, /* i=202 */
-   {-0x1.a5f12240609e8p+740, 0x0p+0}, /* i=203 */
-   {0x1.fac2281dcd501p+744, 0x0p+0}, /* i=204 */
-   {0x1.9bd7e4cf7c3c9p+747, 0x0p+0}, /* i=205 */
-   {0x1.2c16a1542ba2fp+753, 0x0p+0}, /* i=206 */
-   {-0x1.328a72b57ddedp+756, 0x0p+0}, /* i=207 */
-   {-0x1.8ccf6f5340f04p+760, 0x0p+0}, /* i=208 */
-   {0x1.b01921d47da4dp+763, 0x0p+0}, /* i=209 */
-   {-0x1.dc1bbfe6fa924p+768, 0x0p+0}, /* i=210 */
-   {-0x1.44d29a0adf1b2p+773, 0x0p+0}, /* i=211 */
-   {0x1.2fa8c6902b4e4p+777, 0x0p+0}, /* i=212 */
-   {0x1.e0970bcbcfa3dp+781, 0x0p+0}, /* i=213 */
-   {0x1.9aa21255fdf03p+784, 0x0p+0}, /* i=214 */
-   {-0x1.8eb87c961f527p+788, 0x0p+0}, /* i=215 */
-   {-0x1.4288c548a39d1p+792, 0x0p+0}, /* i=216 */
-   {0x1.8b8b3b9842aedp+797, 0x0p+0}, /* i=217 */
-   {0x1.7140767725542p+801, 0x0p+0}, /* i=218 */
-   {-0x1.73aac8e435bfap+803, 0x0p+0}, /* i=219 */
-   {0x1.bfdbc5451fd4ep+809, 0x0p+0}, /* i=220 */
-   {-0x1.7782ca8657155p+812, 0x0p+0}, /* i=221 */
-   {-0x1.904f1fbd3be86p+817, 0x0p+0}, /* i=222 */
-   {-0x1.b1cc912730d28p+821, 0x0p+0}, /* i=223 */
-   {0x1.ea7f86a0e9014p+825, 0x0p+0}, /* i=224 */
-   {0x1.5f00241477d19p+829, 0x0p+0}, /* i=225 */
-   {0x1.40d4bfddd6e0dp+833, 0x0p+0}, /* i=226 */
-   {0x1.ffd47987dfc74p+837, 0x0p+0}, /* i=227 */
-   {0x1.9f24294062598p+839, 0x0p+0}, /* i=228 */
-   {0x1.e57e3109b9fa4p+844, 0x0p+0}, /* i=229 */
-   {-0x1.ad8e9c94e3977p+849, 0x0p+0}, /* i=230 */
-   {-0x1.8286a2957e77bp+853, 0x0p+0}, /* i=231 */
-   {-0x1.24364d6e33b21p+856, 0x0p+0}, /* i=232 */
-   {0x1.0cd24e0be255cp+861, 0x0p+0}, /* i=233 */
-   {0x1.11a1d20168abep+865, 0x0p+0}, /* i=234 */
-   {-0x1.37111513f699fp+869, 0x0p+0}, /* i=235 */
-   {0x1.81482d1952c3ap+869, 0x0p+0}, /* i=236 */
-   {0x1.d512d5dd7e3cbp+877, 0x0p+0}, /* i=237 */
-   {0x1.a0d6f12d9f5a3p+881, 0x0p+0}, /* i=238 */
-   {0x1.14ac9b109e7d4p+876, 0x0p+0}, /* i=239 */
-   {-0x1.e65eb1e11b6b6p+889, 0x0p+0}, /* i=240 */
-   {0x1.5cf8a97a38767p+887, 0x0p+0}, /* i=241 */
-   {0x1.cd78e41263d53p+897, 0x0p+0}, /* i=242 */
-   {0x1.5520738a9eaadp+900, 0x0p+0}, /* i=243 */
-   {0x1.0270ea47ee714p+897, 0x0p+0}, /* i=244 */
-   {-0x1.103da3ae27153p+909, 0x0p+0}, /* i=245 */
-   {0x1.0becb01dbdae2p+911, 0x0p+0}, /* i=246 */
-   {0x1.a4cfe7792b76cp+916, 0x0p+0}, /* i=247 */
-   {-0x1.f18ce502a948ep+919, 0x0p+0}, /* i=248 */
-   {-0x1.6f785ea892c19p+924, 0x0p+0}, /* i=249 */
-   {0x1.5df0ca797ea65p+929, 0x0p+0}, /* i=250 */
-   {-0x1.591b32bdcaa3cp+933, 0x0p+0}, /* i=251 */
-   {0x1.c833cdff5a68cp+937, 0x0p+0}, /* i=252 */
-   {0x1.03f99b046bf52p+938, 0x0p+0}, /* i=253 */
-   {-0x1.d1b74f3418125p+944, 0x0p+0}, /* i=254 */
-   {0x1.3300ca4eeb124p+950, 0x0p+0}, /* i=255 */
-};
-
-/* The following table is used in the accurate path only.
    For each j, 0 <= j < 256, let {xj, sj, cj} be the U[j] values,
    such that sj and cj approximate sinh(xj) and cosh(xj) with a few
    extra bits, then sj + Ul[j][0] and cj + Ul[j][1] approximate
@@ -1567,9 +1301,9 @@ cr_cosh_fast (double *h, double *l, double x)
      sinh(U[j][0])*sinh(w) + cosh(U[j][0])*cosh(w)
      = U[j][1]*sinh(w) + U[j][2]*cosh(w) */
 
-  /* since |T[i][0] - i*2^8/magic| < 2.36e-8 and
+  /* since |T[i][0] - i*2^8/magic| < 8e-14 and
            |U[j][0] - j/magic| < 9.14e-07, we have:
-     |x - T[i][0] - U[j][0]| < 0.00542055 + 2.36e-8 + 9.14e-07 < 0.00543 */
+     |x - T[i][0] - U[j][0]| < 0.00542055 + 8e-14 + 9.14e-07 < 0.00543 */
 
   /* we have |w| < 0.00543 */
   double swh, swl, cwh, cwl;
@@ -1629,36 +1363,26 @@ cr_cosh_fast (double *h, double *l, double x)
 
   /* At this point svh+svl approximates sinh(v) with relative error bounded by
      2^-65.40, cvh+cvl approximates cosh(v) with relative error bounded
-     by 2^-66.98, T[i][1] approximates sinh(T[i][0]) with relative error
-     bounded by 2^-69, T[i][1]+T[i][2] approximates cosh(T[i][0]) with
-     relative error bounded by 2^-69, and we have to compute:
-     (T[i][1]+T[i][2])*(cvh+cvl) + T[i][1]*(svh+svl) =
-     T[i][2]*(cvh+cvl) + T[i][1]*(cvh+cvl+svh+svl) */
+     by 2^-66.98, T[i][1]+T[i][2] approximates sinh(T[i][0]) with relative
+     error bounded by 2^-107, T[i][3]+T[i][4] approximates cosh(T[i][0]) with
+     relative error bounded by 2^-107, and we have to compute:
+     (T[i][3]+T[i][4])*(cvh+cvl) + (T[i][1]+T[i][2])*(svh+svl) */
   if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
   if (x == TRACE) printf ("v=%la cvh=%la cvl=%la\n", v, cvh, cvl);
 
-  /* since |x - k/magic| <= 0.00542055, |T[i][0] - i*2^8/magic| < 2.36e-8,
+  /* since |x - k/magic| <= 0.00542055, |T[i][0] - i*2^8/magic| < 8e-14,
      k = i*2^8+j:
      |v| = |x - T[i][0]|
        <= |x - k/magic| + |k/magic - i*2^8/magic| + |i*2^8/magic - T[i][0]|
-       <= 0.00542055 + j/magic + 2.36e-8
-       <= 0.00542055 + 255/magic + 2.36e-8 <= 2.77.
-     We also have |v| >= 1/magic - (0.00542055 + 2.36e-8) > 0.00542.
+       <= 0.00542055 + j/magic + 8e-14
+       <= 0.00542055 + 255/magic + 8e-14 <= 2.77.
+     We also have |v| >= 1/magic - (0.00542055 + 8e-14) > 0.00542.
      Thus |sinh(v)| < sinh(2.77) < 7.95 and |cosh(v)| < cosh(2.77) < 8.02,
      the absolute error on svh+svl is bounded by 2^-65.40*7.95 < 2^-62.40, and
      the absolute error on cvh+cvl is bounded by 2^-66.98*8.02 < 2^-63.97. */
 
-  fast_sum2 (&svh, &svl, cvh, cvl, svh, svl);
-  /* absolute error on svh+svl bounded by (neglecting the error in fast_sum2):
-     2^-62.40+2^-63.97 < 2^-61.98.
-     Since |v| > 0.00542, the cancellation factor
-     (cosh(v)+sinh(v))/(cosh(v)-sinh(v)) is bounded by 1.0109,
-     thus the relative error on svh+svl is < 1.0109*2^-61.98 < 2^-61.96. */
-  if (x == TRACE) printf ("1400: svh=%la svl=%la\n", svh, svl);
-
-  s_mul (&h1, &l1, T[i][2], cvh, cvl); /* T[i][2]*(cvh+cvl) */
-  if (x == TRACE) printf ("T[i][2]=%la\n", T[i][2]);
-  /* |T[i][2] - exp(T[i][0])| < 2^-17 ulp(T[i][2]) <= 2^-69 |T[i][2]|
+  d_mul (&h1, &l1, T[i][3], T[i][4], cvh, cvl); /* (T[i][3]+T[i][4])*(cvh+cvl) */
+  /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
      and |cvh + cvl - cosh(v)| < 2^-66.98*|cvh + cvl| thus
      |h1+l1-exp(T[i][0])*cosh(v)| < 2^-66.66*|h1+l1| */
   if (x == TRACE) printf ("t=%la h1=%la l1=%la\n", T[i][0], h1, l1);
