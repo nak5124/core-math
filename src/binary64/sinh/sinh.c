@@ -845,7 +845,7 @@ static const double U[256][3] = {
    extra bits, then sj + Ul[j][0] and cj + Ul[j][1] approximate
    sinh(xj) and cosh(xj) with at least 107 bits.
    Generated with build_table_Ul(U0,U1,U2) from the file sinh.sage,
-   where U0,U1,U2 are printed using the printU() routine below. */
+   where U0,U1,U2 contain U[i][0],U[i][1],U[i][2] respectively. */
 static const double Ul[256][2] = {
    {0x0p+0, 0x0p+0}, /* i=0 */
    {-0x1.cc125d97df011p-76, -0x1.e6bae12de82cep-70}, /* i=1 */
@@ -1549,22 +1549,6 @@ cr_sinh_accurate (double *h, double *l, double x, double s)
 
 #define MASK 0x7fffffffffffffff /* to mask the sign bit */
 
-#if 0
-static void
-printU ()
-{
-  printf ("LOG U0=dict()\n");
-  printf ("LOG U1=dict()\n");
-  printf ("LOG U2=dict()\n");
-  for (int i = 0; i < 256; i++)
-  {
-    printf ("LOG U0[%d]='%la'\n", i, U[i][0]);
-    printf ("LOG U1[%d]='%la'\n", i, U[i][1]);
-    printf ("LOG U2[%d]='%la'\n", i, U[i][2]);
-  }
-}
-#endif
-
 double
 cr_sinh (double x)
 {
@@ -1572,11 +1556,6 @@ cr_sinh (double x)
   int e = (v.u >> 52) - 0x3ff;
   int s = v.u >> 63; /* sign bit */
   v.u &= (uint64_t) MASK; /* get absolute value */
-
-#if 0
-  static int count = 0;
-  if (count++ == 0) printU();
-#endif
 
   if (e == 0x400 || e == 0xc00 || v.f >= 0x1.633ce8fb9f87ep+9)
     /* NaN or overflow */
