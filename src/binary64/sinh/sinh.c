@@ -844,7 +844,7 @@ static const double U[256][3] = {
    extra bits, then sj + Ul[j][0] and cj + Ul[j][1] approximate
    sinh(xj) and cosh(xj) with at least 107 bits.
    Generated with build_table_Ul(U0,U1,U2) from the file sinh.sage,
-   where U0,U1,U2 are printed using the printU() routine below. */
+   where U0,U1,U2 contain U[][0],U[][1],U[][2] respectively. */
 static const double Ul[256][2] = {
    {0x0p+0, 0x0p+0}, /* i=0 */
    {-0x1.cc125d97df011p-76, -0x1.e6bae12de82cep-70}, /* i=1 */
