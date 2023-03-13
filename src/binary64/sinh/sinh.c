@@ -44,6 +44,7 @@ SOFTWARE.
      both sinh(t) and cosh(t) have some extra bits of accuracy)
 */       
 
+#include <stdio.h>
 #include <stdint.h>
 
 /* For 0 <= i < 256, T[i] = {xi, shi, sli, chi, cli} such that xi is near
@@ -1397,15 +1398,18 @@ cr_sinh_fast (double *h, double *l, double x)
   return 0x1.06p-67 * h1 + 0x1.87p-66 * (h2 > 0 ? h2 : -h2);
 }
 
+/* return h + l which approximates s*sinh(x) where s in {-1,1} */
 static void
-cr_sinh_accurate (double *h, double *l, double x)
+cr_sinh_accurate (double *h, double *l, double x, double s)
 {
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
+  if (x == 0x1.01898854d0c2cp+3) printf ("k=%d i=%d j=%d s=%la\n", k, i, j, s);
   double v = x - T[i][0];
   double w = v - U[j][0];
-  eval_S2 (h, l, w);
+  double swh, swl, cwh, cwl;
+  eval_S2 (h, l, s * w);
   if (k == 0)
   {
     static double exceptions[][3] = {
@@ -1413,22 +1417,36 @@ cr_sinh_accurate (double *h, double *l, double x)
       {0x1.92a2ee78ed49cp-23, 0x1.92a2ee78ed4c6p-23, -0x1.0000000000001p-76},
       {0x1.bcee70ebe7ec9p-25, 0x1.bcee70ebe7ecdp-25, -0x1.fffffffffffffp-79},
       {0x1.e72460254649ap-19, 0x1.e72460254ae19p-19, 0x1.fffffffffffffp-73},
+      {0x1.7137449123ef6p-25, 0x1.7137449123ef8p-25, -0x1.5aae9213aee62p-130},
+      {0x1.3bacd6561ff5dp-24, 0x1.3bacd6561ff62p-24, -0x1.9ca0914e92069p-129},
+      {0x1.c74847a112b64p-24, 0x1.c74847a112b73p-24, -0x1.0417199dde536p-130},
+      {0x1.40d9df94f1bdfp-23, 0x1.40d9df94f1bf4p-23, -0x1.d764a8c0ad303p-129},
+      {0x1.61246d6ad9aebp-23, 0x1.61246d6ad9b07p-23, -0x1.bc498c2030947p-128},
+      {0x1.b4d706debff0bp-23, 0x1.b4d706debff4p-23, -0x1.e99f636bab598p-131},
+      {0x1.a3b0e6ae5f35ep-22, 0x1.a3b0e6ae5f41ap-22, -0x1.ea40783d1917bp-127},
+      {0x1.5d27f96898852p-21, 0x1.5d27f96898a03p-21, -0x1.6bb37f4db28f4p-127},
+      {0x1.dfffffffffe3ep-20, 0x1.e000000000fd2p-20, -0x1.dcba6924923fdp-146},
+      {0x1.dfffffffff8f8p-19, 0x1.e000000003f48p-19, -0x1.dcba69249223ep-139},
+      {0x1.e37360602a22ep-19, 0x1.e37360602ea05p-19, -0x1.d89d4c503bca7p-125},
+      {0x1.dffffffffe3ep-18, 0x1.e00000000fd2p-18, -0x1.dcba692491b43p-132},
+      {0x1.67fffffffd08ap-17, 0x1.680000001ab26p-17, -0x1.fd1590076c50fp-128},
+      {0x1.dffffffff8f8p-17, 0x1.e00000003f48p-17, -0x1.dcba69248ff54p-125},
     };
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 18; i++)
       if (x == exceptions[i][0])
       {
-        *h = exceptions[i][1];
-        *l = exceptions[i][2];
+        *h = s * exceptions[i][1];
+        *l = s * exceptions[i][2];
         return;
       }
+    return;
   }
 
-  double swh, swl, cwh, cwl;
   swh = *h;
   swl = *l;
   eval_C2 (&cwh, &cwl, w);
   double h1, l1, h2, l2;
-  d_mul (&h1, &l1, U[j][1], Ul[j][0], cwh, cwl);
+  d_mul (&h1, &l1, s * U[j][1], s * Ul[j][0], cwh, cwl);
   d_mul (&h2, &l2, U[j][2], Ul[j][1], swh, swl);
   fast_sum2 (h, l, h1, l1, h2, l2);
   if (i == 0)
@@ -1459,8 +1477,8 @@ cr_sinh_accurate (double *h, double *l, double x)
     for (int i = 0; i < 21; i++)
       if (x == exceptions[i][0])
       {
-        *h = exceptions[i][1];
-        *l = exceptions[i][2];
+        *h = s * exceptions[i][1];
+        *l = s * exceptions[i][2];
         return;
       }
   }
@@ -1509,16 +1527,16 @@ cr_sinh_accurate (double *h, double *l, double x)
   for (int i = 0; i < 39; i++)
     if (x == exceptions[i][0])
     {
-      *h = exceptions[i][1];
-      *l = exceptions[i][2];
+      *h = s * exceptions[i][1];
+      *l = s * exceptions[i][2];
       return;
     }
 
   double svh, svl, cvh, cvl;
   svh = *h;
   svl = *l;
-  /* svh+svl approximates sinh(v) */
-  d_mul (&h1, &l1, U[j][1], Ul[j][0], swh, swl);
+  /* svh+svl approximates s*sinh(v) */
+  d_mul (&h1, &l1, s * U[j][1], s * Ul[j][0], swh, swl);
   d_mul (&h2, &l2, U[j][2], Ul[j][1], cwh, cwl);
   fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
   d_mul (&h1, &l1, T[i][1], T[i][2], cvh, cvl);
@@ -1567,7 +1585,7 @@ cr_sinh (double x)
   
   double h, l;
   double err = cr_sinh_fast (&h, &l, v.f);
-  double sign[] = { 1.0, -1.0 };
+  static double sign[] = { 1.0, -1.0 };
   h *= sign[s];
   l *= sign[s];
   
@@ -1582,8 +1600,6 @@ cr_sinh (double x)
   if (v.f <= 0x1.7137449123ef6p-26)
     return __builtin_fma (x, 0x1p-54, x);
 
-  cr_sinh_accurate (&h, &l, v.f);
-  h *= sign[s];
-  l *= sign[s];
+  cr_sinh_accurate (&h, &l, v.f, sign[s]);
   return h + l;
 }
