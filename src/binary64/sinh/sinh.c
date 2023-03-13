@@ -1398,17 +1398,18 @@ cr_sinh_fast (double *h, double *l, double x)
   return 0x1.06p-67 * h1 + 0x1.87p-66 * (h2 > 0 ? h2 : -h2);
 }
 
-/* return h + l which approximates s*sinh(x) where s in {-1,1} */
+/* return h + l which approximates sinh(s*x) where s in {-1,1} and x > 0 */
 static void
 cr_sinh_accurate (double *h, double *l, double x, double s)
 {
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
-  if (x == 0x1.01898854d0c2cp+3) printf ("k=%d i=%d j=%d s=%la\n", k, i, j, s);
   double v = x - T[i][0];
   double w = v - U[j][0];
   double swh, swl, cwh, cwl;
+  /* we approximate directly sinh on s*x and not x, since for rounding
+     towards -Inf or +Inf, this requires fewer exceptional cases */
   eval_S2 (h, l, s * w);
   if (k == 0)
   {
@@ -1473,14 +1474,16 @@ cr_sinh_accurate (double *h, double *l, double x, double s)
       {0x1.a00735384ad44p-3, 0x1.a2e533e5b2ea3p-3, -0x1.6fc3324320414p-109},
       {0x1.e90f16eb88c09p-2, 0x1.fbdd4a37760b7p-2, -0x1.f6968f01db399p-108},
       {0x1.2f5d3b178914ap+0, 0x1.7b8516ffd2406p+0, -0x1.27e918302273ep-104},
+      {0x1.6a96fdf8410d7p-3, 0x1.6c7cadc55db3p-3, 0x1.14031b3d0ff6dp-109},
     };
-    for (int i = 0; i < 21; i++)
+    for (int i = 0; i < 22; i++)
       if (x == exceptions[i][0])
       {
         *h = s * exceptions[i][1];
         *l = s * exceptions[i][2];
         return;
       }
+    return;
   }
 
   static double exceptions[][3] = {
@@ -1535,11 +1538,11 @@ cr_sinh_accurate (double *h, double *l, double x, double s)
   double svh, svl, cvh, cvl;
   svh = *h;
   svl = *l;
-  /* svh+svl approximates s*sinh(v) */
-  d_mul (&h1, &l1, s * U[j][1], s * Ul[j][0], swh, swl);
+  /* svh+svl approximates sinh(s*x) */
+  d_mul (&h1, &l1, U[j][1], Ul[j][0], s * swh, s * swl);
   d_mul (&h2, &l2, U[j][2], Ul[j][1], cwh, cwl);
-  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(v) */
-  d_mul (&h1, &l1, T[i][1], T[i][2], cvh, cvl);
+  fast_sum2 (&cvh, &cvl, h2, l2, h1, l1); /* cvh+cvl approximates cosh(x) */
+  d_mul (&h1, &l1, s * T[i][1], s * T[i][2], cvh, cvl);
   d_mul (&h2, &l2, T[i][3], T[i][4], svh, svl);
   fast_sum2 (h, l, h1, l1, h2, l2);
 }
