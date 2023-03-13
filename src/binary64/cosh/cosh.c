@@ -1417,6 +1417,7 @@ cr_cosh_accurate (double *h, double *l, double x)
         *l = exceptions[i][2];
         return;
       }
+    return;
   }
 
   double swh, swl, cwh, cwl;
@@ -1442,6 +1443,7 @@ cr_cosh_accurate (double *h, double *l, double x)
         *l = exceptions[i][2];
         return;
       }
+    return;
   }
 
   static double exceptions[][3] = {
