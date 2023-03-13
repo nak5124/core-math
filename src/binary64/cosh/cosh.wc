@@ -2026,3 +2026,5 @@
 0x1.ff59f1eeb6e2cp+4
 0x1.ffd933865535ep-15
 0x1.fff020807d1f7p-3
+# non-regression tests
+0x1.3c44d4133d14dp-8
