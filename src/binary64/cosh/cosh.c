@@ -32,7 +32,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 
-#define TRACE 0x1.3c44d4133d14dp-8
+#define TRACE 0x1.0a7b6e3fed72p+2
 
 /* For 0 <= i < 256, T[i] = {xi, shi, sli, chi, cli} such that xi is near
    i*2^8/magic with magic = 0x1.70f77fc88ae3cp6, and shi+sli, chi+cli
@@ -1399,6 +1399,7 @@ cr_cosh_accurate (double *h, double *l, double x)
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
+  //if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   double w = v - U[j][0];
   eval_C2 (h, l, w);
@@ -1409,8 +1410,10 @@ cr_cosh_accurate (double *h, double *l, double x)
       {0x1.10d6a14c0d526p-9, 0x1.000024591a32bp+0, -0x1.fffffffffffffp-54},
       {0x1.12d0f92fb5032p-19, 0x1.00000000024e1p+0, -0x1.fffffffffffffp-54},
       {0x1.90b8278768adcp-21, 0x1.00000000004e7p+0, -0x1.fffffffffffffp-54},
+      {0x1p-26, 0x1.0000000000001p+0, -0x1.fffffffffffffp-54},
+      {0x1.6370e7b6f753ap-9, 0x1.00003db04d086p+0, -0x1.3d2b9f4aff551p-107},
     };
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 6; i++)
       if (x == exceptions[i][0])
       {
         *h = exceptions[i][1];
@@ -1435,8 +1438,18 @@ cr_cosh_accurate (double *h, double *l, double x)
       {0x1.2ff1e16810fe7p-4, 0x1.00b4846f2860fp+0, -0x1.fffffffffffffp-54},
       {0x1.52268c6359f0ep-1, 0x1.39e464805bf01p+0, -0x1.fffffffffffffp-54},
       {0x1.b4ae17e3720efp-8, 0x1.0001747116305p+0, -0x1.fffffffffffffp-54},
+      {0x1.52a11832e847dp-3, 0x1.0381e68cac923p+0, 0x1.ad02489951eafp-105},
+      {0x1.bf0305e2c6c37p-3, 0x1.061f4c39e16f2p+0, 0x1.a465d8b744339p-108},
+      {0x1.17326ffc09f68p-2, 0x1.099318a43ac8p+0, 0x1.b5528a422562bp-105},
+      {0x1.d465e15c8b453p-8, 0x1.0001ac82cbce6p+0, 0x1.c5db5628ce7dap-106},
+      {0x1.1585720f35cd9p+0, 0x1.a5bf3acfde4b2p+0, 0x1.84f0d3f6c616cp-106},
+      {0x1.9a5e3cbe1985ep-4, 0x1.01492f72f984bp+0, -0x1.2e9a84cc30035p-107},
+      {0x1.3d27bf16d8bdbp-2, 0x1.0c6091056e06ap+0, -0x1.37b240da0689ep-107},
+      {0x1.c36a970e51ebcp-7, 0x1.00063807eb4c3p+0, -0x1.8c9bb749e0ae7p-105},
+      {0x1.17d8a9f206217p-6, 0x1.00098f5f09be4p+0, -0x1.a981ad62b5028p-108},
+      {0x1.104b648f113a1p+0, 0x1.9efdca62b700ap+0, -0x1.74273be411d75p-109},
     };
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 14; i++)
       if (x == exceptions[i][0])
       {
         *h = exceptions[i][1];
@@ -1449,8 +1462,11 @@ cr_cosh_accurate (double *h, double *l, double x)
   static double exceptions[][3] = {
     {0x1.7b50c8f562f3bp+4, 0x1.2688d628ec393p+33, 0x1.fffffffffffffp-21},
     {0x1.ea5f2f2e4b0c5p+1, 0x1.710db0cd0fed6p+4, -0x1p-49},
+    {0x1.4a869881f72acp+9, 0x1.9ea7540a3d1f9p+952, -0x1.2d3d01e27f50bp+848},
+    {0x1.0a7b6e3fed72p+2, 0x1.0151def34c2b8p+5, -0x1.367d001b5ee14p-99},
+    {0x1.204684c1167e9p+8, 0x1.db9797d3d32e8p+414, -0x1.51e78c6bad663p+310},
   };
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 5; i++)
     if (x == exceptions[i][0])
     {
       *h = exceptions[i][1];
