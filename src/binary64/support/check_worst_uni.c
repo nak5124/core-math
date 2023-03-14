@@ -1,6 +1,6 @@
 /* Check correctness of univariate binary64 function on worst cases.
 
-Copyright (c) 2022 Stéphane Glondu, Inria.
+Copyright (c) 2022-2023 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -93,7 +93,7 @@ void
 doloop(void)
 {
   double *items;
-  int count, failures = 0, skipped = 0;
+  int count, tests = 0, failures = 0, skipped = 0;
 
   readstdin(&items, &count);
 
@@ -105,6 +105,7 @@ doloop(void)
     double x = items[i];
     double z1 = ref_function_under_test(x);
     double z2 = cr_function_under_test(x);
+    tests ++;
     /* Note: the test z1 != z2 would not distinguish +0 and -0. */
     if (z2 == 0) skipped ++;
     if (z2 != 0 && asuint64 (z1) != asuint64 (z2)) {
@@ -116,10 +117,11 @@ doloop(void)
       exit(1);
 #endif
     }
-#ifdef WORST_SYMMETRIC      
+#ifdef WORST_SYMMETRIC
     x = -x;
     z1 = ref_function_under_test(x);
     z2 = cr_function_under_test(x);
+    tests ++;
     if (z2 == 0) skipped ++;
     if (z2 != 0 && asuint64 (z1) != asuint64 (z2)) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
@@ -134,7 +136,8 @@ doloop(void)
   }
 
   free(items);
-  printf("%d tests passed, %d failure(s), %d skipped\n", count, failures, skipped);
+  printf("%d tests passed, %d failure(s), %d skipped\n",
+         tests, failures, skipped);
 }
 
 int
