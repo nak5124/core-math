@@ -25,23 +25,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* References:
-   [1] IA-64 and Elementary Functions, Peter Markstein,
-       Hewlett-Packard Professional Books, 2000, Chapter 16.
+/* Both in the fast path and in the accurate path, sinh(x) and cosh(x) are
+   approximated with double-double representations sh+sl and ch+cl, which
+   are divided to obtain an approximation of tanh(x).
 
-   The argument reduction here differs from that proposed in [1]:
-   - we write x = t + u + w where sinh(t), cosh(t), sinh(u), cosh(u)
-     are approximated by a binary64 numbers from a table (produced
-     using Gal's technique, thus with some extra bits of accuracy)
-   - if t=u=0, approximate directly sinh(w) using a minimax polynomial
-   - if t=0, write v=u+w, and approximate sinh(v) as sinh(u)*cosh(w)
-     +cosh(u)*sinh(w) where sinh(u), cosh(u) are from the table, and cosh(w),
-     sinh(w) are approximated using minimax polynomials
-   - otherwise, approximate sinh(t+v) as sinh(t)*cosh(v)+cosh(t)*sinh(v)
-     where sinh(v) is obtained as above, cosh(v) is obtained similarly,
-     and sinh(t), cosh(t) are read from a table (a little variant is used
-     here since it is not always possible to find binary64 values t such that
-     both sinh(t) and cosh(t) have some extra bits of accuracy)
+   For the error analysis in the approximations for sinh(x) and cosh(x),
+   see ../sinh/sinh.c.
+
+   References:
+   [1] Modern Computer Arithmetic, Richard Brent and Paul Zimmermann,
+       Cambridge University Press, 2011.
+   [2] Note on FastTwoSum with Directed Roundings, Paul Zimmermann,
+       https://hal.inria.fr/hal-03798376, 2022.
 */       
 
 #include <stdio.h>
@@ -1123,10 +1118,7 @@ fast_two_sum (double *hi, double *lo, double a, double b)
      then hi = 1 + 2^-52, e = 2^-52 (it can be proven that
      e is always exact), and lo = -2^52 + 2^-105, thus
      hi + lo = 1 + 2^-105 <> a + b = 1 + 2^-200.
-     A bound on the error is given
-     in "Note on FastTwoSum with Directed Roundings"
-     by Paul Zimmermann, https://hal.inria.fr/hal-03798376, 2022.
-     Theorem 1 says that
+     A bound on the error is given in Theorem 1 from [2]:
      the difference between a+b and hi+lo is bounded by 2u^2|a+b|
      and also by 2u^2|hi|. Here u=2^-53, thus we get:
      |(a+b)-(hi+lo)| <= 2^-105 min(|a+b|,|hi|) */
@@ -1166,15 +1158,99 @@ s_mul (double *hi, double *lo, double a, double bh, double bl)
   /* the error is bounded by ulp(lo), where |lo| < |a*bl| + ulp(hi) */
 }
 
-/* Put in hi+lo an approximation of (ah+al)*(bh+bl) */
+/* Put in hi+lo an approximation of (ah+al)*(bh+bl), with relative error
+   bounded by 2^-101.41, assuming |al| < ulp(ah) and |bl| < ulp(bh). */
 static inline void
 d_mul (double *hi, double *lo, double ah, double al, double bh, double bl)
 {
   double s, t;
 
   a_mul (hi, &s, ah, bh); /* exact */
+  /* For the error analysis, we assume |al| < ulp(ah) and |bl| < ulp(bh).
+     Also, to simplify the analysis, we assume 1 <= ah, bh < 2,
+     thus 1 <= hi < 4, and |al|, |bl| < 2^-52, and |s| < ulp(hi) <= 2^-51. */
   t = __builtin_fma (al, bh, s);
+  /* |t| < |al|*bh+|s| <= 2^-52*2+2^-51 = 2^-50, and the rounding error is
+     bounded by ulp(t-eps) = 2^-103. */
   *lo = __builtin_fma (ah, bl, t);
+  /* |lo| < ah*|bl|+|t| <= 2*2^-52+2^-50 < 2^-49.41, and the rounding error is
+     bounded by ulp(2^-49.41) = 2^-102. */
+  /* The total rounding error is bounded by 2^-103+2^-102 <= 2^-101.41,
+     thus also 2^-101.41 relatively to hi+lo (and this relative bound
+     holds whatever the binades of ah+al and bh+bl). */
+}
+
+/* Put in hi+lo an approximation of 1/(bh+bl),
+   with |lo| < 4 ulp(hi), and relative error < 2^-102.41
+   if (bh,bl) is normalized. */
+static inline void
+d_inv (double *hi, double *lo, double bh, double bl)
+{
+  /* Warning: the error analysis below assumes |bl| < ulp(bh) at input.
+     If this is not satisfied, call fast_two_sum() to normalize (bh,bl). */
+  /* for the error analysis, without loss of generality,
+     we assume 1/2 <= bh < 1, thus ulp(bh) = 2^-53 */
+  *hi = 1.0 / bh;
+  /* since bh is in the binade (1/2,1), hi is in the binade (1,2),
+     where the ulp value is 2^-52, thus |hi - 1/bh| < 2^-52 */
+  /* We use Newton's iteration: hi -> hi + hi*(1-hi*b).
+     Lemma 3.7 from [1] says that if hi' = hi + hi*(1-hi*b):
+     |hi' - 1/b| <= hi^2/theta^3*(1/b-hi)^2
+     with min(1/b,hi) <= theta <= max(1/b,hi).
+     (a) if hi <= 1/bh, then hi <= theta thus hi^2/theta^3 <= 1/theta.
+     (b) if 1/bh <= hi, then 1/bh <= theta <= hi, thus since
+         |hi - 1/bh| < 2^-52, theta >= hi - 2^-52 >= hi (1 - 2^-52) thus
+         hi^2/theta^3 <= 1/theta * 1/(1 - 2^-52)^2.
+     In both cases (a) and (b) we have since theta >= 1:
+     hi^2/theta^3 <= 1/theta * 1/(1 - 2^-52)^2 <= 1/(1 - 2^-52)^2.
+     If follows:
+     |hi' - 1/b| <= 2^-104/(1 - 2^-52)^2.
+  */
+  double e;
+  e = __builtin_fma (-hi, bh, 1.0);
+  /* Since |hi - 1/bh| < 2^-52, we have |hi*bh-1| < bh*2^-52 < 2^-52.
+     Also, hi is an integer multiple of 2^-52 and bh an integer multiple of
+     2^-53, thus hi*bh is an integer multiple of 2^-105, likewise for hi*bh-1.
+     Thus hi*bh-1 = k*2^-105 and since |hi*bh-1| < 2^-52, |k| < 2^53, thus
+     hi*bh-1 is exactly representable, and |e| < 2^-52. */
+  e = __builtin_fma (-hi, bl, e);
+  /* Since |hi| <= 2 and |bl| < ulp(bh) = 2^-53, we have |hi*bl| < 2^-52,
+     thus now |e| < 2^-51, and the rounding error is bounded by
+     2^-105*|e| from [2,Theorem 2], thus by 2^-157.
+     This rounding error is multiplied by hi below, with hi < 2, thus
+     contributes to at most 2^-156. */
+  *lo = hi * e;
+  /* |lo| < 2*2^-51 = 2^-50. Since ulp(hi) >= 2^-52, we have |lo| < 4 ulp(hi),
+     and this holds whatever the initial binade of bh+bl.
+     The rounding error in hi * e is bounded by ulp(2^-50-eps) = 2^-103. */
+
+  /* The absolute difference between hi+lo and 1/(bh+bl) is bounded by:
+   * 2^-104/(1 - 2^-52)^2 for the maximal error in Newton's iteration
+   * 2^-156 for the rounding error in __builtin_fma (-hi, bl, e)
+   * 2^-103 for the rounding error in hi * e
+   This gives an absolute error bound of 2^-102.41 (and the same
+   relative error bound since hi + lo >= 1).
+  */
+}
+
+/* Put in hi+lo an approximation of (ah+al)/(bh+bl), with relative error
+   bounded by 2^-100.82, assuming |al| < ulp(ah) and |bl| < ulp(bh). */
+static inline void
+d_div (double *hi, double *lo, double ah, double al, double bh, double bl)
+{
+  /* Warning: the error analysis below assumes |al| < ulp(ah) and
+     |bl| < ulp(bh) at input. If this is not satisfied, call fast_two_sum()
+     to normalize (ah,al) and (bh,bl). */
+  d_inv (hi, lo, bh, bl);
+  /* |hi + lo - 1/(bh + bl)| < 2^-102.41 * (hi + lo) */
+  d_mul (hi, lo, ah, al, *hi, *lo);
+  /* |hi + lo - (ah + al) * (hi_in + lo_in)| < 2^-101.41 * |hi + lo| thus:
+     |hi + lo - (ah + al) / (bh + bl)|
+     < |hi + lo - (ah + al) * (hi_in + lo_in)|
+     + |ah + al| * |hi_in + lo_in - 1/(bh + bl)|
+     < 2^-101.41 * |hi + lo| + |ah + al| * 2^-102.41 * (hi_in + lo_in)
+     < 2^-101.41 * |hi + lo| + 2^-102.41 * (1 + 2^-101.41) * |hi + lo|
+     < 2^-100.82 * |hi + lo| */
 }
 
 /* the following is a degree-7 odd polynomial approximating sinh(x)
@@ -1285,12 +1361,12 @@ eval_C2 (double *h, double *l, double w)
   fast_sum (h, l, 1.0, *h, *l);                 /* add 1 */
 }
 
-/* Put in h+l a double-double approximation of sinh(x),
+/* Put in h+l a double-double approximation of tanh(x),
    for 0 <= x <= 0x1.633ce8fb9f87dp+9.
    Return the absolute error bound:
    |h + l - sin(x)| < err. */
 static double
-cr_sinh_fast (double *h, double *l, double x)
+cr_tanh_fast (double *h, double *l, double x)
 {
   /* magic is such that magic*x rounds to a number < 65535.5
      whatever the rounding mode */
@@ -1317,19 +1393,23 @@ cr_sinh_fast (double *h, double *l, double x)
 
   /* we have |w| < 0.00543 */
   double swh, swl, cwh, cwl;
-  eval_S (h, l, w);
-  /* |h + l - sinh(w)| < 2^-67.58*|h| */
+  eval_S (&swh, &swl, w); /* |swh + swl - sinh(w)| < 2^-67.58*|swh+swl| */
+  eval_C (&cwh, &cwl, w); /* |cwh + cwl - cosh(w)| < 2^-67.02*|cwh+cwl| */
 
   if (k == 0)
-    return __builtin_fma (0x1.57p-68, *h, 0x1p-1074);
-  /* 2^-67.58 < 0x1.57p-68, and we add 2^-1074 to workaround cases
-     when 0x1.57p-68 * h is rounded to zero */
+  {
+    d_div (h, l, swh, swl, cwh, cwl);
+    /* |h + l - (swh + swl) / (cwh + cwl)| < 2^-100.82 * |h + l| */
+    /* since the relative error on swh + swl is bounded by e1=2^-67.58,
+       that on cwh + cwl by e2=2^-67.02, and that on the division by
+       e3=2^-100.82, the relative error on h+l is bounded by:
+       (1+e1)*(1+e2)*(1+e3)-1 < 2^-66.27. */
+    return __builtin_fma (0x1.a9p-67, *h, 0x1p-1074);
+  }
+  /* 2^-66.27 < 0x1.a9p-67, and we add 2^-1074 to workaround cases
+     when 0x1.a9p-67 * h is rounded to zero */
 
-  eval_C (&cwh, &cwl, w);
-  /* |cwh + cwl - cosh(w)| < 2^-67.02*|cwh+cwl| */
   
-  swh = *h;
-  swl = *l;
   double svh, svl, cvh, cvl, h1, l1, h2, l2;
   s_mul (&h1, &l1, U[j][1], cwh, cwl); /* U[j][1]*cosh(w) */
   /* |U[j][1] - sinh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
@@ -1340,21 +1420,16 @@ cr_sinh_fast (double *h, double *l, double x)
      and |swh + swl - sinh(w)| < 2^-67.58*|swh+swl| thus
      |h2+l2-cosh(U[j][0])*sinh(w)| < 2^-66.77*|h2+l2| */
 
-  fast_sum2 (h, l, h1, l1, h2, l2); /* h+l approximates sinh(v) */
+  fast_sum2 (&svh, &svl, h1, l1, h2, l2); /* svh+svl approximates sinh(v) */
   /* since h1+l1 and h2+l2 have a relative error bound < 2^-66.42, that bound
      holds for the sum of their absolute values, but we might have
      cancellation, the worst case being for j=1 and w=-0.00543,
      where h1+l1 >= 0.0108414. and h2+l2 >= -0.0054304,
      thus (|h1+l1| + |h2+l2|)/((|h1+l1| - |h2+l2|) < 3.008,
-     thus |h + l - sinh(v)| < 3.008*2^-66.42 < 2^-64.83.
+     thus |svh + svl - sinh(v)| < 3.008*2^-66.42 < 2^-64.83.
      Note: the rounding error in fast_sum2() is absorbed in the above
      error bound (which is over-estimated). */
 
-  if (i == 0)
-    return 0x1.21p-65 * *h; /* 2^-64.83 < 0x1.21p-65 */
-
-  svh = *h;
-  svl = *l;
   s_mul (&h1, &l1, U[j][1], swh, swl); /* U[j][1]*sinh(w) */
   /* |U[j][1] - sinh(U[j][0])| < 2^-16 ulp(U[j][1]) <= 2^-68 |U[j][1]|
      and |swh + swl - sinh(w)| < 2^-67.58*|swh+swl| thus
@@ -1373,6 +1448,17 @@ cr_sinh_fast (double *h, double *l, double x)
      Note: he rounding errors in fast_sum2 are absorbed in the above error
      bound (which is over-estimated) */
 
+  if (i == 0)
+  {
+    d_div (h, l, svh, svl, cvh, cvl);
+    /* |h + l - (svh + svl) / (cvh + cvl)| < 2^-100.82 * |h + l| */
+    /* since the relative error on svh + svl is bounded by e1=2^-64.83,
+       that on cvh + cvl by e2=2^-66.41, and that on the division by
+       e3=2^-100.82, the relative error on h+l is bounded by:
+       (1+e1)*(1+e2)*(1+e3)-1 < 2^-64.41. */
+    return 0x1.82p-65; /* 2^-64.41 < 0x1.82p-65 */
+  }
+
   /* At this point svh+svl approximates sinh(v) with relative error bounded by
      2^-64.83, cvh+cvl approximates cosh(v) with relative error bounded
      by 2^-66.41, T[i][1]+T[i][2] approximates sinh(T[i][0]) with relative
@@ -1380,6 +1466,7 @@ cr_sinh_fast (double *h, double *l, double x)
      relative error bounded by 2^-107, and we have to compute:
      (T[i][1]+T[i][2])*(cvh+cvl) + (T[i][3]+T[i][4])*(svh+svl) */
 
+  double sh, sl, ch, cl;
   d_mul (&h1, &l1, T[i][1], T[i][2], cvh, cvl);
   /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
      and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-66.41*|cvh + cvl| thus
@@ -1388,7 +1475,7 @@ cr_sinh_fast (double *h, double *l, double x)
   /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
      and |svh + svl - sinh(v)| < 2^-64.83*|svh + svl| thus
      |h2+l2-exp(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
-  fast_sum2 (h, l, h1, l1, h2, l2);
+  fast_sum2 (&sh, &sl, h1, l1, h2, l2);
   /* the error in fast_sum2() is absorbed by the above errors, which are
      overestimated */
 
@@ -1575,6 +1662,8 @@ cr_tanh (double x)
   double right = h + (l + err);
   if (left == right)
     return left;
+
+  return 0;
 
   /* Special case for small numbers, to avoid underflow issues in the accurate
      path: for |x| <= 0x1.7137449123ef6p-26, |sinh(x) - x| < ulp(x)/2,
