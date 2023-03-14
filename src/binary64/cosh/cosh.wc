@@ -1,5 +1,8 @@
+# Remark: since WORST_SYMMETRIC is defined in function_under_test.h,
+# only positive worst cases need to be included here
+#
 # worst cases from https://www.vinc17.net/research/testlibm/testlibm-data.xz
-# (update from update on 2020-11-27, downloaded on March 1st, 2023)
+# (update from update on 2020-11-27, downloaded on March 1st, 2023):
 0x1.003c1d82e8bb4p+0
 0x1.0051f2e2330acp-19
 0x1.007fe00ff6065p-22
