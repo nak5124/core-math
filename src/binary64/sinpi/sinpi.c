@@ -202,7 +202,7 @@ double cr_sinpi(double x){
   double fs = sn[0] + z2*(sn[1] + z2*sn[2]);
   double fc = cn[0] + z2*cn[1];
   double sh,sl,ch,cl; sincosn(iq,&sh,&sl,&ch,&cl);
-  double er = 5e-19;
+  double er = 5.5e-19;
   double r = sl + sh*(z2*fc) + ch*(z*fs);
   double lb = (r - er) + sh, ub = (r + er) + sh;
   if(lb == ub) return lb;
