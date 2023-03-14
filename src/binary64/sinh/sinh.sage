@@ -120,8 +120,9 @@ def analyze_eval_S(wmin,wmax,rel=false,verbose=false):
    if verbose:
       print ("err2=", log(err2)/log(2.))
    # *h = *h * z
+   hin = h
    h = h*z
-   err3 = RIFulp(h)*w.abs().upper()
+   err3 = (RIFulp(h)+hin.abs().upper()*errz)*w.abs().upper()
    if verbose:
       print ("err3=", log(err3)/log(2.))
    # fast_two_sum (h, l, w, *h * w)
@@ -137,9 +138,9 @@ def analyze_eval_S(wmin,wmax,rel=false,verbose=false):
    return err
 
 # analyze_eval_S_all()
-# 9.12931943224523e-24
+# 1.21955832217264e-23
 # analyze_eval_S_all(rel=true)
-# 3.39086502646348e-21
+# 4.52024256696600e-21
 def analyze_eval_S_all(rel=false):
    maxerr = 0
    e = 0
@@ -162,9 +163,10 @@ def analyze_eval_S_all(rel=false):
 # analyze_eval_C(verbose=true)
 # err1= -87.0993273681392
 # err2= -68.0496623387826
-# err3= -104.415036317674
-# err= -68.0496596801630
-# 3.27386391283508e-21
+# err3= -67.9999982275945
+# err4= -104.999978731244
+# err= -67.0245346680109
+# 6.66199986429100e-21
 def analyze_eval_C(verbose=false):
    err0 = 2^-81.152
    w = RIF(-0.00543,0.00543)
@@ -184,12 +186,18 @@ def analyze_eval_C(verbose=false):
    err2 = (RIFulp(h)+hin.abs().upper()*errz)*w.abs().upper()^2
    if verbose:
       print ("err2=", log(err2)/log(2.))
-   # fast_two_sum (h, l, 1.0, *h)
-   h = RR(1) + h
-   err3 = 2^-105*h.abs().upper()
+   # *h = *h * z
+   hin = h
+   h = hin*z
+   err3 = RIFulp(h)+hin.abs().upper()*errz
    if verbose:
       print ("err3=", log(err3)/log(2.))
-   err = err0+err1+err2+err3
+   # fast_two_sum (h, l, 1.0, *h)
+   h = RR(1) + h
+   err4 = 2^-105*h.abs().upper()
+   if verbose:
+      print ("err4=", log(err4)/log(2.))
+   err = err0+err1+err2+err3+err4
    if verbose:
       print ("err=", log(err)/log(2.))
    return err
