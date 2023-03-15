@@ -1417,7 +1417,6 @@ cr_tanh_fast (double *h, double *l, double x)
   }
   /* 2^-66.27 < 0x1.a9p-67, and we add 2^-1074 to workaround cases
      when 0x1.a9p-67 * h is rounded to zero */
-
   
   double svh, svl, cvh, cvl, h1, l1, h2, l2;
   s_mul (&h1, &l1, U[j][1], cwh, cwl); /* U[j][1]*cosh(w) */
