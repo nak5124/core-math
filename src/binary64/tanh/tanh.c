@@ -37,6 +37,11 @@ SOFTWARE.
        Cambridge University Press, 2011.
    [2] Note on FastTwoSum with Directed Roundings, Paul Zimmermann,
        https://hal.inria.fr/hal-03798376, 2022.
+   [3] Tight and rigourous error bounds for basic building blocks of
+       double-word arithmetic, Mioara Maria Joldes, Jean-Michel Muller,
+       Valentina Popescu, ACM Transactions on Mathematical Software, Vol. 44,
+       No. 2, Article 15res. Publication date: October 2017,
+       https://hal.science/hal-01351529v3/document
 */       
 
 #include <stdio.h>
@@ -1234,7 +1239,11 @@ d_inv (double *hi, double *lo, double bh, double bl)
 }
 
 /* Put in hi+lo an approximation of (ah+al)/(bh+bl), with relative error
-   bounded by 2^-100.82, assuming |al| < ulp(ah) and |bl| < ulp(bh). */
+   bounded by 2^-100.82, assuming |al| < ulp(ah) and |bl| < ulp(bh).
+   See also Algorithms 16 and 17 and Theorem 7.1 from [3], which gives a
+   bound of 15u^2 + 56u^3 < 2^-102.09 (for rounding to nearest presumably).
+   Algorithm 17 has 2 divisions, 2 multiplications, 12 additions/subtractions,
+   1 fma, whereas our algorithm has 1 division, 5 fmas, 2 mul. */
 static inline void
 d_div (double *hi, double *lo, double ah, double al, double bh, double bl)
 {
