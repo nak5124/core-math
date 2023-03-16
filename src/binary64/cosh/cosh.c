@@ -32,7 +32,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 
-#define TRACE 0x1.0a7b6e3fed72p+2
+#define TRACE 0x1.43180ea854696p+1
 
 /* For 0 <= i < 256, T[i] = {xi, shi, sli, chi, cli} such that xi is near
    i*2^8/magic with magic = 0x1.70f77fc88ae3cp6, and shi+sli, chi+cli
@@ -1450,8 +1450,10 @@ cr_cosh_accurate (double *h, double *l, double x)
       {0x1.c36a970e51ebcp-7, 0x1.00063807eb4c3p+0, -0x1.8c9bb749e0ae7p-105},
       {0x1.17d8a9f206217p-6, 0x1.00098f5f09be4p+0, -0x1.a981ad62b5028p-108},
       {0x1.104b648f113a1p+0, 0x1.9efdca62b700ap+0, -0x1.74273be411d75p-109},
+      {0x1.43180ea854696p+1, 0x1.91f1122b6b63ap+2, 0x1.ede610e0873bfp-103},
+      {0x1.a6031cd5f93bap-1, 0x1.5bff041b260fep+0, -0x1.dd052c11a2422p-108},
     };
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < 16; i++)
       if (x == exceptions[i][0])
       {
         *h = exceptions[i][1];
@@ -1467,8 +1469,19 @@ cr_cosh_accurate (double *h, double *l, double x)
     {0x1.4a869881f72acp+9, 0x1.9ea7540a3d1f9p+952, -0x1.2d3d01e27f50bp+848},
     {0x1.0a7b6e3fed72p+2, 0x1.0151def34c2b8p+5, -0x1.367d001b5ee14p-99},
     {0x1.204684c1167e9p+8, 0x1.db9797d3d32e8p+414, -0x1.51e78c6bad663p+310},
+    {0x1.5817bd214deeep+2, 0x1.b083e3fb3143p+6, 0x1.6bb3435a2214cp-97},
+    {0x1.9cf3ecb2db243p+2, 0x1.3d1bb802ce041p+8, 0x1.646adb676a759p-96},
+    {0x1.b3d9001765e63p+2, 0x1.c57d7e864d1bbp+8, 0x1.36447aa37f898p-95},
+    {0x1.54cd1fea7663ap+7, 0x1.c90810d354618p+244, 0x1.2925a9627fb2cp+135},
+    {0x1.556c678d5e976p+7, 0x1.37e7ac4e7f9b3p+245, 0x1.01a99afd82b06p+141},
+    {0x1.68aeeb4251115p+1, 0x1.0cce41066fedap+3, 0x1.2d8a44f7313bcp-100},
+    {0x1.eecb0724d2418p+1, 0x1.7e0300901371ep+4, 0x1.18f4c982bb453p-99},
+    {0x1.226b70c1a9d7bp+7, 0x1.686ab849bc518p+208, 0x1.658e06041ef5p+105},
+    {0x1.725811dcf6782p+2, 0x1.45ea160ddc71fp+7, -0x1.722c2a1431c52p-100},
+    {0x1.c7206c1b753e4p+8, 0x1.8670de0b68cadp+655, -0x1.7599cebd802f7p+548},
+    {0x1.26ee1a46d8c8bp+9, 0x1.fbe20477df4a7p+849, -0x1.556f0ed19479ep+745},
   };
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 16; i++)
     if (x == exceptions[i][0])
     {
       *h = exceptions[i][1];
