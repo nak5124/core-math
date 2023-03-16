@@ -1384,13 +1384,15 @@ cr_cosh_fast (double *h, double *l, double x)
      and |svh + svl - sinh(v)| < 2^-64.83*|svh + svl| thus
      |h2+l2-sinh(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
   fast_sum2 (h, l, h1, l1, h2, l2);
+  /* (h1+l1)/(h2+l2) approximates cosh(T[i][0])*cosh(v)/(sinh(T[i][0])*sinh(v))
+     thus 1/(tanh(T[i][0])*tanh(v)), and since tanh(x)<=1, we have
+     |(h1+l1)/(h2+l2)| >= 1, and the total error is bounded by:
+     2^-66.40*|h1+l1| + 2^-64.82*|h2+l2| <= (2^-66.40+2^-64.82)*|h1+l1|
+     < 2^-64.40*|h1+l1| */
   /* the error in fast_sum2() is absorbed by the above errors, which are
      overestimated */
 
-  /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
-
-  /* 2^-66.40 < 0x1.85p-67 and 2^-64.82 < 0x1.23p-65 */
-  return 0x1.85p-67 * h1 + 0x1.23p-65 * (h2 > 0 ? h2 : -h2);
+  return 0x1.85p-65 * h1; /* 2^-64.40 < 0x1.85p-65 */
 }
 
 static void
