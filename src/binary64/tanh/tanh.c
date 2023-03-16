@@ -1388,7 +1388,13 @@ cr_tanh_fast (double *h, double *l, double x)
   double v = x - T[i][0];
   /* since x = T[i][0] + v, we approximate sinh(x) as
      sinh(T[i][0])*cosh(v) + cosh(T[i][0])*sinh(v)
-     = T[i][1]*cosh(v) + T[i][2]*sinh(v) */
+     = T[i][1]*cosh(v) + T[i][2]*sinh(v).
+     |v| = |x - T[i][0]| <= |x - i*2^8/magic| + |T[i][0] - i*2^8/magic|
+                         <= |x - i*2^8/magic| + 8e-14
+                         <= |x - k/magic| + |j/magic| + 8e-14
+                         <= 0.00542055 + 255/magic + 8e-14
+                         < 2.77 */
+  */
   double w = v - U[j][0];
   /* since v = U[j][0] + w, we approximate sinh(v) as
      sinh(U[j][0])*cosh(w) + cosh(U[j][0])*sinh(w)
@@ -1477,20 +1483,52 @@ cr_tanh_fast (double *h, double *l, double x)
   double sh, sl, ch, cl;
   d_mul (&h1, &l1, T[i][1], T[i][2], cvh, cvl);
   /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
-     and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-66.41*|cvh + cvl| thus
-     |h1+l1-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-66.40*|h1+l1| */
+     and |cvh + cvl - cosh(v)| < 2^-66.41*|cvh + cvl| thus
+     |h1+l1-sinh(T[i][0])*cosh(v)| < 2^-66.40*|h1+l1| */
   d_mul (&h2, &l2, T[i][3], T[i][4], svh, svl);
   /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
      and |svh + svl - sinh(v)| < 2^-64.83*|svh + svl| thus
-     |h2+l2-exp(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
+     |h2+l2-cosh(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
+
+  /* 2^-66.40 < 0x1.85p-67 and 2^-64.82 < 0x1.23p-65 */
+  /* Warning: h2 might be negative if j=0 and w<0 (thus v=w) */
+  /* Since |T[i][0]| > 2.77 and |v| < 2.77, we have
+     |(h1+l1)/(h2+l2)| = |sinh(T[i][0])*cosh(v)/(cosh(T[i][0])*sinh(v))|
+                       = |tanh(T[i][0])/tanh(v)| > 1,
+     thus the relative error on h2+l2 also holds relatively to h1+l1:
+     2^-66.40*|h1+l1| + 2^-64.82*|h2+l2| <= (2^-66.40+2^-64.82)*|h1+l1|
+                                         <= 2^-64.40*|h1+l1| */
   fast_sum2 (&sh, &sl, h1, l1, h2, l2);
   /* the error in fast_sum2() is absorbed by the above errors, which are
      overestimated */
 
-  /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
+  /* |sh + sl - sinh(x)| < errs * |sh + sl| */
 
-  /* 2^-66.41 < 0x1.82p-67 and 2^-64.82 < 0x1.23p-65 */
-  return 0x1.82p-67 * h1 + 0x1.23p-65 * (h2 > 0 ? h2 : -h2);
+  d_mul (&h1, &l1, T[i][3], T[i][4], cvh, cvl); /* (T[i][3]+T[i][4])*(cvh+cvl) */
+  /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
+     and |cvh + cvl - cosh(v)| < 2^-66.41*|cvh + cvl| thus
+     |h1+l1-cosh(T[i][0])*cosh(v)| < 2^-66.40*|h1+l1| */
+  d_mul (&h2, &l2, T[i][1], T[i][2], svh, svl); /* T[i][1]*(cvh+cvl+svh+svl) */
+  /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
+     and |svh + svl - sinh(v)| < 2^-64.83*|svh + svl| thus
+     |h2+l2-sinh(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
+  /* Since |T[i][0]| > 2.77 and |v| < 2.77, we have
+     |(h1+l1)/(h2+l2)| = |cosh(T[i][0])*cosh(v)/(sinh(T[i][0])*sinh(v))|
+                         > 1,
+     thus the relative error on h2+l2 also holds relatively to h1+l1:
+     2^-66.40*|h1+l1| + 2^-64.82*|h2+l2| <= (2^-66.40+2^-64.82)*|h1+l1|
+                                         <= 2^-64.40*|h1+l1| */
+
+  fast_sum2 (&ch, &cl, h1, l1, h2, l2);
+  /* the error in fast_sum2() is absorbed by the above errors, which are
+     overestimated */
+
+  d_div (h, l, sh, sl, ch, cl);
+  /* the relative error on sl+sl is bounded by e1=2^-64.40, that on ch+cl is
+     also bounded by e1, and the relative error in d_div() is bounded
+     by e2=2^-100.82, thus the relative error on h+l is bounded by:
+     (1+e1)^2*(1+e2)-1 < 2^-63.39. */
+  return 0x1.87p-64 * h; /* 2^-63.39 < 0x1.87p-64 */
 }
 
 /* return h + l which approximates sinh(s*x) where s in {-1,1} and x > 0 */
