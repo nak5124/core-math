@@ -1321,9 +1321,12 @@ cr_sinh_fast (double *h, double *l, double x)
   /* |h + l - sinh(w)| < 2^-67.58*|h| */
 
   if (k == 0)
-    return __builtin_fma (0x1.57p-68, *h, 0x1p-1074);
-  /* 2^-67.58 < 0x1.57p-68, and we add 2^-1074 to workaround cases
-     when 0x1.57p-68 * h is rounded to zero */
+  {
+    /* 2^-67.58 < 0x1.57p-68, and in case err rounds to zero because h is tiny,
+       we return the smallest subnormal instead */
+    double err = 0x1.57p-68 * *h;
+    return err == 0 ? 0x1p-1074 : err;
+  }
 
   eval_C (&cwh, &cwl, w);
   /* |cwh + cwl - cosh(w)| < 2^-67.02*|cwh+cwl| */
