@@ -17,6 +17,9 @@ check_worst: check_worst.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
 check_worst.o: ../support/check_worst_uni.c
 	$(CC) $(OPENMP) $(CFLAGS) $(CORE_MATH_DEFINES) -I . -c -o $@ $<
 
+%: %-default
+	@  true
+
 clean::
 	rm -f *.o check_worst
 
