@@ -61,6 +61,13 @@ else
     QUIET=
 fi
 
+# define CORE_MATH_NO_OPENMP if you don't want OpenMP
+if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
+   OPENMP=-fopenmp
+else
+   OPENMP=
+fi
+
 has_symbol () {
     [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$FUN" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
 }
@@ -80,15 +87,15 @@ case "$KIND" in
         "$MAKE" $QUIET -C "$DIR" check_exhaustive
         for MODE in "${MODES[@]}"; do
             echo "Running exhaustive check in $MODE mode..."
-            "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
+            $CORE_MATH_LAUNCHER "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
         done
         ;;
     --worst)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_worst
+        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_worst
         for MODE in "${MODES[@]}"; do
             echo "Running worst cases check in $MODE mode..."
-            "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
+            $CORE_MATH_LAUNCHER "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
         done
         ;;
     --special)
@@ -96,7 +103,7 @@ case "$KIND" in
         "$MAKE" $QUIET -C "$DIR" check_special
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
-            "$DIR/check_special" "$MODE" "${ARGS[@]}"
+            $CORE_MATH_LAUNCHER "$DIR/check_special" "$MODE" "${ARGS[@]}"
         done
         ;;
     --exact)
@@ -104,7 +111,7 @@ case "$KIND" in
         "$MAKE" $QUIET -C "$DIR" check_exact
         for MODE in "${MODES[@]}"; do
             echo "Running exact checks in $MODE mode..."
-            "$DIR/check_exact" "$MODE" "${ARGS[@]}"
+            $CORE_MATH_LAUNCHER "$DIR/check_exact" "$MODE" "${ARGS[@]}"
         done
         ;;
     *)
