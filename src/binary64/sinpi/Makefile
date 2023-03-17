@@ -10,8 +10,5 @@ check_special: check_special.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
 check_special.o: check_special.c
 	$(CC) $(CORE_MATH_DEFINES) -fopenmp -o $@ $^ -c
 
-check_worst.o: check_worst.c
-	$(CC) $(CORE_MATH_DEFINES) -c -o $@ $<
-
 clean::
 	rm -f check_special
