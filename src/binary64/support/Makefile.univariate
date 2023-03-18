@@ -8,7 +8,7 @@ TYPE_UNDER_TEST := double
 
 all:: check_worst
 
-check_worst-default: check_worst.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
+check_worst: check_worst.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) $(LDFLAGS) -fopenmp -o $@ $^ -lmpfr -lm
 
 %.o: %.c
@@ -16,9 +16,6 @@ check_worst-default: check_worst.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr
 
 check_worst.o: $(wildcard check_worst.c ../support/check_worst_uni.c)
 	$(CC) -fopenmp $(CFLAGS) $(CORE_MATH_DEFINES) -I . -c -o $@ $<
-
-%: %-default
-	@  true
 
 clean::
 	rm -f *.o check_worst
