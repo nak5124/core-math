@@ -1,8 +1,13 @@
 #!/bin/bash
-# To use check.sh with GNU MPFR installed in a non-standard
-# place, say /tmp/include and /tmp/lib, use the following
-# (LD_LIBRARY_PATH is needed because of dynamic linking):
-# LD_LIBRARY_PATH=/tmp/lib CFLAGS=-I/tmp/include LDFLAGS=-L/tmp/lib ./check.sh ...
+# Usages:
+# (1) to use check.sh with GNU MPFR installed in a non-standard
+#     place, say /tmp/include and /tmp/lib, use the following
+#     (LD_LIBRARY_PATH is needed because of dynamic linking):
+#     LD_LIBRARY_PATH=/tmp/lib CFLAGS=-I/tmp/include LDFLAGS=-L/tmp/lib ./check.sh ...
+# (2) to check the GNU libc instead of CORE-MATH:
+#     CORE_MATH_CHECK_STD=true ./check.sh ...
+# (3) to check the GNU libc 2.27, installed in say /tmp/install:
+#     CORE_MATH_CHECK_STD=true CORE_MATH_LAUNCHER="/tmp/lib/ld-2.27.so --library-path /tmp/lib" LDFLAGS="-L /tmp/lib" ./check.sh --worst --rndn exp
 
 MAKE=make
 
