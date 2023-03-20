@@ -29,10 +29,7 @@ SOFTWARE.
    In particular all files or routines mentioned in comments are to be found
    in the sinh directory or in the sinh.c file. */
 
-#include <stdio.h>
 #include <stdint.h>
-
-#define TRACE 0x1.43180ea854696p+1
 
 /* For 0 <= i < 256, T[i] = {xi, shi, sli, chi, cli} such that xi is near
    i*2^8/magic with magic = 0x1.70f77fc88ae3cp6, and shi+sli, chi+cli
@@ -830,9 +827,7 @@ static const double U[256][3] = {
    For each j, 0 <= j < 256, let {xj, sj, cj} be the U[j] values,
    such that sj and cj approximate sinh(xj) and cosh(xj) with a few
    extra bits, then sj + Ul[j][0] and cj + Ul[j][1] approximate
-   sinh(xj) and cosh(xj) with at least 107 bits.
-   Generated with build_table_Ul(U0,U1,U2) from the file sinh.sage,
-   where U0,U1,U2 are printed using the printU() routine below. */
+   sinh(xj) and cosh(xj) with at least 107 bits. */
 static const double Ul[256][2] = {
    {0x0p+0, 0x0p+0}, /* i=0 */
    {-0x1.cc125d97df011p-76, -0x1.e6bae12de82cep-70}, /* i=1 */
@@ -1289,13 +1284,11 @@ cr_cosh_fast (double *h, double *l, double x)
                    <= 1/2 + ulp(magic*x) <= 1/2 + 2^-37
      thus |x - k/magic| <= 0.00542055 */
   int i = k >> 8, j = k & 0xff;
-  // if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   /* since x = T[i][0] + v, we approximate sinh(x) as
      sinh(T[i][0])*cosh(v) + cosh(T[i][0])*sinh(v)
      = T[i][1]*cosh(v) + T[i][2]*sinh(v) */
   double w = v - U[j][0];
-  // if (x == TRACE) printf ("w=%la\n", w);
   /* since v = U[j][0] + w, we approximate sinh(v) as
      sinh(U[j][0])*cosh(w) + cosh(U[j][0])*sinh(w)
      = U[j][1]*cosh(w) + U[j][2]*sinh(w), and cosh(v) as
@@ -1319,8 +1312,6 @@ cr_cosh_fast (double *h, double *l, double x)
   
   cwh = *h;
   cwl = *l;
-  //if (x == TRACE) printf ("w=%la cwh=%la cwl=%la\n", w, cwh, cwl);
-  //if (x == TRACE) printf ("w=%la swh=%la swl=%la\n", w, swh, swl);
   double svh, svl, cvh, cvl, h1, l1, h2, l2;
   s_mul (&h1, &l1, U[j][2], cwh, cwl); /* U[j][2]*cosh(w) */
   /* |U[j][2] - cosh(U[j][0])| < 2^-16 ulp(U[j][2]) <= 2^-68 |U[j][2]|
@@ -1370,16 +1361,12 @@ cr_cosh_fast (double *h, double *l, double x)
      error bounded by 2^-107, T[i][3]+T[i][4] approximates cosh(T[i][0]) with
      relative error bounded by 2^-107, and we have to compute:
      (T[i][3]+T[i][4])*(cvh+cvl) + (T[i][1]+T[i][2])*(svh+svl) */
-  //if (x == TRACE) printf ("v=%la cvh=%la cvl=%la\n", v, cvh, cvl);
-  //if (x == TRACE) printf ("v=%la svh=%la svl=%la\n", v, svh, svl);
 
   d_mul (&h1, &l1, T[i][3], T[i][4], cvh, cvl); /* (T[i][3]+T[i][4])*(cvh+cvl) */
   /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
      and |cvh + cvl - cosh(v)| < 2^-66.41*|cvh + cvl| thus
      |h1+l1-cosh(T[i][0])*cosh(v)| < 2^-66.40*|h1+l1| */
-  //if (x == TRACE) printf ("t=%la h1=%la l1=%la\n", T[i][0], h1, l1);
   d_mul (&h2, &l2, T[i][1], T[i][2], svh, svl); /* T[i][1]*(cvh+cvl+svh+svl) */
-  //if (x == TRACE) printf ("t=%la h2=%la l2=%la\n", T[i][0], h2, l2);
   /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
      and |svh + svl - sinh(v)| < 2^-64.83*|svh + svl| thus
      |h2+l2-sinh(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
@@ -1401,7 +1388,6 @@ cr_cosh_accurate (double *h, double *l, double x)
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
-  //if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   double w = v - U[j][0];
   eval_C2 (h, l, w);
@@ -1480,8 +1466,35 @@ cr_cosh_accurate (double *h, double *l, double x)
     {0x1.725811dcf6782p+2, 0x1.45ea160ddc71fp+7, -0x1.722c2a1431c52p-100},
     {0x1.c7206c1b753e4p+8, 0x1.8670de0b68cadp+655, -0x1.7599cebd802f7p+548},
     {0x1.26ee1a46d8c8bp+9, 0x1.fbe20477df4a7p+849, -0x1.556f0ed19479ep+745},
+    {0x1.1c11f1687d68fp+7, 0x1.e21f461cfa82bp+203, 0x1.ffffffffffffep+149},
+    {0x1.e07e71bfcf06fp+5, 0x1.91ec4412c344fp+85, 0x1.09d2b56d79a72p-24},
+    {0x1.771c622b12b8ap+4, 0x1.c4ef8636922aap+32, 0x1.dccc160f98da8p-72},
+    {0x1.9e7b643238a14p+8, 0x1.f5da7fe652978p+596, 0x1.0429700e71228p+493},
+    {0x1.1f0da93354198p+7, 0x1.0bd73b73fc74cp+206, 0x1.588526e93304cp+102},
+    {0x1.0bc04af1b09f5p+9, 0x1.7b1d97c902985p+771, 0x1.551dfecc05bd4p+666},
+    {0x1.2da9e5e6af0bp+8, 0x1.27d6fe867d6f6p+434, 0x1.0a1d500c39996p+329},
+    {0x1.5afd56f7d565bp+3, 0x1.8ff8e0ccea7cp+14, 0x1.1e3de16f5d39cp-90},
+    {0x1.7fce95ea5c653p+3, 0x1.3bf8009648dcp+16, 0x1.a4a6a858ba41bp-89},
+    {0x1.7a60ee15e3e9dp+6, 0x1.62e4dc3bbf53fp+135, 0x1.ae7c8eddb6bcbp+29},
+    {0x1.dac81fc3b9b67p+3, 0x1.53015e033ffdep+20, 0x1.68ff9f050efb9p-84},
+    {0x1.e4798d2bee3d8p+3, 0x1.caf13a0a5e027p+20, 0x1.65b3875a9a8e2p-85},
+    {0x1.39fc4d3bb711p+5, 0x1.8a4e90733b95ep+55, 0x1.710f515121b0ap-50},
+    {0x1.51d0f4f0a901cp+5, 0x1.e4a01c9ddbc87p+59, 0x1.6770455b1c226p-45},
+    {0x1.aa6129cdb8218p+8, 0x1.193d3ba630343p+614, 0x1.d25f43a9a73ecp+510},
+    {0x1.94925476814e9p+5, 0x1.f1b76b88f075p+71, 0x1.b710ac550eca9p-32},
+    {0x1.96d81955b1fd7p+5, 0x1.4a9d153103f65p+72, 0x1.776d7bf831649p-32},
+    {0x1.f7216c4b435c9p+5, 0x1.a97e7be23e65ap+89, -0x1.99421ab1db04cp-15},
+    {0x1.54ceba01331d5p+8, 0x1.9a86785b5ef3ep+490, -0x1.226a3e36ef7ccp+386},
+    {0x1.ef5029032f67p+4, 0x1.94f40e6702c6cp+43, -0x1.18ea02781835cp-60},
+    {0x1.759a2ad4c4d56p+3, 0x1.cb62eec26bd78p+15, -0x1.7856fc1113541p-92},
+    {0x1.3c895d86e96c9p+5, 0x1.0f33837882a6p+56, -0x1.268c144cce32dp-49},
+    {0x1.d6479eba7c971p+8, 0x1.62a88613629b6p+677, -0x1.3f69a2085428cp+568},
+    {0x1.eb9914d4ac1c8p+8, 0x1.2b67eff65dce8p+708, -0x1.01c4a555ef227p+603},
+    {0x1.f419d873a3f83p+8, 0x1.685463d30fb69p+720, -0x1.adbe823bd312cp+616},
+    {0x1.6fc71838701e6p+5, 0x1.406f375086cc1p+65, -0x1.644d8f29ec4e9p-39},
+    {0x1.6474c604cc0d7p+6, 0x1.7a8f65ad009bdp+127, -0x1.0b611158ec877p+20},
   };
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < 43; i++)
     if (x == exceptions[i][0])
     {
       *h = exceptions[i][1];
@@ -1521,17 +1534,11 @@ cr_cosh (double x)
   
   double h, l;
   double err = cr_cosh_fast (&h, &l, v.f);
-  //if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   
   double left  = h + (l - err);
   double right = h + (l + err);
   if (left == right)
-  {
-    //if (x == TRACE) printf ("fast path succeeded\n");
     return left;
-  }
-
-  //if (x == TRACE) printf ("fast path failed\n");
 
   /* Special case for small numbers: for |x| < 0x1p-26, cosh(x) rounds to 1
      for rounding to nearest, thus cosh(x) rounds either to 1 or next(1). */
