@@ -1,5 +1,6 @@
 # worst cases from https://www.vinc17.net/research/testlibm/testlibm-data.xz
 # (update from update on 2020-11-27, downloaded on March 1st, 2023)
+# (these worst cases are only for rounding to nearest)
 0x1.002ee87ae6797p-8
 0x1.003a9d3e03c2p-20
 0x1.00a0a44cc45bp-3
