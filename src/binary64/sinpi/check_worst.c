@@ -120,6 +120,16 @@ int main(int argc, char *argv[]){
   exit(EXIT_SUCCESS);
 }
 
+int
+is_equal (b64u64_u a, b64u64_u b)
+{
+  if (isnan (a.f))
+    return isnan (b.f);
+  if (isnan (b.f))
+    return isnan (a.f); /* should be 0 */
+  return a.u == b.u;
+}
+
 void test(){
   int count = 0, failures = 0;
   ref_init();
@@ -130,7 +140,7 @@ void test(){
     b64u64_u zr, zt;
     zr.f = ref_function_under_test(x);
     zt.f = cr_function_under_test(x);
-    if (zr.u != zt.u) {
+    if (!is_equal (zr, zt)) {
       if(++failures<10) printf("FAIL x=%la ref=%la z=%la\n", x, zr.f, zt.f);
     }
     ++count;
