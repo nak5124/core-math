@@ -117,7 +117,7 @@ doloop(void)
 
   readstdin(&items, &count);
 
-#pragma omp parallel for reduction(+: tests,failures)
+#pragma omp parallel for reduction(+: failures,tests)
   for (int i = 0; i < count; i++) {
     ref_init();
     ref_fesetround(rnd);
