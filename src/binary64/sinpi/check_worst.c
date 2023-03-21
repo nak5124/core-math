@@ -101,7 +101,6 @@ int main(int argc, char *argv[]){
       fname = optarg;
       break;
     case 'h': /* print a help message (to be written) */  break;
-    default:
     }
   }
 
