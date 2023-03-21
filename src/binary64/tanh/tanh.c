@@ -1141,6 +1141,28 @@ static inline void fast_sum(double *hi, double *lo, double a, double bh,
      where |lo| <= ulp(hi) + |bl|. */
 }
 
+// Algorithm 2Sum from [3]
+static inline void
+two_sum (double *s, double *t, double a, double b)
+{
+  *s = a + b;
+  double ap = *s - b;
+  double bp = *s - ap;
+  double da = a - ap;
+  double db = b - bp;
+  *t = da + db;
+}
+
+// Algorithm DWPlusFP from [3]
+static inline void
+fast_sum_acc (double *hi, double *lo, double a, double bh, double bl)
+{
+  double sh, sl;
+  two_sum (&sh, &sl, bh, a);
+  double v = bl + sl;
+  fast_two_sum (hi, lo, sh, v);
+}
+
 // Add (ah + al) + (bh + bl), assuming |ah| >= |bh|
 static inline void fast_sum2(double *hi, double *lo, double ah, double al,
                              double bh, double bl) {
@@ -1148,7 +1170,36 @@ static inline void fast_sum2(double *hi, double *lo, double ah, double al,
   *lo += al + bl;
 }
 
+// Algorithm SloppyDWPlusDW from [3]
+static inline void
+fast_sum2_acc1 (double *hi, double *lo, double ah, double al,
+                double bh, double bl)
+{
+  double sh, sl;
+  two_sum (&sh, &sl, ah, bh);
+  double v = al + bl;
+  double w = sl + v;
+  fast_two_sum (hi, lo, sh, w);
+}
+
+// Algorithm AccurateDWPlusDW from [3]
+static inline void
+fast_sum2_acc2 (double *hi, double *lo, double ah, double al,
+                double bh, double bl)
+{
+  double sh, sl;
+  two_sum (&sh, &sl, ah, bh);
+  double th, tl;
+  two_sum (&th, &tl, al, bl);
+  double c = sl + th;
+  double vh, vl;
+  fast_two_sum (&vh, &vl, sh, c);
+  double w = tl + vl;
+  fast_two_sum (hi, lo, vh, w);
+}
+
 // Multiply exactly a and b, such that *hi + *lo = a * b.
+// This is called 2Prod in [3].
 static inline void a_mul(double *hi, double *lo, double a, double b) {
   *hi = a * b;
   *lo = __builtin_fma(a, b, -*hi);
@@ -1163,6 +1214,46 @@ s_mul (double *hi, double *lo, double a, double bh, double bl)
   a_mul (hi, &s, a, bh); /* exact */
   *lo = __builtin_fma (a, bl, s);
   /* the error is bounded by ulp(lo), where |lo| < |a*bl| + ulp(hi) */
+}
+
+// Multiply a double with a double double : a * (bh + bl)
+// using algorithm DWTimesFP1 from [3].
+static inline void
+s_mul_acc1 (double *hi, double *lo, double a, double bh, double bl)
+{
+  // hi is ch from [3], a is y, bh is xh, bl is xl
+  double cl1;
+  a_mul (hi, &cl1, a, bh); /* exact */
+  double cl2 = a * bl;
+  fast_two_sum (hi, lo, *hi, cl2);
+  double tl2 = *lo + cl1;
+  fast_two_sum (hi, lo, *hi, tl2);
+}
+
+// Multiply a double with a double double : a * (bh + bl)
+// using algorithm DWTimesFP2 from [3].
+static inline void
+s_mul_acc2 (double *hi, double *lo, double a, double bh, double bl)
+{
+  // hi is ch from [3], a is y, bh is xh, bl is xl
+  double cl1;
+  a_mul (hi, &cl1, a, bh); /* exact */
+  double cl2 = a * bl;
+  double cl3 = cl1 + cl2;
+  fast_two_sum (hi, lo, *hi, cl3);
+}
+
+// Multiply a double with a double double : a * (bh + bl)
+// using algorithm DWTimesFP3 from [3].
+// This is essentially the same as s_mul(), with a post-normalization.
+static inline void
+s_mul_acc3 (double *hi, double *lo, double a, double bh, double bl)
+{
+  // hi is ch from [3], a is y, bh is xh, bl is xl
+  double cl1;
+  a_mul (hi, &cl1, a, bh); /* exact */
+  double cl3 = __builtin_fma (a, bl, cl1);
+  fast_two_sum (hi, lo, *hi, cl3);
 }
 
 /* Put in hi+lo an approximation of (ah+al)*(bh+bl), with relative error
@@ -1185,6 +1276,47 @@ d_mul (double *hi, double *lo, double ah, double al, double bh, double bl)
   /* The total rounding error is bounded by 2^-103+2^-102 <= 2^-101.41,
      thus also 2^-101.41 relatively to hi+lo (and this relative bound
      holds whatever the binades of ah+al and bh+bl). */
+}
+
+// using algorithm DWTimesDW1 from [3], with relative error bounded by 7u^2
+// (for rounding to nearest)
+static inline void
+d_mul_acc1 (double *hi, double *lo, double ah, double al, double bh, double bl)
+{
+  double cl1;
+  a_mul (hi, &cl1, ah, bh);
+  double tl1 = ah * bl;
+  double tl2 = al * bh;
+  double cl2 = tl1 + tl2;
+  double cl3 = cl1 + cl2;
+  fast_two_sum (hi, lo, *hi, cl3);
+}
+
+// using algorithm DWTimesDW2 from [3], with relative error bounded by 6u^2
+// (for rounding to nearest)
+static inline void
+d_mul_acc2 (double *hi, double *lo, double ah, double al, double bh, double bl)
+{
+  double cl1;
+  a_mul (hi, &cl1, ah, bh);
+  double tl = ah * bl;
+  double cl2 = __builtin_fma (al, bh, tl);
+  double cl3 = cl1 + cl2;
+  fast_two_sum (hi, lo, *hi, cl3);
+}
+
+// using algorithm DWTimesDW3 from [3], with relative error bounded by 5u^2
+// (for rounding to nearest)
+static inline void
+d_mul_acc3 (double *hi, double *lo, double ah, double al, double bh, double bl)
+{
+  double cl1;
+  a_mul (hi, &cl1, ah, bh);
+  double tl0 = al * bl;
+  double tl1 = __builtin_fma (ah, bl, tl0);
+  double cl2 = __builtin_fma (al, bh, tl1);
+  double cl3 = cl1 + cl2;
+  fast_two_sum (hi, lo, *hi, cl3);
 }
 
 /* Put in hi+lo an approximation of 1/(bh+bl),
@@ -1264,6 +1396,65 @@ d_div (double *hi, double *lo, double ah, double al, double bh, double bl)
      < 2^-101.41 * |hi + lo| + |ah + al| * 2^-102.41 * (hi_in + lo_in)
      < 2^-101.41 * |hi + lo| + 2^-102.41 * (1 + 2^-101.41) * |hi + lo|
      < 2^-100.82 * |hi + lo| */
+}
+
+// Algorithm DWDivDW1 from [3], with relative error bounded by 15u^2+56u^3
+// (for rounding to nearest)
+static inline void
+d_div_acc1 (double *zh, double *zl, double xh, double xl, double yh, double yl)
+{
+  double th = xh / yh;
+  double rh, rl;
+  s_mul_acc1 (&rh, &rl, th, yh, yl);
+  double pih, pil;
+  two_sum (&pih, &pil, xh, -rh);
+  double delta_h = pil - rl;
+  double delta_l = delta_h + xl;
+  double delta = pih + delta_l;
+  double tl = delta / yh;
+  fast_two_sum (zh, zl, th, tl);
+}
+
+// Algorithm DWDivDW2 from [3], with relative error bounded by 15u^2+56u^3
+// (for rounding to nearest)
+static inline void
+d_div_acc2 (double *zh, double *zl, double xh, double xl, double yh, double yl)
+{
+  double th = xh / yh;
+  double rh, rl;
+  s_mul_acc1 (&rh, &rl, th, yh, yl);
+  double pih = xh - rh;
+  double delta_l = xl - rl;
+  double delta = pih + delta_l;
+  double tl = delta / yh;
+  fast_two_sum (zh, zl, th, tl);
+}
+
+// Algorithm DWPlusFP from [3]
+static inline void
+DWPlusFP (double *zh, double *zl, double xh, double xl, double y)
+{
+  double sh, sl;
+  two_sum (&sh, &sl, xh, y);
+  double v = xl + sl;
+  fast_two_sum (zh, zl, sh, v);
+}
+
+// Algorithm DWDivDW3 from [3], with relative error bounded by 9.8u^2
+// (for rounding to nearest)
+static inline void
+d_div_acc3 (double *zh, double *zl, double xh, double xl, double yh, double yl)
+{
+  double th = 1.0 / yh;
+  double rh = __builtin_fma (-yh, th, 1.0);
+  double rl = -yl * th;
+  double eh, el;
+  fast_two_sum (&eh, &el, rh, rl);
+  double delta_h, delta_l;
+  s_mul_acc3 (&delta_h, &delta_l, th, eh, el);
+  double mh, ml;
+  DWPlusFP (&mh, &ml, delta_h, delta_l, th);
+  d_mul_acc2 (zh, zl, xh, xl, mh, ml);
 }
 
 /* the following is a degree-7 odd polynomial approximating sinh(x)
@@ -1613,7 +1804,7 @@ cr_tanh_accurate (double *h, double *l, double x, double s)
         *l = s * exceptions[i][2];
         return;
       }
-    eval_T2 (h, l, s * w); // 6,14,39,24
+    eval_T2 (h, l, s * w);
     return;
   }
 
@@ -1623,56 +1814,76 @@ cr_tanh_accurate (double *h, double *l, double x, double s)
   eval_C2 (&cwh, &cwl, w);
   double svh, svl, cvh, cvl;
   double h1, l1, h2, l2;
-  d_mul (&h1, &l1, s * U[j][1], s * Ul[j][0], cwh, cwl);
-  d_mul (&h2, &l2, U[j][2], Ul[j][1], swh, swl);
-  fast_sum2 (&svh, &svl, h1, l1, h2, l2);
-  d_mul (&h1, &l1, U[j][2], Ul[j][1], cwh, cwl);
-  d_mul (&h2, &l2, s * U[j][1], s * Ul[j][0], swh, swl);
-  fast_sum2 (&cvh, &cvl, h1, l1, h2, l2);
+#define D_MUL d_mul_acc3
+#define FAST_SUM2 fast_sum2_acc2
+  D_MUL (&h1, &l1, s * U[j][1], s * Ul[j][0], cwh, cwl);
+  D_MUL (&h2, &l2, U[j][2], Ul[j][1], swh, swl);
+  FAST_SUM2 (&svh, &svl, h1, l1, h2, l2);
+  D_MUL (&h1, &l1, U[j][2], Ul[j][1], cwh, cwl);
+  D_MUL (&h2, &l2, s * U[j][1], s * Ul[j][0], swh, swl);
+  FAST_SUM2 (&cvh, &cvl, h1, l1, h2, l2);
+#undef D_MUL
+#undef FAST_SUM2
   if (i == 0)
   {
     static double exceptions[][3] = {
       {0x1.1375c272d441cp+1, 0x1.f258bcd572d2ep-1, -0x1p-54},
-      {0x1.960450a13617fp-8, 0x1.9602fc33d4cedp-8, -0x1.ffffffffffffap-62},
-      {0x1.d88d7550b2826p-2, 0x1.b9a3637366afdp-2, -0x1.ffffffffffffep-56},
       {0x1.048711422ed6ap-6, 0x1.048172571b3a6p-6, -0x1.605e314431363p-112},
       {0x1.07dd8d1b13572p-6, 0x1.07d7b62ca65b5p-6, -0x1.b220ffb9cf44ep-112},
-      {0x1.00035f6b6ca0ap-7, 0x1.00020a0abbb2cp-7, 0x1.38c7f95573c18p-109},
-      {0x1.0e6c20454190ep-6, 0x1.0e65d71c38d9p-6, -0x1.cf77ea0b98026p-109},
       {0x1.1233157441ed4p-6, 0x1.122c87ec88f42p-6, 0x1.0243e241e6656p-110},
-      {0x1.02dbb2c360981p-5, 0x1.02c5a6b5a6242p-5, 0x1.4866962b5a3aep-108},
       {0x1.6cbd9c7c4f2bfp-8, 0x1.6cbca5af62bbp-8, 0x1.cdfec6e2ef7a8p-115},
       {0x1.b8aca02fd218bp-8, 0x1.b8aaecee6ef11p-8, -0x1.117c36e15a6fap-115},
       {0x1.100ddbaa215d8p+1, 0x1.f19c60b4238dcp-1, -0x1.bceaa50698d34p-106},
       {0x1.1b56ee2d1147ap+1, 0x1.f3e8da02e5a7ep-1, -0x1.605928d804bf5p-105},
       {0x1.22dd041738727p+1, 0x1.f53c882e6e949p-1, 0x1.024c4cc55688bp-104},
+      {0x1.e7b151e50ace8p-8, 0x1.e7af03ed72a95p-8, -0x1.0782c932cf01ep-115},
+      {0x1.7c8b110da7859p-8, 0x1.7c89f8c3da23fp-8, -0x1.3eadf765854c1p-113},
+      {0x1.3fdc557c28f86p-6, 0x1.3fd1eeb4ae601p-6, -0x1.b88138013e24p-111},
+      {0x1.6d2b05a7faa7fp-6, 0x1.6d1b8bb0726bbp-6, 0x1.1dd0272792e45p-110},
+      {0x1.9e6b8533e155ep-6, 0x1.9e54e68508294p-6, 0x1.e3e90de57dbb7p-110},
+      {0x1.16a973d843b7bp-3, 0x1.14f4723e2559p-3, 0x1.0c59ea55f11c4p-110},
+      {0x1.2c12ce474d94ep-3, 0x1.29f1c403195d2p-3, 0x1.086a19b08f101p-107},
+      {0x1.36f33d51c264dp-2, 0x1.2dbb7b1c91363p-2, -0x1.19ab4b485c24ap-106},
+      {0x1.cd4104178518dp-4, 0x1.cb50660b00f34p-4, -0x1.eef7c2f919739p-110},
+      {0x1.3a0dd2ce4b0ebp+0, 0x1.aeeb8d9e19d8bp-1, -0x1.18ba74f0b2fb7p-105},
+      {0x1.9d343db61d049p+0, 0x1.d8f7213aabd6p-1, -0x1.cf2eafb8aa804p-106},
+      {0x1.e611aa58ab608p-2, 0x1.c493dc899e4a5p-2, 0x1.6a0755d0e11bap-106},
+      {0x1.b7ae824c71873p-1, 0x1.64279e7c7064bp-1, 0x1.aa5585668bfcap-106},
+      {0x1.77194793ac4e4p+0, 0x1.cc1d9fbf0b50bp-1, -0x1.5c5e72ab75cf2p-105},
+      {0x1.43eaea23649c3p-2, 0x1.39877ed02864p-2, 0x1.813581f4a00ap-106},
+      {0x1.c350f47039524p+0, 0x1.e2bae0e9932a4p-1, -0x1.b28882ea8585dp-105},
+      {0x1.fc8be93ceb1c7p-8, 0x1.fc894c4eeec42p-8, -0x1.0e77db9398ep-114},
+      {0x1.0a90d36059a04p-6, 0x1.0a8ace14dbccep-6, -0x1p-59},
+      {0x1.1005ec0bccabbp-1, 0x1.f20b1c8557decp-2, 0x1.ffffffffffffdp-56},
     };
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < 28; i++)
       if (x == exceptions[i][0])
       {
         *h = s * exceptions[i][1];
         *l = s * exceptions[i][2];
         return;
       }
-    d_div (h, l, svh, svl, cvh, cvl);
+    d_div_acc3 (h, l, svh, svl, cvh, cvl);
     return;
   }
 
   static double exceptions[][3] = {
-    {0x1.369f905b85551p+3, 0x1.ffffffc05f527p-1, -0x1.ffffffffffffdp-55},
-    {0x1.8449d79ba2c11p+2, 0x1.fffe9762e2c2cp-1, -0x1.ffffffffffffcp-55},
-    {0x1.03289aa1045dbp+3, 0x1.fffff9cd03f79p-1, -0x1.8e1efe42c8c3p-111},
-    {0x1.2e4cffb5e7cf2p+3, 0x1.ffffff94f5adap-1, -0x1.41733c79cf7dap-106},
-    {0x1.0e8bc067b7282p+3, 0x1.fffffcf5191fcp-1, 0x1.3aa2bc559b4a3p-102},
-    {0x1.14c54b51fa5fep+3, 0x1.fffffdf023199p-1, 0x1.7eebd9aa84152p-104},
-    {0x1.1a682505475dp+3, 0x1.fffffe8cdc454p-1, 0x1.75de533101095p-103},
-    {0x1.4150814caced6p+3, 0x1.ffffffdf61ea3p-1, 0x1.873ae3f09c66p-105},
-    {0x1.1841a4bab2d6dp+4, 0x1.ffffffffffff5p-1, -0x1.3fddcb3bf5483p-103},
-    {0x1.25e4f7b2737fap+4, 0x1.ffffffffffffep-1, -0x1.4486612173c6ap-103},
-    {0x1.12e590622d1adp+2, 0x1.ffcf498a4fddcp-1, -0x1.0b5dc26783a1fp-102},
+    {0x1.6ad3b64b0cde7p+2, 0x1.fffce0e97b779p-1, 0x1.7d7656fe4a9b4p-106},
+    {0x1.731aceeabdd36p+1, 0x1.fce790a1abc82p-1, 0x1.0359bb2d02662p-105},
+    {0x1.4ab67173af9f6p+3, 0x1.ffffffeddf35ep-1, -0x1.1c63f9095d02bp-105},
     {0x1.6396dc3669441p+3, 0x1.fffffffc2bb54p-1, -0x1.4cc9edaf2718fp-105},
+    {0x1.a31a6a969867dp+1, 0x1.fe8912c0a8906p-1, 0x1.0a03176bcc80ep-106},
+    {0x1.dd09782a03db2p+1, 0x1.ff683ad7e7bb3p-1, -0x1.b2dcdc25acd52p-107},
+    {0x1.dd3c9b972acd7p+3, 0x1.ffffffffff82dp-1, -0x1.ffffffffffffdp-55},
+    {0x1.786262131633dp+2, 0x1.fffdf4e17fe7cp-1, -0x1.106ebb7ee0843p-106},
+    {0x1.eb528eaa42d77p+1, 0x1.ff8693f7fec43p-1, -0x1.47fef79e1c5afp-105},
+    {0x1.50ff5f7e1bef5p+3, 0x1.fffffff3c2b92p-1, 0x1.703f53a5cd6cbp-105},
+    {0x1.ef2723685a47dp+1, 0x1.ff8da0fae6272p-1, -0x1.6b5f031c1f1e8p-107},
+    {0x1.03289aa1045dbp+3, 0x1.fffff9cd03f79p-1, -0x1.8e1efe42c8c3p-111},
+    {0x1.4150814caced6p+3, 0x1.ffffffdf61ea3p-1, 0x1.873ae3f09c66p-105},
+    {0x1.f879d6c96ec7cp+1, 0x1.ff9d20874d493p-1, -0x1.dd65bf7c5120ap-106},
   };
-  for (int i = 0; i < 12; i++)
+  for (int i = 0; i < 14; i++)
     if (x == exceptions[i][0])
     {
       *h = s * exceptions[i][1];
@@ -1682,13 +1893,17 @@ cr_tanh_accurate (double *h, double *l, double x, double s)
 
   double sh, sl, ch, cl;
   /* svh+svl approximates sinh(s*x) */
-  d_mul (&h1, &l1, s * T[i][1], s * T[i][2], cvh, cvl);
-  d_mul (&h2, &l2, T[i][3], T[i][4], svh, svl);
-  fast_sum2 (&sh, &sl, h1, l1, h2, l2);
-  d_mul (&h1, &l1, T[i][3], T[i][4], cvh, cvl);
-  d_mul (&h2, &l2, s * T[i][1], s * T[i][2], svh, svl);
-  fast_sum2 (&ch, &cl, h1, l1, h2, l2);
-  d_div (h, l, sh, sl, ch, cl);
+#define D_MUL d_mul_acc3
+#define FAST_SUM2 fast_sum2_acc1
+  D_MUL (&h1, &l1, s * T[i][1], s * T[i][2], cvh, cvl);
+  D_MUL (&h2, &l2, T[i][3], T[i][4], svh, svl);
+  FAST_SUM2 (&sh, &sl, h1, l1, h2, l2);
+  D_MUL (&h1, &l1, T[i][3], T[i][4], cvh, cvl);
+  D_MUL (&h2, &l2, s * T[i][1], s * T[i][2], svh, svl);
+  FAST_SUM2 (&ch, &cl, h1, l1, h2, l2);
+#undef D_MUL
+#undef FAST_SUM2
+  d_div_acc3 (h, l, sh, sl, ch, cl);
 }
 
 #define MASK 0x7fffffffffffffff /* to mask the sign bit */
