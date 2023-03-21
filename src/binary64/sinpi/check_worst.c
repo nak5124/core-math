@@ -122,10 +122,10 @@ int main(int argc, char *argv[]){
 int
 is_equal (b64u64_u a, b64u64_u b)
 {
-  if (isnan (a.f))
-    return isnan (b.f);
-  if (isnan (b.f))
-    return isnan (a.f); /* should be 0 */
+  /* if (isnan (a.f)) */
+  /*   return isnan (b.f); */
+  /* if (isnan (b.f)) */
+  /*   return isnan (a.f); /\* should be 0 *\/ */
   return a.u == b.u;
 }
 
@@ -151,9 +151,11 @@ void test(){
 }
 
 int transform(double x, double *out){
+  static int first = 1;
   static double px = __builtin_nan("");
   static long k = -1;
-  if (isnan(px) || px != x) {
+  if (first || px != x) {
+    first = 0;
     px = x;
     k = -1;
   }
@@ -199,9 +201,13 @@ int fillbuf(char **buf, size_t *nbuf){
 }
 
 int nextarg(double *x){
+  static int first = 1;
   static double arg = __builtin_nan("");
-  if (!isnan(arg) && transform(arg, x)) return 1;
-
+  if( !first ){
+    if (transform(arg, x)) return 1;
+  } else {
+    first = 0;
+  }
   static char *buf = NULL, *pos;
   static size_t nbuf = 0;
   do {
