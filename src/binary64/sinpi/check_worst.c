@@ -136,11 +136,14 @@ void test(){
   fesetround(rnd1[rnd]);
   double x;
   while (nextarg(&x)) {
+    if (count < 10) printf ("x=%la\n", x);
     b64u64_u zr, zt;
     zr.f = ref_function_under_test(x);
     zt.f = cr_function_under_test(x);
     if (!is_equal (zr, zt)) {
-      if(++failures<10) printf("FAIL x=%la ref=%la z=%la\n", x, zr.f, zt.f);
+      b64u64_u xx = {.f = x};
+      if(++failures<10) printf("FAIL x=%la[%lx] ref=%la[%lx] z=%la[%lx]\n",
+                               x, xx.u, zr.f, zr.u, zt.f, zt.u);
     }
     ++count;
   }
