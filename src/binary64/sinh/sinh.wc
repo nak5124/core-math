@@ -1,5 +1,6 @@
 # worst cases from https://www.vinc17.net/research/testlibm/testlibm-data.xz
 # (update from update on 2020-11-27, downloaded on March 1st, 2023)
+# (these worst cases are only for rounding to nearest)
 0x1.002ee87ae6797p-8
 0x1.003a9d3e03c2p-20
 0x1.00a0a44cc45bp-3
@@ -2217,7 +2218,13 @@
 0x1.fffbe60b6927p-11
 # non-regression test
 -0x1.21a0d7b7f3335p-1010
-# other worst cases not included above (computed with BaCSeL)
+# other worst cases not included above (computed with BaCSeL,
+# from 4503599627370496/2^79 to 6249411755243648/2^43, with option
+# -m 44 from bacsel, i.e., all worst-cases with at least 43 identical
+# bits after the round bit).
+# We didn't search for x < 4503599627370496/2^79 ~ 7.45e-9, since for
+# x <= 0x1.7137449123ef7p-26 ~ 2.15e-8, x^3/6 < ulp(x)/2 thus sinh(x)
+# rounds to x
 0x1.7137449123e01p-26
 0x1.7137449123e02p-26
 0x1.7137449123e03p-26

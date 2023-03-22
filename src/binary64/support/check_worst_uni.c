@@ -1,6 +1,6 @@
 /* Check correctness of univariate binary64 function on worst cases.
 
-Copyright (c) 2022 Stéphane Glondu, Inria.
+Copyright (c) 2022-2023 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -89,15 +89,35 @@ asuint64 (double f)
   return u.i;
 }
 
+/* define our own is_nan function since -ffinite-math-only might
+   optimize that from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
+static inline int
+is_equal (double x, double y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint64 (x) == asuint64 (y);
+}
+
 void
 doloop(void)
 {
   double *items;
-  int count, tests = 0, failures = 0, skipped = 0;
+  int count, tests = 0, failures = 0;
 
   readstdin(&items, &count);
 
-#pragma omp parallel for reduction(+: tests, failures)
+#pragma omp parallel for reduction(+: tests,failures)
   for (int i = 0; i < count; i++) {
     ref_init();
     ref_fesetround(rnd);
@@ -107,7 +127,7 @@ doloop(void)
     double z2 = cr_function_under_test(x);
     tests ++;
     /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-    if (z2 != 0 && asuint64 (z1) != asuint64 (z2)) {
+    if (is_equal (z1, z2) == 0) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
       fflush(stdout);
 #ifdef DO_NOT_ABORT
@@ -121,7 +141,7 @@ doloop(void)
     z1 = ref_function_under_test(x);
     z2 = cr_function_under_test(x);
     tests ++;
-    if (z2 != 0 && asuint64 (z1) != asuint64 (z2)) {
+    if (is_equal (z1, z2) == 0) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
       fflush(stdout);
 #ifdef DO_NOT_ABORT
@@ -134,7 +154,7 @@ doloop(void)
   }
 
   free(items);
-  printf("%d tests passed, %d failure(s), %d skipped\n", tests, failures, skipped);
+  printf("%d tests passed, %d failure(s)\n", tests, failures);
 }
 
 int

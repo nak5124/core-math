@@ -1946,7 +1946,7 @@ cr_tanh (double x)
      and the Taylor expansion is tanh(x) = x - x^3/3 + O(x^5),
      thus tanh(x) rounds to the same value than x - 2^-54*x. */
   if (v.f <= 0x1.d12ed0af1a27fp-27)
-    return __builtin_fma (x, -0x1p-54, x);
+    return (x == 0) ? x : __builtin_fma (x, -0x1p-54, x);
 
   /* also, for |x| >= 0x1.30fc1931f09cap+4, tanh(x) rounds to -1 or +1
      for rounding to nearest */

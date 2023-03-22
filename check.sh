@@ -1,8 +1,13 @@
 #!/bin/bash
-# To use check.sh with GNU MPFR installed in a non-standard
-# place, say /tmp/include and /tmp/lib, use the following
-# (LD_LIBRARY_PATH is needed because of dynamic linking):
-# LD_LIBRARY_PATH=/tmp/lib CFLAGS=-I/tmp/include LDFLAGS=-L/tmp/lib ./check.sh ...
+# Usages:
+# (1) to use check.sh with GNU MPFR installed in a non-standard
+#     place, say /tmp/include and /tmp/lib, use the following
+#     (LD_LIBRARY_PATH is needed because of dynamic linking):
+#     LD_LIBRARY_PATH=/tmp/lib CFLAGS=-I/tmp/include LDFLAGS=-L/tmp/lib ./check.sh ...
+# (2) to check the GNU libc instead of CORE-MATH:
+#     CORE_MATH_CHECK_STD=true ./check.sh ...
+# (3) to check the GNU libc 2.27, installed in say /tmp/install:
+#     CORE_MATH_CHECK_STD=true CORE_MATH_LAUNCHER="/tmp/lib/ld-2.27.so --library-path /tmp/lib" LDFLAGS="-L /tmp/lib" ./check.sh --worst --rndn exp
 
 MAKE=make
 
@@ -61,6 +66,13 @@ else
     QUIET=
 fi
 
+# define CORE_MATH_NO_OPENMP if you don't want OpenMP
+if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
+   OPENMP=-fopenmp
+else
+   OPENMP=
+fi
+
 has_symbol () {
     [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$FUN" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
 }
@@ -80,15 +92,15 @@ case "$KIND" in
         "$MAKE" $QUIET -C "$DIR" check_exhaustive
         for MODE in "${MODES[@]}"; do
             echo "Running exhaustive check in $MODE mode..."
-            "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
+            $CORE_MATH_LAUNCHER "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
         done
         ;;
     --worst)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_worst
+        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_worst
         for MODE in "${MODES[@]}"; do
             echo "Running worst cases check in $MODE mode..."
-            "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
+            $CORE_MATH_LAUNCHER "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
         done
         ;;
     --special)
@@ -96,7 +108,7 @@ case "$KIND" in
         "$MAKE" $QUIET -C "$DIR" check_special
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
-            "$DIR/check_special" "$MODE" "${ARGS[@]}"
+            $CORE_MATH_LAUNCHER "$DIR/check_special" "$MODE" "${ARGS[@]}"
         done
         ;;
     --exact)
@@ -104,7 +116,7 @@ case "$KIND" in
         "$MAKE" $QUIET -C "$DIR" check_exact
         for MODE in "${MODES[@]}"; do
             echo "Running exact checks in $MODE mode..."
-            "$DIR/check_exact" "$MODE" "${ARGS[@]}"
+            $CORE_MATH_LAUNCHER "$DIR/check_exact" "$MODE" "${ARGS[@]}"
         done
         ;;
     *)

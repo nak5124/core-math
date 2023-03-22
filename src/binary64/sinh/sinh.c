@@ -1321,9 +1321,12 @@ cr_sinh_fast (double *h, double *l, double x)
   /* |h + l - sinh(w)| < 2^-67.58*|h| */
 
   if (k == 0)
-    return __builtin_fma (0x1.57p-68, *h, 0x1p-1074);
-  /* 2^-67.58 < 0x1.57p-68, and we add 2^-1074 to workaround cases
-     when 0x1.57p-68 * h is rounded to zero */
+  {
+    /* 2^-67.58 < 0x1.57p-68, and in case err rounds to zero because h is tiny,
+       we return the smallest subnormal instead */
+    double err = 0x1.57p-68 * *h;
+    return err == 0 ? 0x1p-1074 : err;
+  }
 
   eval_C (&cwh, &cwl, w);
   /* |cwh + cwl - cosh(w)| < 2^-67.02*|cwh+cwl| */
@@ -1382,20 +1385,24 @@ cr_sinh_fast (double *h, double *l, double x)
 
   d_mul (&h1, &l1, T[i][1], T[i][2], cvh, cvl);
   /* |T[i][1] + T[i][2] - sinh(T[i][0])| < 2^-107 |T[i][1]|
-     and |cvh + cvl - (cosh(v)+sinh(v))| < 2^-66.41*|cvh + cvl| thus
-     |h1+l1-sinh(T[i][0])*(cosh(v)+sinh(v))| < 2^-66.40*|h1+l1| */
+     and |cvh + cvl - cosh(v)| < 2^-66.41*|cvh + cvl| thus
+     |h1+l1-sinh(T[i][0])*cosh(v)| < 2^-66.40*|h1+l1| */
   d_mul (&h2, &l2, T[i][3], T[i][4], svh, svl);
   /* |T[i][3] + T[i][4] - cosh(T[i][0])| < 2^-107 |T[i][3]|
      and |svh + svl - sinh(v)| < 2^-64.83*|svh + svl| thus
-     |h2+l2-exp(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
+     |h2+l2-cosh(T[i][0])*sinh(v)| < 2^-64.82*|h2+l2| */
   fast_sum2 (h, l, h1, l1, h2, l2);
+  /* (h1+l1)/(h2+l2) approximates sinh(T[i][0])*cosh(v)/(cosh(T[i][0])*sinh(v))
+     thus tanh(T[i][0])/tanh(v). Since i>0, we have T[i][0]) > 2.77, and
+     we also have |v| < 2.77, thus |(h1+l1)/(h2+l2)| > 1, and the error
+     2^-64.82*|h2+l2| is bounded by 2^-64.82*|h1+l1|, thus the total error
+     is bounded (relatively to h1+l1) by 2^-66.41 + 2^-64.82 < 2^-64.40. */
   /* the error in fast_sum2() is absorbed by the above errors, which are
      overestimated */
 
   /* Warning: h2 might be negative if j=0 and w<0, thus v=w */
 
-  /* 2^-66.41 < 0x1.82p-67 and 2^-64.82 < 0x1.23p-65 */
-  return 0x1.82p-67 * h1 + 0x1.23p-65 * (h2 > 0 ? h2 : -h2);
+  return 0x1.85p-65 * h1; /* 2^-64.40 < 0x1.85p-65 */
 }
 
 /* return h + l which approximates sinh(s*x) where s in {-1,1} and x > 0 */
