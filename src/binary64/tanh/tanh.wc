@@ -1,3 +1,6 @@
+# this file need only contain positive worst cases since WORST_SYMMETRIC
+# is defined in function_under_test.h
+#
 # worst cases from https://www.vinc17.net/research/testlibm/testlibm-data.xz
 # (update from update on 2020-11-27, downloaded on March 1st, 2023)
 0x1.000b47bdb383fp-9
@@ -1854,7 +1857,7 @@
 0x1.ffd551c69df58p-23
 # worst cases (not included above) computed with bacsel with -m 44,
 # i.e., with at least 43 identical bits after the round bit,
-# from 0x1.d12ed0af1a27fp-27 <= x < 0x1.30fc1931f09cap+4
+# in the range 0x1.d12ed0af1a27fp-27 <= x < 0x1.30fc1931f09cap+4
 0x1.d12ed0af1a27fp-27
 0x1.d12ed0af1a28p-27
 0x1.d12ed0af1a281p-27
@@ -31268,3 +31271,19 @@
 0x1.ef6d7e9c3ab8ep-22
 0x1.94503a1406f71p+3
 0x1.947b5c7429947p+3
+0x1.064ee3ff26f05p-15
+0x1.06439b96cf16fp-15
+0x1.1b10ae3802436p-15
+0x1.1b05b6b7725d3p-15
+0x1.256d8f53c99f5p-15
+0x1.36cc74ab82d2cp-15
+0x1.3e6fdb64f9f44p-15
+0x1.3e597ce999c0ep-15
+0x1.abb8ca091fde6p-22
+0x1.c8b35f949d124p-22
+# special cases
+nan
++inf
++0
+0x1p-1074
+0x1.fffffffffffffp+1023

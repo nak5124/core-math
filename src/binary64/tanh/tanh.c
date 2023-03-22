@@ -44,10 +44,7 @@ SOFTWARE.
        https://hal.science/hal-01351529v3/document
 */       
 
-#include <stdio.h>
 #include <stdint.h>
-
-#define TRACE 0x1.012950d84e3e5p-22
 
 /* For 0 <= i < 256, T[i] = {xi, shi, sli, chi, cli} such that xi is near
    i*2^8/magic with magic = 0x1.70f77fc88ae3cp6, and shi+sli, chi+cli
@@ -1216,6 +1213,7 @@ s_mul (double *hi, double *lo, double a, double bh, double bl)
   /* the error is bounded by ulp(lo), where |lo| < |a*bl| + ulp(hi) */
 }
 
+#if 0
 // Multiply a double with a double double : a * (bh + bl)
 // using algorithm DWTimesFP1 from [3].
 static inline void
@@ -1242,6 +1240,7 @@ s_mul_acc2 (double *hi, double *lo, double a, double bh, double bl)
   double cl3 = cl1 + cl2;
   fast_two_sum (hi, lo, *hi, cl3);
 }
+#endif
 
 // Multiply a double with a double double : a * (bh + bl)
 // using algorithm DWTimesFP3 from [3].
@@ -1278,6 +1277,7 @@ d_mul (double *hi, double *lo, double ah, double al, double bh, double bl)
      holds whatever the binades of ah+al and bh+bl). */
 }
 
+#if 0
 // using algorithm DWTimesDW1 from [3], with relative error bounded by 7u^2
 // (for rounding to nearest)
 static inline void
@@ -1291,6 +1291,7 @@ d_mul_acc1 (double *hi, double *lo, double ah, double al, double bh, double bl)
   double cl3 = cl1 + cl2;
   fast_two_sum (hi, lo, *hi, cl3);
 }
+#endif
 
 // using algorithm DWTimesDW2 from [3], with relative error bounded by 6u^2
 // (for rounding to nearest)
@@ -1398,6 +1399,7 @@ d_div (double *hi, double *lo, double ah, double al, double bh, double bl)
      < 2^-100.82 * |hi + lo| */
 }
 
+#if 0
 // Algorithm DWDivDW1 from [3], with relative error bounded by 15u^2+56u^3
 // (for rounding to nearest)
 static inline void
@@ -1429,16 +1431,7 @@ d_div_acc2 (double *zh, double *zl, double xh, double xl, double yh, double yl)
   double tl = delta / yh;
   fast_two_sum (zh, zl, th, tl);
 }
-
-// Algorithm DWPlusFP from [3]
-static inline void
-DWPlusFP (double *zh, double *zl, double xh, double xl, double y)
-{
-  double sh, sl;
-  two_sum (&sh, &sl, xh, y);
-  double v = xl + sl;
-  fast_two_sum (zh, zl, sh, v);
-}
+#endif
 
 // Algorithm DWDivDW3 from [3], with relative error bounded by 9.8u^2
 // (for rounding to nearest)
@@ -1453,7 +1446,8 @@ d_div_acc3 (double *zh, double *zl, double xh, double xl, double yh, double yl)
   double delta_h, delta_l;
   s_mul_acc3 (&delta_h, &delta_l, th, eh, el);
   double mh, ml;
-  DWPlusFP (&mh, &ml, delta_h, delta_l, th);
+  // DWPlusFP (&mh, &ml, delta_h, delta_l, th);
+  fast_sum_acc (&mh, &ml, th, delta_h, delta_l);
   d_mul_acc2 (zh, zl, xh, xl, mh, ml);
 }
 
@@ -1786,7 +1780,6 @@ cr_tanh_accurate (double *h, double *l, double x, double s)
   static const double magic = 0x1.70f77fc88ae3cp6;
   int k = __builtin_round (magic * x);
   int i = k >> 8, j = k & 0xff;
-  //if (x == TRACE) printf ("k=%d i=%d j=%d\n", k, i, j);
   double v = x - T[i][0];
   double w = v - U[j][0];
   double swh, swl, cwh, cwl;
@@ -1923,16 +1916,22 @@ cr_tanh (double x)
   v.u &= (uint64_t) MASK; /* get absolute value */
 
   if (e == 0x400 || e == 0xc00 || v.f >= 0x1.633ce8fb9f87ep+9)
-    /* NaN or overflow */
+    /* NaN or tanh(x) rounds to +/- 1 */
   {
-    /* this will return NaN for x=NaN, Inf with the correct sign for x=+Inf
-       or -Inf, and Inf/DBL_MAX or -Inf/-DBL_MAX for other |x| >= 2^10 */
-    return x * 0x1p1023;
+    if (v.u > 0x7ff0000000000000) /* NaN */
+      return x;
+    else if (e == 0x400) /* +Inf */
+      return 1.0;
+    else if (e == 0xc00) /* -Inf */
+      return -1.0;
+    else if (s == 0)
+      return 1.0 - 0x1p-54;
+    else
+      return -1.0 + 0x1p-54;
   }
   
   double h, l;
   double err = cr_tanh_fast (&h, &l, v.f);
-  //if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   static double sign[] = { 1.0, -1.0 };
   h *= sign[s];
   l *= sign[s];
@@ -1940,18 +1939,14 @@ cr_tanh (double x)
   double left  = h + (l - err);
   double right = h + (l + err);
   if (left == right)
-  {
-    //if (x == TRACE) printf ("fast path succeeded\n");
     return left;
-  }
-
-  //if (x == TRACE) printf ("fast path failed\n");
 
   /* Special case for small numbers, to avoid underflow issues in the accurate
      path: for |x| <= 0x1.d12ed0af1a27fp-27, |tanh(x) - x| < ulp(x)/2,
-     thus tanh(x) rounds to the same value than x + 2^-54*x. */
+     and the Taylor expansion is tanh(x) = x - x^3/3 + O(x^5),
+     thus tanh(x) rounds to the same value than x - 2^-54*x. */
   if (v.f <= 0x1.d12ed0af1a27fp-27)
-    return __builtin_fma (x, 0x1p-54, x);
+    return __builtin_fma (x, -0x1p-54, x);
 
   /* also, for |x| >= 0x1.30fc1931f09cap+4, tanh(x) rounds to -1 or +1
      for rounding to nearest */
