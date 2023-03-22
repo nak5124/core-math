@@ -56418,3 +56418,8 @@
 0x1.ffa8ecf562311p-1
 0x1.fff4342883d7fp-1
 0x1p-1
+# below are some integer or half-integer entries
+0x1.fffffffffffffp+51
+0x1.fffffffffffffp+52
+0x1p1023
+0x1.fffffffffffffp+1023
