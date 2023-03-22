@@ -31287,3 +31287,13 @@ nan
 +0
 0x1p-1074
 0x1.fffffffffffffp+1023
+# the following is the largest value such that tanh(x) does not round to 1
+# for rounding to nearest
+0x1.30fc1931f09c9p+4
+# the following is the smallest value such that tanh(x) rounds to 1
+# for rounding to nearest
+0x1.30fc1931f09cap+4
+# non-regression tests
+0x1.627f1261440c2p+9
+0x1.0b34399d37fcdp+9
+0x1.9189a6c10e479p+8

@@ -1915,7 +1915,7 @@ cr_tanh (double x)
   int s = v.u >> 63; /* sign bit */
   v.u &= (uint64_t) MASK; /* get absolute value */
 
-  if (e == 0x400 || e == 0xc00 || v.f >= 0x1.633ce8fb9f87ep+9)
+  if (e == 0x400 || e == 0xc00 || v.f >= 0x1.30fc1931f09cap+4)
     /* NaN or tanh(x) rounds to +/- 1 */
   {
     if (v.u > 0x7ff0000000000000) /* NaN */

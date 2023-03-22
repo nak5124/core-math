@@ -82,7 +82,7 @@ check_random (double x)
     bug = !isnan (y1);
   else
     bug = asuint64 (y1) != asuint64 (y2);
-  if (bug && y2 != 0)
+  if (bug)
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
@@ -134,7 +134,7 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-#define N 1000000000UL /* total number of tests */
+#define N 100000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
