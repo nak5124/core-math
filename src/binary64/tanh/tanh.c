@@ -1377,14 +1377,15 @@ d_inv (double *hi, double *lo, double bh, double bl)
 }
 
 /* Put in hi+lo an approximation of (ah+al)/(bh+bl), using Karp-Markstein's
-   trick [4]. */
+   trick [4], with relative error bounded by 2^-99.67. */
 static inline void
 d_div (double *hi, double *lo, double ah, double al, double bh, double bl)
 {
   /* Warning: the error analysis below assumes |al| < ulp(ah) and
      |bl| < ulp(bh) at input. If this is not satisfied, call fast_two_sum()
      to normalize (ah,al) and (bh,bl). Without loss of generality, we can
-     assume 1/2 <= ah, bh < 1. */
+     assume 1/2 <= ah, bh < 1, thus ulp(ah)=ulp(bl)=2^-53, and
+     |al|, |bl| < 2^-53. */
   double yh = 1.0 / bh;
   /* |yh - 1/bh| < ulp(1/bh). Since we assumed 1/2 <= bh < 1, we have
      1 < 1/bh <= 2, thus the rounded error is bounded by ulp(1) = 2^-52:
@@ -1413,7 +1414,34 @@ d_div (double *hi, double *lo, double ah, double al, double bh, double bl)
      We thus have:
      |hi + lo - (hi + yh * (ah + al - hi * (bh + bl))| < 2^-104 + 2^-104
      + 2^-102 + 2^-102 < 2^-100.67.
-     FIXME: add the mathematical error.
+
+     Analysis of the mathematical error: let a be the dividend (here ah+al),
+     b the divisor (here bh+bl), y the initial approximation of 1/b (here yh),
+     y' = y + y*(1-b*y) the final approximation of 1/b after Newton's
+     iteration, z the initial approximation of a/b (here z = zh), and
+     z' = z + y*(a-b*z) the final approximation of a/b:
+     |z'-a/b| = |b*z'-a|/b = |b*z+b*y*(a-b*z)-a|/b
+                           = |(b*z-a)+b*y*(a-b*z)|/b
+                           = |z-a/b|*|1-b*y|
+     We thus have to bound |z-a/b| and |1-b*y|.
+     For |1-b*y|, we have here b = bh+bl and y = yh, thus:
+     |1-b*y| = |1-(bh+bl)*yh| <= |1-bh*yh| + |bl*yh|
+                              <= 2^-52 + 2^-53*2 = 2^-51.
+     For |z-a/b|, we have b = bh+bl, z = hi and a = ah+al:
+     |z-a/b| = |bh+bl-hi*(ah+al)|/b
+             <= |bh-hi*ah|/b + |bl|/b + |hi*al|/b
+             <= |bh-hi*ah|/b + 2^-53*2 + 2*2^-53*2
+     Since we have proven above that |bh*hi-ah| <= bh*2^(-53+e) + ah*bh*2^-52:
+     |z-a/b| <= bh*2^(-53+e)/b + ah*bh*2^-52/b + 6*2^-53
+             <= 2^(-53+e) + 2^-52 + 6*2^-53
+             <= 10*2^-53.
+     This yields:
+     |z'-a/b| <= |z-a/b| * |1-b*y|
+              <= 10*2^-53 * 2^-51 = 10*2^-104.
+
+     Adding the rounding error of e1 = 2^-100.67 and the mathematical error of
+     e2 = 10*2^-104, we get:
+     |hi + lo - (ah + al) / (bh + bl)| < (1+e1)*(1+e2) - 1 < 2^-99.67.
   */
 }
 
@@ -1728,10 +1756,9 @@ cr_tanh_fast (double *h, double *l, double x)
     /* |h + l - (svh + svl) / (cvh + cvl)| < 2^-100.82 * |h + l| */
     /* since the relative error on svh + svl is bounded by e1=2^-64.83,
        that on cvh + cvl by e2=2^-66.41, and that on the division by
-       e3=2^-100.82, the relative error on h+l is bounded by:
-       (1+e1)*(1+e2)*(1+e3)-1 < 2^-64.41.
-       FIXME: fix the error bound with Karp-Markstein. */
-    return 0x1.82p-65; /* 2^-64.41 < 0x1.82p-65 */
+       e3=2^-99.67, the relative error on h+l is bounded by:
+       (1+e1)*(1+e2)*(1+e3)-1 < 2^-64.41. */
+     return 0x1.82p-65; /* 2^-64.41 < 0x1.82p-65 */
   }
 
   /* At this point svh+svl approximates sinh(v) with relative error bounded by
@@ -1787,9 +1814,8 @@ cr_tanh_fast (double *h, double *l, double x)
   d_div (h, l, sh, sl, ch, cl);
   /* the relative error on sl+sl is bounded by e1=2^-64.40, that on ch+cl is
      also bounded by e1, and the relative error in d_div() is bounded
-     by e2=2^-100.82, thus the relative error on h+l is bounded by:
-     (1+e1)^2*(1+e2)-1 < 2^-63.39.
-     FIXME: fix the error bound with Karp-Markstein. */
+     by e2=2^-99.67, thus the relative error on h+l is bounded by:
+     (1+e1)^2*(1+e2)-1 < 2^-63.39. */
   return 0x1.87p-64 * *h; /* 2^-63.39 < 0x1.87p-64 */
 }
 

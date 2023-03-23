@@ -60,6 +60,20 @@ def d_div_km(ah,al,bh,bl):
    zl = yh*(eh+el)
    return zh, zl
 
+def analyze_d_div_km(amin=1/2,amax=1,bmin=1/2,bmax=1):
+   ah = RIF(amin,amax)
+   bh = RIF(bmin,bmax)
+   u = RIFulp(ah)
+   al = RIF(-u,u)
+   u = RIFulp(bh)
+   bl = RIF(-u,u)
+   yh = RIF(1)/bh
+   zh = ah*yh
+   eh = ah-bh*zh
+   err_eh = eh.abs().upper().ulp()
+   el = al-bl*zh
+   err_el = el.abs().upper().ulp()
+
 def s_mul_acc1(a,bh,bl):
    hi, cl1 = a_mul (a, bh)
    cl2 = a * bl
@@ -129,7 +143,7 @@ def d_div_acc3(xh,xl,yh,yl):
 # ah= 0x1.04248b8f98064p-1 al= -0x1p-54 bh= 0x1.28313836c7dcp-4 bl= 0x1p-57 err= 6.28648758693814
 # check_d_div(K=10^7,rnd='RNDN',algo=d_div_acc3) # claimed 9.8u^2
 # ah= 0x1.0642cefd8914p-1 al= -0x1.f22f83a5ec7c6p-55 bh= -0x1.f19914ee49e2ap-1 bl= 0x1.6c55acbbf8ddp-55 err= 5.83437627468727
-# avg. err= 0.549085609379064
+# avg. err= 0.549184784126938
 # check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc3,worst=true)
 # ah= -0x1.0078454fea19ep-1 al= -0x1p-54 bh= 0x1.ed4bd283fap-9 bl= 0x1p-62 err= 5.27837842708530
 def check_d_div(K=10^6,rnd='RNDN',algo=d_div,worst=false):
