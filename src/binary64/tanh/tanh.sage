@@ -13,11 +13,13 @@ def two_sum(a,b):
    t = da+db
    return s,t
 
+# 1 mul, 1 fma
 def a_mul(a,b):
    hi = a*b
    lo = fma(a,b,-hi)
    return hi, lo
 
+# 1 mul, 3 fma
 def d_mul(ah,al,bh,bl):
    hi, s = a_mul (ah, bh)
    t = fma (al, bh, s)
@@ -31,6 +33,7 @@ def d_mul_acc2(ah,al,bh,bl):
    cl3 = cl1 + cl2
    return fast_two_sum (hi, cl3)
 
+# 1 div, 2 fma, 1 mul
 def d_inv(bh,bl):
    R = bh.parent()
    hi = R(1) / bh
@@ -39,9 +42,23 @@ def d_inv(bh,bl):
    lo = hi*e
    return hi, lo
 
+# 1 div, 5 fma, 2 mul
 def d_div(ah,al,bh,bl):
    hi, lo = d_inv (bh, bl)
    return d_mul (ah, al, hi, lo)
+
+# using Karp-Markstein's trick
+# 1 div, 2 mul, 2 fma, 1 add
+def d_div_km(ah,al,bh,bl):
+   R = ah.parent()
+   yh = R(1) / bh
+   zh = ah*yh
+   # Newton's iteration for the inverse is y = y + y*(1-b*y)
+   # Karp-Markstein's trick is z = z + y*(a-b*z)
+   eh = fma(bh,-zh,ah)
+   el = fma(bl,-zh,al)
+   zl = yh*(eh+el)
+   return zh, zl
 
 def s_mul_acc1(a,bh,bl):
    hi, cl1 = a_mul (a, bh)
@@ -97,6 +114,9 @@ def d_div_acc3(xh,xl,yh,yl):
 # check_d_div(K=10^6,rnd='RNDZ')
 # ah= 0x1.11893f386fap-7 al= 0x1.aa0e8e2e3c4bcp-61 bh= -0x1.e73756bc4ef46p-1 bl= 0x1.f5cf9a97b4b7cp-55 err= 24.7338189683173
 # avg. err= 3.64249951725914
+# check_d_div(K=10^6,rnd='RNDN',algo=d_div_km)
+# ah= -0x1.43146c9146844p-1 al= -0x1.dda953f5cae8cp-55 bh= 0x1.a7bd38b47aa8p-2 bl= -0x1.eb480226c0f82p-56 err= 8.02896242858297
+# avg. err= 0.555275125652105
 # check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc1) # claimed 15u^2
 # ah= -0x1.0ecc6af81f4acp-1 al= -0x1.91e410c63551ap-55 bh= 0x1.022185e49a19p-3 bl= -0x1.beb9dc847335ap-57 err= 6.51290290645275
 # avg. err= 0.418192527364857
@@ -108,7 +128,7 @@ def d_div_acc3(xh,xl,yh,yl):
 # check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc2,worst=true)
 # ah= 0x1.04248b8f98064p-1 al= -0x1p-54 bh= 0x1.28313836c7dcp-4 bl= 0x1p-57 err= 6.28648758693814
 # check_d_div(K=10^7,rnd='RNDN',algo=d_div_acc3) # claimed 9.8u^2
-# ah= 0x1.0907f3c15df88p-2 al= 0x1.b566aa7e9c0f4p-56 bh= -0x1.fa922e2e59498p-3 bl= -0x1.f89c70a395d6ep-57 err= 5.61606432576871
+# ah= 0x1.0642cefd8914p-1 al= -0x1.f22f83a5ec7c6p-55 bh= -0x1.f19914ee49e2ap-1 bl= 0x1.6c55acbbf8ddp-55 err= 5.83437627468727
 # avg. err= 0.549085609379064
 # check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc3,worst=true)
 # ah= -0x1.0078454fea19ep-1 al= -0x1p-54 bh= 0x1.ed4bd283fap-9 bl= 0x1p-62 err= 5.27837842708530

@@ -37,11 +37,14 @@ SOFTWARE.
        Cambridge University Press, 2011.
    [2] Note on FastTwoSum with Directed Roundings, Paul Zimmermann,
        https://hal.inria.fr/hal-03798376, 2022.
-   [3] Tight and rigourous error bounds for basic building blocks of
+   [3] Tight and rigorous error bounds for basic building blocks of
        double-word arithmetic, Mioara Maria Joldes, Jean-Michel Muller,
        Valentina Popescu, ACM Transactions on Mathematical Software, Vol. 44,
        No. 2, Article 15res. Publication date: October 2017,
        https://hal.science/hal-01351529v3/document
+   [4] High-precision division and square root, A. H. Karp and P. Markstein,
+       ACM Transactions on Mathematical Software, Vol. 29, No. 4,
+       pages 561-589, 1997.
 */       
 
 #include <stdint.h>
@@ -1373,30 +1376,45 @@ d_inv (double *hi, double *lo, double bh, double bl)
   */
 }
 
-/* Put in hi+lo an approximation of (ah+al)/(bh+bl), with relative error
-   bounded by 2^-100.82, assuming |al| < ulp(ah) and |bl| < ulp(bh).
-   See also Algorithms 16 and 17 and Theorem 7.1 from [3], which gives a
-   bound of 15u^2 + 56u^3 < 2^-102.09 (for rounding to nearest presumably).
-   Algorithm 17 has 2 divisions, 2 multiplications, 12 additions/subtractions,
-   1 fma, whereas our algorithm has 1 division, 5 fmas, 2 mul.
-   FIXME: use Karp-Markstein's trick for the division.
-*/
+/* Put in hi+lo an approximation of (ah+al)/(bh+bl), using Karp-Markstein's
+   trick [4]. */
 static inline void
 d_div (double *hi, double *lo, double ah, double al, double bh, double bl)
 {
   /* Warning: the error analysis below assumes |al| < ulp(ah) and
      |bl| < ulp(bh) at input. If this is not satisfied, call fast_two_sum()
-     to normalize (ah,al) and (bh,bl). */
-  d_inv (hi, lo, bh, bl);
-  /* |hi + lo - 1/(bh + bl)| < 2^-102.41 * (hi + lo) */
-  d_mul (hi, lo, ah, al, *hi, *lo);
-  /* |hi + lo - (ah + al) * (hi_in + lo_in)| < 2^-101.41 * |hi + lo| thus:
-     |hi + lo - (ah + al) / (bh + bl)|
-     < |hi + lo - (ah + al) * (hi_in + lo_in)|
-     + |ah + al| * |hi_in + lo_in - 1/(bh + bl)|
-     < 2^-101.41 * |hi + lo| + |ah + al| * 2^-102.41 * (hi_in + lo_in)
-     < 2^-101.41 * |hi + lo| + 2^-102.41 * (1 + 2^-101.41) * |hi + lo|
-     < 2^-100.82 * |hi + lo| */
+     to normalize (ah,al) and (bh,bl). Without loss of generality, we can
+     assume 1/2 <= ah, bh < 1. */
+  double yh = 1.0 / bh;
+  /* |yh - 1/bh| < ulp(1/bh). Since we assumed 1/2 <= bh < 1, we have
+     1 < 1/bh <= 2, thus the rounded error is bounded by ulp(1) = 2^-52:
+     |yh - 1/bh| < 2^-52. */
+  *hi = ah * yh;
+  /* |hi - ah*yh| < ulp(hi).
+     Let 2^(e-1) <= ah/bh < 2^e for e=0 or e=1, then |hi - ah*yh| < 2^(-53+e).
+  */
+  double eh = __builtin_fma (bh, -*hi, ah);
+  /* |bh*hi-ah| <= |bh*hi-bh*ah*yh| + |bh*ah*yh-ah|
+                <= bh*|hi-ah*yh| + ah*|bh*yh-1|
+                <= bh*2^(-53+e) + ah*bh*2^-52
+                <= 2^(-53+e) + 2^-52.
+     For e=0 we have |bh*hi-ah| < 2^-51.4, for e=1 we have |bh*hi-ah| < 2^-51,
+     thus in both cases the rounding error in eh is bounded by 2^-104. */
+  double el = __builtin_fma (bl, -*hi, al);
+  /* |bl| < ulp(bh) = 2^-53, |hi| < 2^e, |al| < ulp(ah) = 2^-53,
+     thus |bl*hi-al| < 2^(-53+e) + 2^-53 < 2^-51.4, and the rounding error
+     in el is bounded by 2^-104 too. */
+  *lo = yh * (eh + el);
+  /* since |eh| < 2^-51 and |el| < 2^-51.4, |eh + el| < 2^-50.1, thus the
+     rounding error in eh + el is bounded by 2^-103. Thus error is multiplied
+     by yh < 2, thus contributes to at most 2^-102.
+     Since yh < 2 and |eh + el| < 2^-50.1, |lo| < 2^-49.1, thus the rounding
+     error on lo is bounded by ulp(2^-49.1) = 2^-102.
+     We thus have:
+     |hi + lo - (hi + yh * (ah + al - hi * (bh + bl))| < 2^-104 + 2^-104
+     + 2^-102 + 2^-102 < 2^-100.67.
+     FIXME: add the mathematical error.
+  */
 }
 
 #if 0
@@ -1711,7 +1729,8 @@ cr_tanh_fast (double *h, double *l, double x)
     /* since the relative error on svh + svl is bounded by e1=2^-64.83,
        that on cvh + cvl by e2=2^-66.41, and that on the division by
        e3=2^-100.82, the relative error on h+l is bounded by:
-       (1+e1)*(1+e2)*(1+e3)-1 < 2^-64.41. */
+       (1+e1)*(1+e2)*(1+e3)-1 < 2^-64.41.
+       FIXME: fix the error bound with Karp-Markstein. */
     return 0x1.82p-65; /* 2^-64.41 < 0x1.82p-65 */
   }
 
@@ -1769,7 +1788,8 @@ cr_tanh_fast (double *h, double *l, double x)
   /* the relative error on sl+sl is bounded by e1=2^-64.40, that on ch+cl is
      also bounded by e1, and the relative error in d_div() is bounded
      by e2=2^-100.82, thus the relative error on h+l is bounded by:
-     (1+e1)^2*(1+e2)-1 < 2^-63.39. */
+     (1+e1)^2*(1+e2)-1 < 2^-63.39.
+     FIXME: fix the error bound with Karp-Markstein. */
   return 0x1.87p-64 * *h; /* 2^-63.39 < 0x1.87p-64 */
 }
 
