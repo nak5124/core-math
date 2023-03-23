@@ -90,30 +90,54 @@ def d_div_acc3(xh,xl,yh,yl):
    return d_mul_acc2 (xh, xl, mh, ml)
 
 # check_d_div(K=10^6,rnd='RNDN')
-# ah= 0x1.014a3e61bc114p-1 al= 0x1.f56cd49187432p-54 bh= 0x1.0ddd63e28aadep-1 bl= -0x1.f7fdbb36e232cp-54 err= 15.4300909741780
-# avg. err= 1.14459486977720
+# ah= -0x1.0a7f842d1d77ep-1 al= 0x1.56ac275541066p-55 bh= 0x1.1450e2df52752p-1 bl= 0x1.d2c2cc7488ea8p-55 err= 6.69024198067564
+# avg. err= 0.560541754000017
+# check_d_div(K=10^6,rnd='RNDN',worst=true)
+# ah= 0x1.13ef3bfc034ecp-1 al= 0x1p-54 bh= -0x1.a1e103c44907cp-1 bl= 0x1p-54 err= 8.71261829290411
 # check_d_div(K=10^6,rnd='RNDZ')
-# ah= -0x1.00933ddb51e1cp-1 al= -0x1.eb3917eafca2ap-54 bh= -0x1.426a3514adee4p-1 bl= 0x1.fe34e12a06732p-54 err= 30.6708140509637
-# avg. err= 4.33318176146531
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc1)
-# ah= 0x1.2f7e7879b5f74p-1 al= 0x1.af8bc1f1bcf0ep-54 bh= 0x1.0bff358d60384p-1 bl= -0x1.f5a2c6a9b41bep-54 err= 15.2999565566288
-# avg. err= 0.986063329074064
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc2)
-# ah= 0x1.22aa4690bdd0ap-1 al= 0x1.6878cca074226p-54 bh= 0x1.09b548efe132p-2 bl= -0x1.f33ded8ee1422p-55 err= 14.2802591373840
-# avg. err= 0.987773577175927
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc3)
-# ah= 0x1.3cf7a1a1cfbb8p-1 al= -0x1.78eeeffc6ef32p-54 bh= -0x1.05baa81804abp-2 bl= -0x1.f9b471a10ff76p-55 err= 8.95713681827043
-# avg. err= 1.08553630618232
-def check_d_div(K=10^6,rnd='RNDN',algo=d_div):
+# ah= 0x1.11893f386fap-7 al= 0x1.aa0e8e2e3c4bcp-61 bh= -0x1.e73756bc4ef46p-1 bl= 0x1.f5cf9a97b4b7cp-55 err= 24.7338189683173
+# avg. err= 3.64249951725914
+# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc1) # claimed 15u^2
+# ah= -0x1.0ecc6af81f4acp-1 al= -0x1.91e410c63551ap-55 bh= 0x1.022185e49a19p-3 bl= -0x1.beb9dc847335ap-57 err= 6.51290290645275
+# avg. err= 0.418192527364857
+# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc1,worst=true)
+# ah= -0x1.0d635e390f03p-1 al= 0x1p-54 bh= -0x1.068e39e3db3cp-6 bl= -0x1p-59 err= 6.41238254052790
+# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc2) # claimed 15u^2
+# ah= -0x1.1e99e0476fd32p-1 al= 0x1.ff23473ea10e6p-55 bh= -0x1.0c6766d79d598p-3 bl= -0x1.d547f7bdd0aep-57 err= 6.26011749470428
+# avg. err= 0.417522466227338
+# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc2,worst=true)
+# ah= 0x1.04248b8f98064p-1 al= -0x1p-54 bh= 0x1.28313836c7dcp-4 bl= 0x1p-57 err= 6.28648758693814
+# check_d_div(K=10^7,rnd='RNDN',algo=d_div_acc3) # claimed 9.8u^2
+# ah= 0x1.0907f3c15df88p-2 al= 0x1.b566aa7e9c0f4p-56 bh= -0x1.fa922e2e59498p-3 bl= -0x1.f89c70a395d6ep-57 err= 5.61606432576871
+# avg. err= 0.549085609379064
+# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc3,worst=true)
+# ah= -0x1.0078454fea19ep-1 al= -0x1p-54 bh= 0x1.ed4bd283fap-9 bl= 0x1p-62 err= 5.27837842708530
+def check_d_div(K=10^6,rnd='RNDN',algo=d_div,worst=false):
    maxerr = 0
    avgerr = 0
    R = RealField(53,rnd=rnd)
    u = 2^-53.
    for k in range(K):
       ah = R.random_element()
-      al = R.random_element()*ah.ulp()
+      if worst==false:
+         al = R.random_element()*ah.ulp()/2
+      else:
+         if abs(ah.exact_rational().numer()) < 2^52:
+            al = ah.ulp()/2
+         else:
+            al = (ah.ulp()/2).nextbelow()
+         if randint(0,1)==1:
+            al = -al
       bh = R.random_element()
-      bl = R.random_element()*bh.ulp()
+      if worst==false:
+         bl = R.random_element()*bh.ulp()/2
+      else:
+         if abs(bh.exact_rational().numer()) < 2^52:
+            bl = bh.ulp()/2
+         else:
+            bl = (bh.ulp()/2).nextbelow()
+         if randint(0,1)==1:
+            bl = -bl
       hi, lo = algo(ah,al,bh,bl)
       a = ah.exact_rational()+al.exact_rational()
       b = bh.exact_rational()+bl.exact_rational()
