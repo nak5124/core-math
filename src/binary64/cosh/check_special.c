@@ -82,7 +82,8 @@ check_random (double x)
     bug = !isnan (y1);
   else
     bug = asuint64 (y1) != asuint64 (y2);
-  if (bug && y2 != 0)
+  if (bug)
+#pragma omp critical
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
