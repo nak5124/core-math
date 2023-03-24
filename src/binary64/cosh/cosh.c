@@ -29,6 +29,7 @@ SOFTWARE.
 
 typedef uint64_t u64;
 typedef union {double f; u64 u;} b64u64_u;
+static __attribute__((noinline)) double as_cosh_database(double, double);
 
 static inline double fasttwosum(double x, double y, double *e){
   double s = x + y, z = s - x;
@@ -39,14 +40,6 @@ static inline double fasttwosum(double x, double y, double *e){
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
-  ch = ahhh + ahhl;
-  *l = (ahhh - ch) + ahhl;
-  return ch;
-}
-
-static inline double mulddd(double xh, double xl, double ch, double *l){
-  double ahlh = ch*xl, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
-  ahhl += ahlh;
   ch = ahhh + ahhl;
   *l = (ahhh - ch) + ahhl;
   return ch;
@@ -103,11 +96,13 @@ static double __attribute__((noinline)) as_cosh_zero(double x){
       t.u++;
     y1 = t.f;
   }
+  if(__builtin_expect((t.u&(~0ul>>12))==(~0ul>>12), 0)) return as_cosh_database(x, y0 + y1);
   return y0 + y1;
 }
 
 static __attribute__((noinline)) double as_cosh_database(double x, double f){
   static const double db[][3] = {
+    {0x1.9a5e3cbe1985ep-4, 0x1.01492f72f984bp+0, -0x1p-107},
     {0x1.52a11832e847dp-3, 0x1.0381e68cac923p+0, 0x1p-104},
     {0x1.bf0305e2c6c37p-3, 0x1.061f4c39e16f2p+0, 0x1p-107},
     {0x1.17326ffc09f68p-2, 0x1.099318a43ac8p+0, 0x1p-104},
@@ -224,7 +219,7 @@ double cr_cosh(double x){
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
   if(__builtin_expect(aix<0x3fc0000000000000ul, 0)){
-    if(__builtin_expect(aix<0x3e50000000000000ul, 0)) return __builtin_fma(ax,0x1p-55,ax);
+    if(__builtin_expect(aix<0x3e50000000000000ul, 0)) return __builtin_fma(ax,0x1p-55,1);
     static const double c[] = {
       0x1p-1, 0x1.555555555554ep-5, 0x1.6c16c16c26737p-10, 0x1.a019ffbbcdbdap-16, 0x1.27ffe2df106cbp-22};
     double x2 = x*x, x4 = x2*x2, p = x2*((c[0] + x2*c[1]) + x4*((c[2] + x2*c[3]) + x4*c[4]));
