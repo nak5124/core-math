@@ -43,11 +43,13 @@ static inline double fasttwosum(double x, double y, double *e){
   return s;
 }
 
+#if 0
 static inline double adddd(double xh, double xl, double ch, double cl, double *l) {
   double s = xh + ch, d = s - xh;
   *l = ((ch - d) + (xh + (d - s))) + (xl + cl);
   return s;
 }
+#endif
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
