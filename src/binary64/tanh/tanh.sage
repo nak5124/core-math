@@ -60,20 +60,6 @@ def d_div_km(ah,al,bh,bl):
    zl = yh*(eh+el)
    return zh, zl
 
-def analyze_d_div_km(amin=1/2,amax=1,bmin=1/2,bmax=1):
-   ah = RIF(amin,amax)
-   bh = RIF(bmin,bmax)
-   u = RIFulp(ah)
-   al = RIF(-u,u)
-   u = RIFulp(bh)
-   bl = RIF(-u,u)
-   yh = RIF(1)/bh
-   zh = ah*yh
-   eh = ah-bh*zh
-   err_eh = eh.abs().upper().ulp()
-   el = al-bl*zh
-   err_el = el.abs().upper().ulp()
-
 def s_mul_acc1(a,bh,bl):
    hi, cl1 = a_mul (a, bh)
    cl2 = a * bl
@@ -120,70 +106,121 @@ def d_div_acc3(xh,xl,yh,yl):
    mh, ml = fast_sum_acc (th, delta_h, delta_l)
    return d_mul_acc2 (xh, xl, mh, ml)
 
-# check_d_div(K=10^6,rnd='RNDN')
-# ah= -0x1.0a7f842d1d77ep-1 al= 0x1.56ac275541066p-55 bh= 0x1.1450e2df52752p-1 bl= 0x1.d2c2cc7488ea8p-55 err= 6.69024198067564
-# avg. err= 0.560541754000017
-# check_d_div(K=10^6,rnd='RNDN',worst=true)
-# ah= 0x1.13ef3bfc034ecp-1 al= 0x1p-54 bh= -0x1.a1e103c44907cp-1 bl= 0x1p-54 err= 8.71261829290411
-# check_d_div(K=10^6,rnd='RNDZ')
-# ah= 0x1.11893f386fap-7 al= 0x1.aa0e8e2e3c4bcp-61 bh= -0x1.e73756bc4ef46p-1 bl= 0x1.f5cf9a97b4b7cp-55 err= 24.7338189683173
-# avg. err= 3.64249951725914
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_km)
-# ah= -0x1.43146c9146844p-1 al= -0x1.dda953f5cae8cp-55 bh= 0x1.a7bd38b47aa8p-2 bl= -0x1.eb480226c0f82p-56 err= 8.02896242858297
-# avg. err= 0.555275125652105
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc1) # claimed 15u^2
-# ah= -0x1.0ecc6af81f4acp-1 al= -0x1.91e410c63551ap-55 bh= 0x1.022185e49a19p-3 bl= -0x1.beb9dc847335ap-57 err= 6.51290290645275
-# avg. err= 0.418192527364857
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc1,worst=true)
-# ah= -0x1.0d635e390f03p-1 al= 0x1p-54 bh= -0x1.068e39e3db3cp-6 bl= -0x1p-59 err= 6.41238254052790
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc2) # claimed 15u^2
-# ah= -0x1.1e99e0476fd32p-1 al= 0x1.ff23473ea10e6p-55 bh= -0x1.0c6766d79d598p-3 bl= -0x1.d547f7bdd0aep-57 err= 6.26011749470428
-# avg. err= 0.417522466227338
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc2,worst=true)
-# ah= 0x1.04248b8f98064p-1 al= -0x1p-54 bh= 0x1.28313836c7dcp-4 bl= 0x1p-57 err= 6.28648758693814
-# check_d_div(K=10^7,rnd='RNDN',algo=d_div_acc3) # claimed 9.8u^2
-# ah= 0x1.0642cefd8914p-1 al= -0x1.f22f83a5ec7c6p-55 bh= -0x1.f19914ee49e2ap-1 bl= 0x1.6c55acbbf8ddp-55 err= 5.83437627468727
-# avg. err= 0.549184784126938
-# check_d_div(K=10^6,rnd='RNDN',algo=d_div_acc3,worst=true)
-# ah= -0x1.0078454fea19ep-1 al= -0x1p-54 bh= 0x1.ed4bd283fap-9 bl= 0x1p-62 err= 5.27837842708530
-def check_d_div(K=10^6,rnd='RNDN',algo=d_div,worst=false):
-   maxerr = 0
-   avgerr = 0
+# check_d_div(K=10^3,algo=d_div)
+# (7.53428059629510, '0x1.0edf470f8b83ap-1', '0x1.9e9b29954926ap-55', '0x1.58a5a5e6b7712p-1', '-0x1.e45428392cc88p-55')
+# check_d_div(K=10^3,algo=d_div_km)
+# (9.69034290379382, '0x1.20dd93867d2cap-1', '0x1p-54', '0x1.a3f6e77b9009bp-1', '-0x1p-54')
+# check_d_div(K=10^6,algo=d_div_acc1) # claimed 15u^2
+# (7.42804911615377, '0x1.135fab4fd00c3p-1', '-0x1.f0ab7bcb3731ep-55', '0x1.094707cfda765p-1', '0x1.e1b46b8494984p-55')
+# check_d_div(K=10^6,algo=d_div_acc2) # claimed 15u^2
+# (8.22879495090911, '0x1.00b919d04d85ep-1', '-0x1.947c0b3767baep-55', '0x1.00663cc3de7a6p-1', '0x1.fe3641bcf83a8p-55')
+# check_d_div(K=10^7,algo=d_div_acc3) # claimed 9.8u^2
+# (6.14445119186478, '0x1.0fa02facd65b7p-1', '0x1.f3c804abc91e4p-55', '0x1.f7287d4eeff91p-1', '0x1.be362fd31dc42p-55')
+def check_d_div(K=10^6,rnd='RNDN',algo=d_div,worst=false,amin=1/2,amax=1,bmin=1/2,bmax=1):
+   maxerr = max_ah = max_al = max_bh = max_bl = 0
    R = RealField(53,rnd=rnd)
-   u = 2^-53.
-   for k in range(K):
-      ah = R.random_element()
-      if worst==false:
-         al = R.random_element()*ah.ulp()/2
-      else:
-         if abs(ah.exact_rational().numer()) < 2^52:
-            al = ah.ulp()/2
-         else:
-            al = (ah.ulp()/2).nextbelow()
-         if randint(0,1)==1:
-            al = -al
-      bh = R.random_element()
-      if worst==false:
-         bl = R.random_element()*bh.ulp()/2
-      else:
-         if abs(bh.exact_rational().numer()) < 2^52:
-            bl = bh.ulp()/2
-         else:
-            bl = (bh.ulp()/2).nextbelow()
-         if randint(0,1)==1:
-            bl = -bl
-      hi, lo = algo(ah,al,bh,bl)
-      a = ah.exact_rational()+al.exact_rational()
-      b = bh.exact_rational()+bl.exact_rational()
-      r = a/b
-      err = n((hi.exact_rational()+lo.exact_rational())/r-1,200)
-      err = abs(err)/u^2
-      avgerr += err
+   amin,amax,bmin,bmax = RR(amin),RR(amax),RR(bmin),RR(bmax)
+   wa = width(amin,amax)
+   wb = width(bmin,bmax)
+   if wa*wb<=K: # exhaustive search
+      ah = amin
+      al = get_low(ah,worst)
+      for i in range(wa):
+         bh = bmin
+         for j in range(wb):
+            bl = get_low(bh,worst)
+            err = get_div_err(ah,al,bh,bl,algo)
+            if err>maxerr:
+               maxerr,max_ah,max_al,max_bh,max_bl = err,ah,al,bh,bl
+            bh = bh.nextabove()
+         ah = ah.nextabove()
+         al = get_low(ah,worst)
+      return maxerr,get_hex(max_ah),get_hex(max_al),get_hex(max_bh),get_hex(max_bl)
+   for k in range(K): # random search
+      ah = R.random_element(amin,amax)
+      al = get_low(ah,worst,k//2)
+      bh = R.random_element(bmin,bmax)
+      bl = get_low(bh,worst,(k//4)+(k%2))
+      err = get_div_err(ah,al,bh,bl,algo)
       if err>maxerr:
-         print ("ah=", get_hex(ah), "al=", get_hex(al), "bh=", get_hex(bh), "bl=", get_hex(bl), "err=", err)
-         maxerr = err
-   avgerr /= K
-   print ("avg. err=", avgerr)
+         maxerr,max_ah,max_al,max_bh,max_bl = err,ah,al,bh,bl
+   return maxerr,get_hex(max_ah),get_hex(max_al),get_hex(max_bh),get_hex(max_bl)
+
+def width(amin,amax):
+   return ZZ((amax-amin)/amin.ulp())
+
+# for worst=false:
+# if ind=0, generate -ah.ulp()/2
+# if ind=1, generate +ah.ulp()/2
+# otherwise generate random number
+def get_low(ah,worst,ind=2):
+   R = ah.parent()
+   if worst==false:
+      if ind==0:
+         al = -ah.ulp()/2
+      elif ind==1:
+         al = ah.ulp()/2
+      else:
+         al = R.random_element()*ah.ulp()/2
+   else:
+      if abs(ah.exact_rational().numer()) < 2^52:
+         al = ah.ulp()/2
+      else:
+         al = (ah.ulp()/2).nextbelow()
+      if randint(0,1)==1:
+         al = -al
+   return al
+
+def cmp_err(a,b):
+   if a[0]>b[0]:
+      return int(-1)
+   else:
+      return int(1)
+
+# check_sample(K=10^3,algo=d_div)
+# (7.89381229048650, '0x1.151bc17debf99p-1', '-0x1.e7743a7f635f2p-55', '0x1.ffcdd1b14cc2ap-1', '0x1.ffa244763324ap-55')
+# check_sample(K=10^5,algo=d_div_km)
+# (9.69535480980671, '0x1.0367eb6da3d3ap-1', '0x1.e1b93ac80f2fcp-55', '0x1.035d0b42545c3p-1', '-0x1.fbb057cf474cap-55')
+# check_sample(K=10^3,algo=d_div_acc1)
+# (7.34857497724341, '0x1.0fb3501b33a74p-1', '0x1.fb43080f5c5b2p-55', '0x1.05ab719e40ef7p-1', '-0x1.d4a50d17c7dacp-55')
+# check_sample(K=10^3,algo=d_div_acc2)
+# (6.78734053466836, '0x1.20e3c993988d9p-1', '-0x1.7333d5916b282p-55', '0x1.082fbaacc10d9p-1', '0x1.c8970b8375c9ep-55')
+# check_sample(K=10^5,algo=d_div_acc3)
+# (6.77733714740326, '0x1.008e43ff0b527p-1', '-0x1.d2535fa3356e6p-55', '0x1.fe3e7a576f00dp-1', '-0x1.ff617c0ea825ep-55')
+def check_sample(K=10^6,rnd='RNDN',algo=d_div,worst=false,samples=20):
+   R = RealField(53,rnd=rnd)
+   best = 0,0,0,0,0
+   amin = bmin = R(1/2)
+   amax = bmax = R(1)
+   L = [(0,amin,amax,bmin,bmax)]
+   w = width(amin,amax)*width(bmin,bmax)
+   while w>K:
+      newL = []
+      for _,amin,amax,bmin,bmax in L:
+         amid = (amin+amax)/2
+         bmid = (bmin+bmax)/2
+         for [a0,a1,b0,b1] in [(amin,amid,bmin,bmid),(amin,amid,bmid,bmax),(amid,amax,bmin,bmid),(amid,amax,bmid,bmax)]:
+            err = check_d_div(K=K,rnd=rnd,algo=algo,worst=worst,amin=a0,amax=a1,bmin=b0,bmax=b1)
+            if err[0]>best[0]:
+               best = err
+            newL.append((err[0],a0,a1,b0,b1))
+      L = newL
+      L.sort(key=cmp_to_key(cmp_err))
+      if len(L)>samples:
+         L = L[:samples]
+      # print ([x[0] for x in L])
+      w = ceil(w/4)
+      print (best)
+   print(best)
+
+def get_div_err(ah,al,bh,bl,algo):
+   u = 2^-53.
+   hi, lo = algo(ah,al,bh,bl)
+   a = ah.exact_rational()+al.exact_rational()
+   b = bh.exact_rational()+bl.exact_rational()
+   r = a/b
+   err = n((hi.exact_rational()+lo.exact_rational())/r-1,200)
+   return abs(err)/u^2
          
 # return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
 # this internal routine is used below
