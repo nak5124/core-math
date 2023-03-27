@@ -132,6 +132,7 @@ static __attribute__((noinline)) double as_tanh_database(double x, double f){
     {0x1.43eaea23649c3p-2, 0x1.39877ed028641p-2, -0x1p-55},
     {0x1.d88d7550b2826p-2, 0x1.b9a3637366afdp-2,  0x1p-56},
     {0x1.e611aa58ab608p-2, 0x1.c493dc899e4a6p-2, -0x1p-55},
+    {0x1.01efe7ac8c15dp-1, 0x1.dc3fe1b524821p-2, -0x1p-104},
     {0x1.1005ec0bccabbp-1, 0x1.f20b1c8557dedp-2, -0x1p-55},
     {0x1.33dfeb0fa4bfep-1, 0x1.1372f9ee76e99p-1,  0x1p-55},
     {0x1.49f24ac5cac35p-1, 0x1.22c495ff06104p-1, -0x1p-104},
@@ -243,7 +244,7 @@ double cr_tanh(double x){
   if(aix<0x400d76c8b4395810ul){ // |x| ~< 3.683
     if(__builtin_expect(aix<0x3fd0000000000000ul, 0)){
       if(__builtin_expect(aix<0x3e10000000000000ul, 0)){
-	if(__builtin_expect(aix<0x3df000000000000ul, 0)){
+	if(__builtin_expect(aix<0x3df0000000000000ul, 0)){
 	  if(__builtin_expect(!aix, 0)) return x;
 	  return __builtin_fma(x,-0x1p-55,x);
 	}
