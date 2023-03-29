@@ -1,4 +1,4 @@
-/* Check sinh on random inputs.
+/* Check sinpi on random inputs.
 
 Copyright (c) 2022-2023 Paul Zimmermann, Inria.
 
@@ -37,8 +37,8 @@ SOFTWARE.
 int ref_init (void);
 int ref_fesetround (int);
 
-double cr_sinh (double);
-double ref_sinh (double);
+double cr_sinpi (double);
+double ref_sinpi (double);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
@@ -73,9 +73,9 @@ static void
 check_random (double x)
 {
   int bug;
-  double y1 = ref_sinh (x);
+  double y1 = ref_sinpi (x);
   fesetround (rnd1[rnd]);
-  double y2 = cr_sinh (x);
+  double y2 = cr_sinpi (x);
   if (isnan (y1))
     bug = !isnan (y2);
   else if (isnan (y2))
@@ -145,7 +145,7 @@ main (int argc, char *argv[])
     ref_init ();
     ref_fesetround (rnd);
     double x;
-    do x = get_random (); while (fabs (x) >= 0x1.633ce8fb9f87ep+9);
+    x = get_random ();
     check_random (x);
   }
 

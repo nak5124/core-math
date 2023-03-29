@@ -30,6 +30,8 @@ typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_erff(float x){
+  /* for 7 <= i < 63, C[i-i] is a degree-7 polynomial approximation of
+     erf(i/16+1/32+x) for -1/32 <= x <= 1/32 */
   static const double C[56][8] = {
     {0x1.f86faa9428f9cp-2, 0x1.cfc41e36c7dfap-1, -0x1.b2c7dc53508b9p-2, -0x1.5a9de93fa556ep-3, 0x1.731793dbb01b5p-3, 0x1.133e06426cf18p-6, -0x1.a12a6289cafd8p-5, 0x1.717d6f1d6f557p-9},
     {0x1.1855a5fd3dd50p-1, 0x1.b3aafcc27502fp-1, -0x1.cee5ac8e92bb2p-2, -0x1.fa02983ca2d79p-4, 0x1.77cd746cb1922p-3, -0x1.fa6f277886487p-10, -0x1.8de75458db416p-5, 0x1.00899c98551c9p-7},
