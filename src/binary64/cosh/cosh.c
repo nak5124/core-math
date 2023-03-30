@@ -140,6 +140,16 @@ static __attribute__((noinline)) double as_cosh_database(double x, double f){
 }
 
 double cr_cosh(double x){
+  /*
+    The function sinh(x) is approximated by a minimax polynomial
+    cosh(x)~1+x^2*P(x^2) for |x|<0.125. For other arguments the
+    identity cosh(x)=(exp(|x|)+exp(-|x|))/2 is used. For |x|<5 both
+    exponents are calculated with slightly higher precision than
+    double. For 5<|x|<36.736801 the exp(-|x|) is rather small and is
+    calculated with double precision but exp(|x|) is calculated with
+    higher than double precision. For 36.736801<|x|<710.47586
+    exp(-|x|) becomes too small and only exp(|x|) is calculated.
+   */
   static const double t0[][2] = {
     {0x0p+0, 0x1p+0}, {-0x1.19083535b085ep-56, 0x1.02c9a3e778061p+0},
     {0x1.d73e2a475b466p-55, 0x1.059b0d3158574p+0}, {0x1.186be4bb285p-57, 0x1.0874518759bc8p+0},
