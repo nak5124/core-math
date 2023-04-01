@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifndef NOASM
 #include <x86intrin.h>
+#endif
 
 typedef uint64_t u64;
 typedef union {double f; u64 u;} b64u64_u;
@@ -245,11 +247,17 @@ double cr_exp(double x){
   };
   const double s = 0x1.71547652b82fep+12;
   double v0 = __builtin_fma(x, s, 0x1.8000004p+25);
+#ifndef NOASM
   b64u64_u jt = {.f = v0};
   __m128d v; asm("":"=x"(v):"0"(v0):);
   __m128i tt = {~((1<<27)-1l),0};
   v = _mm_and_pd(v,(__m128d)tt);
   double tn = v[0] - 0x1.8p25, t = tn;
+#else
+  b64u64_u jt = {.f = v0}, v = jt;
+  v.u &= ~((1<<27)-1l);
+  double tn = v.f - 0x1.8p25, t = tn;
+#endif
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~0ul>>1);
   if(__builtin_expect(aix>=0x40862e42fefa39f0ul, 0)){
@@ -298,11 +306,17 @@ double cr_exp(double x){
       if(__builtin_fabs(afl-0x1p-53) < 0x1p-105 || __builtin_fabs(afl - 0x1p-52)< 0x1p-102 ||
 	 afl<0x1p-102 || afl == 0x1p-54) vh = as_exp_database(x, vh);
     }
+#ifndef NOASM
     fh = vh;
     __m128i sb; sb[0] = ie<<52;
     __m128d r; asm("":"=x"(r):"0"(fh));
     r = (__m128d)_mm_add_epi64((__m128i)r, sb);
     fh = r[0];
+#else
+    b64u64_u r = {.f = vh};
+    r.u += ie<<52;
+    fh = r.f;
+#endif
   }
   return fh;
 }
