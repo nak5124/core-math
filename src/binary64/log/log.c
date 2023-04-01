@@ -498,12 +498,6 @@ static const double P[6] = {0x1p0,                 /* degree 1 */
                             -0x1.55362255e0f63p-3, /* degree 6 */
 };
 
-// Multiply exactly a and b, such that *hi + *lo = a * b.
-static inline void a_mul(double *hi, double *lo, double a, double b) {
-  *hi = a * b;
-  *lo = __builtin_fma(a, b, -*hi);
-}
-
 /* Given 1 <= x < 2, where x = v.f, put in h+l a double-double approximation
    of log(2^e*x), with absolute error bounded by 2^-68.22 (details below).
 */
