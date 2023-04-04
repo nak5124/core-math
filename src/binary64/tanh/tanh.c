@@ -231,7 +231,7 @@ double cr_tanh(double x){
   const double s = -0x1.71547652b82fep+13;
   double ax = __builtin_fabs(x), v0 = __builtin_fma(ax, s, 0x1.8000004p+25);
   b64u64_u jt = {.f = v0};
-  __m128d v; asm("":"=x"(v):"0"(v0):);
+  __m128d v = _mm_set_sd (v0);
   __m128i tt = {~((1<<27)-1l), 0};
   v = _mm_and_pd(v,(__m128d)tt);
   double tn = v[0] - 0x1.8p25, t = tn;

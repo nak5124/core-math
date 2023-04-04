@@ -257,7 +257,7 @@ double cr_sinh(double x){
   const double s = 0x1.71547652b82fep+12;
   double ax = __builtin_fabs(x), v0 = __builtin_fma(ax, s, 0x1.8000002p+26);
   b64u64_u jt = {.f = v0};
-  __m128d v; asm("":"=x"(v):"0"(v0):);
+  __m128d v = _mm_set_sd (v0);
   __m128i tt = {~((1<<26)-1l),0};
   v = _mm_and_pd(v,(__m128d)tt);
   double t = v[0] - 0x1.8p26;

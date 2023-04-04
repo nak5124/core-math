@@ -151,8 +151,8 @@ double cr_hypot(double x, double y){
   }
   double u = __builtin_fmax(x,y), v = __builtin_fmin(x,y);
   __m128d xd, yd;
-  asm("":"=x"(xd):"0"(u):);
-  asm("":"=x"(yd):"0"(v):);
+  xd = _mm_set_sd (u);
+  yd = _mm_set_sd (v);
   __m128i de = (__m128i)xd - (__m128i)yd;
   if(__builtin_expect(de[0]>(27l<<52),0)) return __builtin_fma(0x1p-27, v, u);
   ey = ((__m128i)yd)[0];
@@ -181,8 +181,8 @@ double cr_hypot(double x, double y){
   double th = __builtin_sqrt(r2), rsqrt = th*ir2;
   double dz = dr2 - __builtin_fma(th,th,-r2), tl = rsqrt*dz;
   th = fasttwosum(th, tl, &tl);
-  __m128d thd; asm("":"=x"(thd):"0"(th):);
-  __m128d tld; asm("":"=x"(tld):"0"(__builtin_fabs(tl)):);
+  __m128d thd = _mm_set_sd (th);
+  __m128d tld = _mm_set_sd (tl);
   ex = ((__m128i)thd)[0];
   ey = ((__m128i)tld)[0];
   ex &= 0x7ffl<<52;

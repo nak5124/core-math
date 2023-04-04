@@ -246,7 +246,7 @@ double cr_exp(double x){
   const double s = 0x1.71547652b82fep+12;
   double v0 = __builtin_fma(x, s, 0x1.8000004p+25);
   b64u64_u jt = {.f = v0};
-  __m128d v; asm("":"=x"(v):"0"(v0):);
+  __m128d v = _mm_set_sd (v0);
   __m128i tt = {~((1<<27)-1l),0};
   v = _mm_and_pd(v,(__m128d)tt);
   double tn = v[0] - 0x1.8p25, t = tn;
@@ -300,7 +300,7 @@ double cr_exp(double x){
     }
     fh = vh;
     __m128i sb; sb[0] = ie<<52;
-    __m128d r; asm("":"=x"(r):"0"(fh));
+    __m128d r = _mm_set_sd (fh);
     r = (__m128d)_mm_add_epi64((__m128i)r, sb);
     fh = r[0];
   }
