@@ -182,7 +182,7 @@ double cr_hypot(double x, double y){
   double dz = dr2 - __builtin_fma(th,th,-r2), tl = rsqrt*dz;
   th = fasttwosum(th, tl, &tl);
   __m128d thd = _mm_set_sd (th);
-  __m128d tld = _mm_set_sd (tl);
+  __m128d tld = _mm_set_sd (__builtin_fabs(tl));
   ex = ((__m128i)thd)[0];
   ey = ((__m128i)tld)[0];
   ex &= 0x7ffl<<52;
