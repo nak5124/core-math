@@ -94,6 +94,8 @@ float cr_erff(float x){
   b32u32_u t = {.f = ax};
   uint32_t ux = t.u;
   double s = x, z = ax;
+  /* 0x407ad444 corresponds to x = 0x1.f5a888p+1 = 3.91921..., which is the
+     largest float such that erf(x) does not round to 1 (to nearest) */
   if (__builtin_expect(ux > 0x407ad444u, 0)) {
     float os = __builtin_copysignf(1.0f, x);
     if (ux> (0xffu<<23)) return x; // nan
@@ -102,6 +104,7 @@ float cr_erff(float x){
   }
   double v = __builtin_floor(16.0 * z);
   uint32_t i = 16.0f * ax;
+  /* 0x3ee00000 corresponds to x = 0.4375, for smaller x we have i < 7 */
   if (__builtin_expect(ux < 0x3ee00000u, 0)) {
     static const double c[] =
       {0x1.20dd750429b6dp+0, -0x1.812746b0375fbp-2, 0x1.ce2f219fd6f45p-4, -0x1.b82ce2cbf0838p-6,
