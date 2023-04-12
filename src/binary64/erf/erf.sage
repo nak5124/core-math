@@ -135,16 +135,17 @@ def sollya_approx(x0,h,d,i,rel=false):
    f.close()
    return p, ret
 
-# return the worst approximation for erf(j0*2*h+x), -h <= x <= h, j0 <= j < j1
+# return the worst approximation for erf((2*j+1)*h+x)
+# for -h <= x <= h, j0 <= j < j1
 # sollya_approx_all(1,63,1/32,10,1)
-# j= 14 err= 70.2210000000000
+# j= 5 err= 68.8980000000000
 # sollya_approx_all(1,95,1/32,10,1,rel=true)
-# j= 1 err= 68.9360000000000
+# j= 1 err= 69.0050000000000
 def sollya_approx_all(j0,j1,h,d,i,rel=false):
    wo = infinity
    h = RR(h)
    for j in range(j0,j1):
-      _, err = sollya_approx(j*2*h,h,d,i,rel=rel)
+      _, err = sollya_approx((2*j+1)*h,h,d,i,rel=rel)
       if err<wo:
          print ("j=", j, "err=", err)
          wo = err
@@ -155,7 +156,7 @@ def print_table(j0,j1,h,d,i,rel=false):
    print ("static const double C[" + str(j1-j0) + "][" + str(ncols) + "] = {")
    h = RR(h)
    for j in range(j0,j1):
-      p, err = sollya_approx(j*2*h,h,d,i,rel=rel)
+      p, err = sollya_approx((2*j+1)*h,h,d,i,rel=rel)
       s = "   {"
       for k in [0..i]: # double-double coefficients
          c = p[k]
@@ -191,14 +192,18 @@ def RIFulp(x):
 # analyse the maximal (relative) error for subrange j
 # h=1/32 is hard-coded, same for d=10 and i=1
 # analyze_p(1)
-# 2.0031138248669584247128456119263802594286138598068368215276e-21
+# 1.8041439020002007598159953351662726451311477366596442921348e-21
 # analyze_p(94)
-# 9.5929840647180978687493151356279980177510033348313787165373e-32
+# 9.5249575225922294057670569587513743145270177899905765494872e-32
+# max(analyze_p(j) for j in [1..94])
+# 1.8041439020002007598159953351662726451311477366596442921348e-21
+# z=RR("0x1.047e0c8ec7b19p-4",16)-0.03125-0.0625
+# analyze_p(1,zmin=z,zmax=z,verbose=true)
 def analyze_p(j,zmin=-1/32,zmax=1/32,verbose=false):
    d = 10
    i = 1
    h = RR(1/32)
-   p, err0 = sollya_approx(j*2*h,h,d,i,rel=true)
+   p, err0 = sollya_approx((2*j+1)*h,h,d,i,rel=true)
    err0 = 2^-err0
    if verbose:
       print ("err0=", log(err0)/log(2.))
@@ -335,6 +340,9 @@ def analyze_p(j,zmin=-1/32,zmax=1/32,verbose=false):
    # take into account err0
    R = RealField(200)
    err = (1+R(err))*(1+R(err0))-1
+   if verbose:
+      print ("h=",get_hex(h.lower()),get_hex(h.upper()))
+      print ("l=",get_hex(l.lower()),get_hex(l.upper()))
    return err
 
 # call analyze_p() with 2^k subintervals
@@ -353,28 +361,29 @@ def Analyze_p(j,k=0):
    return maxerr
 
 # same as analyze_p(), for special code for 0 <= z < 1/16
-# analyze0()
+# z=RR("0x1.6d5ad4307dd52p-7",16)
+# analyze0(zmin=z,zmax=z,verbose=true)
+# 1.7728539402341353632384125726299282502227121904834404136560e-21
 def analyze0(zmin=0,zmax=1/16,verbose=false):
    err0 = 2^-68.935
    z = RIF(zmin,zmax)
    c0 = ["0x1.20dd750429b6dp+0", "0x1.1ae3a7862d9c4p-56", "-0x1.812746b0379e7p-2", "0x1.f1a64d72722a2p-57", "0x1.ce2f21a042b7fp-4", "-0x1.b82ce31189904p-6", "0x1.565bbf8a0fe0bp-8", "-0x1.bf9f8d2c202e4p-11"]
    c0 = [RR(x,16) for x in c0]
-   Z = zmin.exact_rational()
-   d = [x.exact_rational() for x in c0]
-   print(Z*(d[0]+d[1])+Z^3*(d[2]+d[3])+Z^5*d[4]+Z^7*d[5]+Z^9*d[6]+Z^11*d[7])
-   # z2 = z*z
-   z2 = z*z
-   err_z2 = RIFulp(z2)
-   # z4 = z2*z2
-   z4 = z2*z2
-   err_z4 = RIFulp(z4)+2*z2.abs().upper()*err_z2
-   # c9 = __builtin_fma (c0[7], z2, c0[6])
-   c9 = c0[7]*z2+c0[6]
+   # a_mul (&z2h, &z2l, z, z)
+   z2h = z*z
+   u = RIFulp(z2h)
+   z2l = RIF(-u,u)
+   err_z2 = u
+   # z4 = z2h*z2h
+   z4 = z2h*z2h
+   err_z4 = RIFulp(z4)+2*z2h.abs().upper()*err_z2
+   # c9 = __builtin_fma (c0[7], z2h, c0[6])
+   c9 = c0[7]*z2h+c0[6]
    err1 = (RIFulp(c9)+c0[7]*err_z2)*z.abs().upper()^9
    if verbose:
       print ("err1=", log(err1)/log(2.))
-   # c5 = __builtin_fma (c0[5], z2, c0[4])
-   c5 = c0[5]*z2+c0[4]
+   # c5 = __builtin_fma (c0[5], z2h, c0[4])
+   c5 = c0[5]*z2h+c0[4]
    err2 = (RIFulp(c5)+c0[5]*err_z2)*z.abs().upper()^5
    if verbose:
       print ("err2=", log(err2)/log(2.))
@@ -383,10 +392,13 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    err3 = (RIFulp(c5)+c9.abs().upper()*err_z4)*z.abs().upper()^5
    if verbose:
       print ("err3=", log(err3)/log(2.))
-   # a_mul (&th, &tl, z2, c5)
-   th = z2*c5
+   # a_mul (&th, &tl, z2h, c5)
+   th = z2h*c5
    u = RIFulp(th)
    tl = RIF(-u,u)
+   err3a = err_z2*c5.abs().upper()*z.abs().upper()^3
+   if verbose:
+      print ("err3a=", log(err3a)/log(2.))
    # fast_two_sum (h, l, c0[2], th)
    h = c0[2]+th
    u = RIFulp(h)
@@ -400,13 +412,18 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    err5 = (RIFulp(tl)+RIFulp(l))*z.abs().upper()^3
    if verbose:
       print ("err5=", log(err5)/log(2.))
-   # a_mul (&th, &tl, z2, *h)
-   th = z2*h
+   # a_mul (&th, &tl, z2h, *h)
+   h_copy = h
+   th = z2h*h
    u = RIFulp(th)
    tl = RIF(-u,u)
-   # tl = __builtin_fma (z2, *l, tl)
-   tl = z2*l+tl
-   err6 = (RIFulp(tl)+err_z2*l.abs().upper())*z.abs().upper()
+   err5a = z2l.abs().upper()*l.abs().upper()*z.abs().upper()
+   if verbose:
+      print ("err5a=", log(err5a)/log(2.))
+   # tl += __builtin_fma (z2h, *l, c0[1])
+   t = z2h*l+c0[1]
+   tl += t
+   err6 = (RIFulp(t)+err_z2*l.abs().upper()+RIFulp(tl))*z.abs().upper()
    if verbose:
       print ("err6=", log(err6)/log(2.))
    # fast_two_sum (h, l, c0[0], th)
@@ -416,10 +433,9 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    err7 = h.abs().upper()*2^-105*z.abs().upper()
    if verbose:
       print ("err7=", log(err7)/log(2.))
-   # *l += tl + c0[1]
-   tl += c0[1]
-   l += tl
-   err8 = (RIFulp(tl)+RIFulp(l))*z.abs().upper()
+   # *l += __builtin_fma (z2l, h_copy, tl)
+   l += z2l*h_copy+tl
+   err8 = RIFulp(l)*z.abs().upper()
    if verbose:
       print ("err8=", log(err8)/log(2.))
    # a_mul (h, &tl, *h, z)
@@ -431,26 +447,71 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    err9 = RIFulp(l)
    if verbose:
       print ("err9=", log(err9)/log(2.))
-   err = err1+err2+err3+err4+err5+err6+err7+err8+err9
+   err = err1+err2+err3+err3a+err4+err5+err5a+err6+err7+err8+err9
    # convert into relative error
    err = err/(h+l).abs().lower()
    # take into account err0
    R = RealField(200)
    err = (1+R(err))*(1+R(err0))-1
+   if verbose:
+      print ("h=",get_hex(h.lower()),get_hex(h.upper()))
+      print ("l=",get_hex(l.lower()),get_hex(l.upper()))
    return err
 
+def a_mul(a,b):
+   hi = a*b
+   lo = fma(a,b,-hi)
+   return hi, lo
+
+def fast_two_sum(a,b):
+   hi = a+b
+   e = hi-a
+   lo = b-e
+   return hi, lo
+
+def p0(z):
+   c0 = ["0x1.20dd750429b6dp+0", "0x1.1ae3a7862d9c4p-56", "-0x1.812746b0379e7p-2", "0x1.f1a64d72722a2p-57", "0x1.ce2f21a042b7fp-4", "-0x1.b82ce31189904p-6", "0x1.565bbf8a0fe0bp-8", "-0x1.bf9f8d2c202e4p-11"]
+   c0 = [RR(x,16) for x in c0]
+   d = [x.exact_rational() for x in c0]
+   Z = z.exact_rational()
+   p=Z*(d[0]+d[1])+Z^3*(d[2]+d[3])+Z^5*d[4]+Z^7*d[5]+Z^9*d[6]+Z^11*d[7]
+   print (n(p-erf(Z),200))
+   z2 = z*z
+   Z2 = z2.exact_rational()
+   p=Z*((d[0]+d[1])+Z2*(d[2]+d[3])+Z2^2*d[4]+Z2^3*d[5]+Z2^4*d[6]+Z2^5*d[7])
+   print (n(p-erf(Z),200))
+   z4 = z2*z2
+   c9 = fma(c0[7], z2, c0[6])
+   c5 = fma (c0[5], z2, c0[4])
+   c5 = fma (c9, z4, c5)
+   th, tl = a_mul (z2, c5)
+   h, l = fast_two_sum (c0[2], th)
+   l += tl + c0[3]
+   th, tl = a_mul (z2, h)
+   tl += fma (z2, l, c0[1])
+   h, l = fast_two_sum (c0[0], th)
+   l += tl
+   h, tl = a_mul (h, z)
+   l = fma (l, z, tl)
+   H = h.exact_rational()
+   L = l.exact_rational()
+   print (n(H+L-erf(Z),200))
+   return h, l
+
 # Analyze0()
-# 0.0312500000000000 0.0625000000000000 2.5231493795354748395116239284513858215818723824107181074744e-21
-# 2.5231493795354748395116239284513858215818723824107181074744e-21
+# 0.0624999375000000 0.0625000000000000 2.4865824961837218937465347102578680126375807666554669925363e-21
+# 2.4865824961837218937465347102578680126375807666554669925363e-21
 def Analyze0():
    maxerr = 0
+   ratio = 0.999999
    zmax = RR(1/16)
-   zmin = zmax/2
+   zmin = zmax*ratio
    while zmax>2^-1074:
       err = analyze0(zmin=zmin,zmax=zmax)
       if err>maxerr:
          maxerr = err
          print(zmin,zmax,err)
-      zmin = zmin/2
-      zmax = zmax/2
+      zmin = zmin*ratio
+      zmax = zmax*ratio
+      ratio = (1/2+ratio)/2
    return maxerr
