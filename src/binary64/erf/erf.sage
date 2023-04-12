@@ -188,12 +188,12 @@ def extract_coeffs(p,d,i):
 def RIFulp(x):
    return max(x.lower().ulp(),x.upper().ulp())
 
-# analyse the maximal rounding error for subrange j
+# analyse the maximal (relative) error for subrange j
 # h=1/32 is hard-coded, same for d=10 and i=1
 # analyze_p(1)
-# 5.3078398332516484608512456856802479429227947567592236369060e-19
+# 2.0031138248669584247128456119263802594286138598068368215276e-21
 # analyze_p(94)
-# 9.8035501070559374685251505050884232636461622258809009987654e-32
+# 9.5929840647180978687493151356279980177510033348313787165373e-32
 def analyze_p(j,zmin=-1/32,zmax=1/32,verbose=false):
    d = 10
    i = 1
@@ -224,9 +224,12 @@ def analyze_p(j,zmin=-1/32,zmax=1/32,verbose=false):
    err3 = RIFulp(c5)*z.abs().upper()^5
    if verbose:
       print ("err3=", log(err3)/log(2.))
-   # c3 = __builtin_fma (c[6], z, c[5])
-   c3 = c[6]*z+c[5]
-   err4 = RIFulp(c3)*z.abs().upper()^3
+   # fast_two_sum (&c3h, &c3l, c[5], z * c[6])
+   t = z*c[6]
+   c3h = c[5]+t
+   u = RIFulp(c3h)
+   c3l = RIF(-u,u)
+   err4 = (RIFulp(t)+c3h.abs().upper()*2^-105)*z.abs().upper()^3
    if verbose:
       print ("err4=", log(err4)/log(2.))
    # c7 = __builtin_fma (c9, z2, c7)
@@ -234,23 +237,54 @@ def analyze_p(j,zmin=-1/32,zmax=1/32,verbose=false):
    err5 = (RIFulp(c7)+c9.abs().upper()*err_z2)*z.abs().upper()^7
    if verbose:
       print ("err5=", log(err5)/log(2.))
-   # c3 = __builtin_fma (c5, z2, c3)
-   c3 = c5*z2+c3
-   err6 = (RIFulp(c3)+c5.abs().upper()*err_z2)*z.abs().upper()^3
+   # fast_two_sum (&c3h, &tl, c3h, c5 * z2)
+   t = c5 * z2
+   c3h = c3h + t
+   u = RIFulp(c3h)
+   tl = RIF(-u,u)
+   err6 = (c5.abs().upper()*err_z2+RIFulp(t)+c3h.abs().upper()*2^-105)*z.abs().upper()^3
    if verbose:
       print ("err6=", log(err6)/log(2.))
-   # c3 = __builtin_fma (c7, z4, c3)
-   c3 = c7*z4+c3
-   err7 = (RIFulp(c3)+c7.abs().upper()*err_z4)*z.abs().upper()^3
+   # c3l += tl
+   c3l += tl
+   err6a = RIFulp(c3l)*z.abs().upper()^3
+   if verbose:
+      print ("err6a=", log(err6a)/log(2.))
+   # fast_two_sum (&c3h, &tl, c3h, c7 * z4)
+   t = c7 * z4
+   c3h = c3h+t
+   u = RIFulp(c3h)
+   tl = RIF(-u,u)
+   err7 = (c7.abs().upper()*err_z4+RIFulp(t)+c3h.abs().upper()*2^-105)*z.abs().upper()^3
    if verbose:
       print ("err7=", log(err7)/log(2.))
-   # c2 = __builtin_fma (c3, z, c[4])
-   c2 = c3*z+c[4]
-   err8 = RIFulp(c2)*z.abs().upper()^2
+   # c3l += tl
+   c3l += tl
+   err7a = RIFulp(c3l)*z.abs().upper()^3
+   if verbose:
+      print ("err7a=", log(err7a)/log(2.))
+   # a_mul (&th, &tl, z, c3h)
+   th = z*c3h
+   u = RIFulp(th)
+   tl = RIF(-u,u)
+   # fast_two_sum (&c2h, &c2l, c[4], th)
+   c2h = c[4]+th
+   u = RIFulp(th)
+   c2l = RIF(-u,u)
+   err8 = c2h.abs().upper()*2^-105*z.abs().upper()^2
    if verbose:
       print ("err8=", log(err8)/log(2.))
-   # a_mul (&th, &tl, z, c2)
-   th = z*c2
+   # c2l += __builtin_fma (z, c3l, tl)
+   t = z*c3l+tl
+   err8a = RIFulp(t)*z.abs().upper()^2
+   if verbose:
+      print ("err8a=", log(err8a)/log(2.))
+   c2l += t
+   err8b = RIFulp(c2l)*z.abs().upper()^2
+   if verbose:
+      print ("err8b=", log(err8b)/log(2.))
+   # a_mul (&th, &tl, z, c2h)
+   th = z*c2h
    u = RIFulp(th)
    tl = RIF(-u,u)
    # fast_two_sum (h, l, c[2], th)
@@ -260,17 +294,18 @@ def analyze_p(j,zmin=-1/32,zmax=1/32,verbose=false):
    err9 = h.abs().upper()*2^-105*z.abs().upper()
    if verbose:
       print ("err9=", log(err9)/log(2.))
-   # l += tl + c[3]
-   tl += c[3]
+   # *l += tl + __builtin_fma (z, c2l, c[3])
+   t = z*c2l+c[3]
+   tl += t
    l += tl
-   err10 = (RIFulp(tl)+RIFulp(l))*z.abs().upper()
+   err10 = (RIFulp(t)+RIFulp(tl)+RIFulp(l))*z.abs().upper()
    if verbose:
       print ("err10=", log(err10)/log(2.))
-   # a_mul (&th, &tl, z, h)
+   # a_mul (&th, &tl, z, *h)
    th = z*h
    u = RIFulp(th)
    tl = RIF(-u,u)
-   # tl = __builtin_fma (z, l, tl)
+   # tl = __builtin_fma (z, *l, tl)
    tl += z*l
    err11 = RIFulp(tl)
    if verbose:
@@ -282,13 +317,13 @@ def analyze_p(j,zmin=-1/32,zmax=1/32,verbose=false):
    err12 = h.abs().upper()*2^-105
    if verbose:
       print ("err12=", log(err12)/log(2.))
-   # l += tl + c[1]
+   # *l += tl + c[1]
    tl += c[1]
    l += tl
    err13 = RIFulp(tl)+RIFulp(l)
    if verbose:
       print ("err13=", log(err13)/log(2.))
-   err = err1+err2+err3+err4+err5+err6+err7+err8+err9+err10+err11+err12+err13
+   err = err1+err2+err3+err4+err5+err6+err6a+err7+err8+err8a+err8b+err9+err10+err11+err12+err13
    if verbose:
       print ("err=", log(err)/log(2.))
    # convert into relative error
@@ -324,6 +359,9 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    z = RIF(zmin,zmax)
    c0 = ["0x1.20dd750429b6dp+0", "0x1.1ae3a7862d9c4p-56", "-0x1.812746b0379e7p-2", "0x1.f1a64d72722a2p-57", "0x1.ce2f21a042b7fp-4", "-0x1.b82ce31189904p-6", "0x1.565bbf8a0fe0bp-8", "-0x1.bf9f8d2c202e4p-11"]
    c0 = [RR(x,16) for x in c0]
+   Z = zmin.exact_rational()
+   d = [x.exact_rational() for x in c0]
+   print(Z*(d[0]+d[1])+Z^3*(d[2]+d[3])+Z^5*d[4]+Z^7*d[5]+Z^9*d[6]+Z^11*d[7])
    # z2 = z*z
    z2 = z*z
    err_z2 = RIFulp(z2)
@@ -356,17 +394,17 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    err4 = h.abs().upper()*2^-105*z.abs().upper()^3
    if verbose:
       print ("err4=", log(err4)/log(2.))
-   # l += tl + c0[3]
+   # *l += tl + c0[3]
    tl += c0[3]
    l += tl
    err5 = (RIFulp(tl)+RIFulp(l))*z.abs().upper()^3
    if verbose:
       print ("err5=", log(err5)/log(2.))
-   # a_mul (&th, &tl, z2, h)
+   # a_mul (&th, &tl, z2, *h)
    th = z2*h
    u = RIFulp(th)
    tl = RIF(-u,u)
-   # tl = __builtin_fma (z2, l, tl)
+   # tl = __builtin_fma (z2, *l, tl)
    tl = z2*l+tl
    err6 = (RIFulp(tl)+err_z2*l.abs().upper())*z.abs().upper()
    if verbose:
@@ -378,13 +416,13 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    err7 = h.abs().upper()*2^-105*z.abs().upper()
    if verbose:
       print ("err7=", log(err7)/log(2.))
-   # l += tl + c0[1]
+   # *l += tl + c0[1]
    tl += c0[1]
    l += tl
    err8 = (RIFulp(tl)+RIFulp(l))*z.abs().upper()
    if verbose:
       print ("err8=", log(err8)/log(2.))
-   # a_mul (h, &tl, h, z)
+   # a_mul (h, &tl, *h, z)
    h = h*z
    u = RIFulp(h)
    tl = RIF(-u,u)
@@ -401,4 +439,18 @@ def analyze0(zmin=0,zmax=1/16,verbose=false):
    err = (1+R(err))*(1+R(err0))-1
    return err
 
-
+# Analyze0()
+# 0.0312500000000000 0.0625000000000000 2.5231493795354748395116239284513858215818723824107181074744e-21
+# 2.5231493795354748395116239284513858215818723824107181074744e-21
+def Analyze0():
+   maxerr = 0
+   zmax = RR(1/16)
+   zmin = zmax/2
+   while zmax>2^-1074:
+      err = analyze0(zmin=zmin,zmax=zmax)
+      if err>maxerr:
+         maxerr = err
+         print(zmin,zmax,err)
+      zmin = zmin/2
+      zmax = zmax/2
+   return maxerr
