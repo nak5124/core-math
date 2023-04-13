@@ -108,7 +108,7 @@ float cr_logf(float x) {
     uint32_t inf_or_nan = ((ux>>23)&0xff) == 0xff, nan = inf_or_nan && (ux<<9);
     if (ux>>31 && !nan) return __builtin_nanf("-");
     if (inf_or_nan) return x;
-    // denormal
+    // subnormal
     int nz = __builtin_clzll(m);
     m <<= nz-11;
     m &= ~0ul>>12;

@@ -48,7 +48,7 @@ cr_cbrt (double x)
   if(__builtin_expect(((e+1)&0x7ff)<2, 0)){
     uint64_t ix = hx&((~0ul)>>1);
     if(e==0x7ff||ix==0) return x + x; /* 0, inf, nan */
-    int nz = __builtin_clzl(ix) - 11;  /* denormals */
+    int nz = __builtin_clzl(ix) - 11;  /* subnormal */
     mant <<= nz;
     mant &= (~(0ul))>>12;
     e -= nz - 1;

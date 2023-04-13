@@ -44,7 +44,7 @@ float cr_cbrtf (float x){
   long sign = hx>>31;
   if(__builtin_expect(((e+1)&0xff)<2, 0)){
     if(e==0xff||ix==0) return x + x; /* 0, inf, nan */
-    int nz = __builtin_clz(ix) - 8;  /* denormals */
+    int nz = __builtin_clz(ix) - 8;  /* subnormal */
     mant <<= nz;
     mant &= 0x7fffff;
     e -= nz - 1;
