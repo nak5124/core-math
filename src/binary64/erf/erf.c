@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x0.1fa4c1f03ea1bp-1022
+#define TRACE 0x1.8005dcd7b7abp-2
 
 #include <stdio.h>
 #include <assert.h>
@@ -36,7 +36,9 @@ typedef union {double f; uint64_t u;} b64u64_u;
    erf(i/16+1/32+x) for -1/32 <= x <= 1/32, where the coefficients of
    degree 0 and 1 are double-double: the coefficient of degree 0 is p[0]+p[1],
    that of degree 1 is p[2]+p[3], that of degree 2 is p[4], ..., that of
-   degree 10 is p[12] */
+   degree 10 is p[12].
+   Table generated with print_table(1,95,1/32,10,1,rel=true) from erf.sage.
+*/
 static const double C[94][13] = {
    {0x1.b0081148a873ap-4, -0x1.f0295f16ba5d8p-61, 0x1.1e565bca400d4p+0, -0x1.62d0ac26c78d3p-54, -0x1.ad8189af6013dp-4, -0x1.7712743c42914p-2, 0x1.aafd4760d7634p-5, 0x1.ba14988b4127ep-4, -0x1.1afcdb244078ap-6, -0x1.9d72ee25cf211p-6, 0x1.19502f7beca8fp-8, 0x1.3b955bfd46624p-8, -0x1.a4e2d4d32228bp-11}, /* j=1 69.005 */
    {0x1.662a0bdf7a89fp-3, -0x1.ef7bc5856c2d4p-59, 0x1.19e5e92b964abp+0, 0x1.cca4dec08a64p-57, -0x1.605f63767bdd6p-3, -0x1.6582e9b69c9a9p-2, 0x1.5aa32b580ec64p-4, 0x1.97594c2593d3ep-4, -0x1.c69c62749fb7fp-6, -0x1.6fa7f611aacdcp-6, 0x1.bf1e628a4606ep-8, 0x1.0e50e4329e8a9p-8, -0x1.68ca9c1954b4cp-10}, /* j=2 70.057 */
@@ -134,6 +136,63 @@ static const double C[94][13] = {
    {0x1.fffffffffffffp-1, 0x1.989c6c5d51227p-55, 0x1.ccaaea71ab11p-51, 0x1.152f323a1f3b4p-107, -0x1.541a2f15eb476p-48, 0x1.49fd53e85cdf3p-46, -0x1.d9144beee6b4ap-45, 0x1.0b09b02f533a1p-43, -0x1.ee312fcf48076p-43, 0x1.812ed2f01f60ap-42, -0x1.01e6391f47ad7p-41, 0x1.2dce8f6b8c896p-41, -0x1.365d5011db0dfp-41}, /* j=94 105.705 */
 };
 
+/* for 1 <= i < 48, p = C2[i-1] is a degree-18 polynomial approximation of
+   erf(i/8+1/16+x) for -1/16 <= x <= 1/16, where the coefficients of
+   degree 0 to 7 are double-double: the coefficient of degree 0 is p[0]+p[1],
+   ..., that of degree 7 is p[14]+p[15], that of degree 8 is p[16], ...,
+   that of degree 18 is p[26].
+   Table generated with print_table(1,48,1/16,18,7,rel=true) from erf.sage.
+*/
+static const double C2[47][27] = {
+   {0x1.ac45e37fe2526p-3, 0x1.48d48536c61e3p-57, 0x1.16e2d7093cd8cp+0, 0x1.979a52f906b4dp-54, -0x1.a254428ddb453p-3, 0x1.9c98838a77aeap-57, -0x1.59b3da8e1e176p-2, -0x1.1f650c25d97bp-59, 0x1.988648fe88219p-4, -0x1.5aecf0c7bb6c1p-58, 0x1.803427310d199p-4, -0x1.a14576e703eb2p-58, -0x1.09e7bce5592c9p-5, 0x1.eb7c7f3e76998p-60, -0x1.516b205318414p-6, -0x1.941aa998b1fa4p-61, 0x1.038d3f3a16b57p-7, 0x1.e19d52695ad59p-9, -0x1.9542e7ed01428p-10, -0x1.1f9b6e46418dcp-11, 0x1.0796a08a400f4p-12, 0x1.2610d97c70323p-14, -0x1.25d31d73f96d1p-15, -0x1.05e1fa9e02f11p-17, 0x1.1e616f979139cp-18, 0x1.9b3d54f1f222ap-21, -0x1.7ad96beea439ap-22}, /* j=1 108.83 */
+   {0x1.5da9f415ff23fp-2, -0x1.a72e51e19195p-59, 0x1.05fd3ecbec298p+0, -0x1.f17d49717adf8p-54, -0x1.477c8e7ee733dp-2, -0x1.92236432236b7p-56, -0x1.1917b60acab73p-2, 0x1.c06e6c21b4b3bp-56, 0x1.322a728d4ed12p-3, 0x1.ffa8aef32141p-60, 0x1.04c50a9cd2c12p-4, -0x1.edd0562dce396p-59, -0x1.7ce764eeddd86p-5, 0x1.9afeb391c029cp-61, -0x1.68aac5801171dp-7, 0x1.4f9655411fc03p-61, 0x1.62aa895f51cd3p-7, 0x1.6c003c3cedb1p-10, -0x1.079502dbbafffp-9, -0x1.d9c7cbb799b47p-14, 0x1.45a995aede3f4p-12, 0x1.0c04ea8c98fc9p-20, -0x1.57edfa53128dp-15, 0x1.a96286bf3ef56p-20, 0x1.3c8ab12e6d24bp-18, -0x1.7454eba0cb203p-22, -0x1.f02a6f6847617p-23}, /* j=2 107.115 */
+   {0x1.db081ce6e2a48p-2, -0x1.7ff0a3296d9cbp-56, 0x1.dd167c4cf9d2ap-1, 0x1.44f2832f90a97p-55, -0x1.a173acc35a985p-2, -0x1.c5432c9a2274p-60, -0x1.889a80f4ad955p-3, -0x1.f6123bf467942p-57, 0x1.6c2eea0d17b39p-3, -0x1.1f4935c3cf5b1p-57, 0x1.b0645438e5d17p-6, 0x1.7a5f08ebaf9dp-60, -0x1.a3fd9fcbb6d6dp-5, 0x1.94a1b58b5916fp-59, 0x1.060b78c935b8ep-13, 0x1.9cec375875a1cp-68, 0x1.678b51a9c4b0ap-7, -0x1.1e03bfc8eebb4p-10, -0x1.e653535cab33fp-10, 0x1.55f31366d2c5cp-12, 0x1.0dcf1445cbb88p-12, -0x1.098913ad4dcc7p-14, -0x1.f6e252329eeedp-16, 0x1.41ad0a5afe51dp-17, 0x1.8fd4609222f1cp-19, -0x1.4465926de1a35p-20, -0x1.407a1f42b46d4p-21}, /* j=3 107.489 */
+   {0x1.25b8a88b6dd7fp-1, 0x1.9534a3b5bd215p-55, 0x1.a5074e215762p-1, 0x1.fad8c0ef6fae6p-56, -0x1.d9a837e5824e4p-2, -0x1.1d19ec86adc7cp-56, -0x1.9c41d1d5fae55p-4, 0x1.74c230d6afba4p-60, 0x1.75bebc1b18d1cp-3, 0x1.01ece95d4dffcp-58, -0x1.6410ad9332666p-7, -0x1.16523d167a40cp-61, -0x1.7df8890b11fa7p-5, 0x1.d6a99d1387564p-59, 0x1.4a54816d3608ap-7, -0x1.f810ad06699ccp-61, 0x1.18f36eb18f3d7p-7, -0x1.8d661c030e174p-9, -0x1.3628ede23e249p-10, 0x1.438eb2b3c4d27p-11, 0x1.fd3c13e725e91p-14, -0x1.991b866a32c87p-14, -0x1.1237c600dab6fp-17, 0x1.a9c701140d4cp-17, 0x1.1801e61adfddap-24, -0x1.785516863e6cep-20, -0x1.3e033ef590125p-23}, /* j=4 107.484 */
+   {0x1.569243d2b3a9bp-1, 0x1.8eef7012e8df4p-56, 0x1.681ff24b4ab04p-1, -0x1.dba6493354c7p-58, -0x1.ef2bed2786b25p-2, -0x1.ae3f6b6b2b679p-56, -0x1.a4254557d722fp-7, -0x1.0ff7bffd10053p-61, 0x1.532415c267962p-3, 0x1.2eacc4bd2e841p-57, -0x1.558b4c55a835cp-5, 0x1.c21c40815d70ap-60, -0x1.1b7ad5b777f1bp-5, -0x1.2115b2bd8d644p-59, 0x1.1201d3bd0e758p-6, -0x1.b39b84544256p-63, 0x1.2995e3a88a89p-8, -0x1.0294c3e93cdbp-8, -0x1.159644a564f83p-12, 0x1.63daf9b3858efp-11, -0x1.3beeb4a1255acp-15, -0x1.80c5178c36c72p-14, 0x1.d4f6f5bab7dfap-17, 0x1.521deb6d2f46ep-17, -0x1.4ef3208231a8bp-19, -0x1.e7d2b4e06e4a2p-21, 0x1.21536d5b8bdf9p-22}, /* j=5 107.637 */
+   {0x1.7fb9bfaed8078p-1, 0x1.66cf14bcad032p-56, 0x1.2a8dcede3673bp-1, -0x1.7378e2c70325ep-56, -0x1.e5267029187cp-2, 0x1.add23841b110ap-56, 0x1.fe0796bb9d05ap-5, -0x1.7a992e13ce574p-60, 0x1.0fa23021ad0acp-3, -0x1.17f4228359928p-59, -0x1.fa21ebca76761p-5, 0x1.278ca2820f66cp-60, -0x1.31546d5c4edb4p-6, 0x1.36fcf151892ap-62, 0x1.37e5469efb7a6p-6, -0x1.9553630321d4fp-60, 0x1.097966e2e87eap-13, -0x1.e82ab020887a7p-9, 0x1.318270c11ae74p-11, 0x1.12652e433da97p-11, -0x1.4dc9bd6368bb8p-13, -0x1.c441138d4ff53p-15, 0x1.c91d8dc5b66ecp-16, 0x1.f3ba57b86d474p-19, -0x1.dd3403d11a818p-19, -0x1.31f497a106a7cp-24, 0x1.436dbcc93d342p-22}, /* j=6 108.888 */
+   {0x1.a1551a16aaeafp-1, 0x1.a558a46df5f68p-57, 0x1.dfca26f5bbf88p-2, -0x1.ddcbaf85587b6p-57, -0x1.c1cd84866038fp-2, -0x1.200885b97f453p-56, 0x1.e4c9975da0987p-4, -0x1.f162e7576c79cp-58, 0x1.747e31bf47af3p-4, -0x1.6178f12d62ed9p-58, -0x1.1d1f00109e42ap-4, 0x1.002b06e023544p-58, -0x1.47654175ceb42p-9, 0x1.683389ccacfa8p-66, 0x1.1a817c594b8cbp-6, 0x1.36ac477166efbp-60, -0x1.cb8acd699cca6p-9, -0x1.57b72bf874db6p-9, 0x1.24493dca8b6fap-10, 0x1.f556774c6aaf6p-13, -0x1.b09ec5c8ba626p-13, -0x1.09bd1a09f38e8p-18, 0x1.d149c3e776976p-16, -0x1.8f7c2a6575e92p-19, -0x1.8391d4afaf16ap-19, 0x1.5a7552081d1d5p-21, 0x1.32d1bb2d1d0cap-22}, /* j=7 109.125 */
+   {0x1.bbef0fbde6221p-1, -0x1.322c1148e0d48p-55, 0x1.75a91a7f4d2edp-2, 0x1.6eb826a9df85cp-58, -0x1.8d03ac274201cp-2, 0x1.7a5c56eb7f6ap-58, 0x1.3954778d6a0dfp-3, -0x1.863eca74d1838p-58, 0x1.88e0f7b183fc6p-5, 0x1.226527d05ce39p-59, -0x1.0f7c15f75ee13p-4, -0x1.56f74f351366p-62, 0x1.5e22cfa1aab51p-7, 0x1.4b49a250c6474p-61, 0x1.9ad28c5557c22p-7, 0x1.99920b730ecd5p-61, -0x1.704ec5d29fc83p-8, -0x1.23360304f19bap-10, 0x1.43ca3fcdf079dp-10, -0x1.dcb97a9e04bd4p-15, -0x1.735e26c43d267p-13, 0x1.360c3b06ffbb4p-15, 0x1.29a6b5798e781p-16, -0x1.dbc35e4cf98f5p-18, -0x1.2f6e8e81287bbp-20, 0x1.eeb2fdddad355p-21, 0x1.1ae65e387ac52p-23}, /* j=8 108.742 */
+   {0x1.d0580b2cfd249p-1, 0x1.4fca6318dfee9p-55, 0x1.1a0dc51a9934dp-2, -0x1.ca89d2d78fba4p-57, -0x1.4ef05a0f95eebp-2, -0x1.5f7c55a00231cp-57, 0x1.5648b5dc47417p-3, -0x1.fb8fa09976e07p-57, 0x1.40fbaba44504cp-7, 0x1.435c75f61f1ep-64, -0x1.c0db89d0a41a4p-5, -0x1.1dd02d9441b98p-62, 0x1.388c3ec056942p-6, 0x1.8e7498172c914p-60, 0x1.aecb7463cf446p-8, -0x1.0d6701a009d7p-65, -0x1.8bca53327e075p-8, 0x1.4add4a8239f4ap-12, 0x1.05ce4abd10484p-10, -0x1.183f198a0b62p-12, -0x1.9cd1a9b9fc69bp-14, 0x1.d30363021af83p-15, 0x1.da66f2161c4c6p-19, -0x1.f41f1f238827dp-18, 0x1.725a07b1177b7p-21, 0x1.84c3b2483eb6ap-21, 0x1.e30e89d6e85cdp-25}, /* j=9 110.374 */
+   {0x1.df85ea8db188ep-1, -0x1.f71e8254d11a9p-55, 0x1.9cb5bd549b111p-3, -0x1.973e73caa1edcp-59, -0x1.0ed7443f85c33p-2, -0x1.74bf040302ad8p-58, 0x1.5066cda84bba9p-3, 0x1.beb86d9e281a8p-59, -0x1.419fa10b6ed7dp-6, 0x1.5157491034c58p-60, -0x1.3f41761d5a941p-5, 0x1.94a1c1f7af153p-59, 0x1.6d1d724baaae4p-6, 0x1.c41090a704426p-60, 0x1.e377f5703f7ffp-11, -0x1.a753be0c53963p-65, -0x1.4cc916ad63c27p-8, 0x1.553ef0d12719fp-10, 0x1.26240f55987fdp-11, -0x1.6bbf0fffb7138p-12, -0x1.320cf6663c40dp-17, 0x1.a9d4850aaa197p-15, -0x1.17036c4011c91p-17, -0x1.441ea26a91a02p-18, 0x1.d81eb8e2ef452p-20, 0x1.17d7b798a4322p-22, -0x1.b7b0dfb2559dp-27}, /* j=10 110.102 */
+   {0x1.ea7730ed0bbb9p-1, 0x1.2c5bd7ce1388bp-55, 0x1.24a7b84d38971p-3, 0x1.aa0c5e788ed5ep-57, -0x1.a4b118ef01593p-3, -0x1.238e3e6a99dep-60, 0x1.319c7a75f9187p-3, 0x1.a8f8fff24b0acp-59, -0x1.3db5bed47faf6p-5, 0x1.29cf699c8512cp-59, -0x1.7019bda6c2fddp-6, 0x1.dd56b84622d88p-62, 0x1.59d3aa402c32ep-6, -0x1.8de701f1e95e8p-63, -0x1.b324eab9c87a9p-9, -0x1.c3a4329771a44p-65, -0x1.b4774d37d0dd6p-9, 0x1.c01377485a844p-10, 0x1.a5db5f627539bp-14, -0x1.40d9c429b8932p-12, 0x1.e720d935ef7dbp-15, 0x1.fc8295ac052dep-16, -0x1.d1ccde95c6551p-17, -0x1.251c256ca45cbp-20, 0x1.e892cc5397b1bp-20, -0x1.8f6831febdf3dp-23, -0x1.aa5ef30a52421p-22}, /* j=11 108.586 */
+   {0x1.f21c9f12f0677p-1, -0x1.7efe429672268p-58, 0x1.92470a61b6965p-4, 0x1.c6acd40cee352p-58, -0x1.3a47801c56a57p-3, -0x1.033705aa16f01p-57, 0x1.0453f90d3bd35p-3, -0x1.686e281ba5405p-57, -0x1.8a7c6a239217bp-5, 0x1.2a988808a7222p-60, -0x1.075c088031ee3p-7, -0x1.665bd0a645f4p-62, 0x1.16f9c9c127b8p-6, -0x1.e1813af47374cp-62, -0x1.74c2fc9bdfe97p-8, 0x1.5cf2dbe53783bp-62, -0x1.760c522bd5becp-10, 0x1.a3cdb656adb44p-10, -0x1.02c3c1ab0a7bap-12, -0x1.92892013c7e15p-13, 0x1.6e7b268d42034p-14, 0x1.970751eb9359fp-18, -0x1.b00b549bbdf58p-17, 0x1.033f8545bcc6ap-19, 0x1.2d8b6f0a2204ap-20, -0x1.c1c1335b105c5p-22, 0x1.61bbb2d003b8ap-25}, /* j=12 109.215 */
+   {0x1.f74a6d9a38383p-1, 0x1.c33a329423946p-55, 0x1.0bf97e95f2a64p-4, -0x1.446051f6fef82p-58, -0x1.c435059d09788p-4, -0x1.b93aeb5e5cf84p-59, 0x1.a3687c1eaf1adp-4, 0x1.64513fb767a13p-58, -0x1.9647a30b16824p-5, -0x1.86357831221bep-59, 0x1.6981061dfbb09p-9, -0x1.ccc83193c8742p-64, 0x1.7e8755da4704p-7, -0x1.c1eaeb337149p-65, -0x1.9be731fdab95dp-8, -0x1.ab79fedbfccd2p-63, 0x1.3a95ae0a75542p-13, 0x1.319f780e962d8p-10, -0x1.b88dd51a4f261p-12, -0x1.037f168a8f581p-14, 0x1.53fc5e83e3199p-14, -0x1.9d5bf30917222p-17, -0x1.03045c999d17ap-17, 0x1.b5d376e96179fp-19, 0x1.c66d2e5aa2274p-23, -0x1.aef24a52bcacap-22, 0x1.b20b678e8a0c6p-24}, /* j=13 110.24 */
+   {0x1.fab0dd89d1309p-1, -0x1.ae61bd9db1babp-55, 0x1.5a08e85af27ep-5, 0x1.e4f9cfc8c2382p-59, -0x1.399812926bc23p-4, -0x1.b782644df6665p-58, 0x1.4140efb719cbp-4, 0x1.08fa5a48311e8p-60, -0x1.7535a61a4193dp-5, 0x1.59e0501c376b2p-60, 0x1.374c88c7e6abdp-7, 0x1.c2578bd7e3fp-64, 0x1.a40709e010e77p-8, -0x1.18c33197d9138p-64, -0x1.6dc078888efa7p-8, 0x1.2b49da4c86c7p-63, 0x1.2ee6d200993bp-10, 0x1.44f175e22a161p-11, -0x1.c2fb051c92f92p-12, 0x1.523035ed3964bp-15, 0x1.bc7b666856fc1p-15, -0x1.574549f39ee5p-16, -0x1.c57f3c47b39d9p-20, 0x1.8acc76ac31fcdp-19, -0x1.f70e8b7deaa9ap-22, -0x1.e1a28a0c1a6a6p-23, 0x1.bfa0e5b606c5ep-25}, /* j=14 108.959 */
+   {0x1.fcdacca0bfb73p-1, -0x1.2c33d88729e43p-55, 0x1.b1160991ff737p-6, -0x1.d940a504353bcp-61, -0x1.a38d59456f77dp-5, -0x1.d625808eb9778p-62, 0x1.d5bd91b6b0123p-5, 0x1.22b86f5e3e16cp-61, -0x1.3b35dcbc80146p-5, 0x1.82838d776d958p-59, 0x1.9d76b0a0535c7p-7, 0x1.60fda06bca0ap-61, 0x1.14c887a83a0e6p-9, 0x1.55ef222558d68p-65, -0x1.117f42cc6e9f4p-8, 0x1.d4213a7e14a18p-65, 0x1.9b477bdad8e08p-10, 0x1.1d219fb0e1bc8p-13, -0x1.5bb59d3ca4fa9p-12, 0x1.8ca373c577821p-14, 0x1.4a9b74153a4a3p-16, -0x1.424a8a883141p-16, 0x1.6ce0877965abcp-19, 0x1.c1ed3c11b1dd1p-20, -0x1.86b0a731d831ap-21, -0x1.5cea3996396c5p-26, 0x1.640950bde5eb3p-22}, /* j=15 108.063 */
+   {0x1.fe307f2b503dp-1, -0x1.8a555000387f8p-57, 0x1.06ae13b0d3255p-6, -0x1.88abd7f4be982p-60, -0x1.0ee3844e59be7p-5, -0x1.0b0ec94b96d83p-59, 0x1.48b127f8ed8a5p-5, 0x1.b6a1f18c2c162p-60, -0x1.f155b4e7d8c3bp-6, 0x1.adb2d99b0c1fcp-60, 0x1.aa2c0753d569ap-7, 0x1.9a37b9864b8e6p-61, -0x1.bbf7e2795837bp-11, -0x1.4784a66288abfp-65, -0x1.5478d784d271cp-9, 0x1.27115917a7ecp-65, 0x1.8eae08cdf9546p-10, -0x1.92946556037e6p-13, -0x1.90f27ae61444cp-13, 0x1.b076b78538f02p-14, -0x1.b2906f1b92d5dp-18, -0x1.a2f66822d4a01p-17, 0x1.3031c4f7c4a97p-18, 0x1.41708ced2abdp-22, -0x1.45ffd6deae2a8p-21, 0x1.e844ebdc8456ap-24, 0x1.c0bbf2b711595p-24}, /* j=16 111.558 */
+   {0x1.fefcce6813974p-1, -0x1.b27cf5025d1c8p-58, 0x1.34d7dbc76d7e5p-7, 0x1.3780d6e7eb351p-61, -0x1.51cc18621fc23p-6, 0x1.969629e4b64a6p-61, 0x1.b925a99886bb7p-6, 0x1.9c8f65efdd1f4p-61, -0x1.71e7d408c8c6fp-6, -0x1.c5621deaf4cfcp-60, 0x1.7ea58080a81efp-7, -0x1.2f25b7f384ff3p-61, -0x1.46eb9d203e071p-9, 0x1.ff569e38360a4p-65, -0x1.403333682fa5ep-10, -0x1.36256a95953a6p-65, 0x1.3b37d5bd14a4p-10, -0x1.6be130822dbdfp-12, -0x1.03d4bcdafd553p-14, 0x1.55848476c8142p-14, -0x1.5492bf3c6eee6p-16, -0x1.3823d4328e9c5p-18, 0x1.152fefc353e5ap-18, -0x1.5199dbf7bc4c6p-21, -0x1.4dda2bebe08f2p-22, 0x1.3fb850b47210ap-23, 0x1.bcd1b284c4798p-25}, /* j=17 112.32 */
+   {0x1.ff733814af88cp-1, 0x1.0a87238cea4fap-56, 0x1.5ff2750fe782p-8, -0x1.5f184847ca667p-62, -0x1.96f0575a63ae5p-7, 0x1.95f4139297a96p-61, 0x1.1c5a643f04363p-6, -0x1.6ea87997fba3cp-62, -0x1.04f5caaf2196fp-6, 0x1.19502347d3b54p-62, 0x1.382a146afb9d2p-7, -0x1.f93bde902d2dp-63, -0x1.95cab93aa68d2p-9, 0x1.0f716a5fc18c4p-65, -0x1.d2fd90fe62928p-13, -0x1.4e00d5fcc484ap-68, 0x1.9f50fb94c0b86p-11, -0x1.7d7378074399bp-12, 0x1.cc0c9cb9ede1ep-16, 0x1.92a3a29471895p-15, -0x1.7c127858c909ap-16, 0x1.5a72fde935a48p-20, 0x1.57b9d90a92106p-19, -0x1.fdb8443754cf7p-21, -0x1.6c7d633eab55ap-26, 0x1.ddcfc714a2b67p-24, -0x1.9fedf738e84b4p-23}, /* j=18 108.141 */
+   {0x1.ffb5bdf67fe6fp-1, 0x1.4e830346f6e8p-62, 0x1.84ba3004a50dp-9, -0x1.90b93d4632206p-64, -0x1.d9c2ea85a927dp-8, -0x1.0bcf1ea93cfdcp-62, 0x1.60898536e104ap-7, -0x1.ab6aa911c445ep-62, -0x1.5eb1c899f0b7p-7, 0x1.1bc22eed1f1fbp-61, 0x1.d854f73e74c87p-8, 0x1.7a977a3364c4p-63, -0x1.897719a9d257ep-9, -0x1.ab523e3f93994p-65, 0x1.88cdc8b807c97p-12, 0x1.4875acc7c06ap-70, 0x1.b325a11c1f45ap-12, -0x1.381548f69274p-12, 0x1.2b1fd05559bfap-14, 0x1.1ed31cd6feb26p-16, -0x1.29cf593fdf00ap-16, 0x1.1cea99b59228cp-18, 0x1.ceff221e3598ap-21, -0x1.b0ad4b899b2d9p-21, 0x1.3761b047e21d1p-23, 0x1.96c31c2256049p-25, -0x1.0a714c57f7adfp-25}, /* j=19 114.101 */
+   {0x1.ffd9f78c7524ap-1, 0x1.04ed6ff98e45dp-55, 0x1.a024365f771bdp-10, 0x1.3c8f5202cb405p-64, -0x1.0a9732d5284ddp-8, -0x1.1acbd0899ce7ep-62, 0x1.a4bf47a43042ap-8, 0x1.e6cb2580d092p-63, -0x1.c23802d8a5bb7p-8, -0x1.9963700abfc8p-66, 0x1.4f40070668329p-8, -0x1.e1fe1c0e1182ap-62, -0x1.4c9a2c9dccd04p-9, 0x1.80fb9c9cd78c1p-63, 0x1.4f7a50b5bc019p-11, -0x1.40906b7a1de3ap-66, 0x1.18b04eb90c737p-13, -0x1.a4c3880c0ea69p-13, 0x1.4b7b82a86f423p-14, -0x1.0bc762b1c2aaap-18, -0x1.589d6f8892acfp-17, 0x1.357ab63f7bdf9p-18, -0x1.6675858bbff5ep-22, -0x1.ea96dcb12a15cp-22, 0x1.8c572fcf5610ep-23, -0x1.700c93da86deep-28, 0x1.7ae9ceb75e26ep-26}, /* j=20 110.433 */
+   {0x1.ffed167b12ac2p-1, -0x1.ddc0ce3ed8fcbp-55, 0x1.afc85e0f82e12p-11, 0x1.438f22895e03ep-66, -0x1.221a9f326bef4p-9, -0x1.99642b37af33p-64, 0x1.e3c9aab90bcf4p-9, 0x1.7dcdfdccc72ap-68, -0x1.14b1b98141f21p-8, 0x1.af6edf50eba66p-62, 0x1.c1c19b9e63d7p-9, 0x1.4d1e9411f1d28p-66, -0x1.feac3dbeb5124p-10, 0x1.2400e6ffbc1c8p-65, 0x1.63e88178b0e49p-11, 0x1.3e4ae97774f91p-65, -0x1.4441c86c93f39p-15, -0x1.c8ceebc5fc50bp-14, 0x1.125b77a79aa6cp-14, -0x1.da7be990bc718p-17, -0x1.e019960474affp-19, 0x1.d229185ef6279p-19, -0x1.cea9fa10885e7p-21, -0x1.044fd6a2e447ap-23, 0x1.3695f88fc641dp-23, -0x1.0c0dc0ba0d589p-25, -0x1.9194748828b93p-23}, /* j=21 108.145 */
+   {0x1.fff6dee89352ep-1, 0x1.b96c0ba13851dp-55, 0x1.b23a5a23e421p-12, 0x1.727bce1be0014p-67, -0x1.315107613c673p-10, -0x1.823f8673f5b7ap-64, 0x1.0c243329a9ca1p-9, -0x1.65e361cefe652p-64, -0x1.4630116262084p-9, -0x1.0ea6ee40daf79p-63, 0x1.1e84d1022e8cbp-9, -0x1.9b77b85eed4fp-66, -0x1.6b41872716325p-10, 0x1.3e9e001100f64p-66, 0x1.36edde582b265p-11, -0x1.1cb479a94e148p-65, -0x1.f7870ebc38e77p-14, -0x1.51ecfdc37801dp-15, 0x1.711d817e0d3b6p-15, -0x1.0ae90d500d1d8p-16, 0x1.a85b1bf54920cp-21, 0x1.fe73958205038p-20, -0x1.d222bfef33aa4p-21, 0x1.833f8b13b1a4ep-24, 0x1.233b5a19285dbp-24, -0x1.1adcf574b7db6p-25, 0x1.ab10bedc44532p-24}, /* j=22 109.015 */
+   {0x1.fffbb8f1049c6p-1, 0x1.d2c6266b51f26p-56, 0x1.a740684026555p-13, -0x1.7e24cc3ac571p-69, -0x1.36d34c8f1c26ap-11, -0x1.69d73e7d1c977p-65, 0x1.1eb6e14974a25p-10, -0x1.99b78600e0664p-64, -0x1.714eb8cc0947fp-10, 0x1.3613f37c7410bp-64, 0x1.5bec08c01b1d7p-10, -0x1.3e3a262f6c68ap-64, -0x1.e4621d82dad12p-11, 0x1.302878843e2ccp-67, 0x1.e1b7b564b0e79p-12, 0x1.f894fc1f14d54p-67, -0x1.24564b69716aap-13, 0x1.bf8e3b47f3ccdp-20, 0x1.8f55a9be1a264p-16, -0x1.b3b76e6203281p-17, 0x1.713c795a07e0cp-19, 0x1.3bb092cfd93ep-21, -0x1.473b0a8333deep-21, 0x1.645526869c143p-23, 0x1.1a343e004b33dp-27, -0x1.76c7e253faad1p-26, 0x1.e16080963cffep-24}, /* j=23 108.853 */
+   {0x1.fffe0e0140857p-1, -0x1.6aa36f86c14dcp-57, 0x1.8fdc1b2dcf7b9p-14, 0x1.7050f50b8f308p-71, -0x1.322484cf12daap-12, 0x1.4cc0408806d4fp-66, 0x1.27dc1bc6cfef5p-11, 0x1.ffbb5229f6bb7p-65, -0x1.9202f465eb421p-11, 0x1.8f3f063b4066p-69, 0x1.93b4c9746835fp-11, -0x1.04e2d6df2fce5p-65, -0x1.30e9e6142fe9bp-11, -0x1.0396045094744p-66, 0x1.555b9d5fb4825p-12, 0x1.9a40d2ca5ef0bp-66, -0x1.055983c4ac7a6p-13, 0x1.68e6c75a5d068p-16, 0x1.2d4a50d2757cep-17, -0x1.1de08b56479aap-17, 0x1.9110ccc7fe6fdp-19, -0x1.bb3184d789af8p-23, -0x1.4629a164e82ap-22, 0x1.413b087ee5e4dp-23, -0x1.648d7786f9fbcp-26, -0x1.293289f8c327dp-27, -0x1.c283008e726f7p-25}, /* j=24 109.772 */
+   {0x1.ffff2436a21dcp-1, -0x1.3607959a29d36p-55, 0x1.6e2367dc27f95p-15, 0x1.d96e6f015102p-73, -0x1.23c436c36fdabp-13, 0x1.f0d77fc600a5p-68, 0x1.26bf00867a835p-12, -0x1.c92e1aecdc75p-66, -0x1.a51fb50b15f22p-12, 0x1.248227c6d226p-69, 0x1.c0825378fda08p-12, 0x1.5a8a09c053451p-66, -0x1.6c3dbfe0cbe4ap-12, -0x1.e65769c33f8a1p-66, 0x1.c1dd1438378dfp-13, 0x1.91bd161f34158p-69, -0x1.94c36a9d7c0dcp-14, 0x1.bf0aab116ca41p-16, 0x1.6bdbd2f10393p-23, -0x1.2b32e8d43ef25p-18, 0x1.3a7403459770bp-19, -0x1.17411873320fap-21, -0x1.35bb2691c9b29p-24, 0x1.98313537ed069p-24, -0x1.cb4b60e85a341p-26, 0x1.2be214cf4c9ebp-31, -0x1.350a1a851865ap-23}, /* j=25 108.474 */
+   {0x1.ffffa1de8c582p-1, 0x1.832540129302ap-55, 0x1.44f21e49054f2p-16, 0x1.f338cf4086346p-71, -0x1.0d18811478659p-14, 0x1.914a7a08b6a2bp-68, 0x1.1b964d438f622p-13, 0x1.a52c94c56aaafp-67, -0x1.a8d7851f26bfp-13, 0x1.c38dbf3ee1223p-67, 0x1.ddd6df9b6852dp-13, -0x1.3b0dd7eac9b91p-67, -0x1.9e52b7aac1644p-13, 0x1.904036dfb5764p-67, 0x1.165b2034fcab2p-13, 0x1.27beac4bf3866p-67, -0x1.1b75c3332673ap-14, 0x1.91a253c42f4e7p-16, -0x1.020b498095051p-18, -0x1.ade63f30809aep-20, 0x1.89bb0d75e59b7p-20, -0x1.180c78d3dca28p-21, 0x1.cabfd39b38553p-25, 0x1.6013ffba86cfdp-25, -0x1.64f2b123e1f0bp-26, 0x1.35bf3e5021105p-28, -0x1.177828ffd35afp-23}, /* j=26 108.645 */
+   {0x1.ffffd8e1a2f22p-1, -0x1.c10adf6b19989p-55, 0x1.1783ceac2891p-17, -0x1.7f19d8ee58337p-71, -0x1.e06a8b37e5b93p-16, 0x1.24e8db1358f2ep-71, 0x1.07978c7b8496bp-14, 0x1.f163b5580927cp-68, -0x1.9d039884f8be5p-14, 0x1.fce53cd30b1ebp-68, 0x1.e8d1145e94a54p-14, -0x1.d0f6e009a99eep-68, -0x1.c1f7251172a87p-14, -0x1.3ce0f013dfe9p-71, 0x1.458b9e0854d68p-14, -0x1.897cf3950b1a7p-68, -0x1.6eb0557245429p-15, 0x1.33045cf65279ep-16, -0x1.42c8adf18ab62p-18, 0x1.91109b80f9918p-27, 0x1.83a9b44249fbfp-21, -0x1.9bcbaf0a8dfd1p-22, 0x1.900325b58a857p-24, 0x1.4a3cf9c161684p-28, -0x1.0cbcc4d0a916ap-26, 0x1.4275e1b91f084p-28, 0x1.39180c75350e1p-23}, /* j=27 108.443 */
+   {0x1.fffff039f9e8fp-1, -0x1.9d1bcd6174e99p-55, 0x1.d21397ead99cbp-19, -0x1.6abd9c029c47cp-75, -0x1.9f19734d29cf9p-17, 0x1.20c4383da36c1p-71, 0x1.d982bd41d8954p-16, 0x1.d9bc9988e9666p-71, -0x1.8320fc4836be5p-15, 0x1.526638b9926a8p-72, 0x1.e0a1cb1d071f3p-15, 0x1.d9f5d232bab9p-70, -0x1.d384223047b9cp-15, -0x1.30d0b2b8a170dp-69, 0x1.696daf6422bd4p-15, 0x1.ba6ac732f399ep-69, -0x1.bb6e2d311a93fp-16, 0x1.a4fcb0ea87efbp-17, -0x1.1c940c5303dafp-18, 0x1.7469913f4e9c6p-21, 0x1.ef4b4f8ab67aep-23, -0x1.e189c28e8e041p-23, 0x1.678b281d5bc55p-24, -0x1.9c3bf4e9f2b5dp-27, -0x1.74c9ba997ffedp-28, 0x1.b4b843f8c7068p-29, 0x1.c901764507862p-25}, /* j=28 109.895 */
+   {0x1.fffff9d446cccp-1, -0x1.bb06bab98bc8p-57, 0x1.789fb715aae95p-20, -0x1.226d93bf89b4p-80, -0x1.5b333cc7f98f1p-18, -0x1.6bd1091d2544p-72, 0x1.9b12fdbf90f62p-17, 0x1.d4b6b0ee9cf46p-71, -0x1.5e06923144d7p-16, 0x1.c59319485786p-75, 0x1.c6a071925631dp-16, -0x1.835ef595952e4p-71, -0x1.d178cb0388a82p-16, -0x1.039272760f01cp-70, 0x1.7e29d33ac92b6p-16, 0x1.21ff8b0e9d5ebp-70, -0x1.f9203429baad6p-17, 0x1.094dadeee395cp-17, -0x1.a771cf3500d9fp-19, 0x1.b8fd1c29c21eap-21, -0x1.cc8573d7de11p-26, -0x1.b0362da1722cbp-24, 0x1.e5eae518f94e9p-25, -0x1.07963addd99a6p-26, -0x1.3f496093d0befp-29, 0x1.99078a326092dp-30, 0x1.42681ecfe4da1p-23}, /* j=29 108.41 */
+   {0x1.fffffda86faa9p-1, -0x1.d230252d68f26p-56, 0x1.26f9df8519bd7p-21, -0x1.e339871c015b7p-75, -0x1.1926290adc888p-19, -0x1.e36d23dbb2644p-73, 0x1.5900c02d97304p-18, 0x1.fa7d21e3ed616p-72, -0x1.3166de6a8c64p-17, 0x1.b014157867958p-71, 0x1.9dfcc328729ep-17, 0x1.20e9fee0b7665p-71, -0x1.bcab1ed5ec38dp-17, 0x1.d9003794f0fep-73, 0x1.81cd74a57ce17p-17, -0x1.809fde9c0f6f5p-71, -0x1.106e95b6bf556p-17, 0x1.379625a71385fp-18, -0x1.1970a5b5bd443p-19, 0x1.74761c8333ff2p-21, -0x1.0864e125c9951p-23, -0x1.b83bf9019aa3bp-26, 0x1.0397611c35b28p-25, -0x1.a25392adb29acp-27, -0x1.7b832af40d9d4p-30, 0x1.62a02eb79577bp-32, 0x1.a6da58ffe94f4p-23}, /* j=30 108.026 */
+   {0x1.ffffff233ee1dp-1, 0x1.db123ed17221dp-55, 0x1.bfd7555a3bd68p-23, 0x1.0151cf177b53ap-77, -0x1.b8d7f804d2e73p-21, 0x1.82b366f0bc2dcp-75, 0x1.17f93e5149289p-19, 0x1.91997bfd26568p-76, -0x1.013b0457d08fap-18, -0x1.0d6d5a7f06298p-73, 0x1.6b245d7e1d829p-18, -0x1.9985e02c8ce3bp-72, -0x1.98077548c6951p-18, 0x1.01cd3f1d12c93p-72, 0x1.7492048ab3cebp-18, -0x1.0368a0dc0750ep-72, -0x1.17506c7b39cbp-18, 0x1.57e94a4c5f5a6p-19, -0x1.570971200d7dbp-20, 0x1.0a0f956947b21p-21, -0x1.1a9b7bd5bba32p-23, 0x1.51bfc00de3146p-27, 0x1.95b6967f79cbep-27, -0x1.fe3c43cb3cf84p-28, 0x1.2f364a7a2dc5fp-28, -0x1.007442a10cc14p-32, -0x1.ef5ab6fc5e849p-24}, /* j=31 108.802 */
+   {0x1.ffffffb127525p-1, 0x1.504f382db4102p-55, 0x1.4980cb3c80949p-24, 0x1.7fbdd923f8057p-78, -0x1.4ea6ce697296fp-22, 0x1.ea42f9c9de533p-76, 0x1.b771d9b6f07b8p-21, -0x1.e9c1ca9662fe8p-78, -0x1.a26c653fad5b8p-20, -0x1.146c4cee0e898p-74, 0x1.3302bb89379dep-19, 0x1.4c55b83ef7a68p-73, -0x1.67f42e5264334p-19, -0x1.6779da26b4197p-73, 0x1.58b4adafb958ep-19, 0x1.8351251b45e84p-73, -0x1.10f576796285ap-19, 0x1.66ca44250dd07p-20, -0x1.84ee0ada37543p-21, 0x1.53b6065291e6bp-22, -0x1.c09ebfd0c581cp-24, 0x1.63062625d59cp-26, 0x1.e259c60eb7b83p-30, -0x1.e43802ad25514p-29, 0x1.51bcdabe8cda5p-28, -0x1.930fc3df6e909p-32, -0x1.81cdd770e1c81p-23}, /* j=32 108.16 */
+   {0x1.ffffffe4aed5ep-1, 0x1.389c0f32ad0fp-59, 0x1.d5f3a8dea7357p-26, 0x1.fa07c18622dd2p-80, -0x1.ebfb14c9170cp-24, 0x1.9e40632b4145dp-78, 0x1.4d9228525f449p-22, 0x1.d35bd7f959136p-77, -0x1.48b536addac5fp-21, -0x1.61ace22b32569p-75, 0x1.f48ccf23a68e2p-21, -0x1.ee1d13c79c281p-75, -0x1.3183b6134cf03p-20, 0x1.e1f4d5fe2a06cp-75, 0x1.31efde2215f01p-20, -0x1.64a7021e23fbap-74, -0x1.fd9eeb0f18fdbp-21, 0x1.63414459ae298p-21, -0x1.9dda81be20b5ap-22, 0x1.8da7d306423c5p-23, -0x1.303da86a4fc28p-24, 0x1.4f5e1327706b9p-26, -0x1.3efb5eefcbe53p-29, -0x1.31bc5ce1ce65dp-30, -0x1.3eafe1b05c93fp-30, -0x1.47fc2d9cc851ep-32, 0x1.d27265006a9dfp-24}, /* j=33 108.887 */
+   {0x1.fffffff6d1e56p-1, -0x1.64d969b4be4c4p-55, 0x1.44d26de513197p-27, 0x1.76fc20fc4b365p-81, -0x1.5e32de7af8977p-25, -0x1.888fd6ae18a1cp-80, 0x1.e9e05b3c8f38ap-24, 0x1.7532141b12aa7p-78, -0x1.f2f6fa7db5b1dp-23, 0x1.b3bf498e3462cp-77, 0x1.899dcace485ebp-22, 0x1.1885a0ae9e878p-78, -0x1.f34b7eef3c9b2p-22, 0x1.294a3b618b47p-76, 0x1.04be030272d14p-21, -0x1.df83095e40f79p-75, -0x1.c73bd22571559p-22, 0x1.4edda838439f5p-22, -0x1.9fc860b504677p-23, 0x1.b0d686a26042p-24, -0x1.72370c2fdbe1p-25, 0x1.ee29f0d197d25p-27, -0x1.b4d88d500c5bep-29, 0x1.96014c45b0178p-35, 0x1.238f19dc8fd82p-31, -0x1.8d34d46ae6567p-33, -0x1.54105fe4a9cd8p-27}, /* j=34 112.335 */
+   {0x1.fffffffd01f89p-1, -0x1.35e8e39884f62p-56, 0x1.b334fac4b9f99p-29, 0x1.32178ed1a4971p-83, -0x1.e2cec6323e50ep-27, -0x1.0e5693f9d4908p-83, 0x1.5c027d5bba36ap-25, -0x1.fc46fb3cc7aep-81, -0x1.6df4d024fffbep-24, -0x1.90fd7226ec57ap-79, 0x1.2aaf7c205b9eap-23, 0x1.dbec2005b45a8p-77, -0x1.8902edfbfefddp-23, -0x1.c353aca58d08ap-77, 0x1.ab2ab1b338249p-23, 0x1.b498186c39105p-77, -0x1.85abe0ff198d3p-23, 0x1.2d32f7c3621ebp-23, -0x1.8c141c71dbc95p-24, 0x1.b9fa6fbb9b198p-25, -0x1.9db5fe2c2f5b9p-26, 0x1.3b8e07840483ep-27, -0x1.6d95e5070d91dp-29, 0x1.d7616168b0e49p-32, 0x1.f2be0744b3a5fp-30, -0x1.737a375809985p-34, -0x1.936d4936fb865p-24}, /* j=35 109.095 */
+   {0x1.ffffffff0dd2bp-1, 0x1.0df73e7d2fc98p-55, 0x1.1a94ff571654fp-30, 0x1.fbf537b47967dp-84, -0x1.4251f33f5578fp-28, 0x1.4c9cece8f41b2p-82, 0x1.de6bc1f75bb9bp-27, 0x1.94afb459a3p-87, -0x1.036b5fd1c4158p-25, -0x1.d582afa097896p-79, 0x1.b58f1385def96p-25, -0x1.8778854601996p-80, -0x1.2a2347efb2133p-24, -0x1.26f9e1ef0f378p-79, 0x1.508db866ffep-24, 0x1.64de561a68a21p-78, -0x1.3ffea934685b9p-24, 0x1.02ff87b2e2576p-24, -0x1.66e54eae5fa4bp-25, 0x1.a9ea2195c567dp-26, -0x1.ae3b91fecafa1p-27, 0x1.6bb883d2e5ed1p-28, -0x1.ee10e97715c11p-30, 0x1.e2873d2b77f1fp-32, -0x1.af385ae29d57bp-33, -0x1.d793eecfc2513p-36, 0x1.20d80dcfa68d1p-27}, /* j=36 112.58 */
+   {0x1.ffffffffb5be5p-1, -0x1.729d6819c7f34p-56, 0x1.63ac6b4edc88ep-32, -0x1.c45991835da24p-88, -0x1.a0ce0dc06a706p-30, -0x1.1b72d11da9dabp-84, 0x1.3e380dd7593a5p-28, -0x1.8ad868a7b5674p-82, -0x1.638bc4fb02cbap-27, 0x1.7a84506fcda4p-87, 0x1.35753ad4c5875p-26, 0x1.ad190ab170366p-81, -0x1.b41f33cafccbap-26, 0x1.0e3539bf61116p-80, 0x1.fe694e371a659p-26, -0x1.3a84e01866ea8p-82, -0x1.f8af0121aa0abp-26, 0x1.aa77274dab3d8p-26, -0x1.3616fe8f6a259p-26, 0x1.84fddf4c681a1p-27, -0x1.a3de05d1b8a31p-28, 0x1.822529aca9f83p-29, -0x1.26c3dfba84378p-30, 0x1.64c287a84aa09p-32, -0x1.107d2dac5d83bp-31, -0x1.e251d1ab1d873p-43, 0x1.8f37005f17b42p-26}, /* j=37 111.111 */
+   {0x1.ffffffffe9ebp-1, -0x1.ea527e0bef1e8p-58, 0x1.b1e5acf351d87p-34, 0x1.dc96583ba19fp-90, -0x1.05042a0a5f3c3p-31, -0x1.2023f0f13867cp-85, 0x1.99ac8fd63c66cp-30, -0x1.bf57c5fd0501ap-85, -0x1.d72344378e114p-29, 0x1.c77758959af41p-83, 0x1.a6be9a123435bp-28, 0x1.dab4af8807c36p-83, -0x1.33aacb4bf6deap-27, 0x1.bd241ea49ac35p-81, 0x1.74b732e7ceaa7p-27, 0x1.c7c89730b0264p-82, -0x1.7e7eab6531ccbp-27, 0x1.50959f2daae39p-27, -0x1.ffed4cef94261p-28, 0x1.51c7f99f908a2p-28, -0x1.82b5fd5fbedfcp-29, 0x1.7e1c8e715c978p-30, -0x1.51536822c861bp-31, 0x1.be7e4c220ca82p-33, 0x1.f5bb67c461296p-29, 0x1.1d7cf04529bfp-37, -0x1.acc021ab828c4p-23}, /* j=38 108.008 */
+   {0x1.fffffffff9a1bp-1, -0x1.6a87270d2450cp-57, 0x1.0084ff125639dp-35, -0x1.8ad61debedc86p-90, -0x1.3ca42adaa26f6p-33, 0x1.c20c6583dccddp-87, 0x1.fe73513c67bf8p-32, 0x1.20d28c0c7e686p-86, -0x1.2dd9aa5a2bee3p-30, 0x1.d76d7235461bep-85, 0x1.16ef6b93944a8p-29, -0x1.f07bd785566dep-83, -0x1.a2d58e9b22b26p-29, -0x1.19e6ea91dd55ep-84, 0x1.06389b9748f25p-28, 0x1.fbcc52565c0bep-82, -0x1.16cdd9eb58ba2p-28, 0x1.fdd861b55c5p-29, -0x1.9457846c943d2p-29, 0x1.178f3905f435cp-29, -0x1.518cf20c53de2p-30, 0x1.6329939a34b66p-31, -0x1.5ef3ad85e5d3bp-32, 0x1.f2b41494e49e9p-34, 0x1.bad43bc0b622dp-29, 0x1.21a45fa9dcebfp-37, -0x1.790b3d88f69fep-23}, /* j=39 108.193 */
+   {0x1.fffffffffe38p-1, 0x1.7ce07114e4fep-55, 0x1.25f9ee0b923dcp-37, -0x1.174c43a73a4d1p-91, -0x1.74105146a5162p-35, -0x1.7d0740e56625cp-91, 0x1.33cde4f35d941p-33, -0x1.2a344950797c6p-88, -0x1.760fe7b666392p-32, 0x1.a8b77c82ed644p-86, 0x1.63a70fd66d485p-31, 0x1.6b87715649d6dp-85, -0x1.1324f6fb6dfa1p-30, 0x1.3fc045e39915fp-84, 0x1.63a31a36b815cp-30, -0x1.02dec9bc1a7p-90, -0x1.8724ca8970b91p-30, 0x1.72e290891e5dep-30, -0x1.31fc03858aab1p-30, 0x1.b9e8b0e7fa253p-31, -0x1.1821a002637bdp-31, 0x1.37ba5f3fba5ebp-32, -0x1.3578bf23dc654p-33, 0x1.fdaf2015d7b54p-35, 0x1.7f6a435069067p-32, 0x1.9d14ee557ec62p-38, -0x1.55f4c743ee571p-26}, /* j=40 111.334 */
+   {0x1.ffffffffff845p-1, 0x1.b0edc5a89ab8ep-56, 0x1.46897d4b69fc6p-39, 0x1.a74852415bb49p-93, -0x1.a77a4e7dcd735p-37, -0x1.34edb43ab7de6p-91, 0x1.67543695dcc12p-35, -0x1.29ae577004af8p-92, -0x1.c05c1e2fc710ep-34, 0x1.dbbf42d2537a8p-90, 0x1.b639419fedf8ep-33, -0x1.ed72eb9e7a59ep-87, -0x1.5cfd7eb9bfe87p-32, -0x1.e97db27125fcp-88, 0x1.d11578959ba45p-32, -0x1.c0635ac2b5768p-87, -0x1.082f9e9f7eb37p-31, 0x1.0354ceadad8b3p-31, -0x1.bc2dee0154fc6p-32, 0x1.4e11efdc66eaep-32, -0x1.bb357c0253f64p-33, 0x1.035f9889bc29cp-33, -0x1.8e7bdb10b7441p-35, 0x1.e364571102661p-36, -0x1.12cffcf49a2e8p-29, 0x1.ee9362bcfec26p-39, 0x1.cc5b58dd85301p-24}, /* j=41 108.905 */
+   {0x1.ffffffffffdf8p-1, -0x1.dcf8b10ff973bp-55, 0x1.5f8b87a31bd85p-41, 0x1.65b265455b658p-98, -0x1.d2e55024a0fb5p-39, 0x1.444e1d84cea02p-93, 0x1.9612cc225df4bp-37, -0x1.c784edb664ce7p-91, -0x1.03ee5f38b9b4dp-35, -0x1.91ca8efa41a3p-89, 0x1.04f2f71e2e96bp-34, -0x1.33f36a4e5135p-89, -0x1.ab7099f99ced9p-34, -0x1.4af7a67f2110cp-90, 0x1.2554b8f609fd1p-33, -0x1.29e641eb44218p-88, -0x1.57c87529ca968p-33, 0x1.5cd182c967671p-33, -0x1.3580a2517d57ap-33, 0x1.e3be72b1be982p-34, -0x1.4e9908689ad08p-34, 0x1.9a61979d3395bp-35, -0x1.7b826aadd1c89p-36, 0x1.ad3a9fc4a0d1ep-37, -0x1.0e9325ed2097p-31, 0x1.0722198ff452cp-39, 0x1.c2ef85611aa11p-26}, /* j=42 110.935 */
+   {0x1.fffffffffff7bp-1, 0x1.00fa07f7fb612p-55, 0x1.6ed2f2515e933p-43, 0x1.2bc1802a42b92p-98, -0x1.f2a6c1669c901p-41, -0x1.7b3e174cc184p-95, 0x1.bc42ba38a13f8p-39, 0x1.460463d59d3dfp-93, -0x1.2391e135afae4p-37, -0x1.bd08c8c5f7b18p-92, 0x1.2c6c24550f64fp-36, -0x1.fdc861a48711p-92, -0x1.f9a3c1b0d63ecp-36, -0x1.843dc8d9ad3d5p-90, 0x1.6502546ab341ap-35, 0x1.45f812e48eb98p-89, -0x1.af223186006d1p-35, 0x1.c388dd1764f41p-35, -0x1.9e65a242b52aap-35, 0x1.4fcd2787781ebp-35, -0x1.e3cbdb20a48d6p-36, 0x1.35639e9fcd41p-36, -0x1.5b8e97774b2c9p-42, 0x1.66ffe6a100bc9p-38, -0x1.5706c390c113ep-30, 0x1.ff0d11cf61949p-41, 0x1.2054de347e3f8p-24}, /* j=43 109.58 */
+   {0x1.fffffffffffdfp-1, 0x1.5669e670f914cp-56, 0x1.72fd93e036cdcp-45, 0x1.1c553d12fbbdp-100, -0x1.01f450d1e61b2p-42, 0x1.bed807e60c078p-99, 0x1.d68fb81b2ed89p-41, 0x1.c7ea3c4444ccp-98, -0x1.3c706aa4d2328p-39, 0x1.d6d2d51dd414dp-93, 0x1.4e6479565838ep-38, 0x1.50580f36c14c1p-92, -0x1.20e9eb83b3dd9p-37, -0x1.04b6334a32fdp-94, 0x1.a35b9d2fcac8p-37, 0x1.c07c6978bf2fp-94, -0x1.04a134f6e3dcbp-36, 0x1.196579f27ddbep-36, -0x1.0ab97aa74c7p-36, 0x1.bf68355f542b1p-37, -0x1.49da25a547134p-37, 0x1.bd64993a3958ep-38, -0x1.1193990186399p-35, 0x1.1c0e98335ae18p-39, 0x1.e08edb685494ap-29, 0x1.cb9fcc058465bp-42, -0x1.94cacccfb8964p-23}, /* j=44 108.091 */
+   {0x1.ffffffffffff8p-1, 0x1.0160ef15c497ep-56, 0x1.6ba91ac734786p-47, -0x1.f81d6fa69b5b2p-101, -0x1.028a39099f4dbp-44, -0x1.83ed68de15404p-99, 0x1.e292863e1795ep-43, -0x1.b292e812abb68p-98, -0x1.4c4e690fbdd14p-41, -0x1.80991e1d4ef25p-95, 0x1.67e6e5ac60fd1p-40, 0x1.1d2ca68dcf0e8p-95, -0x1.3f00d80afa00cp-39, -0x1.3e174dc7225acp-93, 0x1.db88ee63eb28ap-39, 0x1.8abd97527892fp-93, -0x1.2fe58a1f19368p-38, 0x1.51dbeae22a5c8p-38, -0x1.4a4d54823e0fcp-38, 0x1.1e432d674cfbap-38, -0x1.b001e26c6e764p-39, 0x1.328ce695259fep-39, -0x1.4e492cf7d4f4cp-36, 0x1.aaa77d339dcp-41, 0x1.366538db382e5p-29, 0x1.826ad7d581503p-43, -0x1.056e0810b14dap-23}, /* j=45 108.721 */
+   {0x1.ffffffffffffep-1, 0x1.59ab24e589a3p-56, 0x1.5982008db1304p-49, -0x1.1cf9bda64b38ap-103, -0x1.f610e8cde57acp-47, -0x1.884dcd86f98c8p-102, 0x1.df2dac2f2d47fp-45, -0x1.7f27bf279d988p-102, -0x1.51b17f95fc0b4p-43, -0x1.063e04485c3e7p-97, 0x1.76996ddc975d7p-42, -0x1.21489d6648428p-97, -0x1.546155a972b18p-41, -0x1.9d3fb518aa7cp-100, 0x1.0456ed89c4f24p-40, 0x1.eee772fc32c5ep-94, -0x1.55d6295aa388ap-40, 0x1.86ead99977388p-40, -0x1.89b3d387efa6ep-40, 0x1.6011e175e64f8p-40, -0x1.0cd70515af47bp-40, 0x1.9402199dfdde7p-41, -0x1.806743bc32b08p-37, 0x1.30e561550364ap-42, 0x1.70093985e2c1bp-30, 0x1.31999a27ace63p-44, -0x1.35f54db0f4dbcp-24}, /* j=46 109.476 */
+   {0x1p+0, -0x1.a6d7d18831888p-55, 0x1.3e296303b2297p-51, 0x1.68cf648cfed1cp-105, -0x1.d8456ef97c744p-49, 0x1.fcded170055p-103, 0x1.ccb92e6c24c8dp-47, -0x1.a704dc202cff2p-101, -0x1.4c1aa8cf1229bp-45, 0x1.652efa61e4ec2p-99, 0x1.7918b6b83c0fbp-44, 0x1.2fb01fb8836dcp-100, -0x1.5f073659de44dp-43, -0x1.9ceb48a2d1931p-97, 0x1.134d070b5921ep-42, 0x1.9af3038fcc184p-98, -0x1.730a2938c09ddp-42, 0x1.b4091041f5905p-42, -0x1.c3c44ab8c8421p-42, 0x1.a06b4f4c3044dp-42, -0x1.704f511555fe7p-42, 0x1.fe51fcfc1acbap-43, 0x1.5e7229a07e7cdp-38, 0x1.9f8121f6c3146p-44, -0x1.692b2f9b3f445p-31, 0x1.c8c34f73d3823p-46, 0x1.301e540260d52p-25}, /* j=47 110.503 */
+};
+
 /* Add a + b, such that *hi + *lo approximates a + b.
    Assumes |a| >= |b|.
    For rounding to nearest we have hi + lo = a + b exactly.
@@ -152,13 +211,23 @@ static inline void fast_two_sum(double *hi, double *lo, double a, double b) {
   *lo = b - e; /* exact */
 }
 
+/* Reference: https://hal.science/hal-01351529v3/document */
+static inline void two_sum(double *hi, double *lo, double a, double b) {
+  *hi = a + b;
+  double aa = *hi - b;
+  double bb = *hi - aa;
+  double da = a - aa;
+  double db = b - bb;
+  *lo = da + db;
+}
+
 // Multiply exactly a and b, such that *hi + *lo = a * b.
 static inline void a_mul(double *hi, double *lo, double a, double b) {
   *hi = a * b;
   *lo = __builtin_fma (a, b, -*hi);
 }
 
-/* Assuming 0.0625 0 <= z <= 0x1.7afb48dc96626p+2, put in h+l an approximation
+/* Assuming 0 <= z <= 0x1.7afb48dc96626p+2, put in h+l an approximation
    of erf(z) with relative error bounded by 2^-68.90 (cf analyze_p() in
    erf.sage).
    Return err the maximal relative error:
@@ -167,9 +236,16 @@ static double
 cr_erf_fast (double *h, double *l, double z)
 {
   double th, tl;
-  if (z < 0.0625)
+  /* we split [0,0x1.7afb48dc96626p+2] into intervals i/16 <= z < (i+1)/16,
+     and for each interval, we use a minimax polynomial:
+     * for i=0 (0 <= z < 1/16) we use a polynomial evaluated at zero,
+       since if we evaluate in the middle 1/32, we will get bad accuracy
+       for tiny z, and moreover z-1/32 might not be exact
+     * for 1 <= i <= 94, we use a polynomial evaluated in the middle of
+       the interval, namely i/16+1/32
+  */
+  if (z < 0.0625) /* z < 1/16 */
   {
-    if (z == __builtin_fabs (TRACE)) printf ("case z < 0.0625\n");
     /* the following is a degree-11 minimax polynomial for erf(x) on [0,1/16]
        generated by Sollya, with double-double coefficients for degree 1 and 3,
        and double coefficients for degrees 5 to 11 */
@@ -204,7 +280,6 @@ cr_erf_fast (double *h, double *l, double z)
   }
   double v = __builtin_floor (16.0 * z);
   uint32_t i = 16.0 * z;
-  if (z == __builtin_fabs (TRACE)) printf ("case i=%u\n", i);
   /* i/16 <= z < (i+1)/16 */
   /* For 0.0625 0 <= z <= 0x1.7afb48dc96626p+2, z - 0.03125 is exact:
      (1) either z - 0.03125 is in the same binade as z, then 0.03125 is
@@ -248,6 +323,58 @@ cr_erf_fast (double *h, double *l, double z)
                         (larger values of i yield smaller error bounds) */
 }
 
+/* Assuming 0 <= z <= 0x1.7afb48dc96626p+2, put in h+l an accurate
+   approximation of erf(z). */
+static void
+cr_erf_accurate (double *h, double *l, double z)
+{
+  double th, tl;
+  /* we split [0,0x1.7afb48dc96626p+2] into intervals i/8 <= z < (i+1)/8,
+     and for each interval, we use a minimax polynomial:
+     * for i=0 (0 <= z < 1/8) we use a polynomial evaluated at zero,
+       since if we evaluate in the middle 1/16, we will get bad accuracy
+       for tiny z, and moreover z-1/16 might not be exact
+     * for 1 <= i <= 47, we use a polynomial evaluated in the middle of
+       the interval, namely i/8+1/16
+  */
+  if (z < 0.1250) /* z < 1/8 */
+  {
+    *h = *l = 0;
+    return;
+  }
+  double v = __builtin_floor (8.0 * z);
+  uint32_t i = 8.0 * z;
+  if (z == __builtin_fabs (TRACE)) printf ("cr_erf_accurate: i=%u\n", i);
+  z = (z - 0.0625) - 0.125 * v;
+  /* now |z| <= 1/16 */
+  const double *p = C2[i-1];
+  *h = p[26]; /* degree-18 */
+  for (int j = 17; j > 10; j--)
+    *h = __builtin_fma (*h, z, p[8+j]); /* degree j */
+  *l = 0;
+  for (int j = 10; j > 7; j--)
+  {
+    /* multiply h+l by z */
+    a_mul (&th, &tl, *h, z);
+    tl = __builtin_fma (*l, z, tl);
+    /* add p[8+j] to th + tl */
+    two_sum (h, l, p[8+j], th);
+    *l += tl;
+  }
+  for (int j = 7; j >= 0; j--)
+  {
+    /* multiply h+l by z */
+    a_mul (&th, &tl, *h, z);
+    tl = __builtin_fma (*l, z, tl);
+    /* add p[2*j] + p[2*j+1] to th + tl: we use two_sum() instead of
+       fast_two_sum because for example for i=3, the coefficient of
+       degree 7 is tiny (0x1.060b78c935b8ep-13) with respect to that
+       of degree 8 (0x1.678b51a9c4b0ap-7) */
+    two_sum (h, l, p[2*j], th);
+    *l += p[2*j+1] + tl;
+  }
+}
+
 double
 cr_erf (double x)
 {
@@ -282,21 +409,24 @@ cr_erf (double x)
     return __builtin_fma (l, 0x1p-53, y);
   }
   err = cr_erf_fast (&h, &l, z);
-  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   b64u64_u u = {.f = h}, v = {.f = l};
   t.f = x;
 #define SIGN_MASK (uint64_t) 0x8000000000000000
   u.u ^= t.u & SIGN_MASK;
   v.u ^= t.u & SIGN_MASK;
-  if (x == TRACE) printf ("u.f=%la v.f=%la err=%la\n", u.f, v.f, err);
   double left = u.f + __builtin_fma (err, -u.f, v.f);
   double right = u.f + __builtin_fma (err, u.f, v.f);
-  if (x == TRACE) printf ("left=%la right=%la\n", left, right);
   if (left == right)
   {
-    if (x == TRACE) printf ("rounding test succeeded\n");
+    if (x == TRACE) printf ("fast path succeeded\n");
     return left;
   }
-  if (x == TRACE) printf ("rounding test failed\n");
-  return 0;
+
+  if (x == TRACE) printf ("fast path failed\n");
+
+  cr_erf_accurate (&h, &l, z);
+  if (h == 0 && l == 0)
+    return 0;
+  if (x == TRACE) printf ("accurate: h=%la l=%la\n", h, l);
+  return (x >= 0) ? h + l : (-h) + (-l);
 }

@@ -141,6 +141,8 @@ def sollya_approx(x0,h,d,i,rel=false):
 # j= 5 err= 68.8980000000000
 # sollya_approx_all(1,95,1/32,10,1,rel=true)
 # j= 1 err= 69.0050000000000
+# sollya_approx_all(1,48,1/16,18,7,rel=true)
+# j= 2 err= 107.115000000000
 def sollya_approx_all(j0,j1,h,d,i,rel=false):
    wo = infinity
    h = RR(h)
@@ -151,6 +153,7 @@ def sollya_approx_all(j0,j1,h,d,i,rel=false):
          wo = err
 
 # print_table(1,95,1/32,10,1,rel=true)
+# print_table(1,48,1/16,18,7,rel=true)
 def print_table(j0,j1,h,d,i,rel=false):
    ncols = d+1 + i+1
    print ("static const double C[" + str(j1-j0) + "][" + str(ncols) + "] = {")
@@ -464,10 +467,21 @@ def a_mul(a,b):
    return hi, lo
 
 def fast_two_sum(a,b):
+   assert abs(a) >= abs(b), "abs(a) >= abs(b)"
    hi = a+b
    e = hi-a
    lo = b-e
    return hi, lo
+
+# from https://hal.science/hal-01351529v3/document
+def two_sum(a,b):
+   s = a + b
+   aa = s - b
+   bb = s - aa
+   da = a - aa
+   db = b - bb
+   t = da + db
+   return s, t
 
 def p0(z):
    c0 = ["0x1.20dd750429b6dp+0", "0x1.1ae3a7862d9c4p-56", "-0x1.812746b0379e7p-2", "0x1.f1a64d72722a2p-57", "0x1.ce2f21a042b7fp-4", "-0x1.b82ce31189904p-6", "0x1.565bbf8a0fe0bp-8", "-0x1.bf9f8d2c202e4p-11"]
@@ -515,3 +529,80 @@ def Analyze0():
       zmax = zmax*ratio
       ratio = (1/2+ratio)/2
    return maxerr
+
+# return the observed relative of the minimax polynomial
+# without rounding errors
+# x=RR("0x1.04a47d4dafcc8p-3",16)
+# accurate_exact(x)
+# relative error bound 108.830000000000
+# observed relative error -111.616544639867
+def accurate_exact(x):
+   z = abs(x)
+   i = floor(z*8)
+   assert 1 <= i <= 47
+   h = RR(1/16)
+   p, err = sollya_approx((2*i+1)*h,h,18,7,rel=true)
+   for j in [0..7]:
+      h = RR(p[j])
+      l = RR(p[j]-p[j].parent()(h))
+      assert p[j].exact_rational() == h.exact_rational()+l.exact_rational()
+      print (j, get_hex(h), get_hex(l))
+   for j in [8..18]:
+      print (j,get_hex(p[j]))
+   print ("relative error bound", err)
+   Z = z.exact_rational()
+   T = (Z - 1/16) - i/8
+   assert abs(T) <= 1/16, "abs(T) <= 1/16"
+   Y = p[18].exact_rational()
+   for j in range(17,-1,-1):
+      Y = Y*T+p[j].exact_rational()
+   err2 = n(Y/erf(Z)-1,200)
+   print ("observed relative error", log(abs(err2))/log(2.))
+
+# same as the C code
+# x=RR("0x1.04a47d4dafcc8p-3",16)
+# accurate(x)
+def accurate(x):
+   z = abs(x)
+   Z = z.exact_rational()
+   i = floor(z*8)
+   assert 1 <= i <= 47
+   h = RR(1/16)
+   p, err = sollya_approx((2*i+1)*h,h,18,7,rel=true)
+   z = (z - 0.0625) - 0.125 * i
+   h = RR(p[18])
+   threshold1 = 10
+   threshold2 = 7
+   for j in range(17,threshold1,-1):
+      h = fma (h, z, RR(p[j]))
+   l = RR(0)
+   for j in range(threshold1,threshold2,-1):
+      th, tl = a_mul(h, z)
+      tl = fma(l,z,tl)
+      h, l = fast_two_sum (RR(p[j]),th)
+      l += tl
+   for j in range(threshold2,-1,-1):
+      pjh = RR(p[j])
+      pjl = RR(p[j]-p[j].parent()(pjh))
+      th, tl = a_mul(h, z)
+      tl = fma(l,z,tl)
+      h, l = two_sum (pjh,th)
+      l += pjl + tl
+   Y = h.exact_rational()+l.exact_rational()
+   err2 = n(Y/erf(Z)-1,200)
+   print ("h=", get_hex(h), "l=", get_hex(l))
+   print ("relative error", log(abs(err2))/log(2.))
+
+# return the relative error of the accurate minimax polynomial for i=1
+def relerr_accurate1(z):
+   z = RR(z)
+   assert 1/8 <= z <= 1/4, "1/8 <= z <= 1/4"
+   R = RealField(107)
+   P.<x> = R[]
+   p = R("0x1.ac45e37fe25265235214db1878cp-3",16)+x*R("0x1.16e2d7093cd8c65e694be41ad34p0",16)+x^2*R("-0x1.a254428ddb45298d9df1d621458p-3",16)+x^3*R("-0x1.59b3da8e1e17608fb28612ecbd8p-2",16)+x^4*R("0x1.988648fe88218a944c3ce1124fcp-4",16)+x^5*R("0x1.803427310d19897aea2463f0538p-4",16)+x^6*R("-0x1.09e7bce5592c8c2907018312cdp-5",16)+x^7*R("-0x1.516b20531841432835533163f48p-6",16)+x^8*R("0x1.038d3f3a16b57p-7",16)+x^9*R("0x1.e19d52695ad59p-9",16)+x^10*R("-0x1.9542e7ed01428p-10",16)+x^11*R("-0x1.1f9b6e46418dcp-11",16)+x^12*R("0x1.0796a08a400f4p-12",16)+x^13*R("0x1.2610d97c70323p-14",16)+x^14*R("-0x1.25d31d73f96d1p-15",16)+x^15*R("-0x1.05e1fa9e02f11p-17",16)+x^16*R("0x1.1e616f979139cp-18",16)+x^17*R("0x1.9b3d54f1f222ap-21",16)+x^18*R("-0x1.7ad96beea439ap-22",16)
+   Z = z.exact_rational()
+   T = (Z - 1/16) - 1/8
+   Y = p[18].exact_rational()
+   for j in range(17,-1,-1):
+      Y = Y*T+p[j].exact_rational()
+   return n(Y/erf(Z)-1,200)
