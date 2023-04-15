@@ -328,6 +328,20 @@ cr_erf_fast (double *h, double *l, double z)
 static void
 cr_erf_accurate (double *h, double *l, double z)
 {
+  static const double exceptions[][3] = {
+    {0x1.bc466342a2296p-1, 0x1.8f7ab15eb5babp-1, -0x1.fffffffffffffp-55},
+    {0x1.589bbd3ae5489p+0, 0x1.e2d7b84ebf6dbp-1, 0x1.fffffffffffffp-55},
+    {0x1.f9a4a209ca0e4p+0, 0x1.fd542cdc70993p-1, -0x1.f86f37645446ap-108},
+    {0x1.6c196b0b4ae04p+1, 0x1.fff8760068eddp-1, -0x1.6f6f53a83af6bp-111},
+    {0x1.fd5d9d8c9ef66p-1, 0x1.ae5d17eb4f408p-1, 0x1.03fa708a553b3p-105},
+  };
+  for (int i = 0; i < 5; i++)
+    if (z == exceptions[i][0])
+    {
+      *h = exceptions[i][1];
+      *l = exceptions[i][2];
+      return;
+    }
   double th, tl;
   /* we split [0,0x1.7afb48dc96626p+2] into intervals i/8 <= z < (i+1)/8,
      and for each interval, we use a minimax polynomial:
@@ -344,7 +358,7 @@ cr_erf_accurate (double *h, double *l, double z)
   }
   double v = __builtin_floor (8.0 * z);
   uint32_t i = 8.0 * z;
-  if (z == __builtin_fabs (TRACE)) printf ("cr_erf_accurate: i=%u\n", i);
+  //if (z == __builtin_fabs (TRACE)) printf ("cr_erf_accurate: i=%u\n", i);
   z = (z - 0.0625) - 0.125 * v;
   /* now |z| <= 1/16 */
   const double *p = C2[i-1];
@@ -418,15 +432,15 @@ cr_erf (double x)
   double right = u.f + __builtin_fma (err, u.f, v.f);
   if (left == right)
   {
-    if (x == TRACE) printf ("fast path succeeded\n");
+    //if (x == TRACE) printf ("fast path succeeded\n");
     return left;
   }
 
-  if (x == TRACE) printf ("fast path failed\n");
+  //if (x == TRACE) printf ("fast path failed\n");
 
   cr_erf_accurate (&h, &l, z);
   if (h == 0 && l == 0)
     return 0;
-  if (x == TRACE) printf ("accurate: h=%la l=%la\n", h, l);
+  //if (x == TRACE) printf ("accurate: h=%la l=%la\n", h, l);
   return (x >= 0) ? h + l : (-h) + (-l);
 }
