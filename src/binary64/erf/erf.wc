@@ -1,4 +1,3 @@
-0x1.04a47d4dafcc8p-3
 # this file need only contain positive worst cases since erf(-x) = -erf(x)
 # 
 # worst cases computed with bacsel with -m 44,

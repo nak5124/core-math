@@ -606,3 +606,58 @@ def relerr_accurate1(z):
    for j in range(17,-1,-1):
       Y = Y*T+p[j].exact_rational()
    return n(Y/erf(Z)-1,200)
+
+# z=RR("0x1.ff64057255d81p-4",16)
+# relerr_accurate0(z)
+def relerr_accurate0(z):
+   z = RR(z)
+   assert 0 <= z < 1/8, "0 <= z < 1/8"
+   R = RealField(107)
+   P.<x> = R[]
+   p = x*R("0x1.20dd750429b6d11ae3a914fed8p0",16)+x^3*R("-0x1.812746b0379e6c23da36c6ad28cp-2",16)+x^5*R("0x1.ce2f21a042be1b5e390fd7d7ccp-4",16)+x^7*R("-0x1.b82ce31288b50ddff8a661d9548p-6",16)+x^9*R("0x1.565bcd0e6a53fp-8",16)+x^11*R("-0x1.c02db40040cc3p-11",16)+x^13*R("0x1.f9a326fa3cf5p-14",16)+x^15*R("-0x1.f4d25e3c73ce9p-17",16)+x^17*R("0x1.b9eb332b31646p-20",16)+x^19*R("-0x1.64a4bd5eca4d7p-23",16)+x^21*R("0x1.c0acc2502e94ep-25",16)
+   Z = z.exact_rational()
+   Y = p[21].exact_rational()
+   for j in range(19,0,-2):
+      Y = Y*Z^2+p[j].exact_rational()
+   Y = Y*Z
+   print (n(Y))
+   return n(Y/erf(Z)-1,200)
+
+# z=RR("0x1.ff64057255d81p-4",16)
+# accurate0(z)
+def accurate0(z):
+   z = RR(z)
+   assert 0 <= z < 1/8, "0 <= z < 1/8"
+   R = RealField(107)
+   P.<x> = R[]
+   p = x*R("0x1.20dd750429b6d11ae3a914fed8p0",16)+x^3*R("-0x1.812746b0379e6c23da36c6ad28cp-2",16)+x^5*R("0x1.ce2f21a042be1b5e390fd7d7ccp-4",16)+x^7*R("-0x1.b82ce31288b50ddff8a661d9548p-6",16)+x^9*R("0x1.565bcd0e6a53fp-8",16)+x^11*R("-0x1.c02db40040cc3p-11",16)+x^13*R("0x1.f9a326fa3cf5p-14",16)+x^15*R("-0x1.f4d25e3c73ce9p-17",16)+x^17*R("0x1.b9eb332b31646p-20",16)+x^19*R("-0x1.64a4bd5eca4d7p-23",16)+x^21*R("0x1.c0acc2502e94ep-25",16)
+   z2 = z*z
+   h = RR(p[21])
+   for j in range(19,11,-2):
+      h = fma(h,z2,RR(p[j]))
+   l = RR(0)
+   for j in range(11,7,-2):
+      th, tl = a_mul(h,z)
+      tl = fma(l,z,tl)
+      h, l = a_mul(th,z)
+      l = fma(tl,z,l)
+      h, tl = fast_two_sum(RR(p[j]), h)
+      l += tl
+   for j in range(7,0,-2):
+      th, tl = a_mul(h,z)
+      tl = fma(l,z,tl)
+      h, l = a_mul(th,z)
+      l = fma(tl,z,l)
+      ph = RR(p[j])
+      pl = RR(p[j]-R(ph))
+      h, tl = fast_two_sum(ph, h)
+      l += pl + tl
+   h, tl = a_mul(h,z)
+   l = fma(l,z,tl)
+   H = h.exact_rational()
+   L = l.exact_rational()
+   print ("h=", get_hex(h))
+   print ("l=", get_hex(l))
+   Z = z.exact_rational()
+   return n((H+L)/erf(Z)-1,200)
+
