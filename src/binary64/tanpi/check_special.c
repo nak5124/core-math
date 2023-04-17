@@ -66,6 +66,17 @@ double rand_arg(struct drand48_data *buf, double s){
   return r*s;
 }
 
+double rand_arg2(struct drand48_data *buf){
+  long r0,r1;
+  b64u64_u o;
+  do {
+    mrand48_r(buf, &r0);
+    mrand48_r(buf, &r1);
+    o.u = r0^(r1<<32);
+  } while((o.u<<1)>=(0x7fful<<53));
+  return o.f;
+}
+
 static int check (double x){
   b64u64_u yr = {.f = rfun(x)}, yt = {.f = tfun(x)};
   if (yr.u != yt.u) {
@@ -145,6 +156,39 @@ static void check_random_all(double a, double b){
     check_random(getpid() + i, a, b);
 }
 
+static void check_random_p(int seed){
+  ref_init();
+  ref_fesetround(rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buf[1];
+  printf("seed = %d\n",seed);
+  srand48_r(seed, buf);
+  int fail = 0, maxfail = 10;
+  long count = 0;
+  while(1){
+    long i = 0, n = 10*1000*1000;
+    for(;i<n;i++){
+      double x = rand_arg2(buf);
+      if(check(x)) fail++;
+      if(fail>=maxfail) break;
+    }
+    count += i;
+    printf("failure(s) %d, total %ld\n",fail,count);
+    if(count>=1000l*1000l*1000l) break;
+    if(fail>=maxfail) break;
+  }
+  printf("%d fails per %ld calls or %.1e %%\n",fail,count,(double)fail/count*100);
+}
+
+static void check_random_all_p(){
+  int nthreads;
+#pragma omp parallel
+  nthreads = omp_get_num_threads();
+#pragma omp parallel for
+  for(int i = 0; i < nthreads; i++)
+    check_random_p(getpid() + i);
+}
+
 long parselong(const char *str){
   char *endptr;
   errno = 0;    /* To distinguish success/failure after call */
@@ -170,6 +214,7 @@ int main(int argc, char *argv[]){
     { "help",        no_argument, 0, 'h'},
     {"verbose",      no_argument, 0, 'v'},
     {"thread",       no_argument, 0, 't'},
+    {   "exp",       no_argument, 0, 'p'},
     { "seed",  required_argument, 0, 's'},
     {"darts",  required_argument, 0, 'D'},
     {"conseq", required_argument, 0, 'C'},
@@ -177,12 +222,12 @@ int main(int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 0, seed = 0, darts = 0, conseq = 0;
+  int thread = 0, seed = 0, darts = 0, conseq = 0, p = 0;
   double x = __builtin_nan(""), a = -1, b = 1;
   long n = 10*1000;
   const char *fname = NULL;
   while(1) {
-    int ind = 0, c = getopt_long(argc, argv, "nudzhvts:D:C:r:i:x:a:b:", opts, &ind);
+    int ind = 0, c = getopt_long(argc, argv, "nudzhvtps:D:C:r:i:x:a:b:", opts, &ind);
     if(c == -1) break;
     switch(c) {
     case 'a': a = strtod(optarg,NULL); break;
@@ -193,6 +238,7 @@ int main(int argc, char *argv[]){
     case 'd': rnd = 3; break;
     case 'v': verbose = 1; break;
     case 't': thread = 1; break;
+    case 'p': p = 1; break;
     case 's': seed = parselong(optarg); break;
     case 'D': darts = 1; n = parselong(optarg); break;
     case 'C': conseq = 1; n = parselong(optarg); break;
@@ -220,10 +266,17 @@ int main(int argc, char *argv[]){
     } else if(conseq){
       scan_consecutive(n, a);
     } else {
-      if(thread)
-	check_random_all(a, b);
-      else
-	check_random(seed, a, b);
+      if(p){
+	if(thread)
+	  check_random_all_p();
+	else
+	  check_random_p(seed);
+      } else {
+	if(thread)
+	  check_random_all(a, b);
+	else
+	  check_random(seed, a, b);
+      }
     }
   }
   return 0;
