@@ -24,6 +24,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* Usage: ./check.sh --special -t -a -10 -b 10 tanpi
+   -t   the test is done in parallel
+   -a   first boundary
+   -b   second boundary
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
