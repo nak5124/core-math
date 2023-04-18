@@ -25,9 +25,11 @@ SOFTWARE.
 */
 
 /* Usage: ./check.sh --special -t -a -10 -b 10 tanpi
+          ./check.sh --special -t -p tanpi
    -t   the test is done in parallel
    -a   first boundary
    -b   second boundary
+   -p   generates random numbers in the whole binary64 range
 */
 
 #include <stdio.h>
