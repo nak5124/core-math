@@ -32,7 +32,6 @@ typedef uint64_t u64;
 typedef union {double f; u64 u;} b64u64_u;
 typedef uint16_t ushort;
 
-__float128 as_atanh(__float128);
 static inline double fasttwosum(double x, double y, double *e){
   double s = x + y, z = s - x;
   *e = y - z;
