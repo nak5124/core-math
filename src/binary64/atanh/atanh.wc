@@ -26586,3 +26586,5 @@
 0x1.fffffffffffffp+1023
 +inf
 nan
+# non-regression tests
+0x1.d1782b8p-27
