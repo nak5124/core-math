@@ -137,7 +137,13 @@ void test(int maxfailures){
     zr.f = ref_function_under_test(x);
     zt.f = cr_function_under_test(x);
     if (!is_equal (zr, zt)) {
-      if(++failures<maxfailures) printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
+      if(++failures<maxfailures){
+	b64u64_u ix = {.f = x};
+	if(ix.u<<1>0x7fful<<53){
+	  printf("FAIL x=0x%016lx ref=0x%016lx z=0x%016lx <- NB: argument is NaN\n", ix.u, zr.u, zt.u);
+	} else
+	  printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
+      }
     }
     ++count;
   }
@@ -146,12 +152,12 @@ void test(int maxfailures){
 
 int transform(double x, double *out){
   static int first = 1;
-  static double px = __builtin_nan("");
+  static b64u64_u px = {.f = __builtin_nan("")};
   static long k;
   b64u64_u s = {.f = x};
-  if (first || px != x) {
+  if (first || px.u != s.u) {
     first = 0;
-    px = x;
+    px.f = x;
     k = -1;
   }
   if(++k<2){

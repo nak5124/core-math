@@ -129,7 +129,7 @@ double cr_atanh(double x){
   }
   
   if(__builtin_expect(aix<0x3fd0000000000000ul,0)){
-    if(__builtin_expect(aix<0x3e5250bfe1b082f4ul,0)) return __builtin_fma(x,0x1p-55,x);
+    if(__builtin_expect(aix<0x3e4d12ed0af1a27ful,0)) return __builtin_fma(x,0x1p-55,x);
     static const double c[] = 
       {0x1.999999999999ap-3, 0x1.2492492492244p-3, 0x1.c71c71c79715fp-4, 0x1.745d16f777723p-4,
        0x1.3b13ca4174634p-4, 0x1.110c9724989bdp-4, 0x1.e2d17608a5b2ep-5, 0x1.a0b56308cba0bp-5, 0x1.fb6341208ad2ep-5};
