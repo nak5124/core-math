@@ -26581,3 +26581,8 @@
 0x1.fd338f7b584dcp-1
 0x1.fd86297b1aad7p-1
 0x1.fdfc242e11011p-1
+# some corner cases:
+0x1p-1074
+0x1.fffffffffffffp+1023
++inf
+nan
