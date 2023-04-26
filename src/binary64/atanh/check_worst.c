@@ -140,7 +140,7 @@ void test(int maxfailures){
       if(++failures<maxfailures){
 	b64u64_u ix = {.f = x};
 	if(ix.u<<1>0x7fful<<53){
-	  printf("FAIL x=0x%016lx ref=0x%016lx z=0x%016lx <- NB: argument is NaN\n", ix.u, zr.u, zt.u);
+	  printf("For NaN argument the bit structure of result is diffierent: x=0x%016lx ref=0x%016lx z=0x%016lx\n", ix.u, zr.u, zt.u);
 	} else
 	  printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
       }
