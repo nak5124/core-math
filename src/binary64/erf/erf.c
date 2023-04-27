@@ -24,8 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x1.5be2786118ef8p-4
-
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
@@ -327,17 +325,11 @@ cr_erf_fast (double *h, double *l, double z)
                         (larger values of i yield smaller error bounds) */
 }
 
-/* Assuming 0 <= z <= 0x1.7afb48dc96626p+2, put in h+l an accurate
-   approximation of erf(z). */
+/* for |z| < 1/8 */
 static void
-cr_erf_accurate (double *h, double *l, double z)
+cr_erf_accurate_tiny (double *h, double *l, double z)
 {
   static const double exceptions[][3] = {
-    {0x1.bc466342a2296p-1, 0x1.8f7ab15eb5babp-1, -0x1.fffffffffffffp-55},
-    {0x1.589bbd3ae5489p+0, 0x1.e2d7b84ebf6dbp-1, 0x1.fffffffffffffp-55},
-    {0x1.f9a4a209ca0e4p+0, 0x1.fd542cdc70993p-1, -0x1.f86f37645446ap-108},
-    {0x1.6c196b0b4ae04p+1, 0x1.fff8760068eddp-1, -0x1.6f6f53a83af6bp-111},
-    {0x1.fd5d9d8c9ef66p-1, 0x1.ae5d17eb4f408p-1, 0x1.03fa708a553b3p-105},
     {0x1.d93734069a071p-4, 0x1.09ccdb9ccc3ddp-3, 0x1.ffffffffffff1p-57},
     {0x1.b6c9b08933c3ep-4, 0x1.ed3b48eca0e84p-4, -0x1.ffffffffffffp-58},
     {0x1.a7fbde5c5eb6bp-4, 0x1.dcb61b1301725p-4, -0x1.fffffffffffdbp-58},
@@ -350,8 +342,232 @@ cr_erf_accurate (double *h, double *l, double z)
     {0x1.1f8b186638ad9p-38, 0x1.447539f64f2ffp-38, -0x1.fffffffffffffp-92},
     {0x1.4c822c62ad162p-41, 0x1.7732164c3a687p-41, -0x1.fffffffffffffp-95},
     {0x1.9730ce1d0f154p-49, 0x1.cb7727228d5e1p-49, -0x1.fffffffffffffp-103},
+    {0x1.8430fefa15ceap-61, 0x1.b606ee962afaap-61, 0x1.8f9599a73ba4ap-169},
+    {0x1.886938a44becbp-61, 0x1.bac9d5ed33b8ep-61, 0x1.6ae4b20e95962p-165},
+    {0x1.8ca1724e820acp-61, 0x1.bf8cbd443c772p-61, 0x1.5e680539a8baep-164},
+    {0x1.8430fefa15ceap-60, 0x1.b606ee962afaap-60, 0x1.8f85dce14c1a7p-168},
+    {0x1.886938a44becbp-60, 0x1.bac9d5ed33b8ep-60, 0x1.6ae3adf53be08p-164},
+    {0x1.8ca1724e820acp-60, 0x1.bf8cbd443c772p-60, 0x1.5e677eef65875p-163},
+    {0x1.8430fefa15ceap-59, 0x1.b606ee962afaap-59, 0x1.8f46e9c98df1dp-167},
+    {0x1.886938a44becbp-59, 0x1.bac9d5ed33b8ep-59, 0x1.6adf9d8fd50a1p-163},
+    {0x1.8ca1724e820acp-59, 0x1.bf8cbd443c772p-59, 0x1.5e6565c658b9p-162},
+    {0x1.8430fefa15ceap-58, 0x1.b606ee962afaap-58, 0x1.8e4b1d6a954f2p-166},
+    {0x1.886938a44becbp-58, 0x1.bac9d5ed33b8ep-58, 0x1.6acf5bfa39b04p-162},
+    {0x1.8ca1724e820acp-58, 0x1.bf8cbd443c772p-58, 0x1.5e5d0122257fbp-161},
+    {0x1.8430fefa15ceap-57, 0x1.b606ee962afaap-57, 0x1.8a5bebeeb2c49p-165},
+    {0x1.886938a44becbp-57, 0x1.bac9d5ed33b8ep-57, 0x1.6a8e55a3cc48fp-161},
+    {0x1.8ca1724e820acp-57, 0x1.bf8cbd443c772p-57, 0x1.5e3b6e91589a6p-160},
+    {0x1.8430fefa15ceap-56, 0x1.b606ee962afaap-56, 0x1.7a9f25ff289a2p-164},
+    {0x1.886938a44becbp-56, 0x1.bac9d5ed33b8ep-56, 0x1.698a3c4a16abdp-160},
+    {0x1.8ca1724e820acp-56, 0x1.bf8cbd443c772p-56, 0x1.5db5244e25054p-159},
+    {0x1.8430fefa15ceap-55, 0x1.b606ee962afaap-55, 0x1.3bac0e40fff06p-163},
+    {0x1.886938a44becbp-55, 0x1.bac9d5ed33b8ep-55, 0x1.6579d6e340376p-159},
+    {0x1.8ca1724e820acp-55, 0x1.bf8cbd443c772p-55, 0x1.5b9bfb4156b0ep-158},
+    {0x1.8430fefa15ceap-54, 0x1.b606ee962afaap-54, 0x1.fefd7a42ea4cp-165},
+    {0x1.886938a44becbp-54, 0x1.bac9d5ed33b8ep-54, 0x1.55384147e6657p-158},
+    {0x1.8ca1724e820acp-54, 0x1.bf8cbd443c772p-54, 0x1.5337570e1d5f3p-157},
+    {0x1.886938a44becbp-53, 0x1.bac9d5ed33b8ep-53, 0x1.1431eada7f1ddp-157},
+    {0x1.8ca1724e820acp-53, 0x1.bf8cbd443c772p-53, 0x1.31a4c64138189p-156},
+    {0x1.886938a44becbp-52, 0x1.bac9d5ed33b8ep-52, 0x1.0189124e1ff4p-160},
+    {0x1.8ca1724e820acp-52, 0x1.bf8cbd443c772p-52, 0x1.56b5061b45fc3p-156},
+    {0x1.994a1f4d2464fp-51, 0x1.cdd5734956b1ep-51, 0x1.1922eca6fdfc4p-156},
+    {0x1.9d8258f75a83p-51, 0x1.d2985aa05f702p-51, 0x1.ad4d3b4e1d806p-155},
+    {0x1.a1ba92a190a11p-51, 0x1.d75b41f7682e6p-51, 0x1.6682b0b880b5cp-154},
+    {0x1.d028c72340eaep-49, 0x1.05dfb3b2e0dfcp-48, 0x1.b7f0d78799918p-153},
+    {0x1.2b99db4db0d6p-48, 0x1.5210437be975fp-48, 0x1.922a255c49e44p-157},
+    {0x1.fea5e46a65313p-48, 0x1.201a2fcc00711p-47, 0x1.1ae177f0bd2b1p-151},
+    {0x1.ae9b2884a5ee2p-47, 0x1.e5e30e5b1f4acp-47, 0x1.dc0f5702e6342p-153},
+    {0x1.84d6dc8ec027bp-46, 0x1.b6c2175984ed5p-46, 0x1.2fbc78f99d9a9p-150},
+    {0x1.0eec3106a4cffp-45, 0x1.31b414e426645p-45, 0x1.8899c68b2752p-152},
+    {0x1.2347ebc54f771p-44, 0x1.48ace3791e12fp-44, 0x1.791034264a2ap-152},
+    {0x1.81a4f0e63d94cp-44, 0x1.b3272aada38e5p-44, 0x1.df91c6ac6e0bap-148},
+    {0x1.28f33d49e4eb1p-43, 0x1.4f1286ab0985dp-43, 0x1.db0910492ee42p-149},
+    {0x1.ddbda048231bfp-43, 0x1.0d894db1fa6aep-42, 0x1.20202bc3971c7p-149},
+    {0x1.0fe1ed93fbaedp-42, 0x1.32c95d97414eap-42, 0x1.fc89198ad1a2p-148},
+    {0x1.42334e50b5b1dp-42, 0x1.6b9071ac182d5p-42, 0x1.33da0a7b2ce34p-146},
+    {0x1.1482a40a520f7p-41, 0x1.38022bb76d4bep-41, 0x1.ddc2ecb2538c4p-147},
+    {0x1.9af730903c5cap-40, 0x1.cfb999e0d8721p-40, 0x1.63575c345de28p-144},
+    {0x1.6ed4f37c88ad4p-39, 0x1.9dece76f96a6bp-39, 0x1.020a7ba544e7ep-142},
+    {0x1.b516344fb5b9fp-39, 0x1.ed3316cf16bbp-39, 0x1.ca66581a3d33bp-143},
+    {0x1.b92a872dd577ep-39, 0x1.f1cd7b71df0d1p-39, 0x1.03f3f64c66507p-144},
+    {0x1.fe591a94150b2p-39, 0x1.1feedd0cc79acp-38, 0x1.abb6586b8a681p-143},
+    {0x1.1bb8b499a198ap-37, 0x1.40253b50c6147p-37, 0x1.a3a80bafc9c6ep-142},
+    {0x1.524d59cbe1aeep-37, 0x1.7dbbac6ebd462p-37, 0x1.1c3b1629671dfp-140},
+    {0x1.971601d0e7ad1p-37, 0x1.cb58ea1e437c7p-37, 0x1.240db1ee3aeb3p-141},
+    {0x1.b3d18ae8cf43bp-37, 0x1.ebc4bf60aeed7p-37, 0x1.496f64b5a2089p-140},
+    {0x1.be707417159e3p-37, 0x1.f7c0b5bed7cedp-37, 0x1.c05d17c24e98fp-142},
+    {0x1.f5ceeb7f31dcbp-36, 0x1.1b1d70f80fc3dp-35, 0x1.3d92e80ebbb95p-139},
+    {0x1.fb651f7723a19p-36, 0x1.1e4458cfd4c98p-35, 0x1.2f2d7f8c62b85p-141},
+    {0x1.0c1d70dfa9d06p-34, 0x1.2e890ef3e0dc3p-34, 0x1.3316d8c0e931fp-138},
+    {0x1.319f8b8e89476p-34, 0x1.58dbdf6eb78ffp-34, 0x1.1e658052a56d8p-138},
+    {0x1.7ac0a56830e22p-34, 0x1.ab605f8436432p-34, 0x1.c6a2913ca09f8p-139},
+    {0x1.d4397aa6a2e1ep-34, 0x1.082adad01dac3p-33, 0x1.ce8d36a0979d8p-138},
+    {0x1.82ddf65a95d62p-33, 0x1.b4885f9950dd5p-33, 0x1.0c4324eaff0c5p-136},
+    {0x1.123fa6a5464ep-32, 0x1.3574d9c8589dap-32, 0x1.961d29c7178e3p-137},
+    {0x1.e09bd50919f76p-31, 0x1.0f2788f017973p-30, 0x1.96870d6279a33p-134},
+    {0x1.688344194b509p-30, 0x1.96cb8ab8197bcp-30, 0x1.1c137cf737255p-135},
+    {0x1.bbe0961dba753p-30, 0x1.f4dca4a7e5dfbp-30, 0x1.9444292403871p-138},
+    {0x1.d4877a878169bp-30, 0x1.0856dc7b6103ep-29, 0x1.dcdedf1ba7186p-137},
+    {0x1.46f3c475b0bb6p-29, 0x1.70ed12e7ba4bcp-29, 0x1.2393ed9cca95bp-132},
+    {0x1.6945597112bacp-29, 0x1.97a68a9ffd837p-29, 0x1.082078f746939p-133},
+    {0x1.0a43285c7ab99p-28, 0x1.2c71e316e7c88p-28, 0x1.dd0bfe4a0781dp-133},
+    {0x1.8a109683e3124p-28, 0x1.bca78dc64c924p-28, 0x1.5c323d9deb8f7p-132},
+    {0x1.bd64d79e554eap-23, 0x1.f692be3698522p-23, 0x1.6f156abab96e7p-131},
+    {0x1.825c72e8f01cfp-22, 0x1.b3f63bafca0e2p-22, 0x1.e60e41709029bp-129},
+    {0x1.6e5a096b1c23cp-19, 0x1.9d6235c7b81eep-19, 0x1.fc0aea582b99p-126},
+    {0x1.360ab1e117c79p-14, 0x1.5dd83d06074edp-14, 0x1.5d43650aeded8p-120},
+    {0x1.b40c63ec05b68p-9, 0x1.ec06af7716f32p-9, 0x1.82e5a777644b9p-114},
+    {0x1.c9cbda829a434p-6, 0x1.023779e9c41ebp-5, 0x1.87d6fc7988d41p-110},
+    {0x1.62ac2a232634fp-4, 0x1.8f3504c40d905p-4, -0x1.0eccd58b7b2a5p-112},
+    {0x1.5fde1f6141155p-4, 0x1.8c10ccb248715p-4, -0x1.73f1dc809b56dp-107},
+    {0x1.782c19103c3a1p-4, 0x1.a7464b2d136abp-4, -0x1.ba0c08932a2fep-108},
+    {0x1.af1fda77e4fdap-4, 0x1.e4ae69a78bca1p-4, 0x1.ae9b2cdc62d99p-106},
+    {0x1.d4af8adb90116p-4, 0x1.07472e8f39ffcp-3, -0x1.ea7fa18173ab8p-106},
+    {0x1.fa41846867e29p-38, 0x1.1d9fd37678043p-37, -0x1.5934e9d22e10ep-146},
+    {0x1.667a32cc06687p-25, 0x1.947f947f0ee06p-25, -0x1.0e01aed306d19p-132},
+    {0x1.02bcd0c5e2648p-16, 0x1.23f43e22f6a32p-16, -0x1.a8c39a1a872ccp-126},
+    {0x1.5d75d9c6ab138p-15, 0x1.8a52e375388cbp-15, -0x1.06fcbd5b44b3cp-120},
+    {0x1.e71184977c017p-4, 0x1.1182584b11eb2p-3, -0x1.1090da30ef177p-106},
+    {0x1.ce9276ef30e33p-28, 0x1.04fa76d71cc0ep-27, -0x1.5d9609f3a5203p-132},
+    {0x1.e514e5c23e449p-28, 0x1.11ad919fa78e8p-27, -0x1.501a36fc6a3dp-134},
+    {0x1.0332832420ec5p-26, 0x1.24790c9e283p-26, -0x1.f25a2f991891p-131},
+    {0x1.130112ea25be2p-26, 0x1.364f1ae8b5115p-26, -0x1.983aceab676eap-132},
+    {0x1.39354d7b960afp-25, 0x1.616ae95960c49p-25, -0x1.7cdaa5ae8f992p-130},
+    {0x1.45e5154f25d27p-25, 0x1.6fbba3b36f4c2p-25, -0x1.a9a3630c1d6e3p-133},
+    {0x1.20cb86e0e0987p-23, 0x1.45decb7223acfp-23, -0x1.4248bd0a42da5p-130},
+    {0x1.89c5931982c4cp-23, 0x1.bc52e90a63989p-23, -0x1.0a8970da483bap-126},
+    {0x1.ea876e64e184cp-21, 0x1.14c059a9d4d14p-20, -0x1.bb99e094b8772p-125},
+    {0x1.2acf6a0c750fdp-19, 0x1.512bd4f235745p-19, -0x1.cf78892b0e5bfp-124},
+    {0x1.3ce3dd1952256p-19, 0x1.65927a4ba3aa4p-19, -0x1.24e69b23032c8p-126},
+    {0x1.974e806fcf22bp-18, 0x1.cb98a970119b7p-18, -0x1.2b28fdc011cd9p-123},
+    {0x1.c0fd5153eb329p-15, 0x1.faa163609371p-15, -0x1.f851749f0dac2p-120},
+    {0x1.dc5fd1c298db1p-15, 0x1.0cc3f2346c98p-14, -0x1.7fbe77962c9e4p-119},
+    {0x1.18ac65d27848p-13, 0x1.3cb4bf8c4f728p-13, -0x1.2de7a476d92dcp-118},
+    {0x1.32a9ef8c6a5e4p-13, 0x1.5a08763509edap-13, -0x1.4474cf3f97357p-116},
+    {0x1.4c9dd9526bfa8p-13, 0x1.7751509616133p-13, -0x1.489f4d2e6a79cp-117},
+    {0x1.57dff8a30938bp-13, 0x1.84057105ab417p-13, -0x1.91788f7d61403p-118},
+    {0x1.22937fba82b78p-12, 0x1.47e14d4c6ab54p-12, -0x1.47b28b106230cp-116},
+    {0x1.47692c44eba06p-12, 0x1.71718c77b5ac9p-12, -0x1.edddded2d16d4p-117},
+    {0x1.8bc46e0d85524p-9, 0x1.be930057fc38p-9, -0x1.6024763d76e34p-113},
+    {0x1.a583446021af2p-9, 0x1.db9fe475a9efap-9, -0x1.b2f3c279290b8p-114},
+    {0x1.d8dca99ff420ep-8, 0x1.0ac777543a06bp-7, -0x1.80cdedad4d682p-113},
+    {0x1.905dd2cf72efcp-7, 0x1.c3be23f171276p-7, -0x1.476a2463db573p-110},
+    {0x1.7a32705a82364p-6, 0x1.aaac8237a2773p-6, -0x1.33fcd106cb31p-111},
+    {0x1.090f3ea999f31p-5, 0x1.2afbbbd547ee4p-5, -0x1.3df8586f8e6e4p-109},
+    {0x1.76d22ae6d361p-5, 0x1.a6a52cfc62d7ap-5, 0x1.88fef0ec26274p-110},
+    {0x1.c2f21e8c13743p-7, 0x1.fcce427573e7p-7, 0x1.384b594fd2f7ep-110},
+    {0x1.ddbb940acaf0dp-9, 0x1.0d87d7b46e8d7p-8, 0x1.0d542faf36184p-116},
+    {0x1.bb8e4c220e593p-21, 0x1.f47fca3d4858dp-21, 0x1.cb31e8b7914a6p-126},
+    {0x1.2b221209bf807p-42, 0x1.5189196ff95fap-42, 0x1.47e9c665b18a4p-145},
+    {0x1.9c2aa279fb3d5p-12, 0x1.d114826bd2848p-12, 0x1.d276a159efc5cp-117},
+    {0x1.cbc7f29b0bd17p-20, 0x1.0367575a5b718p-19, 0x1.2342288a29648p-124},
+    {0x1.6fbe597bee032p-10, 0x1.9ef4323fe1542p-10, 0x1.1a9040ecb1ccap-113},
+    {0x1.a227bdc79c70fp-21, 0x1.d7d670f25b666p-21, 0x1.673379240b72dp-126},
+    {0x1.ffb74bf0f292bp-12, 0x1.20b46ec8d8a4p-11, 0x1.344e79770dd2ep-116},
+    {0x1.03b61f49c4e2dp-18, 0x1.250d8e226f5c6p-18, 0x1.fa02c9e4d4bf9p-123},
+    {0x1.d978480bd028p-13, 0x1.0b2072db6f11ap-12, 0x1.14b47a8ef850cp-117},
+    {0x1.43d1d53d89835p-36, 0x1.6d64300e7b53cp-36, 0x1.625d4d3d79d7bp-139},
+    {0x1.11a87d90e0396p-8, 0x1.34c9d32f6b959p-8, 0x1.df1439f9c2bc5p-113},
+    {0x1.b19727e0cd3cbp-5, 0x1.e8cc463b348e9p-5, 0x1.7d05bfbb2c704p-110},
+    {0x1.09eabecf81593p-31, 0x1.2c0e1fdcc6db5p-31, 0x1.479cfe533c6eap-134},
+    {0x1.236aa259200a9p-46, 0x1.48d40ee6e456p-46, 0x1.5642d0010c95dp-149},
+    {0x1.4ecb797e12a34p-41, 0x1.79c6875e270ffp-41, 0x1.68afce5e3547ep-144},
+    {0x1.b03b7eee93138p-9, 0x1.e7b863de4a056p-9, 0x1.c2b4fd80b0426p-115},
+    {0x1.4c5e200ac727bp-18, 0x1.7709693a2874ep-18, 0x1.2f03e5604a95cp-121},
+    {0x1.f2dbcd5e8811fp-28, 0x1.197369689aa24p-27, 0x1.292c9c013f47bp-131},
+    {0x1.ef3067c6cf276p-4, 0x1.16067d36b3d43p-3, 0x1.aa0e12c21f3f6p-104},
+    {0x1.455d2ec1db053p-15, 0x1.6f224ac13ddf6p-15, 0x1.4cc37ebbb6866p-122},
+    {0x1.81fb7c9b6849cp-18, 0x1.b388d2b789a16p-18, 0x1.81ecc9726122fp-122},
+    {0x1.a04b51bb21c67p-20, 0x1.d5bcdb41444a8p-20, 0x1.5dd17a0b2a994p-125},
+    {0x1.78a34e7b5213ap-16, 0x1.a8fd896d0cf35p-16, 0x1.3d4ff389f0c4bp-119},
+    {0x1.f8b3e2ea6fe3ep-36, 0x1.1cbf7ca287027p-35, 0x1.d0c6b0b071845p-139},
+    {0x1.19918e3c54348p-43, 0x1.3db7535fc2f8fp-43, 0x1.b5c8e283438c7p-147},
+    {0x1.a11cbff57b451p-13, 0x1.d6a92c06ade05p-13, 0x1.48bf5d28e27e2p-118},
+    {0x1.712ded5326281p-20, 0x1.a093086368eafp-20, 0x1.a59120c212e71p-125},
+    {0x1.f74e2c8e5396fp-19, 0x1.1bf5ab55b988ep-18, 0x1.c637d57b4bde8p-124},
+    {0x1.b37e8ea74a18ep-18, 0x1.eb671bcd28498p-18, 0x1.92c6d84c444d1p-122},
+    {0x1.6f181f9557436p-27, 0x1.9e38b32744b8ep-27, 0x1.034750607bf08p-131},
+    {0x1.243834158acb7p-18, 0x1.49bc04af9a16ap-18, 0x1.f5471d4386c26p-124},
+    {0x1.32eb08cdb9d79p-13, 0x1.5a51eaeef7f1ep-13, 0x1.a4589f3e834fbp-118},
+    {0x1.50d3c0636bc86p-23, 0x1.7c1199333030fp-23, 0x1.3a6f63be96c03p-128},
+    {0x1.7807672ad2a97p-24, 0x1.a84d9e55bc7f3p-24, 0x1.91c1d5fc085d4p-132},
+    {0x1.a45cdb6e4cff8p-34, 0x1.da541b2acb13dp-34, 0x1.7d9e1dfd5184p-137},
+    {0x1.89e48dfc624e6p-21, 0x1.bc75de165dc6dp-21, 0x1.8f2e15d91d6a2p-126},
+    {0x1.fd93a5b5d7ec9p-10, 0x1.1f7f5e2c55c28p-9, 0x1.11f075f8006c1p-113},
+    {0x1.fa460656bb453p-33, 0x1.1da25e7fa405p-32, 0x1.a27454289ccc4p-136},
+    {0x1.505403e08632bp-12, 0x1.7b8175c575513p-12, 0x1.fdbeb416f94ddp-116},
+    {0x1.e9c8672d268cep-47, 0x1.145492fa35b87p-46, 0x1.02461396b2591p-149},
+    {0x1.99e8c01fb83b2p-12, 0x1.ce886fe44a6a1p-12, 0x1.034169fec784p-118},
+    {0x1.58b07d670bcbcp-36, 0x1.84f0bafe7376ep-36, 0x1.5548a65073e7cp-139},
+    {0x1.bc8ee7e3ebfb1p-32, 0x1.f5a1577323e45p-32, 0x1.193154eb8eb7bp-135},
+    {0x1.3f25f7e8fe06dp-32, 0x1.681ecc8eacd15p-32, 0x1.6abbbc60d0a6dp-135},
   };
-  for (int i = 0; i < 17; i++)
+  for (int i = 0; i < 171; i++)
+    if (z == exceptions[i][0])
+    {
+      *h = exceptions[i][1];
+      *l = exceptions[i][2];
+      return;
+    }
+  /* polynomial generated by erf0_accurate.sollya */
+  static const double p[] = {
+    0x1.20dd750429b6dp+0, 0x1.1ae3a914fed8p-56,   /* degree 1 */
+    -0x1.812746b0379e7p-2, 0x1.ee12e49ca96bap-57, /* degree 3 */
+    0x1.ce2f21a042be2p-4, -0x1.2871bc0a0a0dp-58,  /* degree 5 */
+    -0x1.b82ce31288b51p-6, 0x1.1003accf1355cp-61, /* degree 7 */
+    0x1.565bcd0e6a53fp-8,                         /* degree 9 */
+    -0x1.c02db40040cc3p-11,                       /* degree 11 */
+    0x1.f9a326fa3cf5p-14,                         /* degree 13 */
+    -0x1.f4d25e3c73ce9p-17,                       /* degree 15 */
+    0x1.b9eb332b31646p-20,                        /* degree 17 */
+    -0x1.64a4bd5eca4d7p-23,                       /* degree 19 */
+    0x1.c0acc2502e94ep-25,                        /* degree 21 */
+  };
+  double z2 = z * z, th, tl;
+  *h = p[21/2+4]; /* degree 21 */
+  for (int j = 19; j > 11; j-=2)
+    *h = __builtin_fma (*h, z2, p[j/2+4]); /* degree j */
+  *l = 0;
+  for (int j = 11; j > 7; j-=2)
+  {
+    /* multiply h+l by z^2 */
+    a_mul (&th, &tl, *h, z);
+    tl = __builtin_fma (*l, z, tl);
+    a_mul (h, l, th, z);
+    *l = __builtin_fma (tl, z, *l);
+    /* add p[j] to h + l */
+    fast_two_sum (h, &tl, p[j/2+4], *h);
+    *l += tl;
+  }
+  for (int j = 7; j >= 1; j-=2)
+  {
+    /* multiply h+l by z^2 */
+    a_mul (&th, &tl, *h, z);
+    tl = __builtin_fma (*l, z, tl);
+    a_mul (h, l, th, z);
+    *l = __builtin_fma (tl, z, *l);
+    fast_two_sum (h, &tl, p[j-1], *h);
+    *l += p[j] + tl;
+  }
+  /* multiply by z */
+  a_mul (h, &tl, *h, z);
+  *l = __builtin_fma (*l, z, tl);
+  return;
+}
+
+/* Assuming 0 <= z <= 0x1.7afb48dc96626p+2, put in h+l an accurate
+   approximation of erf(z). */
+static void
+cr_erf_accurate (double *h, double *l, double z)
+{
+  static const double exceptions[][3] = {
+    {0x1.bc466342a2296p-1, 0x1.8f7ab15eb5babp-1, -0x1.fffffffffffffp-55},
+    {0x1.589bbd3ae5489p+0, 0x1.e2d7b84ebf6dbp-1, 0x1.fffffffffffffp-55},
+    {0x1.f9a4a209ca0e4p+0, 0x1.fd542cdc70993p-1, -0x1.f86f37645446ap-108},
+    {0x1.6c196b0b4ae04p+1, 0x1.fff8760068eddp-1, -0x1.6f6f53a83af6bp-111},
+    {0x1.fd5d9d8c9ef66p-1, 0x1.ae5d17eb4f408p-1, 0x1.03fa708a553b3p-105},
+  };
+  for (int i = 0; i < 5; i++)
     if (z == exceptions[i][0])
     {
       *h = exceptions[i][1];
@@ -367,56 +583,10 @@ cr_erf_accurate (double *h, double *l, double z)
      * for 1 <= i <= 47, we use a polynomial evaluated in the middle of
        the interval, namely i/8+1/16
   */
-  if (z < 0.1250) /* z < 1/8 */
-  {
-    /* polynomial generated by erf0_accurate.sollya */
-    static const double p[] = {
-      0x1.20dd750429b6dp+0, 0x1.1ae3a914fed8p-56,   /* degree 1 */
-      -0x1.812746b0379e7p-2, 0x1.ee12e49ca96bap-57, /* degree 3 */
-      0x1.ce2f21a042be2p-4, -0x1.2871bc0a0a0dp-58,  /* degree 5 */
-      -0x1.b82ce31288b51p-6, 0x1.1003accf1355cp-61, /* degree 7 */
-      0x1.565bcd0e6a53fp-8,                         /* degree 9 */
-      -0x1.c02db40040cc3p-11,                       /* degree 11 */
-      0x1.f9a326fa3cf5p-14,                         /* degree 13 */
-      -0x1.f4d25e3c73ce9p-17,                       /* degree 15 */
-      0x1.b9eb332b31646p-20,                        /* degree 17 */
-      -0x1.64a4bd5eca4d7p-23,                       /* degree 19 */
-      0x1.c0acc2502e94ep-25,                        /* degree 21 */
-    };
-    double z2 = z * z;
-    *h = p[21/2+4]; /* degree 21 */
-    for (int j = 19; j > 11; j-=2)
-      *h = __builtin_fma (*h, z2, p[j/2+4]); /* degree j */
-    *l = 0;
-    for (int j = 11; j > 7; j-=2)
-    {
-      /* multiply h+l by z^2 */
-      a_mul (&th, &tl, *h, z);
-      tl = __builtin_fma (*l, z, tl);
-      a_mul (h, l, th, z);
-      *l = __builtin_fma (tl, z, *l);
-      /* add p[j] to h + l */
-      fast_two_sum (h, &tl, p[j/2+4], *h);
-      *l += tl;
-    }
-    for (int j = 7; j >= 1; j-=2)
-    {
-      /* multiply h+l by z^2 */
-      a_mul (&th, &tl, *h, z);
-      tl = __builtin_fma (*l, z, tl);
-      a_mul (h, l, th, z);
-      *l = __builtin_fma (tl, z, *l);
-      fast_two_sum (h, &tl, p[j-1], *h);
-      *l += p[j] + tl;
-    }
-    /* multiply by z */
-    a_mul (h, &tl, *h, z);
-    *l = __builtin_fma (*l, z, tl);
-    return;
-  }
+  if (z < 0.125) /* z < 1/8 */
+    return cr_erf_accurate_tiny (h, l, z);
   double v = __builtin_floor (8.0 * z);
   uint32_t i = 8.0 * z;
-  if (z == __builtin_fabs (TRACE)) printf ("cr_erf_accurate: i=%u\n", i);
   z = (z - 0.0625) - 0.125 * v;
   /* now |z| <= 1/16 */
   const double *p = C2[i-1];
@@ -487,16 +657,10 @@ cr_erf (double x)
   double left = u.f + __builtin_fma (err, -u.f, v.f);
   double right = u.f + __builtin_fma (err, u.f, v.f);
   if (left == right)
-  {
-    if (x == TRACE) printf ("fast path succeeded\n");
     return left;
-  }
-
-  if (x == TRACE) printf ("fast path failed\n");
 
   cr_erf_accurate (&h, &l, z);
   if (h == 0 && l == 0)
     return 0;
-  if (x == TRACE) printf ("accurate: h=%la l=%la\n", h, l);
   return (x >= 0) ? h + l : (-h) + (-l);
 }

@@ -661,3 +661,8 @@ def accurate0(z):
    Z = z.exact_rational()
    return n((H+L)/erf(Z)-1,200)
 
+def print_exception(x):
+   X = x.exact_rational()
+   h = RR(n(erf(X),200))
+   l = RR(n(erf(X)-h.exact_rational(),200))
+   print ("    {" + get_hex(x) + ", " + get_hex(h) + ", " + get_hex(l) + "},")
