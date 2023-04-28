@@ -165,7 +165,6 @@ int transform(double x, double *out){
       s.u -= (k>>1)<<52;
       s.u |= k<<63;
       *out = s.f;
-      //      printf("%a %ld %a\n",x,k,*out);
       return 1;
     } else {
       return 0;
