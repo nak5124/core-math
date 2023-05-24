@@ -142,7 +142,12 @@ void test(int maxfailures){
 	if(ix.u<<1>0x7fful<<53){
 	  printf("FYI for NaN argument the bit structure of result is different: x=0x%016lx ref=0x%016lx z=0x%016lx\n", ix.u, zr.u, zt.u);
 	} else
+        {
 	  printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
+#ifndef DO_NOT_ABORT
+          exit (1);
+#endif
+        }
       }
     }
     ++count;
