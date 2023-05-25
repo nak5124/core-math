@@ -812,7 +812,7 @@ typedef union {
   uint64_t u;
 } f64_u;
 
-// Extract both the mantissa and exponent of a double
+// Extract both the significand and exponent of a double
 static inline void fast_extract(int64_t *e, uint64_t *m, double x) {
   f64_u _x = {.f = x};
 

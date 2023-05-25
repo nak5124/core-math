@@ -130,7 +130,7 @@ double cr_log2(double x){
     {-0x1.62e41d56c64p-2, 0x1.47fd2632d2d32p-3, -0x1.5504497831ba7p-4, 0x1.7a3314c5bef3cp-5};
   b64u64_u t = {.f = x};
   int ex = t.u>>52, e = ex - 0x3ff;
-  if (__builtin_expect(!ex, 0)){ // 0 or denormal
+  if (__builtin_expect(!ex, 0)){ // 0 or subnormal
     if(!t.u) return -1.0 / 0.0; // 0 
     int k = __builtin_clzll(t.u);
     e -= k-12;
@@ -251,7 +251,7 @@ static double __attribute__((noinline)) as_log2_refine(double x, double a){
   static const double cl[3] = {-0x1.71547652b82fep-2, 0x1.2776c50f1ff14p-2, -0x1.ec709dc3eca5dp-3};
   b64u64_u t = {.f = x};
   int ex = t.u>>52, e = ex-0x3ff;
-  if (__builtin_expect(!ex, 0)){ // 0 or denormal
+  if (__builtin_expect(!ex, 0)){ // 0 or subnormal
     int k = __builtin_clzll(t.u);
     e -= k-12;
     t.u <<= k-11;

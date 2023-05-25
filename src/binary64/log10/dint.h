@@ -28,8 +28,8 @@ SOFTWARE.
 /*
   This file contains type definition and functions to manipulate the dint64_t
   data type used in the second iteration of Ziv's method. It is composed of two
-  uint64_t values for the mantissa and the exponent is represented by a signed
-  int64_t value.
+  uint64_t values for the significand and the exponent is represented by a
+  signed int64_t value.
 */
 
 #ifndef DINT_H

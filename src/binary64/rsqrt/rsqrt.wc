@@ -14,7 +14,7 @@
 0x1.adf7d568fb6bdp+1
 0x1.d0a4a40f6cdecp+0
 0x1.656230dda552dp+0
-# the same as before just scaled to denormals
+# the same as before just scaled to subnormals
 0x0.fffffffffffffp-1022
 0x0.7d2c120afe8d3p-1022
 0x0.c136e52ab14adp-1022
