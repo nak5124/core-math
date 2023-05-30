@@ -69,33 +69,40 @@ float cr_erfcf(float xf){
   b32u32_u t = {.f = xf};
   unsigned at = t.u&(~0u>>1), sgn = t.u>>31;
   long i = at > 0x40051000;
-  if(__builtin_expect(t.u > 0xc07547ca, 0)){
-    if(__builtin_expect(t.u >= 0xff800000, 0)){
-      if(t.u == 0xff800000) return 2.0f;
-      return xf;
+  /* for x < -0x1.ea8f94p+1, erfc(x) rounds to 1 (to nearest) */
+  if(__builtin_expect(t.u > 0xc07547ca, 0)){    // xf < -0x1.ea8f94p+1
+    if(__builtin_expect(t.u >= 0xff800000, 0)){ // -Inf or NaN
+      if(t.u == 0xff800000) return 2.0f;        // -Inf
+      return xf;                                // NaN
     }
-    return 2.0f - 0x1p-25f;
+    return 2.0f - 0x1p-25f;                     // rounds to 2 or nextbelow(2)
   }
-  if(__builtin_expect(at > 0x4120ddfc, 0)){
-    if(__builtin_expect(at >= 0x7f800000, 0)){
-      if(at == 0x7f800000) return 0.0f;
-      return xf;
+  // at is the absolute value of xf
+  // for x >= 0x1.41bbf8p+3, erfc(x) < 2^-150, thus rounds to 0 or 2^-149
+  if(__builtin_expect(at > 0x4120ddfc, 0)){     // |xf| > 0x1.41bbf8p+3
+    if(__builtin_expect(at >= 0x7f800000, 0)){  // +Inf or NaN
+      if(at == 0x7f800000) return 0.0f;         // +Inf
+      return xf;                                // NaN
     }
-    return 0x1p-149f * 0.25f;
+    return 0x1p-149f * 0.25f;                   // 0 or 2^-149 wrt rounding
   }
-  if(__builtin_expect(at <= 0x3db80000, 0)){
-    if(__builtin_expect(t.u == 0xb76c9f62, 0)) return 0x1.00010ap+0f + 0x1p-25f;
-    if(__builtin_expect(at <= 0x32e2dfc4, 0)){
+  if(__builtin_expect(at <= 0x3db80000, 0)){ // |x| <= 0x1.7p-4
+    if(__builtin_expect(t.u == 0xb76c9f62, 0))
+      return 0x1.00010ap+0f + 0x1p-25f; // exceptional case
+    /* for |x| <= 0x1.c5bf88p-26. erfc(x) rounds to 1 (to nearest) */
+    if(__builtin_expect(at <= 0x32e2dfc4, 0)){ // |x| <= 0x1.c5bf88p-26
       if(__builtin_expect(at == 0, 0)) return 1.0f;
       static const float d[] = {-0x1p-26, 0x1p-25};
       return 1.0f + d[sgn];
     }
+    /* around 0, erfc(x) behaves as 1 + (odd polynomial) */
     static const double c[] =
       {0x1.20dd750429b6dp+0, -0x1.812746b03610bp-2, 0x1.ce2f218831d2fp-4, -0x1.b82c609607dcbp-6, 0x1.553af09b8008ep-8};
     double f0 = xf*(c[0] + x2*(c[1] + x2*(c[2] + x2*(c[3] + x2*(c[4])))));
     return 1.0 - f0;
   }
 
+  /* now -0x1.ea8f94p+1 <= x <= 0x1.41bbf8p+3, with |x| > 0x1.7p-4 */
   const double iln2 = 0x1.71547652b82fep+0, ln2h = 0x1.62e42fefap-8, ln2l = 0x1.cf79abd6f5dc8p-47;
   b64u64_u jt = {.f = __builtin_fma(x2, iln2, -(1024+0x1p-8))};
   long j = (long)(jt.u<<12)>>48;
