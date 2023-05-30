@@ -79,7 +79,7 @@ float cr_erfcf(float xf){
   }
   // at is the absolute value of xf
   // for x >= 0x1.41bbf8p+3, erfc(x) < 2^-150, thus rounds to 0 or 2^-149
-  if(__builtin_expect(at > 0x4120ddfc, 0)){     // |xf| > 0x1.41bbf8p+3
+  if(__builtin_expect(at >= 0x4120ddfc, 0)){    // |xf| >= 0x1.41bbf8p+3
     if(__builtin_expect(at >= 0x7f800000, 0)){  // +Inf or NaN
       if(at == 0x7f800000) return 0.0f;         // +Inf
       return xf;                                // NaN
