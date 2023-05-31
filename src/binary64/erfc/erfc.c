@@ -24,7 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <stdio.h>
 #include <stdint.h>
+
+#define TRACE 0x1.c5bf891b4ef6bp-55
 
 /****************** code copied from erf.c ***********************************/
 
@@ -207,23 +210,47 @@ typedef union {double f; uint64_t u;} b64u64_u;
 
 /* given -0x1.7744f8f74e94bp2 < x < 0x1.b39dc41e48bfdp+4,
    put in h+l a double-double approximation of erfc(x),
-   with relative error bounded by err */
+   with absolute error bounded by err */
 static double
 cr_erfc_fast (double *h, double *l, double x)
 {
   if (0 <= x && x <= 0x1.7afb48dc96626p+2)
   {
-    cr_erf_fast (h, l, x);
-    /* 
+    double err = cr_erf_fast (h, l, x);
+  if (x == TRACE) printf ("erf: h=%la l=%la err=%la\n", *h, *l, err);
+    /* h+l approximates erf(x), with relative error bounded by err,
+       where err <= 0x1.78p-69 */
+    err = err * *h; /* convert into absolute error */
+    double t;
+    fast_two_sum (h, &t, 1.0, -*h);
+    *l = t - *l;
+    /* for x >= 0x1.e861fbb24c00ap-2, erf(x) >= 1/2, thus 1-h is exact
+       by Sterbenz theorem, thus t = 0 in fast_two_sum(), and we have t = -l
+       here, thus the absolute error is err */
+    if (x >= 0x1.e861fbb24c00ap-2)
+      return err;
+    /* for x < 0x1.e861fbb24c00ap-2, the error in fast_two_sum() is bounded
+       by 2^-105*h, and since h <= 1/2, this yields 2^-106.
+       After the fast_two_sum() call, we have |t| <= ulp(h) <= ulp(1/2) = 2^-53
+       thus assuming |l| <= 2^-53, we have |t| <= 2^-52 here, thus the rounding
+       error on t -= *l is bounded by ulp(2^-52) = 2^-104.
+       The absolute error is thus bounded by err + 2^-106 + 2^-104
+       = err + 0x1.4p-104.
+       The maximal value of err here is for x < 0.0625, where cr_erf_fast()
+       returns 0x1.78p-69, and h=1/2, yielding err = 0x1.78p-70 here.
+       Adding 0x1.4p-104 is thus exact. */
+    return err + 0x1.4p-104;
   }
+  *h = -1.0;
+  *l = 0;
+  return 0;
 }
 
 double
 cr_erfc (double x)
 {
-  double x2 = x * x;
   b64u64_u t = {.f = x};
-  uint64_t at = t.u & 0x7fffffffffffffff, sgn = t.u >> 63;
+  uint64_t at = t.u & 0x7fffffffffffffff;
   /* for x <= -0x1.7744f8f74e94bp2, erfc(x) rounds to 2 (to nearest) */
   if (t.u >= 0xc017744f8f74e94b) // x = NaN or x <= -0x1.7744f8f74e94bp2
   {
@@ -246,10 +273,11 @@ cr_erfc (double x)
   // now -0x1.7744f8f74e94bp2 < x < 0x1.b39dc41e48bfdp+4
   double h, l, err;
   err = cr_erfc_fast (&h, &l, x);
-  double left  = h + __builtin_fma (err, -h, l);
-  double right = h + __builtin_fma (err,  h, l);
+  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
+  double left  = h + (l - err);
+  double right = h + (l + err);
   if (left == right)
     return left;
 
-  return 0;
+  return -1.0;
 }
