@@ -227,9 +227,7 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
 }
 
 /* Assuming 0 <= z <= 0x1.7afb48dc96626p+2, put in h+l an approximation
-   of erf(z) with relative error bounded by 2^-68.90 (cf analyze_p() in
-   erf.sage).
-   Return err the maximal relative error:
+   of erf(z). Return err the maximal relative error:
    |(h + l)/erf(z) - 1| < err*|h+l| */
 static double
 cr_erf_fast (double *h, double *l, double z)
