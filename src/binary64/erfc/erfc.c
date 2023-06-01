@@ -24,6 +24,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+// FIXME: remove z2 != 0 and skipped in check_worst_uni.c
+
+/* References:
+   [1] The Mathematical Function Computation Handbook, Nelson H.F. Beebe,
+       Springer, 2017.
+   [2] Handbook of Mathematical Functions, Abramowitz, M., and Stegun, I.,
+       Dover, 1973.
+*/
+
 #include <stdio.h>
 #include <stdint.h>
 
@@ -214,10 +223,32 @@ typedef union {double f; uint64_t u;} b64u64_u;
 static double
 cr_erfc_fast (double *h, double *l, double x)
 {
-  if (0 <= x && x <= 0x1.7afb48dc96626p+2)
+  if (x < 0) // erfc(x) = 1 - erf(x) = 1 + erf(-x)
+  {
+    double err = cr_erf_fast (h, l, -x);
+    /* h+l approximates erf(-x), with relative error bounded by err,
+       where err <= 0x1.78p-69 */
+    err = err * *h; /* convert into absolute error */
+    double t;
+    fast_two_sum (h, &t, 1.0, *h);
+    // since h <= 2, the fast_two_sum() error is bounded by 2^-105*h <= 2^-104
+    *l = t + *l;
+    /* After the fast_two_sum() call, we have |t| <= ulp(h) <= ulp(2) = 2^-51
+       thus assuming |l| <= 2^-51 after the cr_erf_fast() call,
+       we have |t| <= 2^-50 here, thus the rounding
+       error on t -= *l is bounded by ulp(2^-50) = 2^-102.
+       The absolute error is thus bounded by err + 2^-104 + 2^-102
+       = err + 0x1.4p-102.
+       The maximal value of err here is for |x| < 0.0625, where cr_erf_fast()
+       returns 0x1.78p-69, and h=1/2, yielding err = 0x1.78p-70 here.
+       Adding 0x1.4p-102 is thus exact. */
+    return err + 0x1.4p-102;
+  }
+  // now 0 <= x < 0x1.b39dc41e48bfdp+4
+  else if (x <= 0x1.7afb48dc96626p+2)
   {
     double err = cr_erf_fast (h, l, x);
-  if (x == TRACE) printf ("erf: h=%la l=%la err=%la\n", *h, *l, err);
+    if (x == TRACE) printf ("erf: h=%la l=%la err=%la\n", *h, *l, err);
     /* h+l approximates erf(x), with relative error bounded by err,
        where err <= 0x1.78p-69 */
     err = err * *h; /* convert into absolute error */
@@ -232,7 +263,8 @@ cr_erfc_fast (double *h, double *l, double x)
     /* for x < 0x1.e861fbb24c00ap-2, the error in fast_two_sum() is bounded
        by 2^-105*h, and since h <= 1/2, this yields 2^-106.
        After the fast_two_sum() call, we have |t| <= ulp(h) <= ulp(1/2) = 2^-53
-       thus assuming |l| <= 2^-53, we have |t| <= 2^-52 here, thus the rounding
+       thus assuming |l| <= 2^-53 after the cr_erf_fast() call,
+       we have |t| <= 2^-52 here, thus the rounding
        error on t -= *l is bounded by ulp(2^-52) = 2^-104.
        The absolute error is thus bounded by err + 2^-106 + 2^-104
        = err + 0x1.4p-104.
@@ -241,7 +273,18 @@ cr_erfc_fast (double *h, double *l, double x)
        Adding 0x1.4p-104 is thus exact. */
     return err + 0x1.4p-104;
   }
-  *h = -1.0;
+  /* Now 0x1.7afb48dc96626p+2 < x < 0x1.b39dc41e48bfdp+4
+     thus erfc(x) < 5.55e-17.
+     From [1], Chapter 19, and [2], (7.1.23) and (7.1.24), we have:
+     erfc(x) ~ 1/(x*sqrt(pi)) * exp(-x^2) *
+               (1 + sum((-1)^k*(1*3*...*(2k-1))/(2x^2)^k, k=1..infinity)),
+               with error bounded in absolute value by the first ignored term,
+     but this formula does not converge fast enough: around
+     x=0x1.b39dc41e48bfdp+4 we need k=9 to get > 69 bits of relative accuracy,
+     but around x=0x1.7afb48dc96626p+2 the accuracy decreases after k=35,
+     with maximal relative accuracy about 50 bits at k=35.
+  */
+  *h = 0;
   *l = 0;
   return 0;
 }
@@ -279,5 +322,5 @@ cr_erfc (double x)
   if (left == right)
     return left;
 
-  return -1.0;
+  return 0;
 }
