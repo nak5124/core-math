@@ -3,7 +3,8 @@ minimax rational approximants with some constraints.
 
 To install it, it needs several dependencies (see README.md file).
 
-Once one has built rminimax, one can do for example:
+Once one has built rminimax, one can do for example (check with revision
+c9c30b0 of rminimax):
 
 $ ./ratapprox --function="erf(x)" --dom=[0.5,1.769] --num=[x,x^3] --den=[1,x^2] --weight=1 --output=x1p.sollya --log
 
@@ -11,14 +12,16 @@ and one gets in the x1p.sollya file:
 
 $ cat x1p.sollya
 Numerator = [|
-1.1360096802330656995394519981346093118190765380859375000000000000000000000000000000000000000000000000,
-0.0302023235956883628894331650371896103024482727050781250000000000000000000000000000000000000000000000|];
+0x1.22d187c88a59fp+0,
+0x7.bb56e81b5014p-8|];
 Denominator = [|
-1.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
-0.3854829083493149788353093754267320036888122558593750000000000000000000000000000000000000000000000000|];
+0x1p+0,
+0x6.2af020486fb6p-4|];
 
 Useful tips for CORE-MATH:
 * with --weight=1 one minimizes the absolute error, without any --weight option
   the default is to take the inverse of the function, which minimizes the
   relative error.
 * with --dispCoeff=[bin|dec|hex] one controls the output of coefficients
+* use --numF=[DD,D] --denF=[DD,D] to have a double-double for the degree-0
+  coefficient (by default coefficients are double)
