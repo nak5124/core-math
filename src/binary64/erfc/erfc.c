@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// FIXME: remove z2 != 0 and skipped in check_worst_uni.c
+// FIXME: remove z2 != 0 and skipped in check_worst_uni.c and check_special.c
 
 /* References:
    [1] The Mathematical Function Computation Handbook, Nelson H.F. Beebe,
@@ -40,7 +40,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 
-#define TRACE 0x1.451133700d0d9p+4
+#define TRACE 0x1.be7835925ed49p-1020
 
 /****************** code copied from erf.c ***********************************/
 
@@ -493,33 +493,54 @@ cr_erfc (double x)
 {
   b64u64_u t = {.f = x};
   uint64_t at = t.u & 0x7fffffffffffffff;
-  /* for x <= -0x1.7744f8f74e94bp2, erfc(x) rounds to 2 (to nearest) */
-  if (t.u >= 0xc017744f8f74e94b) // x = NaN or x <= -0x1.7744f8f74e94bp2
+
+  if (t.u >= 0x8000000000000000) // x = NaN or x <= 0
   {
-    if (t.u >= 0xfff0000000000000){              // -Inf or NaN
-      if (t.u == 0xfff0000000000000) return 2.0; // -Inf
-      return x;                                  // NaN
+    // for x <= -0x1.7744f8f74e94bp2, erfc(x) rounds to 2 (to nearest)
+    if (t.u >= 0xc017744f8f74e94b) // x = NaN or x <= -0x1.7744f8f74e94bp2
+    {
+      if (t.u >= 0xfff0000000000000){              // -Inf or NaN
+        if (t.u == 0xfff0000000000000) return 2.0; // -Inf
+        return x;                                  // NaN
+      }
+      return 2.0 - 0x1p-54;                        // rounds to 2 or below(2)
     }
-    return 2.0 - 0x1p-54;                        // rounds to 2 or nextbelow(2)
-  }
-  // for x >= 0x1.b39dc41e48bfdp+4, erfc(x) < 2^-1075: rounds to 0 or 2^-1074
-  if (at >= 0x403b39dc41e48bfd) // x = NaN or x >= 0x1.b39dc41e48bfdp+4
-  {
-    if (at >= 0x7ff0000000000000){               // +Inf or NaN
-      if (at == 0x7ff0000000000000) return 0.0;  // +Inf
-      return x;                                  // NaN
-    }
-    return 0x1p-1074 * 0.25;                    // 0 or 2^-1074 wrt rounding
+
+    // for -0x1.c5bf891b4ef6ap-54 <= x <= 0, erfc(x) rounds to 1 (to nearest)
+    if (-0x1.c5bf891b4ef6ap-54 <= x)
+      return 1.0 + 0x1p-53;
   }
 
-  // now -0x1.7744f8f74e94bp2 < x < 0x1.b39dc41e48bfdp+4
+  if (t.u < 0x8000000000000000) // x = NaN or x >= 0
+  {
+    // for x >= 0x1.b39dc41e48bfdp+4, erfc(x) < 2^-1075: rounds to 0 or 2^-1074
+    if (at >= 0x403b39dc41e48bfd) // x = NaN or x >= 0x1.b39dc41e48bfdp+4
+    {
+      if (at >= 0x7ff0000000000000){               // +Inf or NaN
+        if (at == 0x7ff0000000000000) return 0.0;  // +Inf
+        return x;                                  // NaN
+      }
+      return 0x1p-1074 * 0.25;                    // 0 or 2^-1074 wrt rounding
+    }
+
+    // for 0 <= x <= 0x1.c5bf891b4ef6ap-55, erfc(x) rounds to 1 (to nearest)
+    if (x <= 0x1.c5bf891b4ef6ap-55)
+      return 1.0 - 0x1p-54;
+  }
+
+  /* now -0x1.7744f8f74e94bp2 < x < -0x1.c5bf891b4ef6ap-54
+     or 0x1.c5bf891b4ef6ap-55 < x < 0x1.b39dc41e48bfdp+4 */
   double h, l, err;
   err = cr_erfc_fast (&h, &l, x);
   // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left  = h + (l - err);
   double right = h + (l + err);
   if (left == right)
+  {
+    // if (x == TRACE) printf ("fast path succeeded\n");
     return left;
+  }
+  // if (x == TRACE) printf ("fast path failed\n");
 
   return 0;
 }
