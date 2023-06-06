@@ -1,3 +1,4 @@
+0x1.70f74b8ce00e1p+4
 # worst cases of erfc computed with bacsel (revision 2818aa8), with at least
 # 43 identical bits after the round bit (-m 44 with bacsel)
 # positive inputs are from 0x1.c5bf891b4ef6ap-55 to 0x1.b39dc41e48bfdp+4
