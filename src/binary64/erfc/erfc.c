@@ -40,7 +40,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 
-#define TRACE 0x1.d24fdcfd28b81p+1
+#define TRACE 0x1.8cb7600319a3ap+2
 
 /****************** code copied from erf.c ***********************************/
 
@@ -389,7 +389,7 @@ typedef union {double f; uint64_t u;} b64u64_u;
    the degree-3 coefficient is p[2], ...,
    the degree-23 coefficient is p[12]. In each line, the value is comment is
    the relative error bound given by Sollya. */
-static double T[2][13] = {
+static const double T[2][13] = {
   {0x1.20dd750429b6dp-1, 0x1.1addfd84cd0a8p-57, -0x1.20dd750429b6dp-2, 0x1.b14c2f863e895p-2, -0x1.0ecf9db3de0a7p0, 0x1.d9eb53efe3cc2p1, -0x1.0a945d1ec6966p4, 0x1.6e8b764741922p6, -0x1.29c54649cc25ap9, 0x1.167176f0a5981p12, -0x1.208840ccc9a88p15, 0x1.26e4f10508c74p18, -0x1.9e31a169f98cp20}, /* 2^-71.2 */
   {0x1.20dd750429afdp-1, -0x1.0254db1cb5fcp-61, -0x1.20dd7504068a1p-2, 0x1.b14c2f5de6961p-2, -0x1.0ecf96b51b544p0, 0x1.d9e9b1044b219p1, -0x1.0a82e90cfefb3p4, 0x1.6d7a970037876p6, -0x1.23979f2df9ae4p9, 0x1.f80955a53bc09p11, -0x1.9f66875aadfb3p14, 0x1.0aa79f8765b59p17, -0x1.7260489cc4c2dp18}, /* 2^-71.421 */
 };
@@ -399,7 +399,7 @@ static double T[2][13] = {
    (see file exp_fast.sollya).
    Coefficients of degree 0-3 are double-double and stored first,
    coefficients of degree 4-13 are double and follow. */
-static double E[] = {
+static const double E[] = {
   0x1p+0, 0x1.1eda038f2p-71,                   // degree 0
   0x1p+0, -0x1.c15b5af0c6p-68,                 // degree 1
   0x1p-1, -0x1.d17272292aap-62,                // degree 2
@@ -421,7 +421,7 @@ static double E[] = {
    (see file exp_accurate.sollya).
    Coefficients of degree 0-7 are double-double and stored first,
    coefficients of degree 8-19 are double and follow. */
-static double E2[] = {
+static const double E2[] = {
   0x1p+0, -0x1p-105,                             // degree 0
   0x1p+0, -0x1.e2p-100,                          // degree 1
   0x1p-1, 0x1.3cp-95,                            // degree 2
@@ -543,6 +543,8 @@ exp_accurate (double *h, double *l, double xh, double xl)
      as |i*p[i]*yh^(i-1)*yl| < 2^-104, which holds for i >= 16.
      Thus for coefficients of degree 16 or more, we don't take yl into account.
   */
+  /* normalize yh+yl to improve accuracy since we ignore terms l*yl below */
+  fast_two_sum (&yh, &yl, yh, yl);
   *h = E2[19 + 8]; // degree 19
   for (int i = 18; i >= 16; i--)
     *h = __builtin_fma (*h, yh, E2[i + 8]); // degree i
@@ -607,7 +609,7 @@ erfc_asympt_fast (double *h, double *l, double x)
   // if (x == TRACE) printf ("yh=%la yl=%la\n", yh, yl);
   int i = yh <= 0x1.d5p-4 ? 0 : 1;
   // if (x == TRACE) printf ("i=%d\n", i);
-  double *p = T[i];
+  const double *p = T[i];
   /* now evaluate p(yh + yl): since we target about 71 bits of accuracy,
      analyzing for each value of i the maximal value of y and the ratio
      of coefficients, we see that we can ignore the yl term for coefficients
@@ -732,16 +734,86 @@ cr_erfc_fast (double *h, double *l, double x)
   return erfc_asympt_fast (h, l, x);
 }
 
+/* The following are polynomial approximations for erfc(1/x)*exp(1/x^2)
+   over various intervals covering [0x1.2ce37fb080c7dp-5,0x1.2b81f34bfce36p-1].
+   Polynomials have only odd coefficients, with the first six coefficients
+   (degree 1 to 11) being double-double, the remaining coefficients double.
+*/
+static const double T2[10][30] = {
+  {0x1.20dd750429b6dp-1, 0x1.1ae3a914273e4p-57, -0x1.20dd750429b6dp-2, -0x1.1ae38493cbac4p-58, 0x1.b14c2f863e924p-2, -0x1.96450bba9443ap-56, -0x1.0ecf9db3e71b6p+0, -0x1.ea05bd6db6c5cp-56, 0x1.d9eb53fad46bap+1, -0x1.acefaf93cfdc8p-54, -0x1.0a945f3d15ea3p+4, 0x1.5e939f9a6afdcp-52, 0x1.6e8c02f324661p+6, -0x1.29d1c2390ec1bp+9, 0x1.17349f287173fp+12, -0x1.28a716cff3a24p+15, 0x1.60338f5ac0a6fp+18, -0x1.cd020c0cbb1p+21, 0x1.43a40fe85a0cp+25, -0x1.b9648bda55e4fp+28, 0x1.a2b63ab41e8dcp+31}, /* asympt_acc0.sollya: [0x1.2ce37fb080c7dp-5,0x1.45p-4], degree 29, relerr <= 2^-104.174 */
+  {0x1.20dd750429b6dp-1, 0x1.1adcb120c536p-57, -0x1.20dd750429b6dp-2, -0x1.75434fee74918p-59, 0x1.b14c2f863e91p-2, 0x1.9ad98c28f7272p-57, -0x1.0ecf9db3e6803p+0, -0x1.2fb0e6db75e18p-57, 0x1.d9eb53fa68b51p+1, -0x1.f9a1dedae7488p-55, -0x1.0a945f2f52a6cp+4, -0x1.f2b38446dad5ap-51, 0x1.6e8c00450b70ap+6, -0x1.29d18e48d415ep+9, 0x1.173188b3096eep+12, -0x1.2882285f47397p+15, 0x1.5edc2f4da8796p+18, -0x1.c39923292b455p+21, 0x1.2c596c952cb49p+25, -0x1.745afbc9f5a24p+28, 0x1.67a3283b21a44p+31, -0x1.7d3b798927dfbp+33}, /* asympt_acc1.sollya: [0x1.45p-4,0x1.e0p-4], degree 31, relerr <= 2^-104.14 */
+  {0x1.20dd750429b6dp-1, 0x1.dfba222aa797p-58, -0x1.20dd750429b59p-2, -0x1.4dc034e44f98p-61, 0x1.b14c2f863c5f2p-2, 0x1.09805efd0e171p-56, -0x1.0ecf9db34cbaap+0, 0x1.59206b0f34decp-54, 0x1.d9eb53bf87e0ap+1, -0x1.5bc8773657ecp-56, -0x1.0a945b0071a94p+4, -0x1.7cddf6607478cp-50, 0x1.6e8b8b64feb89p+6, -0x1.29cc8f1c6da47p+9, 0x1.170645a70985p+12, -0x1.2759985605973p+15, 0x1.58a010407f2aep+18, -0x1.a9c8ff90ff10bp+21, 0x1.04d33421d9a4ep+25, -0x1.215b1489e02dap+28, 0x1.035fcfe85c70bp+31, -0x1.4116c85449a7bp+33, 0x1.90941e43237ffp+34}, /* asympt_acc2.sollya: [0x1.e0p-4,0x1.3fp-3], degree 33, relerr <= 2^-104.241 */
+  {0x1.20dd750429b6bp-1, -0x1.7366bb231f23bp-55, -0x1.20dd750428ffep-2, -0x1.756a22dac1c9p-58, 0x1.b14c2f85732c8p-2, 0x1.bdb1f9c931482p-57, -0x1.0ecf9d9059274p+0, -0x1.efb8efcf2375p-55, 0x1.d9eb4b36354fbp+1, 0x1.1fd8e27ddb3e4p-55, -0x1.0a93f7720c923p+4, 0x1.63d6afd66658p-55, 0x1.6e84898cf8dfep+6, -0x1.299ac68dca477p+9, 0x1.15ec3d9aabf88p+12, -0x1.225b1be3d4414p+15, 0x1.4693dd6b51aaep+18, -0x1.7667807fc1c7ap+21, 0x1.98ffe9b41441ap+24, -0x1.8bf5989c24a5p+27, 0x1.3aec04c112311p+30, -0x1.787ad00db1ce6p+32, 0x1.27e5f57005c72p+34, -0x1.c621f2178663bp+34}, /* asympt_acc3.sollya: [0x1.3fp-3,0x1.95p-3], degree 35, relerr <= 2^-104.121 */
+  {0x1.20dd750429a9cp-1, 0x1.2c78925c9b85dp-55, -0x1.20dd7504002edp-2, 0x1.a1f998aea7daap-57, 0x1.b14c2f66d5b61p-2, 0x1.b7a5140c32c1cp-56, -0x1.0ecf99f292ae1p+0, -0x1.5e04e100ecd57p-54, 0x1.d9eab0ce3bbep+1, -0x1.20c6b3805de8p-53, -0x1.0a8f23d6653a6p+4, -0x1.cef50ac67fc88p-51, 0x1.6e488977b386fp+6, -0x1.2872c55f00e1bp+9, 0x1.11568088a7445p+12, -0x1.13a8b52381cf6p+15, 0x1.2080e8188709dp+18, -0x1.2731b10bee986p+21, 0x1.167314c0cf616p+24, -0x1.caeeba9ff2fcap+26, 0x1.39f521ebbe69dp+29, -0x1.514d11bc8f5a6p+31, 0x1.085629d95ed47p+33, -0x1.0b2d9b7617f19p+34, 0x1.046ad86705dbep+34}, /* asympt_acc4.sollya: [0x1.95p-3,0x1.f5p-3], degree 37, relerr <= 2^-104.192 */
+  {0x1.20dd75042773bp-1, -0x1.f55b96763aa1p-59, -0x1.20dd74ff15ca5p-2, 0x1.c1402e34b02fp-57, 0x1.b14c2ccdbe1a8p-2, 0x1.7161442f813cp-61, -0x1.0ecf626500494p+0, -0x1.5cd35129e67d8p-55, 0x1.d9e41d011821dp+1, -0x1.0dc4ef64abf67p-53, -0x1.0a699cd0b8857p+4, 0x1.dbf8e96511fep-53, 0x1.6cfa3fe6ae424p+6, -0x1.23ce0ccb74b8bp+9, 0x1.03f8b8a9d050cp+12, -0x1.e88f9e238d2aep+14, 0x1.c8975bc5517e3p+17, -0x1.92107bc781b9cp+20, 0x1.3ec6d38a6b857p+23, -0x1.b62126540cafep+25, 0x1.f81ee8a5b71f2p+27, -0x1.d41dd1cdf171bp+29, 0x1.4f1f98bbf4f93p+31, -0x1.59e60ea59357p+32, 0x1.c8feacbd4ee17p+32, -0x1.21b97e2329c5bp+32}, /* asympt_acc5.sollya: [0x1.f5p-3,0x1.31p-2], degree 39, relerr <= 2^-104.414 */
+  {0x1.20dd7503e9e21p-1, -0x1.65ef2e1a7dfc2p-56, -0x1.20dd749ce7f32p-2, -0x1.c3c7958965601p-56, 0x1.b14c0777e7ed7p-2, -0x1.50f73d41fa1bdp-56, -0x1.0ecd22139f7e8p+0, -0x1.a7a19f06dd7d8p-56, 0x1.d9b2ac5393968p+1, -0x1.d0fc8df305214p-53, -0x1.099c618273043p+4, -0x1.23b47346bbdap-53, 0x1.67c1e4bbc8758p+6, -0x1.16297007ace5bp+9, 0x1.cdd82e9d98eeap+11, -0x1.82e416f94594dp+14, 0x1.35c8ad54945b3p+17, -0x1.c664f761200d1p+19, 0x1.27799319b205ep+22, -0x1.4be50d6e2df27p+24, 0x1.3a6cf96a2b459p+26, -0x1.ea0c62841d715p+27, 0x1.30bd8f8ee5449p+29, -0x1.221ec3a9aba59p+30, 0x1.8c6ee12f97bdep+30, -0x1.59bf13139958cp+30, 0x1.20ee78cec13cep+29}, /* asympt_acc6.sollya: [0x1.31p-2,0x1.71p-2], degree 41, relerr <= 2^-104.11 */
+  {0x1.20dd74ff3dac1p-1, 0x1.8e5bb4c5a1d0bp-55, -0x1.20dd6f3646463p-2, -0x1.a1c4b34f71228p-57, 0x1.b14a8942899a1p-2, -0x1.88ee719698251p-56, -0x1.0ebc53c103341p+0, -0x1.ab1d95dc874d8p-56, 0x1.d8a4990dfd684p+1, -0x1.589dbf3d57452p-53, -0x1.0664d7c155e2ap+4, -0x1.3084ccc63495p-54, 0x1.584dc15871e4fp+6, -0x1.f06fbd5fd6d6fp+8, 0x1.6ec4b0b79005ep+11, -0x1.0601af582949cp+14, 0x1.5aaff611c9757p+16, -0x1.9c1a82aae1e0bp+18, 0x1.ae6b59c785472p+20, -0x1.840b63c74d40fp+22, 0x1.2912f19ba0af6p+24, -0x1.7b9233a8b0dc3p+25, 0x1.8c4cbbb6db2cep+26, -0x1.48db010e6f907p+27, 0x1.a0ca8d85317f5p+27, -0x1.7a9cf3e79214fp+27, 0x1.b6cb29076ed05p+26, -0x1.e73db06991b8dp+24}, /* asympt_acc7.sollya: [0x1.71p-2,0x1.bcp-2], degree 43, relerr <= 2^-104.291 */
+  {0x1.20dd74bd20ddap-1, -0x1.2e3639474587cp-57, -0x1.20dd37885ed81p-2, 0x1.ab9d2f46d1c48p-58, 0x1.b13f4a83d706ap-2, -0x1.d33333f6f8458p-56, -0x1.0e5f942833eb5p+0, 0x1.a0a947ff15362p-55, 0x1.d45cff7eaad9p+1, -0x1.34b35a81966fep-53, -0x1.f9890a678abc8p+3, -0x1.20debfc6d1dfp-51, 0x1.360f4686eb9ddp+6, -0x1.8dbbb5310ad29p+8, 0x1.f3454b506e497p+10, -0x1.24ab17294fbe3p+13, 0x1.36bf499f888fap+15, -0x1.24c6e35fc0e1cp+17, 0x1.e275aa9d2d9bep+18, -0x1.5786e8b8e0a74p+20, 0x1.a2032d238577dp+21, -0x1.ad4bdecb99041p+22, 0x1.6e989f585949p+23, -0x1.fe9e6bb333a1ep+23, 0x1.1a5f04516b361p+24, -0x1.dcdbb78f2e799p+23, 0x1.20a4e402becf4p+23, -0x1.be02cd8a90ad9p+21, 0x1.4a5bf135bacccp+19}, /* asympt_acc8.sollya: [0x1.bcp-2,0x1.0bp-1], degree 45, relerr <= 2^-104.01 */
+  {0x1.20dd7307dbdddp-1, 0x1.cebba49cb24dfp-55, -0x1.20dc1f49035a4p-2, 0x1.a52ce1ec34cdbp-56, 0x1.b114304472489p-2, -0x1.09e52b1c1628p-59, -0x1.0d50a883ba4b5p+0, -0x1.34daf73e1b655p-54, 0x1.cad45b053e208p+1, 0x1.8d013bc78837ep-54, -0x1.d8cca1a792324p+3, 0x1.7ae1a5301054p-53, 0x1.0991cdefd68a4p+6, -0x1.2b9df039b5c37p+8, 0x1.40c579f68a7f5p+10, -0x1.3a72d77413cdap+12, 0x1.141e3ff7aa13ap+14, -0x1.ac527872334ecp+15, 0x1.22894abc4b29dp+17, -0x1.55e11a4155bbcp+18, 0x1.5a273360b5a0fp+19, -0x1.2ae0dcbd91e2dp+20, 0x1.b35b4b1a1d7c1p+20, -0x1.07bc11f7011e2p+21, 0x1.04d2434e64b7ap+21, -0x1.9a1f8e37d4429p+20, 0x1.ed092f59ce15ep+19, -0x1.a9888322247a8p+18, 0x1.d583c7a9c7b82p+16, -0x1.f1716da7316b5p+13}, /* asympt_acc9.sollya: [0x1.0bp-1,0x1.2b81f34bfce36p-1], degree 47, relerr <= 2^-117.133 */
+};
+
 /* assume 0x1.b59ffb450828cp+0 < x < 0x1.b39dc41e48bfdp+4
    thus 1.70 < x < 27.3 */
 static double
 erfc_asympt_accurate (double x)
 {
+  static const double exceptions[38][3] = {
+    {0x1.8cb7600319a3ap+2, 0x1.108840b88041bp-59, 0x1.fffffffffffe3p-113},
+    {0x1.0d7e29a2caf35p+3, 0x1.b3fe0783036ffp-107, 0x1.fffffffffffe8p-161},
+    {0x1.36f489cce40c3p+3, 0x1.93a336a4c6e09p-141, 0x1.ffffffffffff1p-195},
+    {0x1.3eea1adc203bap+3, 0x1.78cf40028a636p-148, -0x1.ffffffffffffep-202},
+    {0x1.4a42b163f7a7dp+3, 0x1.183d60a1f7e3cp-158, -0x1.fffffffffffffp-212},
+    {0x1.7963d3b071a7ap+3, 0x1.ef2abf864f172p-206, -0x1.fffffffffff34p-260},
+    {0x1.85043be2971f4p+3, 0x1.473c04ee7d948p-218, -0x1.fffffffffffdbp-272},
+    {0x1.93a6281d82786p+3, 0x1.f2062a9cb34d4p-235, -0x1.fffffffffffe6p-289},
+    {0x1.a631d4bc7f56bp+3, 0x1.3f07281bb43aep-256, -0x1p-309},
+    {0x1.b33457d2c259ep+3, 0x1.7903d84650e21p-272, -0x1.fffffffffffc8p-326},
+    {0x1.0ee8c2977d9d7p+4, 0x1.672ceb5e95e89p-419, 0x1.fffffffffffa2p-473},
+    {0x1.1d41cb671cad3p+4, 0x1.5c4d8d179be8cp-464, -0x1.fffffffffffffp-518},
+    {0x1.27654a5f4a4acp+4, 0x1.29a296250d553p-497, 0x1.ffffffffffff8p-551},
+    {0x1.43abbcdb4cf5ep+4, 0x1.5b60a5d077784p-596, -0x1.fffffffffff95p-650},
+    {0x1.46d1a65535f01p+4, 0x1.d917d94b3adcdp-608, 0x1.ffffffffffea2p-662},
+    {0x1.48de452fb1a15p+4, 0x1.3c2a1264045adp-615, 0x1.fffffffffff7dp-669},
+    {0x1.506e2a5b37101p+4, 0x1.e41cc4fef6689p-644, 0x1.fffffffffff7dp-698},
+    {0x1.657113157ccedp+4, 0x1.9775bd25a84b6p-726, 0x1.fffffffffffffp-780},
+    {0x1.65c874aabfd66p+4, 0x1.39b8b7f948a62p-727, -0x1.fffffffffffecp-781},
+    {0x1.7b76485d16fc6p+4, 0x1.1996214bee414p-817, -0x1.ffffffffffe2ep-871},
+    {0x1.86ce1601f6796p+4, 0x1.cf96f29a473b2p-867, -0x1.fffffffffffd6p-921},
+    {0x1.8774a1e9abac2p+4, 0x1.fb288ea2d3d04p-870, 0x1.ffffffffffeeep-924},
+    {0x1.87ba318bdfffap+4, 0x1.b96b2ae994a7dp-871, -0x1.ffffffffffdebp-925},
+    {0x1.909d14ca49997p+4, 0x1.0d808a58de145p-910, 0x1.fffffffffffecp-964},
+    {0x1.a14a7173306a9p+4, 0x1.1b08778af18afp-987, -0x1.ffffffff8p-1041},
+    {0x1.a1817aa5491dep+4, 0x1.18a9631b50299p-988, 0x1.ffffffffp-1042},
+    {0x1.a23f3f2371455p+4, 0x1.8e97f14deaa7ep-992, 0x1.fffffffffff0dp-1046},
+    {0x1.a3e1c26fe192ep+4, 0x1.e1834b3a14d1cp-1000, -0x1.ffffffffffe33p-1054},
+    {0x1.a3fe8762217a5p+4, 0x1.4cf186ee4c813p-1000, -0x1.fffffp-1054},
+    {0x1.a44eb747b6dcp+4, 0x1.dbf9862861e26p-1002, -0x1.ffffffffffe6ep-1056},
+    {0x1.a4863af1aa36p+4, 0x1.d2ba0dda909afp-1003, 0x1.ffff8p-1057},
+    {0x1.a558d7356b685p+4, 0x1.f22557032873dp-1007, -0x1.fff8p-1061},
+    {0x1.a64622e1d4ab1p+4, 0x1.76e73304203b7p-1011, -0x1.ff8p-1065},
+    {0x1.a6c23b9f7039ep+4, 0x1.2e61e5086b535p-1013, -0x1.fep-1067},
+    {0x1.a81cafe35beb3p+4, 0x1.b697f9b77d9cdp-1020, -0x1p-1074},
+    {0x1.a84c6df0332e2p+4, 0x1.d8964c93e543cp-1021, -0x1.ffffffffffedep-1075},
+    {0x1.f32e9456815f2p+2, 0x1.595e064c70cf3p-92, 0x1.ffffffffffff5p-146},
+  };
+  for (int i = 0; i < 37; i++)
+    if (x == exceptions[i][0])
+      return exceptions[i][1] + exceptions[i][2];
+
+  if (x == 0x1.a14a7173306a9p+4) printf ("no exception\n");
+
+  /* subnormal exceptions with lower term not representable */
+  if (x == 0x1.a8938c73058b2p+4)
+    return __builtin_fma (0x1p-1074, 0.25, 0x1.77f99eb55e5fdp-1022);
+  if (x == 0x1.a9c87061d256cp+4)
+    return __builtin_fma (0x1p-1074, -0.25, 0x1.b3f8ffa97b3p-1028);
+
   double h, l;
   /* first approximate exp(-x^2) */
   double eh, el, uh, ul;
   a_mul (&uh, &ul, x, x);
   exp_accurate (&eh, &el, -uh, -ul);
+  // if (x == TRACE) printf ("eh=%la el=%la\n", eh, el);
   /* eh+el approximates exp(-x^2), where 2.92 < x^2 < 742 */
 
   /* compute 1/x as double-double */
@@ -749,60 +821,56 @@ erfc_asympt_accurate (double x)
   yh = 1.0 / x;
   /* Newton's iteration for 1/x is y -> y + y*(1-x*y) */
   yl = yh * __builtin_fma (-x, yh, 1.0);
+  // yh+yl approximates 1/x
   // if (x == TRACE) printf ("yh=%la yl=%la\n", yh, yl);
-  int i = yh <= 0x1.d5p-4 ? 0 : 1;
+  static const double threshold[] = { 0x1.45p-4, 0x1.e0p-4, 0x1.3fp-3,
+  0x1.95p-3, 0x1.f5p-3, 0x1.31p-2, 0x1.71p-2, 0x1.bcp-2, 0x1.0bp-1, 0x1.3p-1 };
+  int i;
+  for (i = 0; yh > threshold[i]; i++);
   // if (x == TRACE) printf ("i=%d\n", i);
-  double *p = T[i];
-  /* now evaluate p(yh + yl): since we target about 71 bits of accuracy,
-     analyzing for each value of i the maximal value of y and the ratio
-     of coefficients, we see that we can ignore the yl term for coefficients
-     of degree 9 and more, for which double precision is enough */
+  // 0 <= i <= 9
+  // if (x == TRACE) printf ("i=%d\n", i);
+  const double *p = T2[i];
+  /* now evaluate p(yh + yl) */
   a_mul (&uh, &ul, yh, yh);
   ul = __builtin_fma (2.0 * yh, yl, ul);
-  /* uh+ul approximates (yh+yl)^2 */
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+  /* uh+ul approximates 1/x^2 */
+  //  if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   double zh, zl;
-  zh = p[12];                         // degree 23
-  zh = __builtin_fma (zh, uh, p[11]); // degree 21
-  zh = __builtin_fma (zh, uh, p[10]); // degree 19
-  zh = __builtin_fma (zh, uh, p[9]);  // degree 17
-  zh = __builtin_fma (zh, uh, p[8]);  // degree 15
-  zh = __builtin_fma (zh, uh, p[7]);  // degree 13
-  zh = __builtin_fma (zh, uh, p[6]);  // degree 11
-  zh = __builtin_fma (zh, uh, p[5]);  // degree 9
-  /* degree 7: zh*(uh+ul)+p[4] */
-  a_mul (&h, &l, zh, uh);
-  l = __builtin_fma (zh, ul, l);
-  two_sum (&zh, &zl, p[4], h);
-  zl += l;
-  /* degree 5: (zh+zl)*(uh+ul)+p[3] */
-  a_mul (&h, &l, zh, uh);
-  l = __builtin_fma (zh, ul, l);
-  l = __builtin_fma (zl, uh, l);
-  two_sum (&zh, &zl, p[3], h);
-  zl += l;
-  /* degree 3: (zh+zl)*(uh+ul)+p[2] */
-  a_mul (&h, &l, zh, uh);
-  l = __builtin_fma (zh, ul, l);
-  l = __builtin_fma (zl, uh, l);
-  two_sum (&zh, &zl, p[2], h);
-  zl += l;
-  /* degree 1: (zh+zl)*(uh+ul)+p[0]+p[1] */
-  a_mul (&h, &l, zh, uh);
-  l = __builtin_fma (zh, ul, l);
-  l = __builtin_fma (zl, uh, l);
-  two_sum (&zh, &zl, p[0], h);
-  zl += l + p[1];
+  /* the polynomial p has degree 29+2i, and its coefficient of largest
+     degree is p[14+6+i] */
+  zh = p[14 + 6 + i];
+  zl = 0;
+  for (int j = 27 + 2 * i; j >= 13; j -= 2)
+  {
+    /* degree j: (zh+zl)*(uh+ul)+p[(j-1)/2+6]] */
+    a_mul (&h, &l, zh, uh);
+    l = __builtin_fma (zh, ul, l);
+    l = __builtin_fma (zl, uh, l);
+    two_sum (&zh, &zl, p[(j-1)/2+6], h);
+    zl += l;
+  }
+  for (int j = 11; j >= 1; j -= 2)
+    /* degree j: (zh+zl)*(uh+ul)+p[j-1]+p[j] */
+  {
+    a_mul (&h, &l, zh, uh);
+    l = __builtin_fma (zh, ul, l);
+    l = __builtin_fma (zl, uh, l);
+    two_sum (&zh, &zl, p[j-1], h);
+    zl += l + p[j];
+  }
+  //   if (x == TRACE) printf ("zh=%la zl=%la\n", zh, zl);
   /* multiply by yh+yl */
   a_mul (&uh, &ul, zh, yh);
   ul = __builtin_fma (zh, yl, ul);
   ul = __builtin_fma (zl, yh, ul);
-  /* now uh+ul approximates p(1/x) */
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+  /* now uh+ul approximates p(1/x), i.e., erfc(x)*exp(x^2) */
+  // if (x == TRACE) printf ("vh=%la vl=%la\n", uh, ul);
   /* now multiply (uh+ul)*(eh+el) */
   a_mul (&h, &l, uh, eh);
   l = __builtin_fma (uh, el, l);
   l = __builtin_fma (ul, eh, l);
+  // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   return h + l;
 }
 
@@ -953,10 +1021,10 @@ cr_erfc (double x)
   double right = h + (l + err);
   if (left == right)
   {
-    if (x == TRACE) printf ("fast path succeeded\n");
+    // if (x == TRACE) printf ("fast path succeeded\n");
     return left;
   }
-  if (x == TRACE) printf ("fast path failed\n");
+  // if (x == TRACE) printf ("fast path failed\n");
 
   return cr_erfc_accurate (x);
 }
