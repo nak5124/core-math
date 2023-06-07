@@ -473,9 +473,11 @@ exp_fast (double *h, double *l, double xh, double xl)
      as |i*p[i]*yh^(i-1)*yl| < 2^-70, which holds for i >= 9.
      Thus for coefficients of degree 9 or more, we don't take yl into account.
   */
-  *h = E[17]; // degree 13
-  for (int i = 12; i >= 9; i--)
-    *h = __builtin_fma (*h, yh, E[i + 4]); // degree i
+  *h = __builtin_fma (E[17], yh, E[16]);
+  double y2 = yh * yh;
+  double c9 = __builtin_fma (E[14], yh, E[13]);
+  double c11 = __builtin_fma (*h, yh, E[15]);
+  *h = __builtin_fma (c11, y2, c9);
   /* degree 8: h*(yh+yl)+E[12] */
   a_mul (&th, &tl, *h, yh);
   tl = __builtin_fma (*h, yl, tl);
@@ -671,6 +673,8 @@ erfc_asympt_fast (double *h, double *l, double x)
 static double
 cr_erfc_fast (double *h, double *l, double x)
 {
+  /* on a i7-8700 with gcc 12.2.0, for x in [-5,0], the average reciprocal
+     throughput is about 44 cycles */
   if (x < 0) // erfc(x) = 1 - erf(x) = 1 + erf(-x)
   {
     double err = cr_erf_fast (h, l, -x);
@@ -693,7 +697,10 @@ cr_erfc_fast (double *h, double *l, double x)
     return err + 0x1.4p-102;
   }
   // now 0 <= x < 0x1.b39dc41e48bfdp+4
-  else if (x <= 0x1.713786d9c7c09p+1)
+#define THRESHOLD1 0x1.713786d9c7c09p+1
+  /* on a i7-8700 with gcc 12.2.0, for x in [0,THRESHOLD1],
+     the average reciprocal throughput is about 59 cycles */
+  else if (x <= THRESHOLD1)
   {
     double err = cr_erf_fast (h, l, x);
     // if (x == TRACE) printf ("erf: h=%la l=%la err=%la\n", *h, *l, err);
@@ -724,6 +731,9 @@ cr_erfc_fast (double *h, double *l, double x)
   /* Now 0x1.713786d9c7c09p+1 < x < 0x1.b39dc41e48bfdp+4
      thus erfc(x) < 3.46e-6. */
   //if (x == TRACE) printf ("call erfc_asympt_fast\n");
+  /* on a i7-8700 with gcc 12.2.0, for x in [THRESHOLD1,+5.0],
+     the average reciprocal throughput is about 192 cycles
+     (among which 104 cycles for exp_fast) */
   return erfc_asympt_fast (h, l, x);
 }
 
@@ -1016,15 +1026,6 @@ cr_erfc (double x)
     return left;
   }
   //if (x == TRACE) printf ("fast path failed\n");
-#if 0
-  static FILE *fp = NULL;
-  static int count = 0;
-  if (fp == NULL) fp = fopen ("/tmp/log", "w");
-  if (count++<10)
-    fprintf (fp, "x=%la h=%la l=%la err=%la\n", x, h, l, err);
-  if (count == 10)
-    fclose (fp);
-#endif
 
   return cr_erfc_accurate (x);
 }
