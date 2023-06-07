@@ -44,7 +44,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 
-#define TRACE 0x1.b8940788b825dp+0
+#define TRACE 0x1.a8b13468353bfp+4
 
 /****************** code copied from erf.c ***********************************/
 
@@ -861,7 +861,21 @@ erfc_asympt_accurate (double x)
   l = __builtin_fma (ul, eh, l);
   // if (x == TRACE) printf ("h=%la l=%la e=%d\n", h, l, e);
   /* multiply by 2^e */
-  return __builtin_ldexp (h + l, e);
+  double res = __builtin_ldexp (h + l, e);
+  // if (x == TRACE) printf ("res=%la\n", res);
+  if (res < 0x1p-1022)
+  {
+    /* for erfc(x) in the subnormal range, we have to perform a special
+       rounding */
+    double corr = h - __builtin_ldexp (res, -e);
+    // if (x == TRACE) printf ("corr=%la\n", corr);
+    corr += l;
+    // if (x == TRACE) printf ("corr=%la\n", corr);
+    /* add corr*2^e */
+    res += __builtin_ldexp (corr, e);
+    // if (x == TRACE) printf ("res=%la\n", res);
+  }
+  return res;
 }
 
 static double

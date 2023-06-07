@@ -33,7 +33,7 @@ SOFTWARE.
 #include <sys/types.h>
 #include <unistd.h>
 
-unsigned long skipped = 0;
+#define N 1000000UL /* total number of tests */
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -57,6 +57,17 @@ asuint64 (double f)
   return u.i;
 }
 
+static inline double
+asfloat64 (uint64_t i)
+{
+  union
+  {
+    uint64_t i;
+    double f;
+  } u = {i};
+  return u.f;
+}
+
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
@@ -71,17 +82,12 @@ get_random ()
 }
 
 static void
-check_random (double x)
+check (double x)
 {
   int bug;
   double y1 = ref_erfc (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_erfc (x);
-  if (y2 == 0)
-  {
-    skipped ++;
-    return;
-  }
   if (isnan (y1))
     bug = !isnan (y2);
   else if (isnan (y2))
@@ -93,6 +99,26 @@ check_random (double x)
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
     exit (1);
+  }
+}
+
+/* check when ulp(erfc(x)) lies in the subnormal range:
+   0x1.9db1bb14e15cap+4 <= x <= 0x1.b39dc41e48bfcp+4 */
+static void
+check_subnormal (void)
+{
+  double xmin = 0x1.9db1bb14e15cap+4;
+  double xmax = 0x1.b39dc41e48bfcp+4;
+  uint64_t umin = asuint64 (xmin);
+  uint64_t umax = asuint64 (xmax);
+  uint64_t urange = (umax - umin) / (uint64_t) N;
+  printf ("Check subnormal output range (urange = %lu)\n", urange);
+#pragma omp parallel
+  for (uint64_t u = umin; u <= umax; u += urange)
+  {
+    ref_init ();
+    ref_fesetround (rnd);
+    check (asfloat64 (u));
   }
 }
 
@@ -137,11 +163,10 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
-  ref_init ();
-  ref_fesetround (rnd);
 
-#define N 1000000000UL /* total number of tests */
+  check_subnormal ();
 
+  printf ("Random tests\n");
   unsigned int seed = getpid ();
   srand (seed);
 
@@ -154,10 +179,8 @@ main (int argc, char *argv[])
     ref_fesetround (rnd);
     double x;
     do x = get_random (); while (x < XMIN || XMAX < x);
-    check_random (x);
+    check (x);
   }
-
-  printf ("Skipped tests: %lu\n", skipped);
 
   return 0;
 }
