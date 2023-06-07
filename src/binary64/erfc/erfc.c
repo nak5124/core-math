@@ -389,12 +389,13 @@ typedef union {double f; uint64_t u;} b64u64_u;
    the degree-3 coefficient is p[2], ...,
    the degree-23 coefficient is p[12]. In each line, the value is comment is
    the relative error bound given by Sollya. */
-static const double T[5][13] = {
+static const double T[6][13] = {
   {0x1.20dd750429b6dp-1, 0x1.1addfd84cd0a8p-57, -0x1.20dd750429b6dp-2, 0x1.b14c2f863e895p-2, -0x1.0ecf9db3de0a7p0, 0x1.d9eb53efe3cc2p1, -0x1.0a945d1ec6966p4, 0x1.6e8b764741922p6, -0x1.29c54649cc25ap9, 0x1.167176f0a5981p12, -0x1.208840ccc9a88p15, 0x1.26e4f10508c74p18, -0x1.9e31a169f98cp20}, /* asympt0.sollya, [0x1.2ce37fb080c7dp-5,0x1.d5p-4], 2^-71.2 */
   {0x1.20dd750429afdp-1, -0x1.0254db1cb5fcp-61, -0x1.20dd7504068a1p-2, 0x1.b14c2f5de6961p-2, -0x1.0ecf96b51b544p0, 0x1.d9e9b1044b219p1, -0x1.0a82e90cfefb3p4, 0x1.6d7a970037876p6, -0x1.23979f2df9ae4p9, 0x1.f80955a53bc09p11, -0x1.9f66875aadfb3p14, 0x1.0aa79f8765b59p17, -0x1.7260489cc4c2dp18}, /* asympt1.sollya, [0x1.d5p-4,0x1.59da6ca291ba6p-3], 2^-71.421 */
   {0x1.20dd75041ef63p-1, -0x1.fec667433a7ebp-55, -0x1.20dd74e79f127p-2, 0x1.b14c1e1b04589p-2, -0x1.0ecdff219b0dp+0, 0x1.d9b6d9211fadap+1, -0x1.0961e937d1d9cp+4, 0x1.64212c107371bp+6, -0x1.0750f3739b639p+9, 0x1.7d5aed7ee7f08p+11, -0x1.d2b47e4598e84p+13, 0x1.9129990ade7c7p+15, -0x1.5b77cf2944e4bp+16}, /* asympt2.sollya, [0x1.59da6ca291ba6p-3,0x1.bcp-3], 2^-71.173 */
   {0x1.20dd75026bb4dp-1, 0x1.71ddf1d14cd6cp-55, -0x1.20dd7201f1745p-2, 0x1.b14afc7293d5fp-2, -0x1.0ebcde1bd6606p+0, 0x1.d8597e3d2967ap+1, -0x1.0474d38b9f1f6p+4, 0x1.4a6b0b97a78f6p+6, -0x1.ad8dd5c9f9f15p+8, 0x1.f6c45f8e3cc4ap+10, -0x1.cf3ea95d601e7p+12, 0x1.1d6c79df01623p+14, -0x1.57973613aa3c3p+14}, /* asympt3.sollya, [0x1.bcp-3,0x1.0cp-2], 2^-71.074 */
   {0x1.20dd74ebaa7bfp-1, -0x1.14f45b938625cp-55, -0x1.20dd569d29551p-2, 0x1.b143714a572aap-2, -0x1.0e6c8bdb9aecbp+0, 0x1.d3dcd6bbae0b8p+1, -0x1.f24853837605p+3, 0x1.2155161c2ccc5p+6, -0x1.4221f3e460e58p+8, 0x1.30907974c1edep+10, -0x1.b2efb3d07d224p+11, 0x1.946e1e994e051p+12, -0x1.69565662b152fp+12}, /* asympt4.sollya, [0x1.0cp-2,0x1.38p-2], 2^-71.229 */
+  {0x1.20dd744d81d49p-1, -0x1.78a4ac7b01299p-55, -0x1.20dcc80e36e3fp-2, 0x1.b126184ef6337p-2, -0x1.0d835b6df6a53p+0, 0x1.ca29367812254p+1, -0x1.cdeb798f24613p+3, 0x1.e0c603afb89a4p+5, -0x1.c6f958aedb3dbp+7, 0x1.5f78c3caf26eap+9, -0x1.8fa84ebce795fp+10, 0x1.232d2be6b4d2dp+11, -0x1.93959f511631ap+10}, /* asympt5.sollya, [0x1.38p-2,0x1.63p-2], 2^-71.351 */
 };
 
 /* the following is a degree-13 polynomial approximating exp(x) for
@@ -580,7 +581,7 @@ exp_accurate (double *h, double *l, int *e, double xh, double xl)
   *e = k;
 }
 
-/* Fast path for 0x1.a41a41a41a41ap+1 < x < 0x1.b39dc41e48bfdp+4,
+/* Fast path for 0x1.713786d9c7c09p+1 < x < 0x1.b39dc41e48bfdp+4,
    using the asymptotic formula erfc(x) = exp(-x^2) * p(1/x), where
    p(x) is computed with Sollya.
    Return a bound on the absolute error. */
@@ -603,7 +604,7 @@ erfc_asympt_fast (double *h, double *l, double x)
   // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   exp_fast (&eh, &el, -uh, -ul);
   /* eh+el approximates exp(-x^2) */
-  if (x == TRACE) printf ("after exp_fast: eh=%la el=%la\n", eh, el);
+  // if (x == TRACE) printf ("after exp_fast: eh=%la el=%la\n", eh, el);
 
   /* compute 1/x as double-double */
   double yh, yl;
@@ -612,7 +613,7 @@ erfc_asympt_fast (double *h, double *l, double x)
   yl = yh * __builtin_fma (-x, yh, 1.0);
   // if (x == TRACE) printf ("yh=%la yl=%la\n", yh, yl);
   static double threshold[] = {0x1.d5p-4, 0x1.59da6ca291ba6p-3, 0x1.bcp-3,
-                               0x1.0cp-2, 0x1.38p-2};
+                               0x1.0cp-2, 0x1.38p-2, 0x1.63p-2};
   int i;
   for (i = 0; yh > threshold[i]; i++);
   // if (x == TRACE) printf ("i=%d\n", i);
@@ -624,17 +625,18 @@ erfc_asympt_fast (double *h, double *l, double x)
   a_mul (&uh, &ul, yh, yh);
   ul = __builtin_fma (2.0 * yh, yl, ul);
   /* uh+ul approximates (yh+yl)^2 */
-  if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   double zh, zl;
   zh = p[12];                         // degree 23
-  for (int i = 21; i >= 15; i-=2)     // degrees 21 downto 15
+#define THRESHOLD 15
+  for (int i = 21; i > THRESHOLD; i-=2)
     zh = __builtin_fma (zh, uh, p[(i+1)/2]);
-  /* degree 13: zh*(uh+ul)+p[6] */
+  /* degree THRESHOLD: zh*(uh+ul)+p[i] */
   a_mul (h, l, zh, uh);
   *l = __builtin_fma (zh, ul, *l);
-  fast_two_sum (&zh, &zl, p[7], *h);
+  fast_two_sum (&zh, &zl, p[(THRESHOLD+1)/2], *h);
   zl += *l;
-  for (int i = 11; i >= 3; i-=2)       // degrees 11 downto 3
+  for (int i = THRESHOLD-2; i >= 3; i-=2)
   {
     /* zh,zl <- (zh+zl)*(uh+ul)+p[(i+1)/2] */
     a_mul (h, l, zh, uh);
@@ -654,12 +656,13 @@ erfc_asympt_fast (double *h, double *l, double x)
   ul = __builtin_fma (zh, yl, ul);
   ul = __builtin_fma (zl, yh, ul);
   /* now uh+ul approximates p(1/x) */
-  if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   /* now multiply (uh+ul)*(eh+el) */
   a_mul (h, l, uh, eh);
   *l = __builtin_fma (uh, el, *l);
   *l = __builtin_fma (ul, eh, *l);
-  return 0x1.68p-68 * *h; /* FIXME: prove the error bound */
+  /* FIXME: prove the error bound */
+  return 0x1.f9p-68 * *h; // THRESHOLD=15
 }
 
 /* given -0x1.7744f8f74e94bp2 < x < 0x1.b39dc41e48bfdp+4,
@@ -690,7 +693,7 @@ cr_erfc_fast (double *h, double *l, double x)
     return err + 0x1.4p-102;
   }
   // now 0 <= x < 0x1.b39dc41e48bfdp+4
-  else if (x <= 0x1.a41a41a41a41ap+1)
+  else if (x <= 0x1.713786d9c7c09p+1)
   {
     double err = cr_erf_fast (h, l, x);
     // if (x == TRACE) printf ("erf: h=%la l=%la err=%la\n", *h, *l, err);
@@ -718,7 +721,7 @@ cr_erfc_fast (double *h, double *l, double x)
        Adding 0x1.4p-104 is thus exact. */
     return err + 0x1.4p-104;
   }
-  /* Now 0x1.a41a41a41a41ap+1 < x < 0x1.b39dc41e48bfdp+4
+  /* Now 0x1.713786d9c7c09p+1 < x < 0x1.b39dc41e48bfdp+4
      thus erfc(x) < 3.46e-6. */
   //if (x == TRACE) printf ("call erfc_asympt_fast\n");
   return erfc_asympt_fast (h, l, x);
@@ -1004,15 +1007,15 @@ cr_erfc (double x)
   double h, l, err;
   err = cr_erfc_fast (&h, &l, x);
 
-  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
+  //if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left  = h + (l - err);
   double right = h + (l + err);
   if (left == right)
   {
-    if (x == TRACE) printf ("fast path succeeded\n");
+    //if (x == TRACE) printf ("fast path succeeded\n");
     return left;
   }
-  if (x == TRACE) printf ("fast path failed\n");
+  //if (x == TRACE) printf ("fast path failed\n");
 #if 0
   static FILE *fp = NULL;
   static int count = 0;
