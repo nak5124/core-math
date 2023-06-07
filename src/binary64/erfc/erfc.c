@@ -34,13 +34,17 @@ SOFTWARE.
    [3] The functions erf and erfc computed with arbitrary precision and
        explicit error bounds, Sylvain Chevillard, Research Report, 2009,
        https://inria.hal.science/ensl-00356709v3.
+   [4] https://stackoverflow.com/questions/39777360/accurate-computation-of-scaled-complementary-error-function-erfcx
+   [5] Chebyshev Approximation of (1 + 2 x) exp(x2) erfc x in 0 ≤ x < Inf,
+       M. M. Shepherd and J. G. Laframboise, Mathematics of Computation,
+       Volume 36, No. 153, January 1981, pp. 249-253
 */
 
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
 
-#define TRACE 0x1.70f74b8ce00e1p+4
+#define TRACE 0x1.b8940788b825dp+0
 
 /****************** code copied from erf.c ***********************************/
 
@@ -522,27 +526,25 @@ exp_fast (double *h, double *l, double xh, double xl)
 static void
 exp_accurate (double *h, double *l, int *e, double xh, double xl)
 {
-  int bug = xh == -0x1.102d7f8efcb87p+8;
-  if (bug) printf ("xh=%la xl=%la\n", xh, xl);
   double th, tl, yh, yl;
   /* first reduce argument: xh + xl ~ k*log(2) + yh + yl */
 #define INVLOG2 0x1.71547652b82fep+0 // approximates 1/log(2)
   int k = __builtin_roundeven (xh * INVLOG2);
-  if (bug) printf ("k=%d\n", k);
+  /* since |xh| <= 742, |k| <= round(742/log(2)) = 1070 */
   /* subtract k*log(2), where LOG2H+LOG2L approximates log(2) */
 #define LOG2H 0x1.62e42fefa39efp-1
-  /* we approximate LOG2Lacc ~ log(2) - LOG2H on a reduced number of bits,
-     to avoid rounding errors in k*LOG2Lacc and thus in yl */
+  /* we approximate LOG2Lacc ~ log(2) - LOG2H with 38 bits, so that
+     k*LOG2Lacc is exact (k has at most 11 bits) */
 #define LOG2Lacc 0x1.abc9e3b398p-56
 #define LOG2tiny 0x1.f97b57a079a19p-103
-//#define LOG2Lx 0x1.abc9e3b39803fp-56
-//#define LOG2tiny 0x1.7b57a079a1934p-111
   yh = __builtin_fma (-k, LOG2H, xh);
   /* since |xh+xl| >= 2.92 we have |k| >= 4;
   (|k|-1/2)*log(2) <= |x| <= (|k|+1/2)*log(2) thus
   1-1/(2|k|) <= |x/(k*log(2))| <= 1+1/(2|k|) thus by Sterbenz theorem
   yh is exact too */
-  yl = __builtin_fma (-k, LOG2Lacc, xl);
+  two_sum (&th, &tl, -(double) k * LOG2Lacc, xl);
+  fast_two_sum (&yh, &yl, yh, th);
+  yl = __builtin_fma (-k, LOG2tiny, yl + tl);
   /* now yh+yl approximates xh + xl - k*log(2), and we approximate p(yh+yl)
      in h + l */
   /* Since |xh| <= 742, we assume |xl| <= ulp(742) = 2^-43. Then since
@@ -551,13 +553,6 @@ exp_accurate (double *h, double *l, int *e, double xh, double xl)
      as |i*p[i]*yh^(i-1)*yl| < 2^-104, which holds for i >= 16.
      Thus for coefficients of degree 16 or more, we don't take yl into account.
   */
-  /* normalize yh+yl to improve accuracy since we ignore terms l*yl below */
-  fast_two_sum (&yh, &yl, yh, yl);
-  /* since there was a cancellation in xh+xl - k*(LOG2H+LOG2Lacc),
-     we have less than 107 accurate bits in yh+yl, thus we subtract
-     k*LOG2tiny */
-  yl = __builtin_fma (-k, LOG2tiny, yl);
-  if (bug) printf ("yh=%la yl=%la\n", yh, yl);
   *h = E2[19 + 8]; // degree 19
   for (int i = 18; i >= 16; i--)
     *h = __builtin_fma (*h, yh, E2[i + 8]); // degree i
@@ -769,21 +764,43 @@ static const double T2[10][30] = {
 static double
 erfc_asympt_accurate (double x)
 {
-  if (x == TRACE) printf ("enter erfc_asympt_accurate\n");
-  static const double exceptions[0][3] = {
+  static const double exceptions[19][3] = {
+    {0x1.4a42b163f7a7dp+3, 0x1.183d60a1f7e3cp-158, -0x1.fffffffffffffp-212},
+    {0x1.a631d4bc7f56bp+3, 0x1.3f07281bb43aep-256, -0x1p-309},
+    {0x1.1b2588f5d972ep+4, 0x1.2923609150ffp-457, -0x1.ffffffffffffdp-511},
+    {0x1.1d41cb671cad3p+4, 0x1.5c4d8d179be8cp-464, -0x1.fffffffffffffp-518},
+    {0x1.48de452fb1a15p+4, 0x1.3c2a1264045adp-615, 0x1.fffffffffffffp-669},
+    {0x1.bb1ef58eda44p+0, 0x1.d6d259cb81801p-7, 0x1.387cbdb500a5ep-114},
+    {0x1.0ca37ce17afa6p+1, 0x1.88cc1284157f5p-9, 0x1.6fd53d489a2c1p-120},
+    {0x1.1cb6b0f91a4ccp+1, 0x1.b2639c7a46899p-10, 0x1.f8111f4b0ab0fp-114},
+    {0x1.d1e19af184c6ep+0, 0x1.49bf1937979edp-7, 0x1.c1b55587c1381p-112},
+    {0x1.37994c710a4d2p+1, 0x1.2df150139d8eap-11, 0x1.d46afcc14563p-114},
+    {0x1.8966f65d9a1a1p+1, 0x1.d01a8497b522dp-17, 0x1.c935c97d5bfe4p-121},
+    {0x1.9f4a466c51bb5p+2, 0x1.a3d059f3770b9p-65, 0x1.3f16dde099b74p-167},
+    {0x1.164f857d1749cp+3, 0x1.e35102e39e989p-114, 0x1.32b4c82bbb9e3p-219},
+    {0x1.76957728f1f31p+1, 0x1.251dea1afe1adp-15, -0x1.155995aa5bae6p-119},
+    {0x1.651c78cec84f6p+2, 0x1.af9d1df8b5e8p-49, -0x1.fe39e86292256p-153},
+    {0x1.77d0f07e113dcp+3, 0x1.8b93f18b3cdc6p-204, 0x1.6ffd370fba52ap-307},
+    {0x1.ef72633933d36p+2, 0x1.aee3861d8657ep-91, -0x1.00ca47f3ced2ap-194},
+    {0x1.391f434b53d18p+4, 0x1.44e8c50fa25e9p-558, -0x1.15aa7b49bc597p-662},
+    {0x1.b8940788b825dp+0, 0x1.e97eaf1080bffp-7, 0x1.38836346525eap-107},
   };
-  for (int i = 0; i < 0; i++)
+  for (int i = 0; i < 19; i++)
     if (x == exceptions[i][0])
       return exceptions[i][1] + exceptions[i][2];
+
+  /* subnormal exceptions */
+  if (x == 0x1.a8f7bfbd15495p+4)
+    return __builtin_fma (0x1p-1074, -0.25, 0x1.99ef5883f656cp-1024);
 
   double h, l;
   /* first approximate exp(-x^2) */
   double eh, el, uh, ul;
   a_mul (&uh, &ul, x, x);
   int e;
-  if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   exp_accurate (&eh, &el, &e, -uh, -ul);
-  if (x == TRACE) printf ("eh=%la el=%la e=%d\n", eh, el, e);
+  // if (x == TRACE) printf ("eh=%la el=%la e=%d\n", eh, el, e);
   /* eh+el approximates exp(-x^2), where 2.92 < x^2 < 742 */
 
   /* compute 1/x as double-double */
@@ -805,7 +822,7 @@ erfc_asympt_accurate (double x)
   a_mul (&uh, &ul, yh, yh);
   ul = __builtin_fma (2.0 * yh, yl, ul);
   /* uh+ul approximates 1/x^2 */
-  //  if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   double zh, zl;
   /* the polynomial p has degree 29+2i, and its coefficient of largest
      degree is p[14+6+i] */
@@ -836,11 +853,13 @@ erfc_asympt_accurate (double x)
   ul = __builtin_fma (zl, yh, ul);
   /* now uh+ul approximates p(1/x), i.e., erfc(x)*exp(x^2) */
   // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
-  /* now multiply (uh+ul)*(eh+el) */
+  /* now multiply (uh+ul)*(eh+el), after normalizing uh+ul to reduce the
+     number of exceptional cases */
+  fast_two_sum (&uh, &ul, uh, ul);
   a_mul (&h, &l, uh, eh);
   l = __builtin_fma (uh, el, l);
   l = __builtin_fma (ul, eh, l);
-  if (x == TRACE) printf ("h=%la l=%la e=%d\n", h, l, e);
+  // if (x == TRACE) printf ("h=%la l=%la e=%d\n", h, l, e);
   /* multiply by 2^e */
   return __builtin_ldexp (h + l, e);
 }
@@ -915,11 +934,11 @@ cr_erfc_accurate (double x)
       if (x == exceptions[i][0])
         return exceptions[i][1] + exceptions[i][2];
     cr_erf_accurate (&h, &l, x);
-    if (x == TRACE) printf ("cr_erfc_accurate: h=%la l=%la\n", h, l);
+    // if (x == TRACE) printf ("cr_erfc_accurate: h=%la l=%la\n", h, l);
     fast_two_sum (&h, &t, 1.0, -h);
-    if (x == TRACE) printf ("cr_erfc_accurate: h=%la t=%la\n", h, t);
+    // if (x == TRACE) printf ("cr_erfc_accurate: h=%la t=%la\n", h, t);
     l = t - l;
-    if (x == TRACE) printf ("cr_erfc_accurate: h=%la l=%la\n", h, l);
+    // if (x == TRACE) printf ("cr_erfc_accurate: h=%la l=%la\n", h, l);
     return h + l;
   }
   /* Now 0x1.b59ffb450828cp+0 < x < 0x1.b39dc41e48bfdp+4.
