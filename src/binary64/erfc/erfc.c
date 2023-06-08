@@ -843,11 +843,17 @@ erfc_asympt_fast (double *h, double *l, double x)
        error is bounded by |p'/p| * |yh+yl - 1/x|.
        Since the maximal value of |p'/p| is bounded by 27.2 (for i=0),
        this yields 27.2 * 2^-102.67 < 2^-97.9
-     * the rounding errors when evaluating p on yh+yl
+     * the rounding errors when evaluating p on yh+yl: this error is bounded
+       (relatively) by 2^-67.184 (for i=5), see analyze_erfc_asympt_fast()
+       in erfc.sage
      * the rounding error in (uh+ul)*(eh+el): we assume this error is bounded
        by 2^-80 (relatively)
+     This yields a global relative bound of:
+     (1+2^-71.074)*(1+2^-74.139)*(1+2^-97.9)*(1+2^-67.184)*(1+2^-80)-1
+     < 2^-67.078
   */
-  return 0x1.cfp-69 * *h;
+  // return 0x1.cfp-69 * *h;
+  return 0x1.e6p-68 * *h; /* 2^-67.078 < 0x1.e6p-68 */
 }
 
 /* given -0x1.7744f8f74e94bp2 < x < 0x1.b39dc41e48bfdp+4,
