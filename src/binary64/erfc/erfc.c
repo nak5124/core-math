@@ -390,20 +390,16 @@ typedef union {
 // Multiply a double with a double double : a * (bh + bl)
 static inline void s_mul (double *hi, double *lo, double a, double bh,
                           double bl) {
-  double s;
-
-  a_mul (hi, &s, a, bh); /* exact */
-  *lo = __builtin_fma (a, bl, s);
+  a_mul (hi, lo, a, bh); /* exact */
+  *lo = __builtin_fma (a, bl, *lo);
 }
 
 // Returns (ah + al) * (bh + bl) - (al * bl)
 static inline void d_mul(double *hi, double *lo, double ah, double al,
                          double bh, double bl) {
-  double s, t;
-
-  a_mul(hi, &s, ah, bh);
-  t = __builtin_fma(al, bh, s);
-  *lo = __builtin_fma(ah, bl, t);
+  a_mul (hi, lo, ah, bh);
+  *lo = __builtin_fma (ah, bl, *lo);
+  *lo = __builtin_fma (al, bh, *lo);
 }
 
 // Add a + (bh + bl), assuming |a| >= |bh|
@@ -771,56 +767,51 @@ erfc_asympt_fast (double *h, double *l, double x)
   /* Newton's iteration for 1/x is y -> y + y*(1-x*y) */
   yl = yh * __builtin_fma (-x, yh, 1.0);
   // if (x == TRACE) printf ("yh=%la yl=%la\n", yh, yl);
+
+  /* look for the right interval for yh */
   static double threshold[] = {0x1.d5p-4, 0x1.59da6ca291ba6p-3, 0x1.bcp-3,
                                0x1.0cp-2, 0x1.38p-2, 0x1.63p-2};
   int i;
   for (i = 0; yh > threshold[i]; i++);
   // if (x == TRACE) printf ("i=%d\n", i);
+
   const double *p = T[i];
-  /* now evaluate p(yh + yl): since we target about 71 bits of accuracy,
-     analyzing for each value of i the maximal value of y and the ratio
-     of coefficients, we see that we can ignore the yl term for coefficients
-     of degree 9 and more, for which double precision is enough */
   a_mul (&uh, &ul, yh, yh);
   ul = __builtin_fma (2.0 * yh, yl, ul);
   /* uh+ul approximates (yh+yl)^2 */
   // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+
+  /* evaluate p(uh+ul) */
   double zh, zl;
   zh = p[12];                         // degree 23
-#define THRESHOLD 17
-  for (int i = 21; i > THRESHOLD; i-=2)
-    zh = __builtin_fma (zh, uh, p[(i+1)/2]);
-  /* degree THRESHOLD: zh*(uh+ul)+p[i] */
-  a_mul (h, l, zh, uh);
-  *l = __builtin_fma (zh, ul, *l);
-  fast_two_sum (&zh, &zl, p[(THRESHOLD+1)/2], *h);
+  zh = __builtin_fma (zh, uh, p[11]); // degree 21
+  zh = __builtin_fma (zh, uh, p[10]); // degree 19
+  /* degree 17: zh*(uh+ul)+p[i] */
+  s_mul (h, l, zh, uh, ul);
+  fast_two_sum (&zh, &zl, p[9], *h);
   zl += *l;
   // if (x == TRACE) printf ("zh=%la zl=%la\n", zh, zl);
-  for (int i = THRESHOLD-2; i >= 3; i-=2)
+
+  double vh, vl;
+  a_mul (&vh, &vl, uh, uh);
+  vl = __builtin_fma (2.0 * uh, ul, vl);
+  /* vh+vl approximates (yh+yl)^4 */
+  for (int i = 15; i >= 3; i-= 2)
   {
-    /* zh,zl <- (zh+zl)*(uh+ul)+p[(i+1)/2] */
-    a_mul (h, l, zh, uh);
-    *l = __builtin_fma (zh, ul, *l);
-    *l = __builtin_fma (zl, uh, *l);
+    d_mul (h, l, zh, zl, uh, ul);
     fast_two_sum (&zh, &zl, p[(i+1)/2], *h);
     zl += *l;
   }
   /* degree 1: (zh+zl)*(uh+ul)+p[0]+p[1] */
-  a_mul (h, l, zh, uh);
-  *l = __builtin_fma (zh, ul, *l);
-  *l = __builtin_fma (zl, uh, *l);
+  d_mul (h, l, zh, zl, uh, ul);
   fast_two_sum (&zh, &zl, p[0], *h);
   zl += *l + p[1];
   /* multiply by yh+yl */
-  a_mul (&uh, &ul, zh, yh);
-  ul = __builtin_fma (zh, yl, ul);
-  ul = __builtin_fma (zl, yh, ul);
+  d_mul (&uh, &ul, zh, zl, yh, yl);
   /* now uh+ul approximates p(1/x) */
   // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   /* now multiply (uh+ul)*(eh+el) */
-  a_mul (h, l, uh, eh);
-  *l = __builtin_fma (uh, el, *l);
-  *l = __builtin_fma (ul, eh, *l);
+  d_mul (h, l, uh, ul, eh, el);
   /* FIXME: prove the error bound */
   return 0x1.cfp-69 * *h;
 }
