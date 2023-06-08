@@ -118322,3 +118322,25 @@
 0x1.f7d0ef44b78edp+3
 # non-regression tests
 0x1.a8b13468353bfp+4
+# corner values used in the code
+nan
+-inf
+inf
+-0x1.7744f8f74e94cp2
+-0x1.7744f8f74e94bp2
+-0x1.7744f8f74e94ap+2
+-0x1.c5bf891b4ef6bp-54
+-0x1.c5bf891b4ef6ap-54
+-0x1.c5bf891b4ef69p-54
+0x1.b39dc41e48bfcp+4
+0x1.b39dc41e48bfdp+4
+0x1.b39dc41e48bfep+4
+0x1.c5bf891b4ef69p-55
+0x1.c5bf891b4ef6ap-55
+0x1.c5bf891b4ef6bp-55
+0x1.713786d9c7c08p+1
+0x1.713786d9c7c09p+1
+0x1.713786d9c7c0ap+1
+0x1.9db1bb14e15c9p+4
+0x1.9db1bb14e15cap+4
+0x1.9db1bb14e15cbp+4

@@ -1,4 +1,4 @@
-/* Check erfc on random inputs.
+/* Check erfc on special and random inputs.
 
 Copyright (c) 2022-2023 Paul Zimmermann, Inria.
 

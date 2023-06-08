@@ -25,8 +25,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// FIXME: remove z2 != 0 and skipped in check_worst_uni.c and check_special.c
-
 /* References:
    [1] The Mathematical Function Computation Handbook, Nelson H.F. Beebe,
        Springer, 2017.
@@ -39,12 +37,11 @@ SOFTWARE.
    [5] Chebyshev Approximation of (1 + 2 x) exp(x2) erfc x in 0 ≤ x < Inf,
        M. M. Shepherd and J. G. Laframboise, Mathematics of Computation,
        Volume 36, No. 153, January 1981, pp. 249-253
+   [6] Modern Computer Arithmetic, Richard Brent and Paul Zimmermann,
+       Cambridge University Press, 2011.
 */
 
-#include <stdio.h>
 #include <stdint.h>
-
-#define TRACE 0x1.7159b387f8f28p+1
 
 /****************** code copied from erf.c ***********************************/
 
@@ -638,12 +635,12 @@ typedef union {double f; uint64_t u;} b64u64_u;
    the degree-23 coefficient is p[12]. In each line, the value is comment is
    the relative error bound given by Sollya. */
 static const double T[6][13] = {
-  {0x1.20dd750429b6dp-1, 0x1.1addfd84cd0a8p-57, -0x1.20dd750429b6dp-2, 0x1.b14c2f863e895p-2, -0x1.0ecf9db3de0a7p0, 0x1.d9eb53efe3cc2p1, -0x1.0a945d1ec6966p4, 0x1.6e8b764741922p6, -0x1.29c54649cc25ap9, 0x1.167176f0a5981p12, -0x1.208840ccc9a88p15, 0x1.26e4f10508c74p18, -0x1.9e31a169f98cp20}, /* asympt0.sollya, [0x1.2ce37fb080c7dp-5,0x1.d5p-4], 2^-71.2 */
-  {0x1.20dd750429afdp-1, -0x1.0254db1cb5fcp-61, -0x1.20dd7504068a1p-2, 0x1.b14c2f5de6961p-2, -0x1.0ecf96b51b544p0, 0x1.d9e9b1044b219p1, -0x1.0a82e90cfefb3p4, 0x1.6d7a970037876p6, -0x1.23979f2df9ae4p9, 0x1.f80955a53bc09p11, -0x1.9f66875aadfb3p14, 0x1.0aa79f8765b59p17, -0x1.7260489cc4c2dp18}, /* asympt1.sollya, [0x1.d5p-4,0x1.59da6ca291ba6p-3], 2^-71.421 */
-  {0x1.20dd75041ef63p-1, -0x1.fec667433a7ebp-55, -0x1.20dd74e79f127p-2, 0x1.b14c1e1b04589p-2, -0x1.0ecdff219b0dp+0, 0x1.d9b6d9211fadap+1, -0x1.0961e937d1d9cp+4, 0x1.64212c107371bp+6, -0x1.0750f3739b639p+9, 0x1.7d5aed7ee7f08p+11, -0x1.d2b47e4598e84p+13, 0x1.9129990ade7c7p+15, -0x1.5b77cf2944e4bp+16}, /* asympt2.sollya, [0x1.59da6ca291ba6p-3,0x1.bcp-3], 2^-71.173 */
-  {0x1.20dd75026bb4dp-1, 0x1.71ddf1d14cd6cp-55, -0x1.20dd7201f1745p-2, 0x1.b14afc7293d5fp-2, -0x1.0ebcde1bd6606p+0, 0x1.d8597e3d2967ap+1, -0x1.0474d38b9f1f6p+4, 0x1.4a6b0b97a78f6p+6, -0x1.ad8dd5c9f9f15p+8, 0x1.f6c45f8e3cc4ap+10, -0x1.cf3ea95d601e7p+12, 0x1.1d6c79df01623p+14, -0x1.57973613aa3c3p+14}, /* asympt3.sollya, [0x1.bcp-3,0x1.0cp-2], 2^-71.074 */
-  {0x1.20dd74ebaa7bfp-1, -0x1.14f45b938625cp-55, -0x1.20dd569d29551p-2, 0x1.b143714a572aap-2, -0x1.0e6c8bdb9aecbp+0, 0x1.d3dcd6bbae0b8p+1, -0x1.f24853837605p+3, 0x1.2155161c2ccc5p+6, -0x1.4221f3e460e58p+8, 0x1.30907974c1edep+10, -0x1.b2efb3d07d224p+11, 0x1.946e1e994e051p+12, -0x1.69565662b152fp+12}, /* asympt4.sollya, [0x1.0cp-2,0x1.38p-2], 2^-71.229 */
-  {0x1.20dd744d81d49p-1, -0x1.78a4ac7b01299p-55, -0x1.20dcc80e36e3fp-2, 0x1.b126184ef6337p-2, -0x1.0d835b6df6a53p+0, 0x1.ca29367812254p+1, -0x1.cdeb798f24613p+3, 0x1.e0c603afb89a4p+5, -0x1.c6f958aedb3dbp+7, 0x1.5f78c3caf26eap+9, -0x1.8fa84ebce795fp+10, 0x1.232d2be6b4d2dp+11, -0x1.93959f511631ap+10}, /* asympt5.sollya, [0x1.38p-2,0x1.63p-2], 2^-71.351 */
+  {0x1.20dd750429b6dp-1, 0x1.1addfd84cd0a8p-57, -0x1.20dd750429b6dp-2, 0x1.b14c2f863e895p-2, -0x1.0ecf9db3de0a7p0, 0x1.d9eb53efe3cc2p1, -0x1.0a945d1ec6966p4, 0x1.6e8b764741922p6, -0x1.29c54649cc25ap9, 0x1.167176f0a5981p12, -0x1.208840ccc9a88p15, 0x1.26e4f10508c74p18, -0x1.9e31a169f98cp20}, /* asympt0.sollya, [0x1.2ce37fb080c7dp-5,0x1.d5p-4], 2^-71.2, |p'/p| < 27.2 */
+  {0x1.20dd750429afdp-1, -0x1.0254db1cb5fcp-61, -0x1.20dd7504068a1p-2, 0x1.b14c2f5de6961p-2, -0x1.0ecf96b51b544p0, 0x1.d9e9b1044b219p1, -0x1.0a82e90cfefb3p4, 0x1.6d7a970037876p6, -0x1.23979f2df9ae4p9, 0x1.f80955a53bc09p11, -0x1.9f66875aadfb3p14, 0x1.0aa79f8765b59p17, -0x1.7260489cc4c2dp18}, /* asympt1.sollya, [0x1.d5p-4,0x1.59da6ca291ba6p-3], 2^-71.421, |p'/p| < 8.63 */
+  {0x1.20dd75041ef63p-1, -0x1.fec667433a7ebp-55, -0x1.20dd74e79f127p-2, 0x1.b14c1e1b04589p-2, -0x1.0ecdff219b0dp+0, 0x1.d9b6d9211fadap+1, -0x1.0961e937d1d9cp+4, 0x1.64212c107371bp+6, -0x1.0750f3739b639p+9, 0x1.7d5aed7ee7f08p+11, -0x1.d2b47e4598e84p+13, 0x1.9129990ade7c7p+15, -0x1.5b77cf2944e4bp+16}, /* asympt2.sollya, [0x1.59da6ca291ba6p-3,0x1.bcp-3], 2^-71.173, |p'/p| < 5.77 */
+  {0x1.20dd75026bb4dp-1, 0x1.71ddf1d14cd6cp-55, -0x1.20dd7201f1745p-2, 0x1.b14afc7293d5fp-2, -0x1.0ebcde1bd6606p+0, 0x1.d8597e3d2967ap+1, -0x1.0474d38b9f1f6p+4, 0x1.4a6b0b97a78f6p+6, -0x1.ad8dd5c9f9f15p+8, 0x1.f6c45f8e3cc4ap+10, -0x1.cf3ea95d601e7p+12, 0x1.1d6c79df01623p+14, -0x1.57973613aa3c3p+14}, /* asympt3.sollya, [0x1.bcp-3,0x1.0cp-2], 2^-71.074, |p'/p| < 4.42 */
+  {0x1.20dd74ebaa7bfp-1, -0x1.14f45b938625cp-55, -0x1.20dd569d29551p-2, 0x1.b143714a572aap-2, -0x1.0e6c8bdb9aecbp+0, 0x1.d3dcd6bbae0b8p+1, -0x1.f24853837605p+3, 0x1.2155161c2ccc5p+6, -0x1.4221f3e460e58p+8, 0x1.30907974c1edep+10, -0x1.b2efb3d07d224p+11, 0x1.946e1e994e051p+12, -0x1.69565662b152fp+12}, /* asympt4.sollya, [0x1.0cp-2,0x1.38p-2], 2^-71.229, |p'/p| < 3.60 */
+  {0x1.20dd744d81d49p-1, -0x1.78a4ac7b01299p-55, -0x1.20dcc80e36e3fp-2, 0x1.b126184ef6337p-2, -0x1.0d835b6df6a53p+0, 0x1.ca29367812254p+1, -0x1.cdeb798f24613p+3, 0x1.e0c603afb89a4p+5, -0x1.c6f958aedb3dbp+7, 0x1.5f78c3caf26eap+9, -0x1.8fa84ebce795fp+10, 0x1.232d2be6b4d2dp+11, -0x1.93959f511631ap+10}, /* asympt5.sollya, [0x1.38p-2,0x1.63p-2], 2^-71.351, |p'/p| < 3.04 */
 };
 
 /* the following is a degree-19 polynomial approximating exp(x) for
@@ -753,33 +750,61 @@ erfc_asympt_fast (double *h, double *l, double x)
     return 1.0;
   }
 
-  /* first approximate exp(-x^2) */
+  /* first approximate exp(-x^2): */
   double eh, el, uh, ul;
   a_mul (&uh, &ul, x, x);
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   exp_1 (&eh, &el, -uh, -ul);
-  /* eh+el approximates exp(-x^2) */
-  // if (x == TRACE) printf ("after exp_fast: eh=%la el=%la\n", eh, el);
+  /* the assumptions from exp_1 are satisfied:
+     * a_mul ensures |ul| <= ulp(uh), thus |ul/uh| <= 2^-52
+     * since |x| < 0x1.9db1bb14e15cap+4 we have
+       |ul| < ulp(0x1.9db1bb14e15cap+4^2) = 2^-43 */
+  /* eh+el approximates exp(-x^2) with maximal relative error 2^-74.139 */
 
   /* compute 1/x as double-double */
   double yh, yl;
   yh = 1.0 / x;
+  /* Assume 1 <= x < 2, then 0.5 <= yh <= 1,
+     and yh = 1/x + eps with |eps| <= 2^-53. */
   /* Newton's iteration for 1/x is y -> y + y*(1-x*y) */
   yl = yh * __builtin_fma (-x, yh, 1.0);
-  // if (x == TRACE) printf ("yh=%la yl=%la\n", yh, yl);
+  /* x*yh-1 = x*(1/x+eps)-1 = x*eps
+     with |x*eps| <= 2^-52, thus the error on the FMA is bounded by
+     ulp(2^-52.1) = 2^-105.
+     Now |yl| <= |yh| * 2^-52 <= 2^-52, thus the rounding error on
+     yh * __builtin_fma (-x, yh, 1.0) is bounded also by ulp(2^-52.1) = 2^-105.
+     From [6], Lemma 3.7, if yl was computed exactly, then yh+yl would differ
+     from 1/x by at most yh^2/theta^3*(1/x-yh)^2 for some theta in [yh,1/x]
+     or [1/x,yh].
+     Since yh, 1/x <= 1, this gives eps^2 <= 2^-106.
+     Adding the rounding errors, we have:
+     |yh + yl - 1/x| <= 2^-105 + 2^-105 + 2^-106 < 2^-103.67.
+     For the relative error, since |yh| >= 1/2, this gives:
+     |yh + yl - 1/x| < 2^-102.67 * |yh+yl|
+  */
 
   /* look for the right interval for yh */
   static double threshold[] = {0x1.d5p-4, 0x1.59da6ca291ba6p-3, 0x1.bcp-3,
                                0x1.0cp-2, 0x1.38p-2, 0x1.63p-2};
   int i;
   for (i = 0; yh > threshold[i]; i++);
-  // if (x == TRACE) printf ("i=%d\n", i);
 
   const double *p = T[i];
-  a_mul (&uh, &ul, yh, yh);
+  a_mul (&uh, &ul, yh, yh); // exact
+  /* Since |yh| <= 1, we have |uh| <= 1 and |ul| <= 2^-53. */
   ul = __builtin_fma (2.0 * yh, yl, ul);
-  /* uh+ul approximates (yh+yl)^2 */
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
+  /* uh+ul approximates (yh+yl)^2, with absolute error bounded by
+     ulp(ul) + yl^2, where ulp(ul) is the maximal rounding error in
+     the FMA, and yl^2 is the neglected term.
+     Since |ul| <= 2^-53, ulp(ul) <= 2^-105, and since |yl| <= 2^-52,
+     this yields |uh + ul - yh^2| <= 2^-105 + 2^-104 < 2^-103.41.
+     For the relative error, since |(yh+yl)^2| >= 1/4:
+     |uh + ul - yh^2| < 2^-101.41 * |uh+ul|.
+     And relatively to 1/x^2:
+     yh + yl = 1/x * (1 + eps1)       with |eps1| < 2^-102.67  
+     uh + ul = (yh+yl)^2 * (1 + eps2) with |eps2| < 2^-101.41
+     This yields:
+     |uh + ul - 1/x| < 2^-100.90 * |uh+ul|.
+  */
 
   /* evaluate p(uh+ul) */
   double zh, zl;
@@ -790,12 +815,7 @@ erfc_asympt_fast (double *h, double *l, double x)
   s_mul (h, l, zh, uh, ul);
   fast_two_sum (&zh, &zl, p[9], *h);
   zl += *l;
-  // if (x == TRACE) printf ("zh=%la zl=%la\n", zh, zl);
 
-  double vh, vl;
-  a_mul (&vh, &vl, uh, uh);
-  vl = __builtin_fma (2.0 * uh, ul, vl);
-  /* vh+vl approximates (yh+yl)^4 */
   for (int i = 15; i >= 3; i-= 2)
   {
     d_mul (h, l, zh, zl, uh, ul);
@@ -809,10 +829,24 @@ erfc_asympt_fast (double *h, double *l, double x)
   /* multiply by yh+yl */
   d_mul (&uh, &ul, zh, zl, yh, yl);
   /* now uh+ul approximates p(1/x) */
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   /* now multiply (uh+ul)*(eh+el) */
   d_mul (h, l, uh, ul, eh, el);
-  /* FIXME: prove the error bound */
+  /* Write y = 1/x.  We have the following errors:
+     * the maximal mathematical error is:
+       |erfc(x)*exp(x^2) - p(y)| < 2^-71.074 * |p(y)| thus
+       |erfc(x) - exp(-x^2)*p(y)| < 2^-71.074 * |exp(-x^2)*p(y)|
+     * the error in approximating exp(-x^2) by eh+el:
+       |eh + el - exp(-x^2)| < 2^-74.139 * |eh + el|
+     * the fact that we evaluate p on yh+yl instead of 1/x
+       this error is bounded by |p'| * |yh+yl - 1/x|, where
+       |yh+yl - 1/x| < 2^-102.67 * |yh+yl|, and the relative
+       error is bounded by |p'/p| * |yh+yl - 1/x|.
+       Since the maximal value of |p'/p| is bounded by 27.2 (for i=0),
+       this yields 27.2 * 2^-102.67 < 2^-97.9
+     * the rounding errors when evaluating p on yh+yl
+     * the rounding error in (uh+ul)*(eh+el): we assume this error is bounded
+       by 2^-80 (relatively)
+  */
   return 0x1.cfp-69 * *h;
 }
 
@@ -852,7 +886,6 @@ cr_erfc_fast (double *h, double *l, double x)
   else if (x <= THRESHOLD1)
   {
     double err = cr_erf_fast (h, l, x);
-    // if (x == TRACE) printf ("erf: h=%la l=%la err=%la\n", *h, *l, err);
     /* h+l approximates erf(x), with relative error bounded by err,
        where err <= 0x1.78p-69 */
     err = err * *h; /* convert into absolute error */
@@ -878,7 +911,6 @@ cr_erfc_fast (double *h, double *l, double x)
     return err + 0x1.4p-104;
   }
   /* Now THRESHOLD1 < x < 0x1.b39dc41e48bfdp+4 thus erfc(x) < 0.000046. */
-  //if (x == TRACE) printf ("call erfc_asympt_fast\n");
   /* on a i7-8700 with gcc 12.2.0, for x in [THRESHOLD1,+5.0],
      the average reciprocal throughput is about 111 cycles
      (among which 20 cycles for exp_1) */
@@ -942,9 +974,7 @@ erfc_asympt_accurate (double x)
   double eh, el, uh, ul;
   a_mul (&uh, &ul, x, x);
   int e;
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   exp_accurate (&eh, &el, &e, -uh, -ul);
-  // if (x == TRACE) printf ("eh=%la el=%la e=%d\n", eh, el, e);
   /* eh+el approximates exp(-x^2), where 2.92 < x^2 < 742 */
 
   /* compute 1/x as double-double */
@@ -953,20 +983,16 @@ erfc_asympt_accurate (double x)
   /* Newton's iteration for 1/x is y -> y + y*(1-x*y) */
   yl = yh * __builtin_fma (-x, yh, 1.0);
   // yh+yl approximates 1/x
-  // if (x == TRACE) printf ("yh=%la yl=%la\n", yh, yl);
   static const double threshold[] = { 0x1.45p-4, 0x1.e0p-4, 0x1.3fp-3,
   0x1.95p-3, 0x1.f5p-3, 0x1.31p-2, 0x1.71p-2, 0x1.bcp-2, 0x1.0bp-1, 0x1.3p-1 };
   int i;
   for (i = 0; yh > threshold[i]; i++);
-  // if (x == TRACE) printf ("i=%d\n", i);
   // 0 <= i <= 9
-  // if (x == TRACE) printf ("i=%d\n", i);
   const double *p = Tacc[i];
   /* now evaluate p(yh + yl) */
   a_mul (&uh, &ul, yh, yh);
   ul = __builtin_fma (2.0 * yh, yl, ul);
   /* uh+ul approximates 1/x^2 */
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   double zh, zl;
   /* the polynomial p has degree 29+2i, and its coefficient of largest
      degree is p[14+6+i] */
@@ -990,34 +1016,27 @@ erfc_asympt_accurate (double x)
     two_sum (&zh, &zl, p[j-1], h);
     zl += l + p[j];
   }
-  //   if (x == TRACE) printf ("zh=%la zl=%la\n", zh, zl);
   /* multiply by yh+yl */
   a_mul (&uh, &ul, zh, yh);
   ul = __builtin_fma (zh, yl, ul);
   ul = __builtin_fma (zl, yh, ul);
   /* now uh+ul approximates p(1/x), i.e., erfc(x)*exp(x^2) */
-  // if (x == TRACE) printf ("uh=%la ul=%la\n", uh, ul);
   /* now multiply (uh+ul)*(eh+el), after normalizing uh+ul to reduce the
      number of exceptional cases */
   fast_two_sum (&uh, &ul, uh, ul);
   a_mul (&h, &l, uh, eh);
   l = __builtin_fma (uh, el, l);
   l = __builtin_fma (ul, eh, l);
-  // if (x == TRACE) printf ("h=%la l=%la e=%d\n", h, l, e);
   /* multiply by 2^e */
   double res = __builtin_ldexp (h + l, e);
-  // if (x == TRACE) printf ("res=%la\n", res);
   if (res < 0x1p-1022)
   {
     /* for erfc(x) in the subnormal range, we have to perform a special
        rounding */
     double corr = h - __builtin_ldexp (res, -e);
-    // if (x == TRACE) printf ("corr=%la\n", corr);
     corr += l;
-    // if (x == TRACE) printf ("corr=%la\n", corr);
     /* add corr*2^e */
     res += __builtin_ldexp (corr, e);
-    // if (x == TRACE) printf ("res=%la\n", res);
   }
   return res;
 }
@@ -1092,11 +1111,8 @@ cr_erfc_accurate (double x)
       if (x == exceptions[i][0])
         return exceptions[i][1] + exceptions[i][2];
     cr_erf_accurate (&h, &l, x);
-    // if (x == TRACE) printf ("cr_erfc_accurate: h=%la l=%la\n", h, l);
     fast_two_sum (&h, &t, 1.0, -h);
-    // if (x == TRACE) printf ("cr_erfc_accurate: h=%la t=%la\n", h, t);
     l = t - l;
-    // if (x == TRACE) printf ("cr_erfc_accurate: h=%la l=%la\n", h, l);
     return h + l;
   }
   /* Now 0x1.b59ffb450828cp+0 < x < 0x1.b39dc41e48bfdp+4.
@@ -1165,15 +1181,10 @@ cr_erfc (double x)
   double h, l, err;
   err = cr_erfc_fast (&h, &l, x);
 
-  //if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left  = h + (l - err);
   double right = h + (l + err);
   if (left == right)
-  {
-    // if (x == TRACE) printf ("fast path succeeded\n");
     return left;
-  }
-  // if (x == TRACE) printf ("fast path failed\n");
 
   return cr_erfc_accurate (x);
 }
