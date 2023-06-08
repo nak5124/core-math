@@ -127,7 +127,7 @@ doloop(void)
     double z2 = cr_function_under_test(x);
     tests ++;
     /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-    if (z2 != 0 && is_equal (z1, z2) == 0) {
+    if (is_equal (z1, z2) == 0) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
       fflush(stdout);
 #ifdef DO_NOT_ABORT
