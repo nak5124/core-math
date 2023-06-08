@@ -1121,24 +1121,7 @@ cr_erfc_accurate (double x)
     l = t - l;
     return h + l;
   }
-  /* Now 0x1.b59ffb450828cp+0 < x < 0x1.b39dc41e48bfdp+4.
-     There are 3976 worst-cases in erfc.wc in this range:
-     57 identical bits: 1 (after round bit)
-     55 identical bits: 1
-     54 identical bits: 1
-     53 identical bits: 1
-     52 identical bits: 6
-     51 identical bits: 5
-     50 identical bits: 15
-     49 identical bits: 26
-     48 identical bits: 58
-     47 identical bits: 105
-     46 identical bits: 246
-     45 identical bits: 481
-     44 identical bits: 1038
-     43 identical bits: 1992
-     We target an accuracy of about 53+1+50 = 104 for the accurate path.
-  */
+  // now 0x1.b59ffb450828cp+0 < x < 0x1.b39dc41e48bfdp+4
   return erfc_asympt_accurate (x);
 }
 
