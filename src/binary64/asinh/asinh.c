@@ -37,12 +37,6 @@ static inline double fasttwosum(double x, double y, double *e){
   return s;
 }
 
-static inline double fasttwosub(double x, double y, double *e){
-  double s = x - y, z = x - s;
-  *e = z - y;
-  return s;
-}
-
 static inline double adddd(double xh, double xl, double ch, double cl, double *l) {
   double s = xh + ch, d = s - xh;
   *l = ((ch - d) + (xh + (d - s))) + (xl + cl);
@@ -68,19 +62,6 @@ static inline double mulddd(double xh, double xl, double ch, double *l){
 static inline double polydd(double xh, double xl, int n, const double c[][2], double *l){
   int i = n-1;
   double ch = c[i][0] + *l, cl = ((c[i][0] - ch) + *l) + c[i][1];
-  while(--i>=0){
-    ch = muldd(xh, xl, ch, cl, &cl);
-    double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
-    ch = th;
-    cl += tl + c[i][1];
-  }
-  *l = cl;
-  return ch;
-}
-
-static inline double polydd0(double xh, double xl, int n, const double c[][2], double *l){
-  int i = n-1;
-  double ch = c[i][0], cl = c[i][1];
   while(--i>=0){
     ch = muldd(xh, xl, ch, cl, &cl);
     double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
