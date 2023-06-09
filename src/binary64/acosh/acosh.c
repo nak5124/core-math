@@ -37,12 +37,6 @@ static inline double fasttwosum(double x, double y, double *e){
   return s;
 }
 
-static inline double fasttwosub(double x, double y, double *e){
-  double s = x - y, z = x - s;
-  *e = z - y;
-  return s;
-}
-
 static inline double adddd(double xh, double xl, double ch, double cl, double *l) {
   double s = xh + ch, d = s - xh;
   *l = ((ch - d) + (xh + (d - s))) + (xl + cl);
