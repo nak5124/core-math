@@ -33,7 +33,7 @@ SOFTWARE.
 #include <sys/types.h>
 #include <unistd.h>
 
-#define N 1000000000UL /* total number of tests */
+#define N 2000000000UL /* total number of tests */
 
 int ref_init (void);
 int ref_fesetround (int);

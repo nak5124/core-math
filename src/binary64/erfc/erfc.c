@@ -34,7 +34,7 @@ SOFTWARE.
        explicit error bounds, Sylvain Chevillard, Research Report, 2009,
        https://inria.hal.science/ensl-00356709v3.
    [4] https://stackoverflow.com/questions/39777360/accurate-computation-of-scaled-complementary-error-function-erfcx
-   [5] Chebyshev Approximation of (1 + 2 x) exp(x2) erfc x in 0 ≤ x < Inf,
+   [5] Chebyshev Approximation of (1 + 2 x) exp(x^2) erfc x in 0 ≤ x < Inf,
        M. M. Shepherd and J. G. Laframboise, Mathematics of Computation,
        Volume 36, No. 153, January 1981, pp. 249-253
    [6] Modern Computer Arithmetic, Richard Brent and Paul Zimmermann,
