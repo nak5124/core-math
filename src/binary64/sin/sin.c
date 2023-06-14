@@ -1025,25 +1025,41 @@ normalize (dint64_t *X)
 
 /* Approximate X/(2pi) mod 1. If Xin is the input value, and Xout the
    output value, we have:
-   |Xout - (Xin/(2pi) mod 1)| < 2^-127
-   X is normalized at output.
+   |Xout - (Xin/(2pi) mod 1)| < 2^-124.34*|Xout| when |Xin| < 2
+   |Xout - (Xin/(2pi) mod 1)| < 2^-127           when |Xin| >= 2
+   Assert X is normalized at input, and normalize X at output.
 */
 static void
 reduce (dint64_t *X)
 {
   int e = X->ex;
-  uint64_t c[5];
   u128 u;
 
-  if (e <= 1) // simply multiply by T[0]/2^64 + T[1]/2^128
+  if (e <= 1) // |X| < 2
   {
+    /* multiply by T[0]/2^64 + T[1]/2^128, where
+       |T[0]/2^64 + T[1]/2^128 - 1/(2pi)| < 2^-130.22 */
     u = (u128) X->hi * (u128) T[1];
-    c[1] = u >> 64;
+    /* the ignored part u % 2^64 is at most ulp(X->lo) */
+    X->lo = u >> 64;
     u = (u128) X->hi * (u128) T[0];
-    X->lo = c[1] + u;
+    X->lo += u;
     X->hi = (u >> 64) + (X->lo < (uint64_t) u);
-    /* the ignored part is at most 2^(ex-128) <= 2^-127 */
+    /* since X is normalized at input, X->hi >= 2^63, and since T[0] >= 2^61,
+       we have X->hi >= 2^(63+61-64) = 2^60, thus the normalize() below
+       perform a left shift by at most 3 bits */
     normalize (X);
+    /* The error on X->lo is thus bounded by 2^3 = 8, which corresponds to
+       a relative error of at most 2^3/2^127 = 2^-124.
+       We can get a finer bound as follows:
+       (i) if at input X->hi >= 14488038916154245688, then
+           X->hi*T0 >= 2^125, thus the left shift is at most by 2 bits,
+           and the relative error is bounded by 2^-125.
+       (ii) if at input 2^63 <= X->hi < 14488038916154245688, then
+           the left shift might be of 3 bits, but after the shift the
+           value is lower bounded by 2^63*2^3*T0, thus the relative error
+           is bounded by 2^3/(2^63*2^3*T0) < 2^-124.34.
+    */
     return;
   }
 
@@ -1060,8 +1076,9 @@ reduce (dint64_t *X)
      multiple of 64). */
   int i = (e < 127) ? 0 : (e - 127 + 64 - 1) / 64; // ceil((e-127)/64)
   // 0 <= i <= 15
+  uint64_t c[5];
   u = (u128) X->hi * (u128) T[i+3]; // i+3 <= 18
-  /* we do not compute c[0] = u % 2^64, which does not contribute below */
+  c[0] = u;
   c[1] = u >> 64;
   u = (u128) X->hi * (u128) T[i+2];
   c[1] += u;
@@ -1073,34 +1090,51 @@ reduce (dint64_t *X)
   c[3] += u;
   c[4] = (u >> 64) + (c[3] < (uint64_t) u);
 
+  /* up to here, the ignored part hi*(T[i+4]+T[i+5]+...) can contribute by
+     less than 2^64 in c[0], thus less than 1 in c[1] */
+
   int f = e - 64 * i; // hi*T[i]/2^128 is multiplied by 2^f
   /* {c, 5} = hi*(T[i]+T[i+1]/2^64+T[i+2]/2^128+T[i+3]/2^192) */
   assert (2 <= f && f <= 127);
   /* now shift c[0..4] by f bits to the left */
+  uint64_t tiny;
   if (f < 64)
   {
     X->hi = (c[4] << f) | (c[3] >> (64 - f));
     X->lo = (c[3] << f) | (c[2] >> (64 - f));
+    tiny = (c[2] << f) | (c[1] >> (64 - f));
+    /* the ignored part was less than 1 in c[1],
+       thus less than 2^(f-64) <= 1/2 in tiny */
   }
   else if (f == 64)
   {
     X->hi = c[3];
     X->lo = c[2];
+    tiny = c[1];
+    /* the ignored part was less than 1 in c[1],
+       thus less than 1 in tiny */
   }
   else /* 65 <= f <= 127 */
   {
-    f -= 64; /* 1 <= f <= 63 */
-    X->hi = (c[3] << f) | (c[2] >> (64 - f));
-    X->lo = (c[2] << f) | (c[1] >> (64 - f));
+    int g = f - 64; /* 1 <= g <= 63 */
+    X->hi = (c[3] << g) | (c[2] >> (64 - g));
+    X->lo = (c[2] << g) | (c[1] >> (64 - g));
+    tiny = (c[1] << g) | (c[0] >> (64 - g));
+    /* the ignored part was less than 1 in c[1],
+       thus less than 2^g <= 2^63 in tiny */
   }
-  /* the approximation error is at most 2 ulps = 2^-127:
+  /* the approximation error is at most 2 ulps:
      (a) the truncated part in the above shifts, which is less than 1 ulp,
          i.e., less than 2^-128
      (b) the ignored terms hi*T[i+4] + ..., which accumulate to less than
          1 ulp too.
   */
   X->ex = 0;
+  /* since X->ex=0, the absolute error of 2 ulps corresponds to 2^-127
+     and is not changed after the normalize() call */
   normalize (X);
+  if (X->ex < 0) // put the upper -ex bits of tiny into low bits of lo
+    X->lo |= tiny >> (64 + X->ex);
 }
 
 /* return i and modify X such that Xin = i/2^8 + Xout */
@@ -1155,7 +1189,6 @@ sin_accurate (double x)
 
   /* reduce argument */
   reduce (X);
-  // if (x0 == TRACE) { printf ("X1="); print_dint (X); }
 
   /* Now X = frac(x/(2pi)) + eps with |eps| < 2^-127, with |X| < 1.
      Write X = i/2^8 + r with r < 2^8. */
