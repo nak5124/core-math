@@ -956,12 +956,10 @@ static const dint64_t PC[] = {
   {.hi = 0xdb6e0c3401e61fad, .lo = 0x0, .ex = 1, .sgn=1}, // degree 14
 };
 
-// put in Y an approximation of sin2pi(X)
+// put in Y an approximation of sin2pi(X), where X2 approximates X^2
 static void
-evalPS (dint64_t *Y, dint64_t *X)
+evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
 {
-  dint64_t X2[1];
-  mul_dint (X2, X, X);       // X2 approximates X^2
   mul_dint_21 (Y, X2, PS+6); // degree 13
   add_dint (Y, Y, PS+5);     // degree 11
   mul_dint (Y, Y, X2);
@@ -977,12 +975,10 @@ evalPS (dint64_t *Y, dint64_t *X)
   mul_dint (Y, Y, X);        // multiply by X
 }
 
-// put in Y an approximation of cos2pi(X)
+// put in Y an approximation of cos2pi(X), where X2 approximates X^2
 static void
-evalPC (dint64_t *Y, dint64_t *X)
+evalPC (dint64_t *Y, dint64_t *X2)
 {
-  dint64_t X2[1];
-  mul_dint (X2, X, X);       // X2 approximates X^2
   mul_dint_21 (Y, X2, PC+7); // degree 14
   add_dint (Y, Y, PC+6);     // degree 12
   mul_dint (Y, Y, X2);
@@ -1133,6 +1129,8 @@ reduce (dint64_t *X)
   /* since X->ex=0, the absolute error of 2 ulps corresponds to 2^-127
      and is not changed after the normalize() call */
   normalize (X);
+  /* the worst case (for 2^26 < x < 2^1024) is X->ex = -61, attained
+     for |x| = 0x1.6ac5b262ca1ffp+851 */
   if (X->ex < 0) // put the upper -ex bits of tiny into low bits of lo
     X->lo |= tiny >> (64 + X->ex);
 }
@@ -1196,10 +1194,11 @@ sin_accurate (double x)
   // if (x0 == TRACE) { printf ("i=%d X2=", i); print_dint (X); }
 
   // approximate sin2pi(x) by sin2pi(i/2^8)*cos2pi(X)+cos2pi(i/2^8)*sin2pi(X)
-  dint64_t U[1], V[1];
-  evalPC (U, X); // cos2pi(X)
+  dint64_t U[1], V[1], X2[1];
+  mul_dint (X2, X, X);       // X2 approximates X^2
+  evalPC (U, X2);    // cos2pi(X)
   // if (x0 == TRACE) { printf ("cos2pi(X2)="); print_dint (U); }
-  evalPS (V, X); // sin2pi(X)
+  evalPS (V, X, X2); // sin2pi(X)
   // if (x0 == TRACE) { printf ("sin2pi(X2)="); print_dint (V); }
   mul_dint (U, S+i, U); // sin2pi(i/2^8)*cos2pi(X)
   // if (x0 == TRACE) { printf ("sin2pi(i/2^8)*cos2pi(X2)="); print_dint (U); }
