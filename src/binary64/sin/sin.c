@@ -407,7 +407,7 @@ static const uint64_t T[19] = {
    0x1580cc11bf1edaea,
 };
 
-/* This table contains 128-bit approximations of sin(i/2^8) for 0 <= i < 256
+/* This table contains 128-bit approximations of sin2pi(i/2^8) for 0 <= i < 256
    (to nearest).
    Each entry is to be interpreted as (hi/2^64+lo/2^128)*2^ex*(-1)*sgn.
    Generated with computeS() from sin.sage. */
@@ -670,6 +670,10 @@ static const dint64_t S[256] = {
    {.hi = 0xc90aafbd1b33efc9, .lo = 0xc539edcbfda0cf2c, .ex = -5, .sgn=1},
 };
 
+/* This table contains 128-bit approximations of cos2pi(i/2^8) for 0 <= i < 256
+   (to nearest).
+   Each entry is to be interpreted as (hi/2^64+lo/2^128)*2^ex*(-1)*sgn.
+   Generated with computeC() from sin.sage. */
 static const dint64_t C[256] = {
    {.hi = 0x8000000000000000, .lo = 0x0, .ex = 1, .sgn=0},
    {.hi = 0xffec4304266865d9, .lo = 0x5657552366961732, .ex = 0, .sgn=0},
