@@ -384,29 +384,30 @@ print_dint (dint64_t *X)
 }
 #endif
 
-/* This table approximates 1/(2pi) downwards with precision 1216:
+/* This table approximates 1/(2pi) downwards with precision 1280:
    1/(2*pi) ~ T[0]/2^64 + T[1]/2^128 + ... + T[i]/2^((i+1)*64) + ...
    Computed with computeT() from sin.sage. */
-static const uint64_t T[19] = {
-   0x28be60db9391054a,
+static const uint64_t T[20] = {
+  0x28be60db9391054a, // i=0
    0x7f09d5f47d4d3770,
    0x36d8a5664f10e410,
    0x7f9458eaf7aef158,
    0x6dc91b8e909374b8,
-   0x1924bba82746487,
+   0x1924bba82746487, // i=5
    0x3f877ac72c4a69cf,
    0xba208d7d4baed121,
    0x3a671c09ad17df90,
    0x4e64758e60d4ce7d,
-   0x272117e2ef7e4a0e,
+   0x272117e2ef7e4a0e, // i=10
    0xc7fe25fff7816603,
    0xfbcbc462d6829b47,
    0xdb4d9fb3c9f2c26d,
    0xd3d18fd9a797fa8b,
-   0x5d49eeb1faf97c5e, /* i=15 */
+   0x5d49eeb1faf97c5e, // i=15
    0xcf41ce7de294a4ba,
    0x9afed7ec47e35742,
    0x1580cc11bf1edaea,
+   0xfc33ef0826bd0d87, // i=19
 };
 
 /* Table containing 128-bit approximations of sin2pi(i/2^11) for 0 <= i < 256
@@ -1020,8 +1021,7 @@ normalize (dint64_t *X)
 
 /* Approximate X/(2pi) mod 1. If Xin is the input value, and Xout the
    output value, we have:
-   |Xout - (Xin/(2pi) mod 1)| < 2^-124.34*|Xout| when |Xin| < 2
-   |Xout - (Xin/(2pi) mod 1)| < 2^-127           when |Xin| >= 2
+   |Xout - (Xin/(2pi) mod 1)| < 2^-124.34*|Xout|
    Assert X is normalized at input, and normalize X at output.
 */
 static void
@@ -1109,30 +1109,44 @@ reduce (dint64_t *X)
     /* the ignored part was less than 1 in c[1],
        thus less than 1 in tiny */
   }
-  else /* 65 <= f <= 127 */
+  else /* 65 <= f <= 127: this case can only occur when e >= 65 */
   {
     int g = f - 64; /* 1 <= g <= 63 */
+    /* we compute an extra term */
+    u = (u128) X->hi * (u128) T[i+4]; // i+4 <= 19
+    u = u >> 64;
+    c[0] += u;
+    c[1] += (c[0] < u);
+    c[2] += (c[0] < u) && c[1] == 0;
+    c[3] += (c[0] < u) && c[1] == 0 && c[2] == 0;
+    c[4] += (c[0] < u) && c[1] == 0 && c[2] == 0 && c[3] == 0;
     X->hi = (c[3] << g) | (c[2] >> (64 - g));
     X->lo = (c[2] << g) | (c[1] >> (64 - g));
     tiny = (c[1] << g) | (c[0] >> (64 - g));
-    /* the ignored part was less than 1 in c[1],
-       thus less than 2^g <= 2^63 in tiny */
+    /* the ignored part was less than 1 in c[0],
+       thus less than 1/2 in tiny */
   }
-  /* the approximation error is at most 2 ulps:
-     (a) the truncated part in the above shifts, which is less than 1 ulp,
-         i.e., less than 2^-128
-     (b) the ignored terms hi*T[i+4] + ..., which accumulate to less than
-         1 ulp too.
+  /* The approximation error between X/in(2pi) mod 1 and
+     X->hi/2^64 + X->lo/2^128 + tiny/2^192 is:
+     (a) the ignored part in tiny, which is less than ulp(tiny),
+         thus less than 1/2^192;
+     (b) the ignored terms hi*T[i+4] + ... or hi*T[i+5] + ...,
+         which accumulate to less than ulp(tiny) too, thus
+         less than 1/2^192.
+     Thus the approximation error is less than 2^-191 (absolute).
   */
   X->ex = 0;
-  /* since X->ex=0, the absolute error of 2 ulps corresponds to 2^-127
-     and is not changed after the normalize() call */
   normalize (X);
   /* the worst case (for 2^25 <= x < 2^1024) is X->ex = -61, attained
      for |x| = 0x1.6ac5b262ca1ffp+851 */
-  // assert (X->ex >= -61);
   if (X->ex < 0) // put the upper -ex bits of tiny into low bits of lo
     X->lo |= tiny >> (64 + X->ex);
+  /* Since X->ex >= -61, it means X >= 2^-62 before the normalization,
+     thus the maximal absolute error of 2^-191 yields a relative error
+     bounded by 2^-191/2^-62 = 2^-129.
+     There is an additional truncation error (for tiny) of at most 1 ulp
+     of X->lo, thus at most 2^-127.
+     The relative error is thus bounded by 2^-126.67. */
 }
 
 /* Given Xin:=X with 0 <= Xin < 1, return i and modify X such that
@@ -1189,11 +1203,12 @@ sin_accurate (double x)
 
   /* reduce argument */
   reduce (X);
+  
+  // now |X - x/(2pi) mod 1| < 2^-124.34*X, with 0 <= X < 1.
 
   int neg = x < 0, is_sin = 1;
 
-  /* Now X = frac(x/(2pi)) + eps with |eps| < 2^-127, with |X| < 1.
-     Write X = i/2^11 + r with r < 2^11. */
+  // Write X = i/2^11 + r with r < 2^11. This operation is exact.
   int i = reduce2 (X);
   // if (x == TRACE) { printf ("i=%d Xred=", i); print_dint (X); }
 
