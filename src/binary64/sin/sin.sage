@@ -96,3 +96,27 @@ def search_all():
    for e in range(1024,1,-1):
       x = search(e)
       print (get_hex(x) + ' # ' + str(e))
+
+# for 2^(e-1) <= x < 2^e
+# sin(x) is monotonous between (k-1/2)*pi and (k+1/2)*pi
+def doit_bacsel(e):
+   x0 = 2^(e-1)
+   k0 = ceil(x0/pi+1/2)
+   x1 = 2^e
+   k1 = floor(x1/pi+1/2)
+   t1 = RR(n((k0-1/2)*pi,200))
+   if n(t1.exact_rational(),200) < n((k0-1/2)*pi,200):
+      t1 = t1.nextabove()
+   t1 = ZZ(t1.exact_rational()*2^(53-e))
+   print ("./doit.sh 4503599627370496 " + str(t1) + " 53 " + str(e) + " 64 20")
+   for k in range(k0+1,k1+1):
+      t0 = t1
+      t1 = RR(n((k-1/2)*pi,200))
+      if n(t1.exact_rational(),200) < n((k-1/2)*pi,200):
+         t1 = t1.nextabove()
+      t1 = ZZ(t1.exact_rational()*2^(53-e))
+      print ("./doit.sh " + str(t0) + " " + str(t1) + " 53 " + str(e) + " 64 20")
+   t0 = t1
+   print ("./doit.sh " + str(t0) + " 9007199254740992 53 " + str(e) + " 64 20")
+   
+   

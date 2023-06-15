@@ -1129,8 +1129,9 @@ reduce (dint64_t *X)
   /* since X->ex=0, the absolute error of 2 ulps corresponds to 2^-127
      and is not changed after the normalize() call */
   normalize (X);
-  /* the worst case (for 2^26 < x < 2^1024) is X->ex = -61, attained
+  /* the worst case (for 2^25 <= x < 2^1024) is X->ex = -61, attained
      for |x| = 0x1.6ac5b262ca1ffp+851 */
+  assert (X->ex >= -61);
   if (X->ex < 0) // put the upper -ex bits of tiny into low bits of lo
     X->lo |= tiny >> (64 + X->ex);
 }
@@ -1192,6 +1193,12 @@ sin_accurate (double x)
      Write X = i/2^8 + r with r < 2^8. */
   int i = reduce2 (X);
   // if (x0 == TRACE) { printf ("i=%d X2=", i); print_dint (X); }
+
+  /* We use the following identities:
+   * sin(x+pi) = -sin(x), thus we can reduce x to [0, pi)
+   * sin(x+pi/2) = cos(x), thus we can reduce x to [0, pi/2)
+   * sin(pi/2-x) = cos(x), thus we can reduce x to [0, pi/4)
+   */
 
   // approximate sin2pi(x) by sin2pi(i/2^8)*cos2pi(X)+cos2pi(i/2^8)*sin2pi(X)
   dint64_t U[1], V[1], X2[1];
