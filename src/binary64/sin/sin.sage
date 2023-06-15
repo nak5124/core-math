@@ -17,22 +17,22 @@ def out_dint(x):
    h, l = divmod(m,2^64)
    print ("  {.hi = " + hex(h) + ", .lo = " + hex(l) + ", .ex = " + str(e+128) + ", .sgn=" + str((1-s)/2) + "},")
 
-# compute table of sin(2*pi*i/2^8) for 0 <= i < 256
+# compute table of sin(2*pi*i/2^11) for 0 <= i < 256
 def computeS():
    R = RealField(128)
    print ("static const dint64_t S[256] = {")
    for i in range(256):
-      s = n(sin(2*pi*i/2^8), 512)
+      s = n(sin(2*pi*i/2^11), 512)
       s = R(s)
       out_dint(s)
    print ("};")
 
-# compute table of cos(2*pi*i/2^8) for 0 <= i < 256
+# compute table of cos(2*pi*i/2^11) for 0 <= i < 256
 def computeC():
    R = RealField(128)
    print ("static const dint64_t C[256] = {")
    for i in range(256):
-      s = n(cos(2*pi*i/2^8), 512)
+      s = n(cos(2*pi*i/2^11), 512)
       s = R(s)
       out_dint (s)
    print ("};")
