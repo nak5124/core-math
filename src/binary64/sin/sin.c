@@ -29,7 +29,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <fenv.h>
 
-#define TRACE 0x1.0192deafac33fp+0
+#define TRACE 0x1.e0000000001c2p-20
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
@@ -373,7 +373,7 @@ static inline double dint_tod(dint64_t *a) {
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
-#if 0
+#if 1
 static void
 print_dint (dint64_t *X)
 {
@@ -1150,7 +1150,8 @@ reduce (dint64_t *X)
 }
 
 /* Given Xin:=X with 0 <= Xin < 1, return i and modify X such that
-   Xin = i/2^11 + Xout, with 0 <= Xout < 2^-11. */
+   Xin = i/2^11 + Xout, with 0 <= Xout < 2^-11.
+   This operation is exact. */
 static int
 reduce2 (dint64_t *X)
 {
@@ -1193,7 +1194,8 @@ sin_accurate (double x)
   */
   uint64_t ux = t.u & 0x7fffffffffffffff;
   if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-    return __builtin_fma (x, 0x1p-54, x);
+    // Taylor expansion of sin(x) is x - x^3/6 around zero
+    return __builtin_fma (x, -0x1p-54, x);
 
   double absx = (x > 0) ? x : -x;
 
@@ -1208,8 +1210,8 @@ sin_accurate (double x)
 
   int neg = x < 0, is_sin = 1;
 
-  // Write X = i/2^11 + r with r < 2^11. This operation is exact.
-  int i = reduce2 (X);
+  // Write X = i/2^11 + r with 0 <= r < 2^11.
+  int i = reduce2 (X); // exact
   // if (x == TRACE) { printf ("i=%d Xred=", i); print_dint (X); }
 
   if (i & 0x400) // pi <= x < 2*pi: sin(x) = -sin(x-pi)
@@ -1236,11 +1238,13 @@ sin_accurate (double x)
     X->sgn = 1; // negate X
     // assert (X->ex < -1);
     add_dint (X, &MAGIC, X); // X -> 2^-11 - X
+    // here: 256 <= i <= 511
     i = 0x1ff - i;
+    // now 0 <= i < 256
   }
   // if (x == TRACE) { printf ("i=%d Xred=", i); print_dint (X); }
 
-  // now 0 <= i < 2^8
+  // now 0 <= i < 256 and 0 <= X < 2^-11
   // assert (0 <= i && i < 256);
 
   dint64_t U[1], V[1], X2[1];
@@ -1269,7 +1273,7 @@ sin_accurate (double x)
     V->sgn = 1 - V->sgn; // negate V
   }
   add_dint (U, U, V);
-  // if (x == TRACE) { printf ("U="); print_dint (U); }
+  if (x == TRACE) { printf ("U="); print_dint (U); }
 
   if (neg)
     U->sgn = 1 - U->sgn;
