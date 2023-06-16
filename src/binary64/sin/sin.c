@@ -373,7 +373,7 @@ static inline double dint_tod(dint64_t *a) {
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
-#if 1
+#if 0
 static void
 print_dint (dint64_t *X)
 {
@@ -960,8 +960,11 @@ static const dint64_t PC[] = {
   {.hi = 0xd368f6f4207cfe49, .lo = 0xec63157807ebffa, .ex = 5, .sgn=1},  // 10
 };
 
-/* put in Y an approximation of sin2pi(X), for 0 <= X < 2^-11,
-   where X2 approximates X^2 */
+/* Put in Y an approximation of sin2pi(X), for 0 <= X < 2^-11,
+   where X2 approximates X^2.
+   Absolute error bounded by 2^-132.999 with 0 <= Y < 0.003068
+   (see evalPS() in sin.sage), and relative error bounded by
+   2^-123.651 (see evalPSrel() in sin.sage). */
 static void
 evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
 {
@@ -978,8 +981,10 @@ evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
   mul_dint (Y, Y, X);        // multiply by X
 }
 
-/* put in Y an approximation of cos2pi(X), for 0 <= X < 2^-11,
-   where X2 approximates X^2 */
+/* Put in Y an approximation of cos2pi(X), for 0 <= X < 2^-11,
+   where X2 approximates X^2.
+   Absolute/relative error bounded by 2^-125.999 with 0.999995 < Y <= 1
+   (see evalPC() in sin.sage). */
 static void
 evalPC (dint64_t *Y, dint64_t *X2)
 {
@@ -1247,20 +1252,33 @@ sin_accurate (double x)
   // now 0 <= i < 256 and 0 <= X < 2^-11
   // assert (0 <= i && i < 256);
 
+  /* If is_sin=1, sin |x| = sin2pi (R * (1 + eps))
+     if is_sin=0, sin |x| = cos2pi (R * (1 + eps))
+     In both cases R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-124.34.
+  */
+
   dint64_t U[1], V[1], X2[1];
   mul_dint (X2, X, X);       // X2 approximates X^2
   evalPC (U, X2);    // cos2pi(X)
-  // if (x == TRACE) { printf ("cos2pi(X2)="); print_dint (U); }
+  /* since 0 <= X < 2^-11, we have 0.999 < U <= 1 */
   evalPS (V, X, X2); // sin2pi(X)
-  // if (x == TRACE) { printf ("sin2pi(X2)="); print_dint (V); }
+  /* since 0 <= X < 2^-11, we have 0 <= V < 0.0005 */
   if (is_sin)
   {
-    // if (x == TRACE) printf ("is_sin\n");
-    // approximate sin2pi(x) by sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
-    mul_dint (U, S+i, U); // sin2pi(i/2^11)*cos2pi(X)
-    // if (x == TRACE) { printf ("sin2pi(i/2^11)*cos2pi(X2)="); print_dint (U); }
-    mul_dint (V, C+i, V); // cos2pi(i/2^11)*sin2pi(X)
-    //    if (x == TRACE) { printf ("cos2pi(i/2^11)*sin2pi(X2)="); print_dint (V); }
+    // sin2pi(x) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
+    mul_dint (U, S+i, U);
+    /* since 0 <= S[i] < 0.705 and 0.999 < Uin <= 1, we have
+       0 <= U < 0.705 */
+    mul_dint (V, C+i, V);
+    /* For the error analysis, we distinguish the case i=0.
+       For i=0, we have S[i]=0 and C[1]=1, thus V is the value computed
+       by evalPS() above, with relative error < 2^-123.651.
+       For 1 <= i < 256, analyze_sin_case1(rel=true) from sin.sage gives a
+       relative error bound of -122.797 (obtained for i=1).
+       In all cases, the relative error for the computation of
+       sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X) is bounded by -122.797
+       (this does not take into account the approximation error in R).
+    */
   }
   else
   {
@@ -1273,7 +1291,7 @@ sin_accurate (double x)
     V->sgn = 1 - V->sgn; // negate V
   }
   add_dint (U, U, V);
-  if (x == TRACE) { printf ("U="); print_dint (U); }
+  // if (x == TRACE) { printf ("U="); print_dint (U); }
 
   if (neg)
     U->sgn = 1 - U->sgn;
