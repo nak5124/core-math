@@ -104,11 +104,13 @@ float cr_log1pf(float x) {
       b64u64_u r = {.f = rl + Lh};
       if(__builtin_expect((r.u&0xfffffffl) == 0 , 0)){
 	if(x==-0x1.247ab0p-6) return -0x1.271f0ep-6f - 0x1p-31f;
+	if(x==-0x1.3a415ep-5) return -0x1.407112p-5f + 0x1p-30f;
+	if(x== 0x1.fb035ap-2) return  0x1.9bddc2p-2f + 0x1p-27f;
 	r.f += 64*(rl + (Lh - r.f));
       } else if(rl+(Lh-r.f)==0.0){
+	if(x== 0x1.b7fd86p-4) return  0x1.a1ece2p-4f + 0x1p-29f;
 	if(x==-0x1.3a415ep-5) return -0x1.407112p-5f + 0x1p-30f;
 	if(x== 0x1.43c7e2p-6) return  0x1.409f80p-6f + 0x1p-31f;
-	if(x== 0x1.b7fd86p-4) return  0x1.a1ece2p-4f + 0x1p-29f;
       }
       ub = r.f;
     }
