@@ -102,10 +102,13 @@ float cr_log1pf(float x) {
       const double ln2l = 0x1.7f7d1cf79abcap-20, ln2h = 0x1.62e4p-1;
       double Lh = ln2h * e, Ll = ln2l * e, rl = f + Ll + lix[j];
       b64u64_u r = {.f = rl + Lh};
-      if(__builtin_expect((r.u&0xfffffffl) == 0, 0)){
-	if(x==-0x1.3a415ep-5f) return -0x1.407112p-5f + 0x1p-55f;
-	if(x== 0x1.fb035ap-2f) return  0x1.9bddc2p-2f + 0x1p-27f;
+      if(__builtin_expect((r.u&0xfffffffl) == 0 , 0)){
+	if(x==-0x1.247ab0p-6) return -0x1.271f0ep-6f - 0x1p-31f;
 	r.f += 64*(rl + (Lh - r.f));
+      } else if(rl+(Lh-r.f)==0.0){
+	if(x==-0x1.3a415ep-5) return -0x1.407112p-5f + 0x1p-30f;
+	if(x== 0x1.43c7e2p-6) return  0x1.409f80p-6f + 0x1p-31f;
+	if(x== 0x1.b7fd86p-4) return  0x1.a1ece2p-4f + 0x1p-29f;
       }
       ub = r.f;
     }
