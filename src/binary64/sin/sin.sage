@@ -104,9 +104,50 @@ def search(e):
    x = RR(2^(e-1)+x*2^(e-53))
    return x
 
+def search_naive(e):
+   x0 = RR(2^(e-1))
+   x1 = RR(2^e)
+   k0 = floor(x0/(2*pi))
+   k1 = ceil(x1/(2*pi))
+   k = k0
+   mindiff = 1
+   best = None
+   while k<=k1:
+      x = RR(n(k*2*pi,200))
+      X = x.exact_rational()
+      diff = abs(n(X/(2*pi)-k,200))
+      if diff<mindiff:
+         best = x
+         mindiff = diff
+      k += 1
+   return best, mindiff
+
 def search_all():
    for e in range(1024,1,-1):
       x = search(e)
+      print (get_hex(x) + ' # ' + str(e))
+
+# return x with smallest value of |x/pi cmod 1| for 2^(e-1) <= x < 2^e
+def search2(e):
+   R = RealField(e+200)
+   N = 2^52
+   b = R(2^(e-1)/pi)
+   b = frac(-b)
+   if b < 0:
+     b = 1+b
+   assert b > 0, "b > 0"
+   a = R(2^(e-53)/pi)
+   a = frac(a)
+   assert a > 0, "a > 0"
+   oldx = -1
+   d, x = AlgoLefevre(a,b,N)
+   d, x = AlgoLefevre(a,b+R(d),N)
+   x = RR(2^(e-1)+x*2^(e-53))
+   return x
+
+def search2_all():
+   for e in range(1024,1,-1):
+      x = search2(e)
       print (get_hex(x) + ' # ' + str(e))
 
 # for 2^(e-1) <= x < 2^e
