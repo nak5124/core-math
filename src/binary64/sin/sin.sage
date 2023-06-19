@@ -109,7 +109,7 @@ def search_naive(e):
    x1 = RR(2^e)
    k0 = floor(x0/(2*pi))
    k1 = ceil(x1/(2*pi))
-   k = k0
+   k = max(1,k0)
    mindiff = 1
    best = None
    while k<=k1:
@@ -126,6 +126,24 @@ def search_all():
    for e in range(1024,1,-1):
       x = search(e)
       print (get_hex(x) + ' # ' + str(e))
+
+def search2_naive(e):
+   x0 = RR(2^(e-1))
+   x1 = RR(2^e)
+   k0 = floor(x0/pi)
+   k1 = ceil(x1/pi)
+   k = max(1,k0)
+   mindiff = 1
+   best = None
+   while k<=k1:
+      x = RR(n(k*pi,200))
+      X = x.exact_rational()
+      diff = abs(n(X/pi-k,200))
+      if diff<mindiff:
+         best = x
+         mindiff = diff
+      k += 1
+   return best, mindiff
 
 # return x with smallest value of |x/pi cmod 1| for 2^(e-1) <= x < 2^e
 def search2(e):
