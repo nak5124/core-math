@@ -346,4 +346,30 @@ def analyze_sin_case1(rel=false):
          maxerr = err
          print ("i=", i, "err=", err, "U=", (U.lower(), U.upper()))
       
-      
+def repair():
+   f = open("torepair","r")
+   while true:
+      s = f.readline()
+      if s=='':
+         break
+      s = s.split()
+      t0 = ZZ(s[0])
+      t1 = ZZ(s[1])
+      n = ZZ(s[2])
+      assert n == 53
+      e = ZZ(s[3])
+      nthreads = ZZ(s[4])
+      assert nthreads == 64
+      t = ZZ(s[5])
+      assert t == 20
+      # find root of sin(x)
+      x0 = t0/2^53*2^e
+      x1 = t1/2^53*2^e
+      k0 = ceil(x0/pi)
+      k1 = floor(x1/pi)
+      assert k0==k1, "k0==k1"
+      tm = round(k0*pi*2^53/2^e)
+      print ("./doit.sh " + str(t0) + " " + str(tm-10^7) + " 53 " + str(e) + " 64 20")
+      print ("./doit0.sh " + str(tm-10^7) + " " + str(tm+10^7) + " 53 " + str(e) + " 64 20")
+      print ("./doit.sh " + str(tm+10^7) + " " + str(t1) + " 53 " + str(e) + " 64 20")
+   f.close()
