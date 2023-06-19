@@ -27,6 +27,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <fenv.h>
 
 #define TRACE 0x1.e0000000001c2p-20
@@ -1026,7 +1027,7 @@ normalize (dint64_t *X)
 
 /* Approximate X/(2pi) mod 1. If Xin is the input value, and Xout the
    output value, we have:
-   |Xout - (Xin/(2pi) mod 1)| < 2^-124.34*|Xout|
+   |Xout - (Xin/(2pi) mod 1)| < 2^-126.67*|Xout|
    Assert X is normalized at input, and normalize X at output.
 */
 static void
@@ -1040,25 +1041,28 @@ reduce (dint64_t *X)
     /* multiply by T[0]/2^64 + T[1]/2^128, where
        |T[0]/2^64 + T[1]/2^128 - 1/(2pi)| < 2^-130.22 */
     u = (u128) X->hi * (u128) T[1];
-    /* the ignored part u % 2^64 is at most ulp(X->lo) */
+    uint64_t tiny = u;
     X->lo = u >> 64;
     u = (u128) X->hi * (u128) T[0];
     X->lo += u;
     X->hi = (u >> 64) + (X->lo < (uint64_t) u);
-    /* since X is normalized at input, X->hi >= 2^63, and since T[0] >= 2^61,
-       we have X->hi >= 2^(63+61-64) = 2^60, thus the normalize() below
+    /* hi + lo/2^64 + tiny/2^128 = hi_in * (T[0]/2^64 + T[1]/2^128) thus
+       |hi + lo/2^64 + tiny/2^128 - hi_in/(2*pi)| < hi_in * 2^-130.22
+       Since X is normalized at input, hi_in >= 2^63, and since T[0] >= 2^61,
+       we have hi >= 2^(63+61-64) = 2^60, thus the normalize() below
        perform a left shift by at most 3 bits */
+    int e = X->ex;
     normalize (X);
-    /* The error on X->lo is thus bounded by 2^3 = 8, which corresponds to
-       a relative error of at most 2^3/2^127 = 2^-124.
-       We can get a finer bound as follows:
-       (i) if at input X->hi >= 14488038916154245688, then
-           X->hi*T0 >= 2^125, thus the left shift is at most by 2 bits,
-           and the relative error is bounded by 2^-125.
-       (ii) if at input 2^63 <= X->hi < 14488038916154245688, then
-           the left shift might be of 3 bits, but after the shift the
-           value is lower bounded by 2^63*2^3*T0, thus the relative error
-           is bounded by 2^3/(2^63*2^3*T0) < 2^-124.34.
+    e = e - X->ex;
+    assert (0 <= e && e <= 3);
+    // put the upper e bits of tiny into X->lo
+    if (e)
+      X->lo |= tiny >> (64 - e);
+    /* The error is bounded by 2^-130.22 (relative) + ulp(lo) (absolute).
+       Since now X->hi >= 2^63, the absolute error of ulp(lo) converts into
+       a relative error of less than 2^-127.
+       This yields a maximal relative error of:
+       (1 + 2^-130.22) * (1 + 2^-127) - 1 < 2^-126.852.
     */
     return;
   }
@@ -1211,7 +1215,7 @@ sin_accurate (double x)
   /* reduce argument */
   reduce (X);
   
-  // now |X - x/(2pi) mod 1| < 2^-124.34*X, with 0 <= X < 1.
+  // now |X - x/(2pi) mod 1| < 2^-126.67*X, with 0 <= X < 1.
 
   int neg = x < 0, is_sin = 1;
 
@@ -1253,8 +1257,10 @@ sin_accurate (double x)
   // assert (0 <= i && i < 256);
 
   /* If is_sin=1, sin |x| = sin2pi (R * (1 + eps))
+        (cases 0 <= x < pi/4 and 3pi/4 <= x < pi)
      if is_sin=0, sin |x| = cos2pi (R * (1 + eps))
-     In both cases R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-124.34.
+        (case pi/4 <= x < 3pi/4)
+     In both cases R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
   */
 
   dint64_t U[1], V[1], X2[1];
@@ -1273,11 +1279,28 @@ sin_accurate (double x)
     /* For the error analysis, we distinguish the case i=0.
        For i=0, we have S[i]=0 and C[1]=1, thus V is the value computed
        by evalPS() above, with relative error < 2^-123.651.
+
        For 1 <= i < 256, analyze_sin_case1(rel=true) from sin.sage gives a
        relative error bound of -122.797 (obtained for i=1).
        In all cases, the relative error for the computation of
        sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X) is bounded by -122.797
-       (this does not take into account the approximation error in R).
+       not taking into account the approximation error in R:
+       |U - sin2pi(R)| < |U| * 2^-122.797, with U the value computed
+       after add_dint (U, U, V) below.
+
+       For the approximation error in R, we have:
+       sin |x| = sin2pi (R * (1 + eps))
+       R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
+       Thus sin|x| = sin2pi(R+R*eps)
+                   = sin2pi(R)+R*eps*2*pi*cos2pi(theta), theta in [R,R+R*eps]
+       Since 2*pi*R/sin(2*pi*R) < pi/2 for R < 1/4, it follows:
+       | sin|x| - sin2pi(R) | < pi/2*R*|sin(2*pi*R)|
+       | sin|x| - sin2pi(R) | < 2^-126.018 * |sin2pi(R)|.
+
+       Adding both errors we get:
+       | sin|x| - U | < |U| * 2^-122.797 + 2^-126.018 * |sin2pi(R)|
+                      < |U| * 2^-122.797 + 2^-126.018 * |U| * (1 + 2^-122.797)
+                      < |U| * 2^-122.650.
     */
   }
   else
@@ -1289,8 +1312,59 @@ sin_accurate (double x)
     mul_dint (V, S+i, V);
     // if (x == TRACE) { printf ("sin2pi(i/2^11)*sin2pi(X2)="); print_dint (V); }
     V->sgn = 1 - V->sgn; // negate V
+    /* For 0 <= i < 256, analyze_sin_case2(rel=true) from sin.sage gives a
+       relative error bound of -123.540 (obtained for i=0):
+       |U - cos2pi(R)| < |U| * 2^-123.540, with U the value computed
+       after add_dint (U, U, V) below.
+
+       For the approximation error in R, we have:
+       cos |x| = cos2pi (R * (1 + eps))
+       R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
+       Thus sin|x| = cos2pi(R+R*eps)
+                   = cos2pi(R)-R*eps*2*pi*sin2pi(theta), theta in [R,R+R*eps]
+       Since we have R < 1/4, we have cos2pi(R) >= sqrt(2)/2,
+       and it follows:
+       | sin|x|/cos2pi(R) - 1 | < 2*pi*R*eps/(sqrt(2)/2)
+                                < pi/2*eps/sqrt(2)          [since R < 1/4]
+                                < 2^-126.518.
+       Adding both errors we get:
+       | sin|x| - U | < |U| * 2^-123.540 + 2^-126.518 * |cos2pi(R)|
+                      < |U| * 2^-123.540 + 2^-126.518 * |U| * (1 + 2^-123.540)
+                      < |U| * 2^-123.367.
+    */
   }
   add_dint (U, U, V);
+  /* If is_sin=1:
+     | sin|x| - U | < |U| * 2^-122.650
+     If is_sin=0:
+     | cos|x| - U | < |U| * 2^-123.367.
+     In all cases the total error is bounded by |U| * 2^-122.650.
+     The term |U| * 2^-122.650 contributes to at most 2^(128-122.650) < 41 ulps
+     relatively to U->lo.
+  */
+  uint64_t err = 41;
+  uint64_t hi0, hi1, lo0, lo1;
+  lo0 = U->lo - err;
+  hi0 = U->hi - (lo0 > U->lo);
+  lo1 = U->lo + err;
+  hi1 = U->hi + (lo1 < U->lo);
+  /* check the upper 54 bits are equal */
+  if ((hi0 >> 10) != (hi1 >> 10))
+    {
+      static const double exceptions[][3] = {
+        {0x1.e0000000001c2p-20, 0x1.dfffffffff02ep-20, 0x1.dcba692492527p-146},
+      };
+      for (int i = 0; i < 1; i++)
+        {
+          if (__builtin_fabs (x) == exceptions[i][0])
+            return (x > 0) ? exceptions[i][1] + exceptions[i][2]
+              : -exceptions[i][1] - exceptions[i][2];
+        }
+      printf ("Rounding test of accurate path failed for sin(x)=%la\n", x);
+      printf ("Please report the above to core-math@inria.fr\n");
+      exit (1);
+    }
+
   // if (x == TRACE) { printf ("U="); print_dint (U); }
 
   if (neg)

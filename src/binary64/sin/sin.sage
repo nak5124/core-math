@@ -313,8 +313,6 @@ def evalPSrel():
 # analyze_sin_case1()
 # i= 255 err= 3.4878355837391092918018785682632564712e-38
 # analyze_sin_case1(rel=true)
-# i= 0 err= +infinity U= (0.00000000000000000000000000000000000000, 0.0030679615757712824594361751789838895354)
-# analyze_sin_case1(rel=true)
 # i= 1 err= 1.0823752525137881722193875252693985550e-37 U= (0.0030679423245659126978045966430539338192, 0.0061359039003258701610125534976731766997)
 def analyze_sin_case1(rel=false):
    maxerr = 0
@@ -345,5 +343,40 @@ def analyze_sin_case1(rel=false):
       if err>maxerr:
          maxerr = err
          print ("i=", i, "err=", err, "U=", (U.lower(), U.upper()))
-      
+
+# analyze the rounding error when is_sin=0
+# analyze_sin_case2()
+# i= 0 err= 6.4652534624868368208105566808251099011e-38 U= (0.99999529380588479549473818088006979171, 1.0000000000000000000000000000000000000)
+# analyze_sin_case2(rel=true)
+# i= 0 err= 6.4652838893678300901881719744254043831e-38 U= (0.99999529380588479549473818088006979171, 1.0000000000000000000000000000000000000)
+def analyze_sin_case2(rel=false):
+   maxerr = 0
+   S = computeS(out=false)
+   C = computeC(out=false)
+   RIF128 = RealIntervalField(128)
+   for i in range(0,256):
+      U, errU = evalPC()
+      V, errV = evalPS()
+      # also consider relative error bound of 2^-123.651 from evalPSrel
+      errV = min(errV, 2^-123.651*V.abs().upper())
+      # mul_dint (U, C+i, U)
+      Ci = RIF128(C[i])
+      Uin = U
+      U = Ci*U
+      err1 = 6*RIFulp(U)+Ci.abs().upper()*errU+RIFulp(Ci)*Uin.abs().upper()
+      # mul_dint (V, S+i, V)
+      Si = RIF128(S[i])
+      Vin = V
+      V = Si*V
+      err2 = 6*RIFulp(V)+Si.abs().upper()*errV+RIFulp(Si)*Vin.abs().upper()
+      # add_dint (U, U, V)
+      U = U+V
+      err3 = 2*RIFulp(U)
+      err = err1+err2+err3
+      if rel: # convert to relative error
+         err = err/U.abs().lower()
+      if err>maxerr:
+         maxerr = err
+         print ("i=", i, "err=", err, "U=", (U.lower(), U.upper()))
+
       
