@@ -1178,6 +1178,68 @@ reduce2 (dint64_t *X)
   return i;
 }
 
+// Multiply exactly a and b, such that *hi + *lo = a * b. 
+static inline void a_mul(double *hi, double *lo, double a, double b) {
+  *hi = a * b;
+  *lo = __builtin_fma (a, b, -*hi);
+}
+
+/* assuming 0x1.7137449123ef6p-26 < x < +Inf,
+   set h,l such that h+l approximates frac(x/(2pi)) */
+static void
+reduce_fast (double *h, double *l, double x)
+{
+  if (x <= 0x1.921fb54442d18p+2) // x < 2*pi
+    {
+      /* | CH+CL - 1/(2pi) | < 2^-110.523 */
+#define CH 0x1.45f306dc9c883p-3
+#define CL -0x1.6b01ec5417056p-57
+      a_mul (h, l, CH, x);            // exact
+      *l = __builtin_fma (CL, x, *l);
+      /* The error in the above fma() is at most ulp(l),
+         where |l| <= CL*|x| thus the error is <= ulp(CL*x).
+         Assume 2^(e-1) <= x < 2^e.
+         If x >= 0x1.691289f1bb1fbp-1 * 2^(e-1), then */
+    }
+  else // x > 2*pi
+    {
+    }
+}
+
+static double
+sin_fast (double x)
+{
+  b64u64_u t = {.f = x};
+  int e = (t.u >> 52) & 0x7ff;
+
+  if (e == 0x7ff) /* NaN, +Inf and -Inf. */
+    return 0.0 / 0.0;
+
+  /* now x is a regular number */
+
+  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
+     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
+     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
+     |sin(x) - x| < x^3/6.
+     Write x = c*2^e with 1/2 <= c < 1.
+     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
+     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
+     or c^3*2^(2e+53) < 3 (1).
+     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
+     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
+  */
+  uint64_t ux = t.u & 0x7fffffffffffffff;
+  if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
+    // Taylor expansion of sin(x) is x - x^3/6 around zero
+    return __builtin_fma (x, -0x1p-54, x);
+
+  double absx = (x > 0) ? x : -x;
+
+  /* now x > 0x1.7137449123ef6p-26 */
+  double h, l;
+  reduce_fast (&h, &l, absx);
+}
+
 static double
 sin_accurate (double x)
 {
