@@ -11,7 +11,7 @@ static void
 doit (int k)
 {
   mpfr_t x, y, s, c, ss, cc;
-  printf ("static const double SC[%d] = {\n", N);
+  printf ("static const double SC[%d][3] = {\n", N);
   mpfr_init2 (x, 53);
   mpfr_init2 (y, 53);
   mpfr_init2 (s, 53 + k);
@@ -20,9 +20,9 @@ doit (int k)
   mpfr_init2 (cc, 53);
   for (int i = 0; i < N; i++)
     {
-      mpfr_set_ui (x, i, MPFR_RNDN);
-      mpfr_div_ui (x, x, 4*N, MPFR_RNDN);
-      mpfr_set (y, x, MPFR_RNDN);
+      double xi = (double) i / (double) (4 * N);
+      mpfr_set_d (x, xi, MPFR_RNDN);
+      mpfr_set_d (y, xi, MPFR_RNDN);
       mpfr_nextabove (y);
       while (1)
         {
@@ -50,7 +50,7 @@ doit (int k)
             }
           mpfr_nextabove (y);
         }
-      printf ("   {%la, %la, %la}, /* %d */\n", mpfr_get_d (x, MPFR_RNDN),
+      printf ("   {%la, %la, %la}, /* %d */\n", mpfr_get_d (x, MPFR_RNDN) - xi,
               mpfr_get_d (ss, MPFR_RNDN), mpfr_get_d (cc, MPFR_RNDN), i);
       fflush (stdout);
               
