@@ -171,13 +171,12 @@ def search2_all():
 # for 2^(e-1) <= x < 2^e
 # sin(x) is monotonous between (k-1/2)*pi and (k+1/2)*pi
 # also avoid roots at k*pi
-def doit_bacsel(e,i0=0,i1=infinity):
+def doit_bacsel(e,i0=0,i1=infinity,margin=2*10^7):
    x0 = 2^(e-1)
    k0 = ceil(x0/(pi/2))
    x1 = 2^e
    k1 = floor(x1/(pi/2))
    t1 = RR(n(k0*pi/2,200))
-   margin = 2*10^7
    t1 = ZZ(t1.exact_rational()*2^(53-e))-margin
    i = 0
    if 2^52<t1:
