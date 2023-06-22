@@ -1,4 +1,4 @@
-/* build table SC[] with entries x in [0,1/4] near multiples of 1/4/N
+/* build table SC[] with entries x in [0,1/8] near multiples of 1/8/N
    such that sin2pi(x) and cos2pi(x) have accuracy 53+k bits */
 
 #include <stdio.h>
@@ -20,7 +20,7 @@ doit (int k)
   mpfr_init2 (cc, 53);
   for (int i = 0; i < N; i++)
     {
-      double xi = (double) i / (double) (4 * N);
+      double xi = (double) i / (double) (8 * N);
       mpfr_set_d (x, xi, MPFR_RNDN);
       mpfr_set_d (y, xi, MPFR_RNDN);
       mpfr_nextabove (y);

@@ -30,7 +30,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <fenv.h>
 
-#define TRACE 0x1.e0000000001c2p-20
+#define TRACE 0x1.19477d693b136p+1023
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
@@ -937,6 +937,26 @@ static const dint64_t C[256] = {
   {.hi = 0xb592e7697f14dd4a, .lo = 0x737dd2824b608d13, .ex = 0, .sgn=0},
 };
 
+/* The following is a degree-7 polynomial with odd coefficients
+   approximating sin2pi(x) for 0 <= x < 2^-11 with relative error 2^-77.307.
+   Generated with sin_fast.sollya. */
+static const  double PSfast[] = {
+  0x1.921fb54442d18p+2, 0x1.1a62645458ee1p-52, // degree 1 (h+l)
+  -0x1.4abbce625be53p5,                        // degree 3
+  0x1.466bc678d8e3fp6,                         // degree 5
+  -0x1.33155a7aff959p6,                        // degree 7
+};
+
+/* The following is a degree-6 polynomial with even coefficients
+   approximating cos2pi(x) for 0 <= x < 2^-11 with relative error 2^-75.189.
+   Generated with cos_fast.sollya. */
+static const  double PCfast[] = {
+  0x1p+0, -0x1.9249c1ep-77,                    // degree 0
+  -0x1.3bd3cc9be45dep4,                        // degree 2
+  0x1.03c1f080ad7f9p6,                         // degree 4
+  -0x1.55a5c19e443dcp6,                        // degree 6
+};
+
 /* The following is a degree-11 polynomial with odd coefficients
    approximating sin2pi(x) for 0 <= x < 2^-11 with relative error 2^-127.75.
    Generated with sin_accurate.sollya. */
@@ -960,6 +980,339 @@ static const dint64_t PC[] = {
   {.hi = 0xf0fa83448dd1e094, .lo = 0xe0603ce7044eeba, .ex = 6, .sgn=0},  // 8
   {.hi = 0xd368f6f4207cfe49, .lo = 0xec63157807ebffa, .ex = 5, .sgn=1},  // 10
 };
+
+/* Table generated with ./buildSC 10 using accompanying buildSC.c.
+   For each i, 0 <= i < 256, xi=i/2^11+SC[i][0], with
+   SC[i][1] and SC[i][2] approximating sin2pi(xi) and cos2pi(xi)
+   respectively, both with 53+10 bits of accuracy. */
+static const double SC[256][3] = {
+   {0x0p+0, 0x0p+0, 0x1p+0}, /* 0 */
+   {0x1.2e168p-45, 0x1.921f8bed40ecbp-9, 0x1.ffff621621cfcp-1}, /* 1 */
+   {-0x1.7d3cp-45, 0x1.921f0fe6252c8p-8, 0x1.fffd8858e8aa1p-1}, /* 2 */
+   {-0x1.a8d5p-46, 0x1.2d96b0e4f495dp-7, 0x1.fffa72c978c5bp-1}, /* 3 */
+   {-0x1.ea9ecp-44, 0x1.921d1fcd8c24ep-7, 0x1.fff62169b9327p-1}, /* 4 */
+   {-0x1.3035p-45, 0x1.f6a296ab7bap-7, 0x1.fff0943c53beep-1}, /* 5 */
+   {0x1.6cap-45, 0x1.2d936bbe42d51p-6, 0x1.ffe9cb44b5177p-1}, /* 6 */
+   {-0x1.4030ep-42, 0x1.5fd4d21f2d6cbp-6, 0x1.ffe1c6870ccd1p-1}, /* 7 */
+   {0x1.f5bbp-44, 0x1.92155f7a67a5fp-6, 0x1.ffd886084cc72p-1}, /* 8 */
+   {-0x1.e26ep-44, 0x1.c454f4ce2459ap-6, 0x1.ffce09ce2a72p-1}, /* 9 */
+   {-0x1.91ap-44, 0x1.f693731cf586ep-6, 0x1.ffc251df1d493p-1}, /* 10 */
+   {0x1.6c0cp-44, 0x1.14685db43df41p-5, 0x1.ffb55e425fd14p-1}, /* 11 */
+   {-0x1.7bd98p-43, 0x1.2d8657592018ap-5, 0x1.ffa72effef8bcp-1}, /* 12 */
+   {-0x1.e6e3p-43, 0x1.46a396ff56548p-5, 0x1.ff97c4208c1fcp-1}, /* 13 */
+   {0x1.27291p-40, 0x1.5fc00d29f46fp-5, 0x1.ff871dadb77ebp-1}, /* 14 */
+   {0x1.78c8p-44, 0x1.78dbaa5886e22p-5, 0x1.ff753bb1b908ap-1}, /* 15 */
+   {-0x1.9aa0dp-40, 0x1.91f65f0f9b63p-5, 0x1.ff621e3797d51p-1}, /* 16 */
+   {-0x1.1f85ap-39, 0x1.ab101bd4352b3p-5, 0x1.ff4dc54b1d65ep-1}, /* 17 */
+   {-0x1.950eep-40, 0x1.c428d12acfd89p-5, 0x1.ff3830f8d68ebp-1}, /* 18 */
+   {-0x1.cd4d4p-40, 0x1.dd406f969f3bep-5, 0x1.ff21614e14708p-1}, /* 19 */
+   {-0x1.7ea04p-41, 0x1.f656e79eec14ap-5, 0x1.ff095658e7ae4p-1}, /* 20 */
+   {0x1.63b58p-42, 0x1.07b614e485dfap-4, 0x1.fef0102825d12p-1}, /* 21 */
+   {0x1.b05d8p-42, 0x1.1440134d9af4fp-4, 0x1.fed58ecb66e0ap-1}, /* 22 */
+   {0x1.c838p-46, 0x1.20c9674ed70fap-4, 0x1.feb9d253040aap-1}, /* 23 */
+   {-0x1.74ed6p-38, 0x1.2d52092a996acp-4, 0x1.fe9cdad01de6ap-1}, /* 24 */
+   {-0x1.94fe8p-42, 0x1.39d9f12c3284ep-4, 0x1.fe7ea85483378p-1}, /* 25 */
+   {-0x1.5356ap-40, 0x1.46611791ed33dp-4, 0x1.fe5f3af2e4e7dp-1}, /* 26 */
+   {0x1.c7aa8p-42, 0x1.52e774a501658p-4, 0x1.fe3e92be9d11fp-1}, /* 27 */
+   {0x1.f166p-42, 0x1.5f6d00a9dae87p-4, 0x1.fe1cafcbd52a8p-1}, /* 28 */
+   {0x1.0f9a6p-40, 0x1.6bf1b3e8054f1p-4, 0x1.fdf9922f72013p-1}, /* 29 */
+   {0x1.9391dcp-37, 0x1.787586aac42e6p-4, 0x1.fdd539ff10b48p-1}, /* 30 */
+   {-0x1.7f29p-42, 0x1.84f8712bed97bp-4, 0x1.fdafa75145ab1p-1}, /* 31 */
+   {0x1.78f18p-40, 0x1.917a6bc32e92cp-4, 0x1.fd88da3d10821p-1}, /* 32 */
+   {-0x1.01d84p-38, 0x1.9dfb6eb0b7933p-4, 0x1.fd60d2da7ae7dp-1}, /* 33 */
+   {0x1.c3dp-43, 0x1.aa7b7244abcfp-4, 0x1.fd379142206e6p-1}, /* 34 */
+   {-0x1.cb5cp-42, 0x1.b6fa6ec3628e5p-4, 0x1.fd0d158d86a32p-1}, /* 35 */
+   {-0x1.014fp-41, 0x1.c3785c79b9f66p-4, 0x1.fce15fd6db19ep-1}, /* 36 */
+   {-0x1.601ap-42, 0x1.cff533b2e583cp-4, 0x1.fcb4703914b29p-1}, /* 37 */
+   {0x1.13dcap-39, 0x1.dc70ecbbc12d6p-4, 0x1.fc8646cfe84bap-1}, /* 38 */
+   {-0x1.7b778p-40, 0x1.e8eb7fddb6b08p-4, 0x1.fc56e3b7dbe89p-1}, /* 39 */
+   {0x1.bccp-43, 0x1.f564e56aacdbcp-4, 0x1.fc26470e19a7bp-1}, /* 40 */
+   {-0x1.0548ap-39, 0x1.00ee8ad695ba2p-3, 0x1.fbf470f0ac105p-1}, /* 41 */
+   {-0x1.2ca08p-40, 0x1.072a047b6da7fp-3, 0x1.fbc1617e45fddp-1}, /* 42 */
+   {0x1.75bf8p-40, 0x1.0d64dbcb6f37cp-3, 0x1.fb8d18d66871ap-1}, /* 43 */
+   {-0x1.c8548p-40, 0x1.139f0ced568e7p-3, 0x1.fb5797196077dp-1}, /* 44 */
+   {-0x1.3cad4p-40, 0x1.19d8940ba4b8p-3, 0x1.fb20dc681f787p-1}, /* 45 */
+   {0x1.5a5c4p-39, 0x1.20116d4f4e66bp-3, 0x1.fae8e8e468334p-1}, /* 46 */
+   {0x1.15a68p-39, 0x1.264994e03f276p-3, 0x1.faafbcb0cbf3p-1}, /* 47 */
+   {0x1.81bb4p-39, 0x1.2c8106e97be9ep-3, 0x1.fa7557f084c2fp-1}, /* 48 */
+   {-0x1.1138p-45, 0x1.32b7bf944fc22p-3, 0x1.fa39bac7a1892p-1}, /* 49 */
+   {-0x1.01dp-46, 0x1.38edbb0cd8092p-3, 0x1.f9fce55adb344p-1}, /* 50 */
+   {-0x1.230a2p-39, 0x1.3f22f57d43a42p-3, 0x1.f9bed7cfc2566p-1}, /* 51 */
+   {-0x1.44928p-41, 0x1.45576b12746fdp-3, 0x1.f97f924c91ddap-1}, /* 52 */
+   {-0x1.13ecap-38, 0x1.4b8b17f6c9ce7p-3, 0x1.f93f14f86385cp-1}, /* 53 */
+   {-0x1.4153p-41, 0x1.51bdf8595d41fp-3, 0x1.f8fd5ffae56aap-1}, /* 54 */
+   {0x1.23acp-44, 0x1.57f0086550453p-3, 0x1.f8ba737cb491p-1}, /* 55 */
+   {-0x1.61388p-41, 0x1.5e21444891d1bp-3, 0x1.f8764fa71636p-1}, /* 56 */
+   {0x1.b0a88p-39, 0x1.6451a8327f81p-3, 0x1.f830f4a404fcep-1}, /* 57 */
+   {0x1.d91338p-37, 0x1.6a813052400a2p-3, 0x1.f7ea629e42f4dp-1}, /* 58 */
+   {-0x1.17c82p-39, 0x1.70afd8d0203ccp-3, 0x1.f7a299c1a8148p-1}, /* 59 */
+   {0x1.ef77cp-40, 0x1.76dd9de56b974p-3, 0x1.f7599a3a0d93dp-1}, /* 60 */
+   {0x1.1f5bp-39, 0x1.7d0a7bbd9b917p-3, 0x1.f70f6434b2abcp-1}, /* 61 */
+   {-0x1.d726p-43, 0x1.83366e89baf17p-3, 0x1.f6c3f7df5c476p-1}, /* 62 */
+   {0x1.4b054p-38, 0x1.8961727d40a49p-3, 0x1.f67755687752ep-1}, /* 63 */
+   {-0x1.250cp-40, 0x1.8f8b83c661f19p-3, 0x1.f6297cff78997p-1}, /* 64 */
+   {-0x1.84c9p-40, 0x1.95b49e9b17dc7p-3, 0x1.f5da6ed43a4dap-1}, /* 65 */
+   {-0x1.55p-48, 0x1.9bdcbf2dc3f4dp-3, 0x1.f58a2b1789ebap-1}, /* 66 */
+   {-0x1.96374p-38, 0x1.a203e1b04aca8p-3, 0x1.f538b1fb03181p-1}, /* 67 */
+   {-0x1.9634ap-38, 0x1.a82a0259c8277p-3, 0x1.f4e603b0c377ap-1}, /* 68 */
+   {-0x1.a2296p-37, 0x1.ae4f1d5cb96b9p-3, 0x1.f492206bed3cp-1}, /* 69 */
+   {-0x1.e59p-42, 0x1.b4732ef3bf289p-3, 0x1.f43d085ffa72ep-1}, /* 70 */
+   {0x1.d8c24p-38, 0x1.ba96335080627p-3, 0x1.f3e6bbc1a7b6ep-1}, /* 71 */
+   {-0x1.a467ap-38, 0x1.c0b826a6a2ccap-3, 0x1.f38f3ac6606e9p-1}, /* 72 */
+   {-0x1.a6a44p-39, 0x1.c6d90535357a6p-3, 0x1.f33685a3b4262p-1}, /* 73 */
+   {-0x1.0cbp-44, 0x1.ccf8cb3127f1fp-3, 0x1.f2dc9c9089d95p-1}, /* 74 */
+   {-0x1.047cp-41, 0x1.d31774d2b2f8cp-3, 0x1.f2817fc462122p-1}, /* 75 */
+   {0x1.afb48p-40, 0x1.d934fe54a6a9cp-3, 0x1.f2252f775ec82p-1}, /* 76 */
+   {0x1.1e728p-40, 0x1.df5163f047482p-3, 0x1.f1c7abe281261p-1}, /* 77 */
+   {0x1.8aabp-39, 0x1.e56ca1e198337p-3, 0x1.f168f53f68d6cp-1}, /* 78 */
+   {0x1.4acep-41, 0x1.eb86b462fdbb8p-3, 0x1.f1090bc897031p-1}, /* 79 */
+   {-0x1.634d6p-38, 0x1.f19f97b10740dp-3, 0x1.f0a7efb93400fp-1}, /* 80 */
+   {0x1.11cf1p-37, 0x1.f7b7480d7462ep-3, 0x1.f045a14cdcc68p-1}, /* 81 */
+   {-0x1.1166p-40, 0x1.fdcdc1adcae1ap-3, 0x1.efe220c0bcb6p-1}, /* 82 */
+   {-0x1.e2dd8p-39, 0x1.01f1806b441c5p-2, 0x1.ef7d6e51d62cfp-1}, /* 83 */
+   {-0x1.590bp-41, 0x1.04fb80e36f7a2p-2, 0x1.ef178a3e4964bp-1}, /* 84 */
+   {-0x1.2b2cp-41, 0x1.0804e05ea8318p-2, 0x1.eeb074c50c38fp-1}, /* 85 */
+   {-0x1.ba7bp-38, 0x1.0b0d9cfd15f96p-2, 0x1.ee482e25c0843p-1}, /* 86 */
+   {-0x1.f50ap-41, 0x1.0e15b4e15ce39p-2, 0x1.eddeb6a07ba36p-1}, /* 87 */
+   {0x1.38164p-37, 0x1.111d262c0ba34p-2, 0x1.ed740e7663e64p-1}, /* 88 */
+   {-0x1.22a4ep-38, 0x1.1423eefbfb4f4p-2, 0x1.ed0835e9a8644p-1}, /* 89 */
+   {-0x1.d144p-38, 0x1.172a0d76b54d9p-2, 0x1.ec9b2d3c54ep-1}, /* 90 */
+   {-0x1.4b21ap-38, 0x1.1a2f7fbe12243p-2, 0x1.ec2cf4b1c155ep-1}, /* 91 */
+   {0x1.2967p-41, 0x1.1d3443f4dbb94p-2, 0x1.ebbd8c8deeaedp-1}, /* 92 */
+   {0x1.39158p-37, 0x1.2038583e5e703p-2, 0x1.eb4cf51595e61p-1}, /* 93 */
+   {0x1.10eccp-39, 0x1.233bbabc6f174p-2, 0x1.eadb2e8e72eap-1}, /* 94 */
+   {0x1.6b72p-39, 0x1.263e699599a5fp-2, 0x1.ea68393e5b3f4p-1}, /* 95 */
+   {-0x1.5a6dep-38, 0x1.294062ecd7c12p-2, 0x1.e9f4156c769c8p-1}, /* 96 */
+   {-0x1.4ec28p-37, 0x1.2c41a4e858f51p-2, 0x1.e97ec3603d3efp-1}, /* 97 */
+   {-0x1.749fcp-39, 0x1.2f422dae7a568p-2, 0x1.e9084361ea54ap-1}, /* 98 */
+   {0x1.d1578p-40, 0x1.3241fb63b742fp-2, 0x1.e89095bacf2d6p-1}, /* 99 */
+   {0x1.3f52ep-38, 0x1.35410c2e8fa01p-2, 0x1.e817bab4ba215p-1}, /* 100 */
+   {-0x1.d2d84p-39, 0x1.383f5e34e41e1p-2, 0x1.e79db29a5f5f6p-1}, /* 101 */
+   {-0x1.38398p-40, 0x1.3b3cefa024218p-2, 0x1.e7227db6ae2c2p-1}, /* 102 */
+   {-0x1.fc4ap-41, 0x1.3e39be96d47p-2, 0x1.e6a61c55d91afp-1}, /* 103 */
+   {-0x1.e62bcp-39, 0x1.4135c9411bbbep-2, 0x1.e6288ec49d09fp-1}, /* 104 */
+   {-0x1.43a8ap-38, 0x1.44310dc81adfp-2, 0x1.e5a9d5505a9bdp-1}, /* 105 */
+   {0x1.1b56fp-36, 0x1.472b8a5716c2ep-2, 0x1.e529f046e2e62p-1}, /* 106 */
+   {0x1.46004p-39, 0x1.4a253d11f4c6cp-2, 0x1.e4a8dff812945p-1}, /* 107 */
+   {0x1.3f3p-45, 0x1.4d1e24278f63bp-2, 0x1.e426a4b2bbef2p-1}, /* 108 */
+   {-0x1.14bcp-41, 0x1.50163dc18a2f9p-2, 0x1.e3a33ec75f23p-1}, /* 109 */
+   {-0x1.ea1p-42, 0x1.530d880ae868cp-2, 0x1.e31eae870ee01p-1}, /* 110 */
+   {-0x1.1026cp-38, 0x1.5604012ee1bedp-2, 0x1.e298f443a370bp-1}, /* 111 */
+   {-0x1.00ba4p-39, 0x1.58f9a75a8287ap-2, 0x1.e212104f70ecp-1}, /* 112 */
+   {0x1.8b5d4p-37, 0x1.5bee78baff46cp-2, 0x1.e18a02fd91acbp-1}, /* 113 */
+   {0x1.3acbp-38, 0x1.5ee2737a5e8bcp-2, 0x1.e100cca282dccp-1}, /* 114 */
+   {0x1.5f498p-39, 0x1.61d595c8ccda2p-2, 0x1.e0766d92750a9p-1}, /* 115 */
+   {-0x1.b333p-40, 0x1.64c7ddd3ca7p-2, 0x1.dfeae622e3542p-1}, /* 116 */
+   {0x1.cf638p-40, 0x1.67b949cb00d4ap-2, 0x1.df5e36a9b25c2p-1}, /* 117 */
+   {0x1.b12cp-43, 0x1.6aa9d7dc7cda1p-2, 0x1.ded05f7de38cap-1}, /* 118 */
+   {-0x1.4c454p-38, 0x1.6d99863826e97p-2, 0x1.de4160f6f0232p-1}, /* 119 */
+   {0x1.09ccp-40, 0x1.7088530fbcb28p-2, 0x1.ddb13b6cc771bp-1}, /* 120 */
+   {0x1.a0acp-42, 0x1.73763c926a90dp-2, 0x1.dd1fef38a73acp-1}, /* 121 */
+   {0x1.31489p-37, 0x1.766340f320babp-2, 0x1.dc8d7cb3e4513p-1}, /* 122 */
+   {0x1.cafcp-43, 0x1.794f5e6143376p-2, 0x1.dbf9e439565p-1}, /* 123 */
+   {0x1.0ce78p-40, 0x1.7c3a9311f5519p-2, 0x1.db6526238522fp-1}, /* 124 */
+   {-0x1.f5ddp-40, 0x1.7f24dd37066d4p-2, 0x1.dacf42ce71e34p-1}, /* 125 */
+   {-0x1.163d6p-38, 0x1.820e3b0485789p-2, 0x1.da383a967d314p-1}, /* 126 */
+   {-0x1.4a2fap-38, 0x1.84f6aaaec111fp-2, 0x1.d9a00dd8cc74bp-1}, /* 127 */
+   {-0x1.0a9e8p-35, 0x1.87de2a67e4bcbp-2, 0x1.d906bcf3c9196p-1}, /* 128 */
+   {0x1.b924cp-37, 0x1.8ac4b86e9e854p-2, 0x1.d86c4844177bep-1}, /* 129 */
+   {-0x1.3cd02p-37, 0x1.8daa52eba4ff7p-2, 0x1.d7d0b02bbf203p-1}, /* 130 */
+   {-0x1.6c79cp-38, 0x1.908ef81e7403ap-2, 0x1.d733f508dcde6p-1}, /* 131 */
+   {0x1.0e4b6p-36, 0x1.9372a63d4f79ap-2, 0x1.d696173c4ac4dp-1}, /* 132 */
+   {0x1.717fp-40, 0x1.96555b7ada95p-2, 0x1.d5f7172881757p-1}, /* 133 */
+   {-0x1.646d8p-39, 0x1.99371613dbb8bp-2, 0x1.d556f52ea1e6ep-1}, /* 134 */
+   {0x1.04af98p-35, 0x1.9c17d443cd588p-2, 0x1.d4b5b1b0e287dp-1}, /* 135 */
+   {0x1.14bccp-38, 0x1.9ef7943af2329p-2, 0x1.d4134d14c68e9p-1}, /* 136 */
+   {-0x1.014bcp-38, 0x1.a1d6543af46d2p-2, 0x1.d36fc7bcd45bp-1}, /* 137 */
+   {0x1.4b8ap-40, 0x1.a4b4127e07cb1p-2, 0x1.d2cb220e084a4p-1}, /* 138 */
+   {-0x1.579eep-34, 0x1.a790cd361185bp-2, 0x1.d2255c7018d58p-1}, /* 139 */
+   {0x1.92e6p-41, 0x1.aa6c82b6e5f7bp-2, 0x1.d17e7743df3f9p-1}, /* 140 */
+   {0x1.c3148p-38, 0x1.ad4731266e92fp-2, 0x1.d0d672f5780a5p-1}, /* 141 */
+   {0x1.e2bcp-39, 0x1.b020d6c849efp-2, 0x1.d02d4feb17d94p-1}, /* 142 */
+   {0x1.1621ep-37, 0x1.b2f971dbf759p-2, 0x1.cf830e8cb6027p-1}, /* 143 */
+   {-0x1.68f78p-39, 0x1.b5d1009dd5b9ep-2, 0x1.ced7af43db9ep-1}, /* 144 */
+   {0x1.74328p-37, 0x1.b8a78150dd488p-2, 0x1.ce2b32795b205p-1}, /* 145 */
+   {0x1.6a6bp-40, 0x1.bb7cf2306be21p-2, 0x1.cd7d9898ab7afp-1}, /* 146 */
+   {-0x1.540e8p-38, 0x1.be51517f83dd7p-2, 0x1.cccee20c4b042p-1}, /* 147 */
+   {0x1.37e1dp-36, 0x1.c1249d81ca31ep-2, 0x1.cc1f0f3f64553p-1}, /* 148 */
+   {0x1.6db7ap-37, 0x1.c3f6d47364d08p-2, 0x1.cb6e209fce462p-1}, /* 149 */
+   {0x1.9461p-40, 0x1.c6c7f49993928p-2, 0x1.cabc169a02bf3p-1}, /* 150 */
+   {0x1.1c364p-38, 0x1.c997fc38c9112p-2, 0x1.ca08f19b83549p-1}, /* 151 */
+   {-0x1.ad9d4p-38, 0x1.cc66e9928593fp-2, 0x1.c954b213670c9p-1}, /* 152 */
+   {0x1.687dp-38, 0x1.cf34baee9b129p-2, 0x1.c89f587009bc9p-1}, /* 153 */
+   {-0x1.41ea5p-36, 0x1.d2016e8cdb714p-2, 0x1.c7e8e522a6de7p-1}, /* 154 */
+   {0x1.f84d8p-38, 0x1.d4cd02bb361adp-2, 0x1.c7315899bd585p-1}, /* 155 */
+   {0x1.728p-40, 0x1.d79775b88e82p-2, 0x1.c678b3487ed98p-1}, /* 156 */
+   {-0x1.10ebdp-36, 0x1.da60c5ce25205p-2, 0x1.c5bef5a052d29p-1}, /* 157 */
+   {0x1.0804p-42, 0x1.dd28f14822814p-2, 0x1.c5042012b50dfp-1}, /* 158 */
+   {-0x1.11d7p-39, 0x1.dfeff66a649eap-2, 0x1.c44833142899fp-1}, /* 159 */
+   {0x1.238dep-36, 0x1.e2b5d3820348fp-2, 0x1.c38b2f179fe99p-1}, /* 160 */
+   {-0x1.8da54p-38, 0x1.e57a86d34404ep-2, 0x1.c2cd149343435p-1}, /* 161 */
+   {0x1.0128p-43, 0x1.e83e0eaf87d76p-2, 0x1.c20de3fa965a6p-1}, /* 162 */
+   {-0x1.63758p-37, 0x1.eb00695e30648p-2, 0x1.c14d9dc4a8d4p-1}, /* 163 */
+   {-0x1.bc522p-37, 0x1.edc1952dc5d4cp-2, 0x1.c08c42677976cp-1}, /* 164 */
+   {-0x1.d4dap-38, 0x1.f081906b5e79p-2, 0x1.bfc9d25a47b76p-1}, /* 165 */
+   {-0x1.3b918p-39, 0x1.f3405963c6ed4p-2, 0x1.bf064e154698ap-1}, /* 166 */
+   {0x1.de08ap-37, 0x1.f5fdee66b417p-2, 0x1.be41b610b9452p-1}, /* 167 */
+   {-0x1.3fd88p-39, 0x1.f8ba4dbf53071p-2, 0x1.bd7c0ac708ccdp-1}, /* 168 */
+   {0x1.2a83p-39, 0x1.fb7575c28016ap-2, 0x1.bcb54cb0c3ac8p-1}, /* 169 */
+   {0x1.48578p-39, 0x1.fe2f64bea906fp-2, 0x1.bbed7c4927ff3p-1}, /* 170 */
+   {-0x1.902ap-41, 0x1.00740c82afadep-1, 0x1.bb249a0b712c3p-1}, /* 171 */
+   {-0x1.8076bp-35, 0x1.01cfc872ba278p-1, 0x1.ba5aa67489253p-1}, /* 172 */
+   {0x1.5b93ep-37, 0x1.032ae55f51907p-1, 0x1.b98fa1fd4c3e9p-1}, /* 173 */
+   {0x1.22272p-36, 0x1.0485626ba64f8p-1, 0x1.b8c38d26dc5a1p-1}, /* 174 */
+   {0x1.c3564p-38, 0x1.05df3ec367b22p-1, 0x1.b7f6686e4bdb1p-1}, /* 175 */
+   {0x1.7ed3p-37, 0x1.07387992b0f12p-1, 0x1.b7283451499a4p-1}, /* 176 */
+   {0x1.ddb76p-36, 0x1.089112046c423p-1, 0x1.b658f14f19e41p-1}, /* 177 */
+   {0x1.0dc74p-37, 0x1.09e90741d6e69p-1, 0x1.b5889fe8ea3adp-1}, /* 178 */
+   {0x1.a074p-41, 0x1.0b4058790116ap-1, 0x1.b4b7409de23c8p-1}, /* 179 */
+   {-0x1.d1158p-39, 0x1.0c9704d5b1b99p-1, 0x1.b3e4d3ef6d64fp-1}, /* 180 */
+   {0x1.76f48p-38, 0x1.0ded0b84fadabp-1, 0x1.b3115a5f10eefp-1}, /* 181 */
+   {-0x1.c207p-39, 0x1.0f426bb2836f4p-1, 0x1.b23cd47018a39p-1}, /* 182 */
+   {0x1.20d8p-40, 0x1.1097248d1695fp-1, 0x1.b16742a4c2a2dp-1}, /* 183 */
+   {-0x1.04c6p-41, 0x1.11eb3541af49ep-1, 0x1.b090a581538c9p-1}, /* 184 */
+   {0x1.11048p-39, 0x1.133e9cfef8eecp-1, 0x1.afb8fd89e712ap-1}, /* 185 */
+   {-0x1.29ea8p-37, 0x1.14915af2d45a5p-1, 0x1.aee04b4400794p-1}, /* 186 */
+   {0x1.ac618p-38, 0x1.15e36e4e04d1p-1, 0x1.ae068f343128p-1}, /* 187 */
+   {0x1.3fc88p-39, 0x1.1734d63e08056p-1, 0x1.ad2bc9e20c324p-1}, /* 188 */
+   {-0x1.eff38p-38, 0x1.188591f352f7dp-1, 0x1.ac4ffbd425071p-1}, /* 189 */
+   {0x1.46f7p-39, 0x1.19d5a09f4668p-1, 0x1.ab7325915a61ep-1}, /* 190 */
+   {-0x1.41588p-37, 0x1.1b250170ce183p-1, 0x1.aa9547a311623p-1}, /* 191 */
+   {-0x1.d32eap-37, 0x1.1c73b39a4e018p-1, 0x1.a9b6629150074p-1}, /* 192 */
+   {-0x1.01fdp-39, 0x1.1dc1b64daf83p-1, 0x1.a8d676e553cffp-1}, /* 193 */
+   {0x1.53cep-38, 0x1.1f0f08bbffa11p-1, 0x1.a7f58529d9017p-1}, /* 194 */
+   {0x1.6123f4p-34, 0x1.205baa1aeacadp-1, 0x1.a7138de7653bbp-1}, /* 195 */
+   {0x1.9a9bfp-36, 0x1.21a7999448a1ep-1, 0x1.a63091af793c8p-1}, /* 196 */
+   {-0x1.84b78p-39, 0x1.22f2d662a1d74p-1, 0x1.a54c91092501dp-1}, /* 197 */
+   {-0x1.d9b08p-38, 0x1.243d5fb93e635p-1, 0x1.a4678c814ec2fp-1}, /* 198 */
+   {-0x1.04ce4p-38, 0x1.258734cb8d1bcp-1, 0x1.a38184a5b118p-1}, /* 199 */
+   {-0x1.30778p-39, 0x1.26d054cdb8bdbp-1, 0x1.a29a7a0473ae4p-1}, /* 200 */
+   {-0x1.8944p-42, 0x1.2818bef4cfdbbp-1, 0x1.a1b26d2c0d406p-1}, /* 201 */
+   {-0x1.5edp-39, 0x1.296072760dc14p-1, 0x1.a0c95eabc3946p-1}, /* 202 */
+   {-0x1.b5048p-38, 0x1.2aa76e876902ep-1, 0x1.9fdf4f1346ab6p-1}, /* 203 */
+   {-0x1.dd624p-36, 0x1.2bedb25e7f5ffp-1, 0x1.9ef43ef3769c5p-1}, /* 204 */
+   {0x1.c238p-42, 0x1.2d333d34ee334p-1, 0x1.9e082edb3f071p-1}, /* 205 */
+   {0x1.fa6p-38, 0x1.2e780e3ededa4p-1, 0x1.9d1b1f5e6d50ap-1}, /* 206 */
+   {-0x1.5e48p-43, 0x1.2fbc24b43f466p-1, 0x1.9c2d110f08a29p-1}, /* 207 */
+   {-0x1.521p-38, 0x1.30ff7fcde1b28p-1, 0x1.9b3e047f5ffebp-1}, /* 208 */
+   {0x1.09442p-37, 0x1.32421ec4eddcap-1, 0x1.9a4dfa42721bbp-1}, /* 209 */
+   {-0x1.98p-43, 0x1.338400d0c6e5p-1, 0x1.995cf2ed82531p-1}, /* 210 */
+   {0x1.2801p-40, 0x1.34c5252c20754p-1, 0x1.986aef144e96p-1}, /* 211 */
+   {0x1.38cb68p-35, 0x1.36058b11eca54p-1, 0x1.9777ef4b53f1ap-1}, /* 212 */
+   {0x1.910ap-38, 0x1.374531b8567e2p-1, 0x1.9683f42ba81ecp-1}, /* 213 */
+   {0x1.d95cap-37, 0x1.3884185e91f08p-1, 0x1.958efe487566dp-1}, /* 214 */
+   {-0x1.86ccp-42, 0x1.39c23e3d5f386p-1, 0x1.94990e3ac7972p-1}, /* 215 */
+   {0x1.0d8ed8p-35, 0x1.3affa29352d8fp-1, 0x1.93a2249821bf4p-1}, /* 216 */
+   {0x1.19198p-39, 0x1.3c3c44983205ap-1, 0x1.92aa41fc4975cp-1}, /* 217 */
+   {-0x1.493fp-40, 0x1.3d78238c4b863p-1, 0x1.91b166fd53df9p-1}, /* 218 */
+   {-0x1.30228p-39, 0x1.3eb33eabc909ap-1, 0x1.90b794358885dp-1}, /* 219 */
+   {0x1.6d7b6p-37, 0x1.3fed9534c57b5p-1, 0x1.8fbcca3e9f921p-1}, /* 220 */
+   {0x1.f32ep-40, 0x1.41272663e41e3p-1, 0x1.8ec109b47765ep-1}, /* 221 */
+   {-0x1.25404p-38, 0x1.425ff178b9ff7p-1, 0x1.8dc453318dcdep-1}, /* 222 */
+   {0x1.9f9ap-40, 0x1.4397f5b2b4074p-1, 0x1.8cc6a75177808p-1}, /* 223 */
+   {0x1.37638p-39, 0x1.44cf3250a97fp-1, 0x1.8bc806b13e0f4p-1}, /* 224 */
+   {-0x1.e4cfp-38, 0x1.4605a69269c41p-1, 0x1.8ac871ee1e75dp-1}, /* 225 */
+   {-0x1.091ccp-38, 0x1.473b51b95f2b6p-1, 0x1.89c7e9a4fe8fap-1}, /* 226 */
+   {-0x1.6b9544p-34, 0x1.487033029ce03p-1, 0x1.88c66e775e721p-1}, /* 227 */
+   {0x1.32ecap-36, 0x1.49a449ba6906ap-1, 0x1.87c400fb07b89p-1}, /* 228 */
+   {-0x1.349ep-40, 0x1.4ad79516669f4p-1, 0x1.86c0a1d9b3e35p-1}, /* 229 */
+   {-0x1.bcd5p-39, 0x1.4c0a145e9ec22p-1, 0x1.85bc51aeb1df1p-1}, /* 230 */
+   {-0x1.2151p-38, 0x1.4d3bc6d55ed71p-1, 0x1.84b7111b1d38ap-1}, /* 231 */
+   {0x1.7ee3p-40, 0x1.4e6cabbe4c99ep-1, 0x1.83b0e0bfed302p-1}, /* 232 */
+   {0x1.7244ap-37, 0x1.4f9cc25d38179p-1, 0x1.82a9c13ef5104p-1}, /* 233 */
+   {-0x1.30ep-43, 0x1.50cc09f598a1p-1, 0x1.81a1b33b58e7cp-1}, /* 234 */
+   {-0x1.4e5f18p-34, 0x1.51fa81ca8498fp-1, 0x1.8098b7599a9bfp-1}, /* 235 */
+   {-0x1.b13a4p-38, 0x1.53282929f59fep-1, 0x1.7f8ece35a9d01p-1}, /* 236 */
+   {0x1.8c05cp-37, 0x1.5454ff51ce0fbp-1, 0x1.7e83f87a9c089p-1}, /* 237 */
+   {-0x1.bbc24p-37, 0x1.55810388f33d5p-1, 0x1.7d7836cca817p-1}, /* 238 */
+   {0x1.88acp-40, 0x1.56ac3519849c4p-1, 0x1.7c6b89ce204cap-1}, /* 239 */
+   {-0x1.11c2p-40, 0x1.57d69348c4d5p-1, 0x1.7b5df226b4013p-1}, /* 240 */
+   {-0x1.b78c8p-38, 0x1.59001d5f3278ep-1, 0x1.7a4f707c33a4dp-1}, /* 241 */
+   {0x1.6cb28p-36, 0x1.5a28d2a6aa316p-1, 0x1.7940057433b6ap-1}, /* 242 */
+   {0x1.009228p-35, 0x1.5b50b2661f61fp-1, 0x1.782fb1b7f9d21p-1}, /* 243 */
+   {0x1.529bp-37, 0x1.5c77bbe6b1849p-1, 0x1.771e75efdca63p-1}, /* 244 */
+   {-0x1.7998ap-37, 0x1.5d9dee7376f18p-1, 0x1.760c52c369b72p-1}, /* 245 */
+   {0x1.db1p-37, 0x1.5ec34958beedap-1, 0x1.74f948da0d5a4p-1}, /* 246 */
+   {-0x1.17fa5p-36, 0x1.5fe7cbddb6e82p-1, 0x1.73e558e110b71p-1}, /* 247 */
+   {-0x1.fc86p-39, 0x1.610b7551aea5ap-1, 0x1.72d0837f22662p-1}, /* 248 */
+   {0x1.f9bp-43, 0x1.622e44fec46d9p-1, 0x1.71bac960e1f67p-1}, /* 249 */
+   {-0x1.4c654p-38, 0x1.63503a3192c0cp-1, 0x1.70a42b31a4228p-1}, /* 250 */
+   {0x1.656c7p-36, 0x1.64715438bebaep-1, 0x1.6f8ca99bd2491p-1}, /* 251 */
+   {-0x1.f3cdp-40, 0x1.6591925ef5f49p-1, 0x1.6e74454ebbad3p-1}, /* 252 */
+   {0x1.21aep-40, 0x1.66b0f3f5355ep-1, 0x1.6d5afef4a1069p-1}, /* 253 */
+   {-0x1.2054p-39, 0x1.67cf784906cdap-1, 0x1.6c40d73c2c0bdp-1}, /* 254 */
+   {-0x1.09e5p-39, 0x1.68ed1eaa07434p-1, 0x1.6b25ced310909p-1}, /* 255 */
+};
+
+// Multiply exactly a and b, such that *hi + *lo = a * b. 
+static inline void a_mul(double *hi, double *lo, double a, double b) {
+  *hi = a * b;
+  *lo = __builtin_fma (a, b, -*hi);
+}
+
+// Multiply a double with a double double : a * (bh + bl)
+static inline void s_mul (double *hi, double *lo, double a, double bh,
+                          double bl) {
+  a_mul (hi, lo, a, bh); /* exact */
+  *lo = __builtin_fma (a, bl, *lo);
+  /* the error is bounded by ulp(lo), where |lo| < |a*bl| + ulp(hi) */
+}
+
+// Returns (ah + al) * (bh + bl) - (al * bl)
+// We can ignore al * bl when assuming al <= ulp(ah) and bl <= ulp(bh)
+static inline void d_mul(double *hi, double *lo, double ah, double al,
+                         double bh, double bl) {
+  double s, t;
+
+  a_mul(hi, &s, ah, bh);
+  t = __builtin_fma(al, bh, s);
+  *lo = __builtin_fma(ah, bl, t);
+}
+
+static inline void
+fast_two_sum(double *hi, double *lo, double a, double b)
+{
+  double e;
+
+  //  assert (a == 0 || __builtin_fabs (a) >= __builtin_fabs (b));
+  *hi = a + b;
+  e = *hi - a; /* exact */
+  *lo = b - e; /* exact */
+}
+
+/* Put in h+l an approximation of sin2pi(xh+xl). */
+static void
+evalPSfast (double *h, double *l, double xh, double xl)
+{
+  double uh, ul, t;
+  a_mul (&uh, &ul, xh, xh);
+  ul = __builtin_fma (xh + xh, xl, ul);
+  // uh+ul approximates (xh+xl)^2
+  *h = PSfast[4]; // degree 7
+  *h = __builtin_fma (*h, uh, PSfast[3]); // degree 5
+  *h = __builtin_fma (*h, uh, PSfast[2]); // degree 3
+  s_mul (h, l, *h, uh, ul);
+  fast_two_sum (h, &t, PSfast[0], *h);
+  *l += PSfast[1] + t;
+  // multiply by xh+xl
+  d_mul (h, l, *h, *l, xh, xl);
+}
+
+/* Put in h+l an approximation of cos2pi(xh+xl). */
+static void
+evalPCfast (double *h, double *l, double xh, double xl)
+{
+  double uh, ul, t;
+  a_mul (&uh, &ul, xh, xh);
+  ul = __builtin_fma (xh + xh, xl, ul);
+  // uh+ul approximates (xh+xl)^2
+  *h = PCfast[4]; // degree 6
+  *h = __builtin_fma (*h, uh, PCfast[3]); // degree 4
+  *h = __builtin_fma (*h, uh, PCfast[2]); // degree 2
+  s_mul (h, l, *h, uh, ul);
+  fast_two_sum (h, &t, PCfast[0], *h);
+  *l += PCfast[1] + t;
+}
 
 /* Put in Y an approximation of sin2pi(X), for 0 <= X < 2^-11,
    where X2 approximates X^2.
@@ -1158,6 +1511,17 @@ reduce (dint64_t *X)
      The relative error is thus bounded by 2^-126.67. */
 }
 
+/* Given xin:=x with 0 <= xin < 1, return i and modify x such that
+   xin = i/2^11 + xout, with 0 <= xout < 2^-11.
+   This operation is exact. */
+static int
+reduce2_fast (double *x)
+{
+  double i = __builtin_floor (*x * 0x1p11);
+  *x = __builtin_fma (i, -0x1p-11, *x);
+  return (int) i;
+}
+
 /* Given Xin:=X with 0 <= Xin < 1, return i and modify X such that
    Xin = i/2^11 + Xout, with 0 <= Xout < 2^-11.
    This operation is exact. */
@@ -1165,27 +1529,22 @@ static int
 reduce2 (dint64_t *X)
 {
   // assert (X->ex <= 0);
-  int i;
   if (X->ex <= -11)
-    i = 0; // X is unchanged
-  else
-  {
-    int sh = 64 - 11 - X->ex;
-    i = X->hi >> sh;
-    X->hi = X->hi & ((1ul << sh) - 1);
-  }
+    return 0;
+  int sh = 64 - 11 - X->ex;
+  int i = X->hi >> sh;
+  X->hi = X->hi & ((1ul << sh) - 1);
   normalize (X);
   return i;
 }
 
-// Multiply exactly a and b, such that *hi + *lo = a * b. 
-static inline void a_mul(double *hi, double *lo, double a, double b) {
-  *hi = a * b;
-  *lo = __builtin_fma (a, b, -*hi);
-}
-
-/* assuming 0x1.7137449123ef6p-26 < x < +Inf,
-   set h,l such that h+l approximates frac(x/(2pi)) */
+/* Assuming 0x1.7137449123ef6p-26 < x < +Inf,
+   set h,l such that h+l approximates frac(x/(2pi)).
+   If x <= 0x1.921fb54442d18p+2:
+   | h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|.
+   Otherwise only the absolute error is bounded:
+   | h + l - frac(x/(2pi)) | < 2^-75.998
+*/
 static void
 reduce_fast (double *h, double *l, double x)
 {
@@ -1197,47 +1556,228 @@ reduce_fast (double *h, double *l, double x)
       a_mul (h, l, CH, x);            // exact
       *l = __builtin_fma (CL, x, *l);
       /* The error in the above fma() is at most ulp(l),
-         where |l| <= CL*|x| thus the error is <= ulp(CL*x).
+         where |l| <= CL*|x|+|l_in|.
          Assume 2^(e-1) <= x < 2^e.
-         If x >= 0x1.691289f1bb1fbp-1 * 2^(e-1), then */
+         Then |h| < 2^(e-2) and |l_in| <= 1/2 ulp(2^(e-2)) = 2^(e-55),
+         where l_in is the value of l after a_mul.
+         Then |l| <= CL*x + 2^(e-55) <= 2^e*(CL+2-55) < 2^e * 2^-55.6.
+         The rounding error of the fma() is bounded by
+         ulp(l) <= 2^e * ulp(2^-55.6) = 2^(e-108).
+         The error due to the approximation of 1/(2pi)
+         is bounded by 2^-110.523*x <= 2^(e-110.523).
+         Adding both errors yields:
+         |h + l - x/(2pi)| < 2^e * (2^-108 + 2^-110.523) < 2^e * 2^-107.768.
+         Since |x/(2pi)| > 2^(e-1)/(2pi), the relative error is bounded by:
+         2^e * 2^-107.768 / (2^(e-1)/(2pi)) = 4pi * 2^-107.768 < 2^-104.116. */
     }
   else // x > 2*pi
     {
+      b64u64_u t = {.f = x};
+      int e = (t.u >> 52) & 0x7ff; /* 1025 <= e <= 2046 */
+      if (x == TRACE) printf ("e=%d\n", e);
+      /* We have 2^(e-1023) <= x < 2^(e-1022), thus
+         ulp(x) is a multiple of 2^(e-1075), for example
+         if x is just above 2*pi, e=1025, 2^2 <= x < 2^e,
+         and ulp(x) is a multiple of 2^-50.
+         On the other side 1/(2pi) ~ T[0]/2^64 + T[1]/2^128 + T[2]/2^192 + ...
+         Let i be the smallest integer such that 2^(e-1075)/2^(64*(i+1))
+         is not an integer, i.e., e - 1139 - 64i < 0, i.e.,
+         i >= (e-1138)/64. */
+      uint64_t m = (1ul << 52) | (t.u | 0xffffffffffffful);
+      uint64_t c[3];
+      u128 u;
+      // x = m/2^53 * 2^(e-1022)
+      if (e <= 1074) // 1025 <= e <= 1074: 2^2 <= x < 2^52
+        {
+          /* In that case the contribution of x*T[2]/2^192 is less than
+             2^(52+64-192) <= 2^-76. */
+          u = (u128) m * (u128) T[1];
+          c[0] = u;
+          c[1] = u >> 64;
+          u = (u128) m * (u128) T[0];
+          c[1] += u;
+          c[2] = (u >> 64) + (c[1] < (uint64_t) u);
+          /* | c[2]*2^128+c[1]*2^64+c[0] - m/(2pi)*2^128 | < m*T[2]/2^64 < 2^53
+             thus:
+             | (c[2]*2^128+c[1]*2^64+c[0])*2^(e-1203) - x/(2pi) | < 2^(e-1150)
+             The low 1075-e bits of c[2] contribute to frac(x/(2pi)).
+          */
+          e = 1075 - e; // 1 <= e <= 50
+          // e is the number of low bits of C[2] contributing to frac(x/(2pi))
+          assert (1 <= e && e <= 50);
+        }
+      else // 1075 <= e <= 2046, 2^52 <= x < 2^1024
+        {
+          int i = (e - 1138 + 63) / 64; // i = ceil((e-1138)/64), 0 <= i <= 14
+          if (x == TRACE) printf ("reduce_fast: i=%d\n", i);
+          /* m*T[i] contributes to f = 1139 + 64*i - e bits to frac(x/(2pi))
+             with 1 <= f <= 64
+             m*T[i+1] contributes to a multiple of 2^(-f-64),
+                      and at most to 2^(53-f)
+             m*T[i+2] contributes to a multiple of 2^(-f-128),
+                      and at most to 2^(-11-f)
+             m*T[i+3] contributes to a multiple of 2^(-f-192),
+                      and at most to 2^(-75-f) <= 2^-76
+          */
+          // TRACE: ulp(x) multiple of 2^971
+          // i=15: T[15]/2^(16*64) multiple of 2^-1024
+          // x*T[15]/2^(16*64) multiple of 2^-53
+          u = (u128) m * (u128) T[i+2];
+          c[0] = u;
+          c[1] = u >> 64;
+          u = (u128) m * (u128) T[i+1];
+          c[1] += u;
+          c[2] = (u >> 64) + (c[1] < (uint64_t) u);
+          u = (u128) m * (u128) T[i];
+          c[2] += u;
+          e = 1139 + (i<<6) - e; // 1 <= e <= 64
+          if (x == TRACE) printf ("reduce_fast: e=%d\n", e);
+          // e is the number of low bits of C[2] contributing to frac(x/(2pi))
+          assert (1 <= e && e <= 64);
+        }
+      if (e == 64)
+        {
+          c[0] = c[1];
+          c[1] = c[2];
+        }
+      else
+        {
+          c[0] = (c[1] << (64 - e)) | c[0] >> e;
+          c[1] = (c[2] << (64 - e)) | c[1] >> e;
+        }
+      if (x == TRACE) printf ("c[1]=%lu c[0]=%lu\n", c[1], c[0]);
+      /* In all cases the ignored contribution from T[] is less than 2^-76,
+         and the truncated part from the above shift is less than 2^-128:
+         | c[1]/2^64 + c[0]/2^64 - frac(x/(2pi)) | < 2^-75.999 */
+      uint64_t f;
+      if (c[1])
+        {
+          e = __builtin_clzl (c[1]);
+          f = 0x3fe - e;
+          c[1] = c[1] << (e+1);
+          t.u = (f << 52) | (c[1] >> 12);
+          *h = t.f;
+          c[0] = (c[1] << 52) | (c[0] >> 12);
+          if (c[0])
+            {
+              int g = __builtin_clzl (c[0]);
+              c[0] = c[0] << (g+1);
+              t.u = ((f - 64 - g) << 52) | (c[0] >> 12);
+              *l = t.f;
+            }
+          else
+            *l = 0;
+        }
+      else if (c[0])
+        {
+          e = __builtin_clzl (c[0]);
+          f = 0x3fe - 64 - e;
+          c[0] = c[0] << (e+1); // most significant bit shifted out
+          /* put the upper 52 bits of c[0] into h */
+          t.u = (f << 52) | (c[0] >> 12);
+          *h = t.f;
+          /* put the lower 12 bits of c[0] into l */
+          c[0] = c[0] << 52;
+          if (c[0])
+            {
+              int g = __builtin_clzl (c[0]);
+              c[0] = c[0] << (g+1);
+              t.u = ((f - 64 - g) << 52) | (c[0] >> 12);
+              *l = t.f;
+            }
+          else
+            *l = 0;
+        }
+      else
+        *h = *l = 0;
+      /* Since we truncate from two 64-bit words to a double-double,
+         we have another truncation error of less than 2^-106, thus
+         the absolute error is bounded as follows:
+         | h + l - frac(x/(2pi)) | < 2^-75.998 */
     }
 }
 
+/* return the maximal absolute error */
 static double
-sin_fast (double x)
+sin_fast (double *h, double *l, double x)
 {
-  b64u64_u t = {.f = x};
-  int e = (t.u >> 52) & 0x7ff;
-
-  if (e == 0x7ff) /* NaN, +Inf and -Inf. */
-    return 0.0 / 0.0;
-
-  /* now x is a regular number */
-
-  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
-     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
-     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
-     |sin(x) - x| < x^3/6.
-     Write x = c*2^e with 1/2 <= c < 1.
-     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
-     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
-     or c^3*2^(2e+53) < 3 (1).
-     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
-     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
-  */
-  uint64_t ux = t.u & 0x7fffffffffffffff;
-  if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-    // Taylor expansion of sin(x) is x - x^3/6 around zero
-    return __builtin_fma (x, -0x1p-54, x);
-
-  double absx = (x > 0) ? x : -x;
+  int neg = x < 0, is_sin = 1;
+  double absx = neg ? -x : x;
+  if (x == TRACE) printf ("absx=%la\n", absx);
 
   /* now x > 0x1.7137449123ef6p-26 */
-  double h, l;
-  reduce_fast (&h, &l, absx);
+  reduce_fast (h, l, absx);
+  if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
+  /* If x <= 0x1.921fb54442d18p+2:
+     | h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|
+     otherwise | h + l - frac(x/(2pi)) | < 2^-75.998. */
+
+  int i = reduce2_fast (h); // 0 <= i < 2^11, exact
+  if (x == TRACE) printf ("i=%d h=%la l=%la\n", i, *h, *l);
+
+  neg = neg ^ (i >> 10);
+  i = i & 0x3ff;
+
+  // now i < 2^10
+  is_sin = is_sin ^ (i >> 9);
+  i = i & 0x1ff;
+
+  // now 0 <= i < 2^9
+
+  if (i & 0x100)
+    {
+      is_sin = !is_sin;
+      i = 0x1ff - i;
+      *h = 0x1p-11 - *h;
+      *l = -*l;
+    }
+
+  if (x == TRACE) printf ("neg=%d is_sin=%d i=%d h=%la l=%la\n",
+                          neg, is_sin, i, *h, *l);
+  /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
+     with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < eps
+     with |eps| < 2^-104.116 * |h + l| for i=0
+          |eps| < 2^-104.116 for i<>0 and x <= 0x1.921fb54442d18p+2
+          |eps| < 2^-75.998 otherwise
+     If is_sin=1, sin |x| = sin2pi (R + eps);
+     if is_sin=0, sin |x| = cos2pi (R + eps).
+     In both cases R = i/2^11 + h+l, 0 <= R < 1/4, and |eps| as above.
+  */
+  double sh, sl, ch, cl;
+  /* since the SC[] table evaluates at i/2^11 + eps and not at i/2^11,
+     we must subtract eps from h+l */
+  *h -= SC[i][0]; // exact?
+  if (x == TRACE) printf ("modified h=%la\n", *h);
+  evalPSfast (&sh, &sl, *h, *l);
+  if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
+  evalPCfast (&ch, &cl, *h, *l);
+  if (x == TRACE) printf ("ch=%la cl=%la\n", ch, cl);
+  if (is_sin)
+    {
+      s_mul (&sh, &sl, SC[i][2], sh, sl);
+      if (x == TRACE) printf ("1775: Sh=%la Sl=%la\n", sh, sl);
+      s_mul (&ch, &cl, SC[i][1], ch, cl);
+      if (x == TRACE) printf ("1777: Ch=%la Cl=%la\n", ch, cl);
+      fast_two_sum (h, l, ch, sh);
+      *l += sl + cl;
+    }
+  else
+    {
+      /* Let xi = i/2^11 + SC[i][0], then we have modulo 1/4:
+         x/(2pi) = i/2^11 + h + l (original value of h)
+                 = xi + h + l     (new value of h)
+      */
+      s_mul (&ch, &cl, SC[i][2], ch, cl);
+      if (x == TRACE) printf ("1780: Ch=%la Cl=%la\n", ch, cl);
+      s_mul (&sh, &sl, SC[i][1], sh, sl);
+      if (x == TRACE) printf ("1786: Sh=%la Sl=%la\n", sh, sl);
+      fast_two_sum (h, l, ch, -sh);
+      *l += cl - sl;
+    }
+  static double sgn[2] = {1.0, -1.0};
+  *h *= sgn[neg];
+  *l *= sgn[neg];
+  return 0x1p-55;
 }
 
 static double
@@ -1440,5 +1980,39 @@ sin_accurate (double x)
 double
 cr_sin (double x)
 {
+  b64u64_u t = {.f = x};
+  int e = (t.u >> 52) & 0x7ff;
+
+  if (e == 0x7ff) /* NaN, +Inf and -Inf. */
+    return 0.0 / 0.0;
+
+  /* now x is a regular number */
+
+  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
+     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
+     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
+     |sin(x) - x| < x^3/6.
+     Write x = c*2^e with 1/2 <= c < 1.
+     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
+     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
+     or c^3*2^(2e+53) < 3 (1).
+     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
+     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
+  */
+  uint64_t ux = t.u & 0x7fffffffffffffff;
+  if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
+    // Taylor expansion of sin(x) is x - x^3/6 around zero
+    return __builtin_fma (x, -0x1p-54, x);
+
+  double h, l, err;
+  err = sin_fast (&h, &l, x);
+  double left = h + (l - err), right = h + (l + err);
+  if (left == right)
+    {
+      if (x == TRACE) printf ("fast path succeeded\n");
+      return left;
+    }
+  if (x == TRACE) printf ("fast path failed\n");
+
   return sin_accurate (x);
 }
