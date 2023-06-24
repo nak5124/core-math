@@ -1527,6 +1527,63 @@ reduce2 (dint64_t *X)
   return i;
 }
 
+/* h+l <- c1/2^64 + c0/2^128 */
+static void
+set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
+{
+  uint64_t e, f, g;
+  b64u64_u t;
+  if (c1)
+    {
+      e = __builtin_clzl (c1);
+      if (e)
+        {
+          c1 = (c1 << e) | (c0 >> (64 - e));
+          c0 = c0 << e;
+        }
+      f = 0x3fe - e;
+      t.u = (f << 52) | ((c1 << 1) >> 12);
+      *h = t.f;
+      c0 = (c1 << 53) | (c0 >> 11);
+      if (c0)
+        {
+          g = __builtin_clzl (c0);
+          if (g)
+            c0 = c0 << g;
+          t.u = ((f - 53 - g) << 52) | ((c0 << 1) >> 12);
+          *l = t.f;
+        }
+      else
+        *l = 0;
+    }
+  else if (c0)
+    {
+      e = __builtin_clzl (c0);
+      f = 0x3fe - 64 - e;
+      c0 = c0 << (e+1); // most significant bit shifted out
+      /* put the upper 52 bits of c0 into h */
+      t.u = (f << 52) | (c0 >> 12);
+      *h = t.f;
+      /* put the lower 12 bits of c0 into l */
+      c0 = c0 << 52;
+      if (c0)
+        {
+          int g = __builtin_clzl (c0);
+          c0 = c0 << (g+1);
+          t.u = ((f - 64 - g) << 52) | (c0 >> 12);
+          *l = t.f;
+        }
+      else
+        *l = 0;
+    }
+  else
+    *h = *l = 0;
+  /* Since we truncate from two 64-bit words to a double-double,
+     we have another truncation error of less than 2^-106, thus
+     the absolute error is bounded as follows:
+     | h + l - frac(x/(2pi)) | < 2^-75.999 + 2^-106 < 2^-75.998 */
+}
+
 /* Assuming 0x1.7137449123ef6p-26 < x < +Inf,
    return i and set h,l such that i/2^11+h+l approximates frac(x/(2pi)).
    If x <= 0x1.921fb54442d18p+2:
@@ -1637,58 +1694,7 @@ reduce_fast (double *h, double *l, double x)
          and the truncated part from the above shift is less than 2^-128 thus:
          | c[1]/2^64 + c[0]/2^128 - frac(x/(2pi)) | < 2^-76+2^-128 < 2^-75.999
       */
-      uint64_t f;
-      if (c[1])
-        {
-          e = __builtin_clzl (c[1]);
-          if (e)
-            {
-              c[1] = (c[1] << e) | (c[0] >> (64 - e));
-              c[0] = c[0] << e;
-            }
-          if (x == TRACE) printf ("e=%d c1=%lu c0=%lu\n", e, c[1], c[0]);
-          f = 0x3fe - e;
-          t.u = (f << 52) | ((c[1] << 1) >> 12);
-          *h = t.f;
-          c[0] = (c[1] << 53) | (c[0] >> 11);
-          if (x == TRACE) printf ("c0=%lu\n", c[0]);
-          if (c[0])
-            {
-              int g = __builtin_clzl (c[0]);
-              if (g)
-                c[0] = c[0] << g;
-              t.u = ((f - 53 - g) << 52) | ((c[0] << 1) >> 12);
-              *l = t.f;
-            }
-          else
-            *l = 0;
-        }
-      else if (c[0])
-        {
-          e = __builtin_clzl (c[0]);
-          f = 0x3fe - 64 - e;
-          c[0] = c[0] << (e+1); // most significant bit shifted out
-          /* put the upper 52 bits of c[0] into h */
-          t.u = (f << 52) | (c[0] >> 12);
-          *h = t.f;
-          /* put the lower 12 bits of c[0] into l */
-          c[0] = c[0] << 52;
-          if (c[0])
-            {
-              int g = __builtin_clzl (c[0]);
-              c[0] = c[0] << (g+1);
-              t.u = ((f - 64 - g) << 52) | (c[0] >> 12);
-              *l = t.f;
-            }
-          else
-            *l = 0;
-        }
-      else
-        *h = *l = 0;
-      /* Since we truncate from two 64-bit words to a double-double,
-         we have another truncation error of less than 2^-106, thus
-         the absolute error is bounded as follows:
-         | h + l - frac(x/(2pi)) | < 2^-75.999 + 2^-106 < 2^-75.998 */
+      set_dd (h, l, c[1], c[0]);
     }
   if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
 
