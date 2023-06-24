@@ -1250,7 +1250,8 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
   *lo = __builtin_fma (a, b, -*hi);
 }
 
-// Multiply a double with a double double : a * (bh + bl)
+/* Multiply a double with a double double : a * (bh + bl)
+   with error bounded by ulp(lo) */
 static inline void s_mul (double *hi, double *lo, double a, double bh,
                           double bl) {
   a_mul (hi, lo, a, bh); /* exact */
@@ -1280,7 +1281,8 @@ fast_two_sum(double *hi, double *lo, double a, double b)
   *lo = b - e; /* exact */
 }
 
-/* Put in h+l an approximation of sin2pi(xh+xl). */
+/* Put in h+l an approximation of sin2pi(xh+xl), for |xh| < 2^-11 + 2^-30,
+   and |xl| < 2^-52.36, with absolute error < 2^-77.09. */
 static void
 evalPSfast (double *h, double *l, double xh, double xl)
 {
@@ -1298,7 +1300,8 @@ evalPSfast (double *h, double *l, double xh, double xl)
   d_mul (h, l, *h, *l, xh, xl);
 }
 
-/* Put in h+l an approximation of cos2pi(xh+xl). */
+/* Put in h+l an approximation of cos2pi(xh+xl), for |xh| < 2^-11 + 2^-30,
+   and |xl| < 2^-52.36, with relative error < 2^-69.96. */
 static void
 evalPCfast (double *h, double *l, double xh, double xl)
 {
@@ -1587,9 +1590,14 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
 /* Assuming 0x1.7137449123ef6p-26 < x < +Inf,
    return i and set h,l such that i/2^11+h+l approximates frac(x/(2pi)).
    If x <= 0x1.921fb54442d18p+2:
-   | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|.
+   | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |i/2^11 + h + l|
+   with |h| < 2^-11 and |l| < 2^-52.36.
+
    Otherwise only the absolute error is bounded:
    | i/2^11 + h + l - frac(x/(2pi)) | < 2^-75.998
+   with 0 <= h < 2^-11 and |l| < 2^-53.
+
+   In both cases we have |l| < 2^-51.64*|i/2^11 + h|.
 */
 static int
 reduce_fast (double *h, double *l, double x)
@@ -1614,7 +1622,16 @@ reduce_fast (double *h, double *l, double x)
          Adding both errors yields:
          |h + l - x/(2pi)| < 2^e * (2^-108 + 2^-110.523) < 2^e * 2^-107.768.
          Since |x/(2pi)| > 2^(e-1)/(2pi), the relative error is bounded by:
-         2^e * 2^-107.768 / (2^(e-1)/(2pi)) = 4pi * 2^-107.768 < 2^-104.116. */
+         2^e * 2^-107.768 / (2^(e-1)/(2pi)) = 4pi * 2^-107.768 < 2^-104.116.
+
+         Bound on l: since |h| < 1, we have after |l| <= ulp(h) <= 2^-53
+         after a_mul(), and then |l| <= |CL|*0x1.921fb54442d17p+2 + 2^-53
+         < 2^-52.36.
+
+         Bound on l relative to h: after a_mul() we have |l| <= ulp(h)
+         <= 2^-52*h. After fma() we have |l| <= CL*x + 2^-52*h
+         <= 2^-53.84*CH*x + 2^-52*h <= (2^-53.84+2^-52)*h < 2^-51.64*h.
+      */
     }
   else // x > 0x1.921fb54442d17p+2
     {
@@ -1693,6 +1710,7 @@ reduce_fast (double *h, double *l, double x)
          | c[1]/2^64 + c[0]/2^128 - frac(x/(2pi)) | < 2^-76+2^-128 < 2^-75.999
       */
       set_dd (h, l, c[1], c[0]);
+      /* set_dd() ensures |h| < 1 and |l| < ulp(h) <= 2^-53 */
     }
   if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
 
@@ -1701,7 +1719,7 @@ reduce_fast (double *h, double *l, double x)
   return i;
 }
 
-/* return the maximal absolute error */
+/* return the maximal relative error */
 static double
 sin_fast (double *h, double *l, double x)
 {
@@ -1758,19 +1776,28 @@ sin_fast (double *h, double *l, double x)
   /* since the SC[] table evaluates at i/2^11 + eps and not at i/2^11,
      we must subtract eps from h+l */
   /* Here h = k*2^-55 with 0 <= k < 2^44, and SC[i][0] is an integer
-     multiple of 2^-63. */
+     multiple of 2^-63, with |SC[i][0]| < 2^-30, thus SC[i][0] = m*2^-63
+     with |m| < 2^33. It follows h-SC[i][0] = (k*2^8 + m)*2^-63 with
+     2^52 - 2^33 < k*2^8 + m < 2^52 + 2^33, thus h-SC[i][0] is exact.
+     Now |h| < 2^-11 + 2^-30. */
   *h -= SC[i][0];
+  // from reduce_fast() we have |l| < 2^-52.36
+  static double maxl = 0;
+  if (__builtin_fabs (*l) > maxl) printf ("maxl=%la\n", maxl = __builtin_fabs (*l));
   if (x == TRACE) printf ("modified h=%la\n", *h);
-  evalPSfast (&sh, &sl, *h, *l);
+  evalPSfast (&sh, &sl, *h, *l); // absolute error < 2^-77.09
   if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
-  evalPCfast (&ch, &cl, *h, *l);
+  evalPCfast (&ch, &cl, *h, *l); // relative error < 2^-69.96
   if (x == TRACE) printf ("ch=%la cl=%la\n", ch, cl);
+  double err;
   if (is_sin)
     {
       s_mul (&sh, &sl, SC[i][2], sh, sl);
       s_mul (&ch, &cl, SC[i][1], ch, cl);
       fast_two_sum (h, l, ch, sh);
       *l += sl + cl;
+      /* relative error bounded by 2^-63.48 < 0x1.70p-64 */
+      err = 0x1.70p-64;
     }
   else
     {
@@ -1782,13 +1809,15 @@ sin_fast (double *h, double *l, double x)
       s_mul (&sh, &sl, SC[i][1], sh, sl);
       fast_two_sum (h, l, ch, -sh);
       *l += cl - sl;
+      /* relative error bounded by 2^-64.61 < 0x1.50p-65 */
+      err = 0x1.50p-65;
     }
   if (x == TRACE) printf ("h=%la l=%la neg=%d\n", *h, *l, neg);
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
   if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
-  return 0x1p-64;
+  return err;
 }
 
 static double
@@ -2021,7 +2050,8 @@ cr_sin (double x)
 
   double h, l, err;
   err = sin_fast (&h, &l, x);
-  double left = h + (l - err), right = h + (l + err);
+  double left  = h + __builtin_fma (h, -err, l);
+  double right = h + __builtin_fma (h,  err, l);
   if (left == right)
     {
       if (x == TRACE) printf ("fast path succeeded\n");
