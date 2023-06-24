@@ -30,7 +30,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <fenv.h>
 
-#define TRACE 0x1.620926edb04edp-1 
+#define TRACE -0x0p+0
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
@@ -1594,7 +1594,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
 static int
 reduce_fast (double *h, double *l, double x)
 {
-  if (x <= 0x1.921fb54442d18p+2) // x < 2*pi
+  if (x <= 0x1.921fb54442d17p+2) // x < 2*pi
     {
       /* | CH+CL - 1/(2pi) | < 2^-110.523 */
 #define CH 0x1.45f306dc9c883p-3
@@ -1616,7 +1616,7 @@ reduce_fast (double *h, double *l, double x)
          Since |x/(2pi)| > 2^(e-1)/(2pi), the relative error is bounded by:
          2^e * 2^-107.768 / (2^(e-1)/(2pi)) = 4pi * 2^-107.768 < 2^-104.116. */
     }
-  else // x > 2*pi
+  else // x > 0x1.921fb54442d17p+2
     {
       b64u64_u t = {.f = x};
       int e = (t.u >> 52) & 0x7ff; /* 1025 <= e <= 2046 */
@@ -1655,7 +1655,6 @@ reduce_fast (double *h, double *l, double x)
       else // 1075 <= e <= 2046, 2^52 <= x < 2^1024
         {
           int i = (e - 1138 + 63) / 64; // i = ceil((e-1138)/64), 0 <= i <= 15
-          if (x == TRACE) printf ("reduce_fast: i=%d\n", i);
           /* m*T[i] contributes to f = 1139 + 64*i - e bits to frac(x/(2pi))
              with 1 <= f <= 64
              m*T[i+1] contributes a multiple of 2^(-f-64),
@@ -1674,7 +1673,6 @@ reduce_fast (double *h, double *l, double x)
           u = (u128) m * (u128) T[i];
           c[2] += u;
           e = 1139 + (i<<6) - e; // 1 <= e <= 64
-          if (x == TRACE) printf ("reduce_fast: e=%d\n", e);
           // e is the number of low bits of C[2] contributing to frac(x/(2pi))
           assert (1 <= e && e <= 64);
         }
@@ -1713,24 +1711,34 @@ sin_fast (double *h, double *l, double x)
 
   /* now x > 0x1.7137449123ef6p-26 */
   int i = reduce_fast (h, l, absx);
+  assert (0 <= i && i < 2048);
   if (x == TRACE) printf ("i=%d h=%la l=%la\n", i, *h, *l);
   /* If x <= 0x1.921fb54442d18p+2:
      | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|
      otherwise | i/2^11 + h + l - frac(x/(2pi)) | < 2^-75.998. */
 
+  // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
   neg = neg ^ (i >> 10);
   i = i & 0x3ff;
 
   // now i < 2^10
+  // if i >= 2^9: 1/4 <= frac(x/(2pi)) < 1/2 thus pi/2 <= x <= pi
   is_sin = is_sin ^ (i >> 9);
   i = i & 0x1ff;
 
   // now 0 <= i < 2^9
-
-  if (i & 0x100)
+  // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4 thus pi/4 <= x <= pi/2
+  if (i & 0x100) // case 
     {
       is_sin = !is_sin;
       i = 0x1ff - i;
+      /* 0x1p-11 - h is exact below: indeed, reduce_fast first computes
+         a first value of h (say h0, with 0 <= h0 < 1), then i = floor(h0*2^11)
+         and h1 = h0 - 2^11*i with 0 <= h1 < 2^-11.
+         If i >= 2^8 here, this implies h0 >= 1/2^3, thus ulp(h0) >= 2^-55:
+         h0 and h1 are integer multiples of 2^-55.
+         Thus h1 = k*2^-55 with 0 <= k < 2^44 (since 0 <= h1 < 2^-11).
+         Then 0x1p-11 - h = (2^44-k)*2^-55 is exactly representable. */
       *h = 0x1p-11 - *h;
       *l = -*l;
     }
@@ -1749,7 +1757,9 @@ sin_fast (double *h, double *l, double x)
   double sh, sl, ch, cl;
   /* since the SC[] table evaluates at i/2^11 + eps and not at i/2^11,
      we must subtract eps from h+l */
-  *h -= SC[i][0]; // exact?
+  /* Here h = k*2^-55 with 0 <= k < 2^44, and SC[i][0] is an integer
+     multiple of 2^-63. */
+  *h -= SC[i][0];
   if (x == TRACE) printf ("modified h=%la\n", *h);
   evalPSfast (&sh, &sl, *h, *l);
   if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
@@ -1773,9 +1783,11 @@ sin_fast (double *h, double *l, double x)
       fast_two_sum (h, l, ch, -sh);
       *l += cl - sl;
     }
+  if (x == TRACE) printf ("h=%la l=%la neg=%d\n", *h, *l, neg);
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
+  if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
   return 0x1p-64;
 }
 
@@ -1983,7 +1995,10 @@ cr_sin (double x)
   int e = (t.u >> 52) & 0x7ff;
 
   if (e == 0x7ff) /* NaN, +Inf and -Inf. */
-    return 0.0 / 0.0;
+    {
+      t.u = ~0ul;
+      return t.f;
+    }
 
   /* now x is a regular number */
 
@@ -2001,7 +2016,8 @@ cr_sin (double x)
   uint64_t ux = t.u & 0x7fffffffffffffff;
   if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
     // Taylor expansion of sin(x) is x - x^3/6 around zero
-    return __builtin_fma (x, -0x1p-54, x);
+    // for x=-0, fma (x, -0x1p-54, x) returns +0
+    return (x == 0) ? x :__builtin_fma (x, -0x1p-54, x);
 
   double h, l, err;
   err = sin_fast (&h, &l, x);
