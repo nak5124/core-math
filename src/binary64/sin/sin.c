@@ -1511,17 +1511,6 @@ reduce (dint64_t *X)
      The relative error is thus bounded by 2^-126.67. */
 }
 
-/* Given xin:=x with 0 <= xin < 1, return i and modify x such that
-   xin = i/2^11 + xout, with 0 <= xout < 2^-11.
-   This operation is exact. */
-static int
-reduce2_fast (double *x)
-{
-  double i = __builtin_floor (*x * 0x1p11);
-  *x = __builtin_fma (i, -0x1p-11, *x);
-  return (int) i;
-}
-
 /* Given Xin:=X with 0 <= Xin < 1, return i and modify X such that
    Xin = i/2^11 + Xout, with 0 <= Xout < 2^-11.
    This operation is exact. */
@@ -1539,13 +1528,13 @@ reduce2 (dint64_t *X)
 }
 
 /* Assuming 0x1.7137449123ef6p-26 < x < +Inf,
-   set h,l such that h+l approximates frac(x/(2pi)).
+   return i and set h,l such that i/2^11+h+l approximates frac(x/(2pi)).
    If x <= 0x1.921fb54442d18p+2:
-   | h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|.
+   | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|.
    Otherwise only the absolute error is bounded:
-   | h + l - frac(x/(2pi)) | < 2^-75.998
+   | i/2^11 + h + l - frac(x/(2pi)) | < 2^-75.998
 */
-static void
+static int
 reduce_fast (double *h, double *l, double x)
 {
   if (x <= 0x1.921fb54442d18p+2) // x < 2*pi
@@ -1703,6 +1692,10 @@ reduce_fast (double *h, double *l, double x)
          | h + l - frac(x/(2pi)) | < 2^-75.998 */
     }
   if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
+
+  double i = __builtin_floor (*h * 0x1p11);
+  *h = __builtin_fma (i, -0x1p-11, *h);
+  return i;
 }
 
 /* return the maximal absolute error */
@@ -1714,14 +1707,11 @@ sin_fast (double *h, double *l, double x)
   if (x == TRACE) printf ("absx=%la\n", absx);
 
   /* now x > 0x1.7137449123ef6p-26 */
-  reduce_fast (h, l, absx);
-  if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
-  /* If x <= 0x1.921fb54442d18p+2:
-     | h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|
-     otherwise | h + l - frac(x/(2pi)) | < 2^-75.998. */
-
-  int i = reduce2_fast (h); // 0 <= i < 2^11, exact
+  int i = reduce_fast (h, l, absx);
   if (x == TRACE) printf ("i=%d h=%la l=%la\n", i, *h, *l);
+  /* If x <= 0x1.921fb54442d18p+2:
+     | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|
+     otherwise | i/2^11 + h + l - frac(x/(2pi)) | < 2^-75.998. */
 
   neg = neg ^ (i >> 10);
   i = i & 0x3ff;
@@ -1781,7 +1771,7 @@ sin_fast (double *h, double *l, double x)
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
-  return 0x1p-65;
+  return 0x1p-64;
 }
 
 static double
