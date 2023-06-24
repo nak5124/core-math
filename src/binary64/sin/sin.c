@@ -30,7 +30,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <fenv.h>
 
-#define TRACE 0x1.19477d693b136p+1023
+#define TRACE 0x1.620926edb04edp-1 
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
@@ -1583,7 +1583,7 @@ reduce_fast (double *h, double *l, double x)
          Let i be the smallest integer such that 2^(e-1075)/2^(64*(i+1))
          is not an integer, i.e., e - 1139 - 64i < 0, i.e.,
          i >= (e-1138)/64. */
-      uint64_t m = (1ul << 52) | (t.u | 0xffffffffffffful);
+      uint64_t m = (1ul << 52) | (t.u & 0xffffffffffffful);
       uint64_t c[3];
       u128 u;
       // x = m/2^53 * 2^(e-1022)
@@ -1653,16 +1653,23 @@ reduce_fast (double *h, double *l, double x)
       if (c[1])
         {
           e = __builtin_clzl (c[1]);
+          if (e)
+            {
+              c[1] = (c[1] << e) | (c[0] >> (64 - e));
+              c[0] = c[0] << e;
+            }
+          if (x == TRACE) printf ("e=%d c1=%lu c0=%lu\n", e, c[1], c[0]);
           f = 0x3fe - e;
-          c[1] = c[1] << (e+1);
-          t.u = (f << 52) | (c[1] >> 12);
+          t.u = (f << 52) | ((c[1] << 1) >> 12);
           *h = t.f;
-          c[0] = (c[1] << 52) | (c[0] >> 12);
+          c[0] = (c[1] << 53) | (c[0] >> 11);
+          if (x == TRACE) printf ("c0=%lu\n", c[0]);
           if (c[0])
             {
               int g = __builtin_clzl (c[0]);
-              c[0] = c[0] << (g+1);
-              t.u = ((f - 64 - g) << 52) | (c[0] >> 12);
+              if (g)
+                c[0] = c[0] << g;
+              t.u = ((f - 53 - g) << 52) | ((c[0] << 1) >> 12);
               *l = t.f;
             }
           else
@@ -1695,6 +1702,7 @@ reduce_fast (double *h, double *l, double x)
          the absolute error is bounded as follows:
          | h + l - frac(x/(2pi)) | < 2^-75.998 */
     }
+  if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
 }
 
 /* return the maximal absolute error */
@@ -1777,7 +1785,7 @@ sin_fast (double *h, double *l, double x)
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
-  return 0x1p-55;
+  return 0x1p-64;
 }
 
 static double
