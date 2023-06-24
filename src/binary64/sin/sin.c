@@ -1597,20 +1597,17 @@ reduce_fast (double *h, double *l, double x)
         }
       else // 1075 <= e <= 2046, 2^52 <= x < 2^1024
         {
-          int i = (e - 1138 + 63) / 64; // i = ceil((e-1138)/64), 0 <= i <= 14
+          int i = (e - 1138 + 63) / 64; // i = ceil((e-1138)/64), 0 <= i <= 15
           if (x == TRACE) printf ("reduce_fast: i=%d\n", i);
           /* m*T[i] contributes to f = 1139 + 64*i - e bits to frac(x/(2pi))
              with 1 <= f <= 64
-             m*T[i+1] contributes to a multiple of 2^(-f-64),
+             m*T[i+1] contributes a multiple of 2^(-f-64),
                       and at most to 2^(53-f)
-             m*T[i+2] contributes to a multiple of 2^(-f-128),
+             m*T[i+2] contributes a multiple of 2^(-f-128),
                       and at most to 2^(-11-f)
-             m*T[i+3] contributes to a multiple of 2^(-f-192),
+             m*T[i+3] contributes a multiple of 2^(-f-192),
                       and at most to 2^(-75-f) <= 2^-76
           */
-          // TRACE: ulp(x) multiple of 2^971
-          // i=15: T[15]/2^(16*64) multiple of 2^-1024
-          // x*T[15]/2^(16*64) multiple of 2^-53
           u = (u128) m * (u128) T[i+2];
           c[0] = u;
           c[1] = u >> 64;
@@ -1635,9 +1632,11 @@ reduce_fast (double *h, double *l, double x)
           c[1] = (c[2] << (64 - e)) | c[1] >> e;
         }
       if (x == TRACE) printf ("c[1]=%lu c[0]=%lu\n", c[1], c[0]);
-      /* In all cases the ignored contribution from T[] is less than 2^-76,
-         and the truncated part from the above shift is less than 2^-128:
-         | c[1]/2^64 + c[0]/2^64 - frac(x/(2pi)) | < 2^-75.999 */
+      /* In all cases the ignored contribution from x*T[2] or x*T[i+3]
+         is less than 2^-76,
+         and the truncated part from the above shift is less than 2^-128 thus:
+         | c[1]/2^64 + c[0]/2^128 - frac(x/(2pi)) | < 2^-76+2^-128 < 2^-75.999
+      */
       uint64_t f;
       if (c[1])
         {
@@ -1689,7 +1688,7 @@ reduce_fast (double *h, double *l, double x)
       /* Since we truncate from two 64-bit words to a double-double,
          we have another truncation error of less than 2^-106, thus
          the absolute error is bounded as follows:
-         | h + l - frac(x/(2pi)) | < 2^-75.998 */
+         | h + l - frac(x/(2pi)) | < 2^-75.999 + 2^-106 < 2^-75.998 */
     }
   if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
 
