@@ -168,10 +168,18 @@ def search2_all():
       x = search2(e)
       print (get_hex(x) + ' # ' + str(e))
 
+def out_str(s,out):
+   if out==None:
+      print(s)
+   else:
+      out.write(s + '\n')
+
 # for 2^(e-1) <= x < 2^e
 # sin(x) is monotonous between (k-1/2)*pi and (k+1/2)*pi
 # also avoid roots at k*pi
-def doit_bacsel(e,i0=0,i1=infinity,margin=2*10^7):
+def doit_bacsel(e,i0=0,i1=infinity,margin=2*10^7,out=None):
+   if out != None:
+      out = open(out,"w")
    x0 = 2^(e-1)
    k0 = ceil(x0/(pi/2))
    x1 = 2^e
@@ -181,7 +189,7 @@ def doit_bacsel(e,i0=0,i1=infinity,margin=2*10^7):
    i = 0
    if 2^52<t1:
       if i0 <= i < i1:
-         print ("./doit.sh 4503599627370496 " + str(t1) + " 53 " + str(e) + " 64 20")
+         out_str ("./doit.sh 4503599627370496 " + str(t1) + " 53 " + str(e) + " 64 20", out)
       i += 1
    else:
       t1 = 2^52
@@ -189,7 +197,7 @@ def doit_bacsel(e,i0=0,i1=infinity,margin=2*10^7):
       t0 = t1
       t1 = min(t0 + 2*margin,2^53)
       if i0 <= i < i1:
-         print ("./doit0.sh " + str(t0) + " " + str(t1) + " 53 " + str(e) + " 64 20")
+         out_str ("./doit0.sh " + str(t0) + " " + str(t1) + " 53 " + str(e) + " 64 20", out)
       i += 1
       if k==k1+1:
          break
@@ -198,15 +206,17 @@ def doit_bacsel(e,i0=0,i1=infinity,margin=2*10^7):
       t1 = ZZ(t1.exact_rational()*2^(53-e))-margin
       if t0<t1:
          if i0 <= i < i1:
-            print ("./doit.sh " + str(t0) + " " + str(t1) + " 53 " + str(e) + " 64 20")
+            out_str ("./doit.sh " + str(t0) + " " + str(t1) + " 53 " + str(e) + " 64 20", out)
          i += 1
       else:
          t1 = t0
    t0 = t1
    if t0<2^53:
       if i0 <= i < i1:
-         print ("./doit.sh " + str(t0) + " 9007199254740992 53 " + str(e) + " 64 20")
+         out_str ("./doit.sh " + str(t0) + " 9007199254740992 53 " + str(e) + " 64 20", out)
       i += 1
+   if out != None:
+      out.close()
    
 # return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
 # this internal routine is used below
