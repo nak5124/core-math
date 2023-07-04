@@ -38127,3 +38127,9 @@
 0x1.fdc41369ef308p+8
 0x1.fde3efa4ca171p+8
 0x1.fe3f4b4ab0924p+8
+# special cases
+nan
++inf
+-inf
++0
+-0
