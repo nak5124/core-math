@@ -30,7 +30,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <fenv.h>
 
-#define TRACE -0x0p+0
+#define TRACE 0x1.61a3db8c8d129p+1023
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
@@ -1598,9 +1598,12 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
    with 0 <= h < 2^-11 and |l| < 2^-53.
 
    In both cases we have |l| < 2^-51.64*|i/2^11 + h|.
+
+   Put in err1 a bound for the absolute error:
+   | i/2^11 + h + l - frac(x/(2pi)) |.
 */
 static int
-reduce_fast (double *h, double *l, double x)
+reduce_fast (double *h, double *l, double x, double *err1)
 {
   if (x <= 0x1.921fb54442d17p+2) // x < 2*pi
     {
@@ -1632,6 +1635,7 @@ reduce_fast (double *h, double *l, double x)
          <= 2^-52*h. After fma() we have |l| <= CL*x + 2^-52*h
          <= 2^-53.84*CH*x + 2^-52*h <= (2^-53.84+2^-52)*h < 2^-51.64*h.
       */
+      *err1 = 0x1.d9p-105 * *h; // error < 2^-104.116 * h
     }
   else // x > 0x1.921fb54442d17p+2
     {
@@ -1711,6 +1715,7 @@ reduce_fast (double *h, double *l, double x)
       */
       set_dd (h, l, c[1], c[0]);
       /* set_dd() ensures |h| < 1 and |l| < ulp(h) <= 2^-53 */
+      *err1 = 0x1.01p-76;
     }
   if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
 
@@ -1719,7 +1724,7 @@ reduce_fast (double *h, double *l, double x)
   return i;
 }
 
-/* return the maximal relative error */
+/* return the maximal absolute error */
 static double
 sin_fast (double *h, double *l, double x)
 {
@@ -1728,7 +1733,9 @@ sin_fast (double *h, double *l, double x)
   if (x == TRACE) printf ("absx=%la\n", absx);
 
   /* now x > 0x1.7137449123ef6p-26 */
-  int i = reduce_fast (h, l, absx);
+  double err1;
+  int i = reduce_fast (h, l, absx, &err1);
+  // err1 is a absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |
   assert (0 <= i && i < 2048);
   if (x == TRACE) printf ("i=%d h=%la l=%la\n", i, *h, *l);
   /* If x <= 0x1.921fb54442d18p+2:
@@ -1745,8 +1752,8 @@ sin_fast (double *h, double *l, double x)
   i = i & 0x1ff;
 
   // now 0 <= i < 2^9
-  // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4 thus pi/4 <= x <= pi/2
-  if (i & 0x100) // case 
+  // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4
+  if (i & 0x100) // case pi/4 <= x_red <= pi/2
     {
       is_sin = !is_sin;
       i = 0x1ff - i;
@@ -1759,6 +1766,10 @@ sin_fast (double *h, double *l, double x)
          Then 0x1p-11 - h = (2^44-k)*2^-55 is exactly representable. */
       *h = 0x1p-11 - *h;
       *l = -*l;
+      /* We can have a huge cancellation in 0x1p-11 - h, for example for
+         x = 0x1.61a3db8c8d129p+1023 where we have before this operation
+         h = 0x1.ffffffffff8p-12, and h = 0x1p-53 afterwards. */
+      fast_two_sum (h, l, *h, *l);
     }
 
   if (x == TRACE) printf ("neg=%d is_sin=%d i=%d h=%la l=%la\n",
@@ -1797,7 +1808,8 @@ sin_fast (double *h, double *l, double x)
       fast_two_sum (h, l, ch, sh);
       *l += sl + cl;
       /* relative error bounded by 2^-63.48 < 0x1.70p-64 */
-      err = 0x1.70p-64;
+      assert (*h >= 0);
+      err = 0x1.70p-64 * *h;
     }
   else
     {
@@ -1810,14 +1822,19 @@ sin_fast (double *h, double *l, double x)
       fast_two_sum (h, l, ch, -sh);
       *l += cl - sl;
       /* relative error bounded by 2^-64.61 < 0x1.50p-65 */
-      err = 0x1.50p-65;
+      assert (*h >= 0);
+      err = 0x1.50p-65 * *h;
     }
   if (x == TRACE) printf ("h=%la l=%la neg=%d\n", *h, *l, neg);
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
   if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
-  return err;
+  assert (err >= 0);
+  assert (err1 >= 0);
+  if (x == TRACE) printf ("err=%la\n", err);
+  if (x == TRACE) printf ("err1=%la\n", err1);
+  return err + err1;
 }
 
 static double
@@ -2050,8 +2067,8 @@ cr_sin (double x)
 
   double h, l, err;
   err = sin_fast (&h, &l, x);
-  double left  = h + __builtin_fma (h, -err, l);
-  double right = h + __builtin_fma (h,  err, l);
+  double left  = h + (l - err);
+  double right = h + (l + err);
   if (left == right)
     {
       if (x == TRACE) printf ("fast path succeeded\n");
