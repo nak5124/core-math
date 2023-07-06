@@ -30,7 +30,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <fenv.h>
 
-#define TRACE 0x1.61a3db8c8d129p+1023
+#define TRACE 0x1.6p+1023
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
@@ -1793,8 +1793,6 @@ sin_fast (double *h, double *l, double x)
      Now |h| < 2^-11 + 2^-30. */
   *h -= SC[i][0];
   // from reduce_fast() we have |l| < 2^-52.36
-  static double maxl = 0;
-  if (__builtin_fabs (*l) > maxl) printf ("maxl=%la\n", maxl = __builtin_fabs (*l));
   if (x == TRACE) printf ("modified h=%la\n", *h);
   evalPSfast (&sh, &sl, *h, *l); // absolute error < 2^-77.09
   if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
@@ -1807,7 +1805,8 @@ sin_fast (double *h, double *l, double x)
       s_mul (&ch, &cl, SC[i][1], ch, cl);
       fast_two_sum (h, l, ch, sh);
       *l += sl + cl;
-      /* relative error bounded by 2^-63.48 < 0x1.70p-64 */
+      /* relative error bounded by 2^-63.48 < 0x1.70p-64
+         from global_error(is_sin=true,rel=true) in sin.sage */
       assert (*h >= 0);
       err = 0x1.70p-64 * *h;
     }
@@ -1821,7 +1820,8 @@ sin_fast (double *h, double *l, double x)
       s_mul (&sh, &sl, SC[i][1], sh, sl);
       fast_two_sum (h, l, ch, -sh);
       *l += cl - sl;
-      /* relative error bounded by 2^-64.61 < 0x1.50p-65 */
+      /* relative error bounded by 2^-64.61 < 0x1.50p-65
+         from global_error(is_sin=false,rel=true) in sin.sage */
       assert (*h >= 0);
       err = 0x1.50p-65 * *h;
     }
