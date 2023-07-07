@@ -25,7 +25,6 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fenv.h>
@@ -1275,7 +1274,6 @@ fast_two_sum(double *hi, double *lo, double a, double b)
 {
   double e;
 
-  //  assert (a == 0 || __builtin_fabs (a) >= __builtin_fabs (b));
   *hi = a + b;
   e = *hi - a; /* exact */
   *lo = b - e; /* exact */
@@ -1410,7 +1408,6 @@ reduce (dint64_t *X)
     int e = X->ex;
     normalize (X);
     e = e - X->ex;
-    assert (0 <= e && e <= 3);
     // put the upper e bits of tiny into X->lo
     if (e)
       X->lo |= tiny >> (64 - e);
@@ -1424,7 +1421,6 @@ reduce (dint64_t *X)
   }
 
   // now 2 <= e <= 1024
-  // assert (2 <= e && e <= 1024);
 
   /* The upper 64-bit word X->hi corresponds to hi/2^64*2^e, if multiplied by
      T[i]/2^((i+1)*64) it yields hi*T[i]/2^128 * 2^(e-i*64).
@@ -1455,7 +1451,6 @@ reduce (dint64_t *X)
 
   int f = e - 64 * i; // hi*T[i]/2^128 is multiplied by 2^f
   /* {c, 5} = hi*(T[i]+T[i+1]/2^64+T[i+2]/2^128+T[i+3]/2^192) */
-  // assert (2 <= f && f <= 127);
   /* now shift c[0..4] by f bits to the left */
   uint64_t tiny;
   if (f < 64)
@@ -1520,7 +1515,6 @@ reduce (dint64_t *X)
 static int
 reduce2 (dint64_t *X)
 {
-  // assert (X->ex <= 0);
   if (X->ex <= -11)
     return 0;
   int sh = 64 - 11 - X->ex;
@@ -1641,7 +1635,7 @@ reduce_fast (double *h, double *l, double x, double *err1)
     {
       b64u64_u t = {.f = x};
       int e = (t.u >> 52) & 0x7ff; /* 1025 <= e <= 2046 */
-      if (x == TRACE) printf ("e=%d\n", e);
+      // if (x == TRACE) printf ("e=%d\n", e);
       /* We have 2^(e-1023) <= x < 2^(e-1022), thus
          ulp(x) is a multiple of 2^(e-1075), for example
          if x is just above 2*pi, e=1025, 2^2 <= x < 2^e,
@@ -1671,7 +1665,6 @@ reduce_fast (double *h, double *l, double x, double *err1)
           */
           e = 1075 - e; // 1 <= e <= 50
           // e is the number of low bits of C[2] contributing to frac(x/(2pi))
-          assert (1 <= e && e <= 50);
         }
       else // 1075 <= e <= 2046, 2^52 <= x < 2^1024
         {
@@ -1695,7 +1688,6 @@ reduce_fast (double *h, double *l, double x, double *err1)
           c[2] += u;
           e = 1139 + (i<<6) - e; // 1 <= e <= 64
           // e is the number of low bits of C[2] contributing to frac(x/(2pi))
-          assert (1 <= e && e <= 64);
         }
       if (e == 64)
         {
@@ -1707,7 +1699,7 @@ reduce_fast (double *h, double *l, double x, double *err1)
           c[0] = (c[1] << (64 - e)) | c[0] >> e;
           c[1] = (c[2] << (64 - e)) | c[1] >> e;
         }
-      if (x == TRACE) printf ("c[1]=%lu c[0]=%lu\n", c[1], c[0]);
+      // if (x == TRACE) printf ("c[1]=%lu c[0]=%lu\n", c[1], c[0]);
       /* In all cases the ignored contribution from x*T[2] or x*T[i+3]
          is less than 2^-76,
          and the truncated part from the above shift is less than 2^-128 thus:
@@ -1717,7 +1709,7 @@ reduce_fast (double *h, double *l, double x, double *err1)
       /* set_dd() ensures |h| < 1 and |l| < ulp(h) <= 2^-53 */
       *err1 = 0x1.01p-76;
     }
-  if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
+  // if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
 
   double i = __builtin_floor (*h * 0x1p11);
   *h = __builtin_fma (i, -0x1p-11, *h);
@@ -1730,14 +1722,13 @@ sin_fast (double *h, double *l, double x)
 {
   int neg = x < 0, is_sin = 1;
   double absx = neg ? -x : x;
-  if (x == TRACE) printf ("absx=%la\n", absx);
+  // if (x == TRACE) printf ("absx=%la\n", absx);
 
   /* now x > 0x1.7137449123ef6p-26 */
   double err1;
   int i = reduce_fast (h, l, absx, &err1);
   // err1 is a absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |
-  assert (0 <= i && i < 2048);
-  if (x == TRACE) printf ("i=%d h=%la l=%la\n", i, *h, *l);
+  // if (x == TRACE) printf ("i=%d h=%la l=%la\n", i, *h, *l);
   /* If x <= 0x1.921fb54442d18p+2:
      | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|
      otherwise | i/2^11 + h + l - frac(x/(2pi)) | < 2^-75.998. */
@@ -1772,8 +1763,7 @@ sin_fast (double *h, double *l, double x)
       fast_two_sum (h, l, *h, *l);
     }
 
-  if (x == TRACE) printf ("neg=%d is_sin=%d i=%d h=%la l=%la\n",
-                          neg, is_sin, i, *h, *l);
+  // if (x == TRACE) printf ("neg=%d is_sin=%d i=%d h=%la l=%la\n", neg, is_sin, i, *h, *l);
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
      with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < eps
      with |eps| < 2^-104.116 * |h + l| for i=0
@@ -1793,11 +1783,11 @@ sin_fast (double *h, double *l, double x)
      Now |h| < 2^-11 + 2^-30. */
   *h -= SC[i][0];
   // from reduce_fast() we have |l| < 2^-52.36
-  if (x == TRACE) printf ("modified h=%la\n", *h);
+  // if (x == TRACE) printf ("modified h=%la\n", *h);
   evalPSfast (&sh, &sl, *h, *l); // absolute error < 2^-77.09
-  if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
+  // if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
   evalPCfast (&ch, &cl, *h, *l); // relative error < 2^-69.96
-  if (x == TRACE) printf ("ch=%la cl=%la\n", ch, cl);
+  // if (x == TRACE) printf ("ch=%la cl=%la\n", ch, cl);
   double err;
   if (is_sin)
     {
@@ -1807,7 +1797,6 @@ sin_fast (double *h, double *l, double x)
       *l += sl + cl;
       /* relative error bounded by 2^-65.02 < 0x1.f9p-66
          from global_error(is_sin=true,rel=true) in sin.sage */
-      assert (*h >= 0);
       err = 0x1.f9p-66 * *h;
     }
   else
@@ -1822,18 +1811,15 @@ sin_fast (double *h, double *l, double x)
       *l += cl - sl;
       /* relative error bounded by 2^-65.52 < 0x1.66p-66
          from global_error(is_sin=false,rel=true) in sin.sage */
-      assert (*h >= 0);
       err = 0x1.66p-66 * *h;
     }
-  if (x == TRACE) printf ("h=%la l=%la neg=%d\n", *h, *l, neg);
+  // if (x == TRACE) printf ("h=%la l=%la neg=%d\n", *h, *l, neg);
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
-  if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
-  assert (err >= 0);
-  assert (err1 >= 0);
-  if (x == TRACE) printf ("err=%la\n", err);
-  if (x == TRACE) printf ("err1=%la\n", err1);
+  // if (x == TRACE) printf ("h=%la l=%la\n", *h, *l);
+  // if (x == TRACE) printf ("err=%la\n", err);
+  // if (x == TRACE) printf ("err1=%la\n", err1);
   return err + err1;
 }
 
@@ -1902,9 +1888,7 @@ sin_accurate (double x)
     // pi/4 <= x < pi/2: sin(x) = cos(pi/2-x), cos(x) = sin(pi/2-x)
   {
     is_sin = !is_sin;
-    // assert (X->sgn == 0);
     X->sgn = 1; // negate X
-    // assert (X->ex < -1);
     add_dint (X, &MAGIC, X); // X -> 2^-11 - X
     // here: 256 <= i <= 511
     i = 0x1ff - i;
@@ -1913,7 +1897,6 @@ sin_accurate (double x)
   // if (x == TRACE) { printf ("i=%d Xred=", i); print_dint (X); }
 
   // now 0 <= i < 256 and 0 <= X < 2^-11
-  // assert (0 <= i && i < 256);
 
   /* If is_sin=1, sin |x| = sin2pi (R * (1 + eps))
         (cases 0 <= x < pi/4 and 3pi/4 <= x < pi)
@@ -2060,7 +2043,8 @@ cr_sin (double x)
      For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
   */
   uint64_t ux = t.u & 0x7fffffffffffffff;
-  if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
+  // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
+  if (ux <= 0x3e57137449123ef6)
     // Taylor expansion of sin(x) is x - x^3/6 around zero
     // for x=-0, fma (x, -0x1p-54, x) returns +0
     return (x == 0) ? x :__builtin_fma (x, -0x1p-54, x);
