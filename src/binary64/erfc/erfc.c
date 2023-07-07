@@ -592,7 +592,7 @@ static inline void q_1 (double *hi, double *lo, double zh, double zl) {
 static inline void exp_1 (double *hi, double *lo, double xh, double xl) {
 
 #define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
-  double k = __builtin_roundeven (xh * INVLOG2);
+  double k = __builtin_round (xh * INVLOG2);
 
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
@@ -679,7 +679,7 @@ exp_accurate (double *h, double *l, int *e, double xh, double xl)
   double th, tl, yh, yl;
   /* first reduce argument: xh + xl ~ k*log(2) + yh + yl */
 #define INVLOG2acc 0x1.71547652b82fep+0 // approximates 1/log(2)
-  int k = __builtin_roundeven (xh * INVLOG2acc);
+  int k = __builtin_round (xh * INVLOG2acc);
   /* since |xh| <= 742, |k| <= round(742/log(2)) = 1070 */
   /* subtract k*log(2), where LOG2H+LOG2L approximates log(2) */
 #define LOG2Hacc 0x1.62e42fefa39efp-1
