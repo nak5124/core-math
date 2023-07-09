@@ -25,9 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <errno.h>
-#include <x86intrin.h>
 
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
