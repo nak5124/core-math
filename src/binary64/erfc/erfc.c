@@ -43,6 +43,46 @@ SOFTWARE.
 
 #include <stdint.h>
 
+/****************** code copied from cosf.c **********************************/
+
+/* __builtin_roundeven was introduced in gcc 10 */
+#if defined(__GNUC__) && __GNUC__ >= 10
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__))
+inline double __builtin_roundeven(double x){
+   double ix;
+#if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#endif
+   return ix;
+}
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#ifndef HAS_BUILTIN_ROUNDEVEN
+#include <math.h>
+/* round x to nearest integer, breaking ties to even */
+static double
+__builtin_roundeven (double x)
+{
+  double y = round (x); /* nearest, away from 0 */
+  if (fabs (y - x) == 0.5)
+  {
+    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    union { double f; uint64_t n; } u, v;
+    u.f = y;
+    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
+      y = v.f;
+  }
+  return y;
+}
+#endif
+
 /****************** code copied from erf.c ***********************************/
 
 static const double C[94][13] = {
@@ -592,7 +632,7 @@ static inline void q_1 (double *hi, double *lo, double zh, double zl) {
 static inline void exp_1 (double *hi, double *lo, double xh, double xl) {
 
 #define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
-  double k = __builtin_round (xh * INVLOG2);
+  double k = __builtin_roundeven (xh * INVLOG2);
 
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
@@ -679,7 +719,7 @@ exp_accurate (double *h, double *l, int *e, double xh, double xl)
   double th, tl, yh, yl;
   /* first reduce argument: xh + xl ~ k*log(2) + yh + yl */
 #define INVLOG2acc 0x1.71547652b82fep+0 // approximates 1/log(2)
-  int k = __builtin_round (xh * INVLOG2acc);
+  int k = __builtin_roundeven (xh * INVLOG2acc);
   /* since |xh| <= 742, |k| <= round(742/log(2)) = 1070 */
   /* subtract k*log(2), where LOG2H+LOG2L approximates log(2) */
 #define LOG2Hacc 0x1.62e42fefa39efp-1
