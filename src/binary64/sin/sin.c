@@ -1281,7 +1281,7 @@ fast_two_sum(double *hi, double *lo, double a, double b)
   *lo = b - e; /* exact */
 }
 
-/* Put in h+l an approximation of sin2pi(xh+xl), for |xh| < 2^-11 + 2^-30,
+/* Put in h+l an approximation of sin2pi(xh+xl), for |xh| < 2^-11 + 2^-24,
    and |xl| < 2^-52.36, with absolute error < 2^-77.09. */
 static void
 evalPSfast (double *h, double *l, double xh, double xl)
@@ -1300,7 +1300,7 @@ evalPSfast (double *h, double *l, double xh, double xl)
   d_mul (h, l, *h, *l, xh, xl);
 }
 
-/* Put in h+l an approximation of cos2pi(xh+xl), for |xh| < 2^-11 + 2^-30,
+/* Put in h+l an approximation of cos2pi(xh+xl), for |xh| < 2^-11 + 2^-24,
    and |xl| < 2^-52.36, with relative error < 2^-69.96. */
 static void
 evalPCfast (double *h, double *l, double xh, double xl)
@@ -1321,7 +1321,7 @@ evalPCfast (double *h, double *l, double xh, double xl)
    where X2 approximates X^2.
    Absolute error bounded by 2^-132.999 with 0 <= Y < 0.003068
    (see evalPS() in sin.sage), and relative error bounded by
-   2^-123.651 (see evalPSrel() in sin.sage). */
+   2^-124.648 (see evalPSrel(K=8) in sin.sage). */
 static void
 evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
 {
@@ -1601,7 +1601,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
 static int
 reduce_fast (double *h, double *l, double x, double *err1)
 {
-  if (x <= 0x1.921fb54442d17p+2) // x < 2*pi
+  if (__builtin_expect(x <= 0x1.921fb54442d17p+2, 1)) // x < 2*pi
     {
       /* | CH+CL - 1/(2pi) | < 2^-110.523 */
 #define CH 0x1.45f306dc9c883p-3
@@ -1725,22 +1725,25 @@ sin_fast (double *h, double *l, double x)
   /* now x > 0x1.7137449123ef6p-26 */
   double err1;
   int i = reduce_fast (h, l, absx, &err1);
-  // err1 is a absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |
-  /* If x <= 0x1.921fb54442d18p+2:
-     | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |h + l|
-     otherwise | i/2^11 + h + l - frac(x/(2pi)) | < 2^-75.998. */
+  /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
+     | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
+  // we use sin(pi+x) = -sin(x)
   neg = neg ^ (i >> 10);
   i = i & 0x3ff;
+  // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/2 < err1
 
   // now i < 2^10
   // if i >= 2^9: 1/4 <= frac(x/(2pi)) < 1/2 thus pi/2 <= x <= pi
+  // we use sin(pi/2+x) = cos(x)
   is_sin = is_sin ^ (i >> 9);
   i = i & 0x1ff;
+  // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/4 < err1
 
   // now 0 <= i < 2^9
   // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4
+  // we use sin(pi/2-x) = cos(x)
   if (i & 0x100) // case pi/4 <= x_red <= pi/2
     {
       is_sin = !is_sin;
@@ -1751,36 +1754,38 @@ sin_fast (double *h, double *l, double x)
          If i >= 2^8 here, this implies h0 >= 1/2^3, thus ulp(h0) >= 2^-55:
          h0 and h1 are integer multiples of 2^-55.
          Thus h1 = k*2^-55 with 0 <= k < 2^44 (since 0 <= h1 < 2^-11).
-         Then 0x1p-11 - h = (2^44-k)*2^-55 is exactly representable. */
-      *h = 0x1p-11 - *h;
-      *l = -*l;
-      /* We can have a huge cancellation in 0x1p-11 - h, for example for
+         Then 0x1p-11 - h = (2^44-k)*2^-55 is exactly representable.
+         We can have a huge cancellation in 0x1p-11 - h, for example for
          x = 0x1.61a3db8c8d129p+1023 where we have before this operation
          h = 0x1.ffffffffff8p-12, and h = 0x1p-53 afterwards. */
-      fast_two_sum (h, l, *h, *l);
+      fast_two_sum (h, l, 0x1p-11 - *h, -*l);
     }
 
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
-     with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < eps
-     with |eps| < 2^-104.116 * |h + l| for i=0
-          |eps| < 2^-104.116 for i<>0 and x <= 0x1.921fb54442d18p+2
-          |eps| < 2^-75.998 otherwise
-     If is_sin=1, sin |x| = sin2pi (R + eps);
-     if is_sin=0, sin |x| = cos2pi (R + eps).
-     In both cases R = i/2^11 + h+l, 0 <= R < 1/4, and |eps| as above.
+     with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < err1
+     If is_sin=1, sin |x| = sin2pi (R + err1);
+     if is_sin=0, sin |x| = cos2pi (R + err1).
+     In both cases R = i/2^11 + h + l, 0 <= R < 1/4.
   */
   double sh, sl, ch, cl;
-  /* since the SC[] table evaluates at i/2^11 + eps and not at i/2^11,
-     we must subtract eps from h+l */
+  /* since the SC[] table evaluates at i/2^11 + SC[i][0] and not at i/2^11,
+     we must subtract SC[i][0] from h+l */
   /* Here h = k*2^-55 with 0 <= k < 2^44, and SC[i][0] is an integer
      multiple of 2^-62, with |SC[i][0]| < 2^-24, thus SC[i][0] = m*2^-62
      with |m| < 2^38. It follows h-SC[i][0] = (k*2^7 + m)*2^-62 with
      2^51 - 2^38 < k*2^7 + m < 2^51 + 2^38, thus h-SC[i][0] is exact.
      Now |h| < 2^-11 + 2^-24. */
   *h -= SC[i][0];
+  // now -2^-24 < h < 2^-11+2^-24
   // from reduce_fast() we have |l| < 2^-52.36
-  evalPSfast (&sh, &sl, *h, *l); // absolute error < 2^-77.09
-  evalPCfast (&ch, &cl, *h, *l); // relative error < 2^-69.96
+  evalPSfast (&sh, &sl, *h, *l);
+  /* the absolute error of evalPSfast() is less than 2^-77.09 from
+     routine evalPSfast() in sin.sage:
+     | sh + sh - sin(h+l) | < 2^-77.09 */
+  evalPCfast (&ch, &cl, *h, *l);
+  /* the relative error of evalPCfast() is less than 2^-69.96 from
+     routine evalPCfast(rel=true) in sin.sage:
+     | ch + cl - cos(h+l) | < 2^-69.96 * |ch + cl| */
   double err;
   if (is_sin)
     {
@@ -1788,23 +1793,27 @@ sin_fast (double *h, double *l, double x)
       s_mul (&ch, &cl, SC[i][1], ch, cl);
       fast_two_sum (h, l, ch, sh);
       *l += sl + cl;
-      /* relative error bounded by 2^-67.29 < 0x1.a3p-68
-         from global_error(is_sin=true,rel=true) in sin.sage */
-      err = 0x1.a3p-68 * *h;
+      /* absolute error bounded by 2^-68.588
+         from global_error(is_sin=true,rel=false) in sin.sage:
+         | h + l - sin2pi (R) | < 2^-68.588
+         thus:
+         | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
+                             < 2^-68.588 + err1 */
+      err = 0x1.55p-69; // 2^-66.588 < 0x1.55p-69
     }
   else
     {
-      /* Let xi = i/2^11 + SC[i][0], then we have modulo 1/4:
-         x/(2pi) = i/2^11 + h + l (original value of h)
-                 = xi + h + l     (new value of h)
-      */
       s_mul (&ch, &cl, SC[i][2], ch, cl);
       s_mul (&sh, &sl, SC[i][1], sh, sl);
       fast_two_sum (h, l, ch, -sh);
       *l += cl - sl;
-      /* relative error bounded by 2^-68.07 < 0x1.e8p-69
-         from global_error(is_sin=false,rel=true) in sin.sage */
-      err = 0x1.e8p-69 * *h;
+      /* absolute error bounded by 2^-68.414
+         from global_error(is_sin=false,rel=false) in sin.sage:
+         | h + l - cos2pi (R) | < 2^-68.414
+         thus:
+         | h + l - sin |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
+                             < 2^-68.414 * |h + l| + err1 */
+      err = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
     }
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
@@ -1907,7 +1916,7 @@ sin_accurate (double x)
     mul_dint (V, C+i, V);
     /* For the error analysis, we distinguish the case i=0.
        For i=0, we have S[i]=0 and C[1]=1, thus V is the value computed
-       by evalPS() above, with relative error < 2^-123.651.
+       by evalPS() above, with relative error < 2^-124.648.
 
        For 1 <= i < 256, analyze_sin_case1(rel=true) from sin.sage gives a
        relative error bound of -122.797 (obtained for i=1).
@@ -2005,7 +2014,7 @@ cr_sin (double x)
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff;
 
-  if (e == 0x7ff) /* NaN, +Inf and -Inf. */
+  if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
       t.u = ~0ul;
       return t.f;
@@ -2033,10 +2042,9 @@ cr_sin (double x)
 
   double h, l, err;
   err = sin_fast (&h, &l, x);
-  double left  = h + (l - err);
-  double right = h + (l + err);
-  /* With SC[] from ./buildSC 15 we get 3500 failures out of 50000000
-     random tests, i.e., about 0.007%. */
+  double left  = h + (l - err), right = h + (l + err);
+  /* With SC[] from ./buildSC 15 we get 1100 failures out of 50000000
+     random tests, i.e., about 0.002%. */
   if (left == right)
     return left;
 

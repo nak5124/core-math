@@ -225,7 +225,7 @@ def RIFulp(x):
 
 # error analysis of evalPC()
 # evalPC()
-# err= -125.999957617982
+# (1.00000?, 1.1755288837865430349512422633250043508e-38)
 def evalPC(verbose=false):
    RIF128 = RealIntervalField(128)
    X = RIF128(0,2^-11)
@@ -301,7 +301,7 @@ def evalPC(verbose=false):
 
 # error analysis of evalPS()
 # evalPS()
-# (0.01?, 9.1835841043305996799841202077360899805e-41)
+# (0.01?, 9.1838643693027966097514749319048050847e-41)
 def evalPS(verbose=false,xmin=0,xmax=2^-11,rel=false):
    RIF128 = RealIntervalField(128)
    X = RIF128(xmin,xmax)
@@ -387,13 +387,22 @@ def evalPS(verbose=false,xmin=0,xmax=2^-11,rel=false):
    return Y, err
 
 # relative error for evalPS
+# evalPSrel()
 # e= -1073 err= 5.9867435683188998247557269010591102197e-38
-def evalPSrel():
+# evalPSrel(K=1)
+# e= -1073 k= 1 err= 3.9911623788792665498371512673727401464e-38
+# evalPSrel(K=2)
+# e= -1073 k= 3 err= 3.4209963247536570427175582291766344112e-38
+# evalPSrel(K=8)
+# e= -1073 k= 255 err= 2.9992296545785486401907359817438986619e-38
+def evalPSrel(K=0):
    maxerr = 0
    for e in range(-11,-1074,-1):
-      _, err = evalPS(xmin=2^(e-1),xmax=2^e,rel=true)
+      # subdivide [2^(e-1),2^e] into 2^K subintervals
+      for k in range(2^K):
+         _, err = evalPS(xmin=2^(e-1)+k*2^(e-1-K),xmax=2^(e-1)+(k+1)*2^(e-1-K),rel=true)
       if err>maxerr:
-         print ("e=", e, "err=", err)
+         print ("e=", e, "k=", k, "err=", err)
    return maxerr
 
 # analyze the rounding error when is_sin=1
@@ -409,8 +418,9 @@ def analyze_sin_case1(rel=false):
    for i in range(1,256):
       U, errU = evalPC()
       V, errV = evalPS()
-      # also consider relative error bound of 2^-123.651 from evalPSrel
-      errV = min(errV, 2^-123.651*V.abs().upper())
+      # also consider relative error bound of 2^-124.648 from evalPSrel(K=8)
+      print (i, errV, 2^-124.648*V.abs().upper())
+      errV = min(errV, 2^-124.648*V.abs().upper())
       # mul_dint (U, S+i, U)
       Si = RIF128(S[i])
       Uin = U
@@ -444,8 +454,8 @@ def analyze_sin_case2(rel=false):
    for i in range(0,256):
       U, errU = evalPC()
       V, errV = evalPS()
-      # also consider relative error bound of 2^-123.651 from evalPSrel
-      errV = min(errV, 2^-123.651*V.abs().upper())
+      # also consider relative error bound of 2^-124.648 from evalPSrel
+      errV = min(errV, 2^-124.648*V.abs().upper())
       # mul_dint (U, C+i, U)
       Ci = RIF128(C[i])
       Uin = U
@@ -575,22 +585,49 @@ def evalPSfast(verbose=false,xh=None,xl=None):
    return err, h, l
 
 # return relative error bound for evalPSfast
+def evalPSfast_rel():
+   maxerr = 0
+   xh = 2^-11+2^-24
+   e = 0
+   while xh > 2^-20:
+      # positive values
+      t = RIF(xh/2,xh)
+      err, sh, sl = evalPSfast(xh=t)
+      # convert to relative error
+      err = err/t.lower().abs()
+      if err > maxerr:
+         maxerr = err
+         print ("+ e=", e, "relerr=", err)
+      # negative values
+      t = RIF(-xh,-xh/2)
+      err, sh, sl = evalPSfast(xh=t)
+      # convert to relative error
+      err = err/t.lower().abs()
+      if err > maxerr:
+         maxerr = err
+         print ("- e=", e, "relerr=", err)
+      xh = xh/2
+      e += 1
+   return maxerr
+
+# return relative error bound for evalPSfast
 # 0x1.7137449123ef6p-26 < x < +Inf
 # 0x1.d619ab67d1407p-29 < x/(2pi)
 # e= -28 i= 0 err= -77.0995535331724?
 def evalPSfast_all():
    maxerr = 0
    for e in [-28..0]:
-      # 2^(e-1) <= h < 2^e
-      h = RIF(2^(e-1),2^e)
-      imin = floor(h.lower()*2^11)
-      imax = floor(h.upper()*2^11)
+      # 2^(e-1) <= x < 2^e
+      x = RIF(2^(e-1),2^e)
+      imin = floor(x.lower()*2^11)
+      imax = floor(x.upper()*2^11)
       for i in [imin..imax]:
-         xh = RIF(max(0,h.lower()-i*2^-11),min(2^-11,h.upper()-i*2^-11))
-         xl = h.upper()*2^-51.64
-         err = evalPSfast(xh=xh,xl=xl)
+         # write x as i/2^11 + h + l
+         h = RIF(max(0,x.lower()-i*2^-11),min(2^-11,x.upper()-i*2^-11))
+         l = x.upper()*2^-51.64 # the 2^-51.64 bound comes from reduce_fast()
+         err,sh,sl = evalPSfast(xh=h,xl=l)
          # convert to relative error
-         err = err/(xh+xl).abs().lower()
+         err = err/(sh+sl).abs().lower()
          if err>maxerr:
             maxerr = err
             print ("e=", e, "i=", i, "err=", log(err)/log(2.))
@@ -916,13 +953,18 @@ SC=[
    ("-0x1.202f686p-28", "0x1.68ed1e0990551p-1", "0x1.6b25cf728c35p-1"),
 ]
 
+# global_error(is_sin=true,rel=false)
+# i= 255 err= -68.5887013548669
 # global_error(is_sin=true,rel=true)
-# i= 2 err= -67.295978188868?
+# i= 2 err= -67.295631377593?
+# global_error(is_sin=false,rel=false)
+# i= 6 err= -68.4141957935626
 # global_error(is_sin=false,rel=true)
-# i= 253 err= -68.071197670945?
+# i= 253 err= -68.0711056124201
 def global_error(is_sin=true,rel=false):
    global SC
    maxerr = 0
+   maxratio = 0
    SC = [(RR(x[0],16),RR(x[1],16),RR(x[2],16)) for x in SC]
    # check SC[i][0] is integer multiple of 2^-62, and |SC[i][0]| < 2^-24
    for i in range(256):
@@ -933,18 +975,20 @@ def global_error(is_sin=true,rel=false):
    if is_sin:
       for i in range(256):
          errs, sh, sl = evalPSfast ()
+         # | sh + sh - sin(h+l) | < errs
          errc, ch, cl = evalPCfast ()
+         # | ch + cl - cos(h+l) | < errc
          xi = i/2^11+SC[i][0].exact_rational()
          Si = SC[i][1]
          errSi = abs(n(sin(2*pi*xi)-Si.exact_rational(),200))
          Ci = SC[i][2]
          errCi = abs(n(cos(2*pi*xi)-Ci.exact_rational(),200))
          # s_mul (&sh, &sl, SC[i][2], sh, sl)
-         sh_in = sh
+         sh_in = sh+sl
          sh, sl = s_mul(Ci, sh, sl)
          err1 = RIFulp(sl)+errCi*sh_in.abs().upper()+Ci*errs
          # s_mul (&ch, &cl, SC[i][1], ch, cl)
-         ch_in = ch
+         ch_in = ch+cl
          ch, cl = s_mul(Si, ch, cl)
          err2 = RIFulp(cl)+errSi*ch_in.abs().upper()+Si*errc
          # fast_two_sum (h, l, ch, sh)
@@ -958,7 +1002,8 @@ def global_error(is_sin=true,rel=false):
          err4 = RIFulp(tmp)+RIFulp(l)
          err = err1+err2+err3+err4
          if rel: # convert to relative error
-            err =err/(h+l).abs().lower()
+            err = err/(h+l).abs().lower()
+         err = err.abs().upper()
          if err>maxerr:
             maxerr = err
             print ("i=", i, "err=", log(err)/log(2.))
@@ -972,11 +1017,11 @@ def global_error(is_sin=true,rel=false):
          Ci = SC[i][2]
          errCi = abs(n(cos(2*pi*xi)-Ci.exact_rational(),200))
          # s_mul (&ch, &cl, SC[i][2], ch, cl)
-         ch_in = ch
+         ch_in = ch+cl
          ch, cl = s_mul(Ci, ch, cl)
          err1 = RIFulp(cl)+errCi*ch_in.abs().upper()+Ci*errc
          # s_mul (&sh, &sl, SC[i][1], sh, sl
-         sh_in = sh
+         sh_in = sh+sl
          sh, sl = s_mul(Si, sh, sl)
          err2 = RIFulp(sl)+errSi*sh_in.abs().upper()+Si*errs
          # fast_two_sum (h, l, ch, -sh)
@@ -991,6 +1036,73 @@ def global_error(is_sin=true,rel=false):
          err = err1+err2+err3+err4
          if rel: # convert to relative error
             err =err/(h+l).abs().lower()
+         err = err.abs().upper()
          if err>maxerr:
             maxerr = err
             print ("i=", i, "err=", log(err)/log(2.))
+
+from functools import cmp_to_key
+
+# entries are (t0,t1,e)
+def cmp(x,y):
+   xmin = x[0]*2^x[2]
+   xmax = x[1]*2^x[2]
+   ymin = y[0]*2^y[2]
+   ymax = y[1]*2^y[2]
+   if xmax <= ymin:
+      return int(-1)
+   if ymax <= xmin:
+      return int(1)
+   if (xmin <= ymin and xmax < ymax):
+      return int(-1)
+   if (xmin < ymin and xmax <= ymax):
+      return int(-1)
+   if (ymin <= xmin and ymax < xmax):
+      return int(1)
+   if (ymin < xmin and ymax <= xmax):
+      return int(1)
+   return int(0)
+
+# sage: statall("out")
+# [((6495314627411702, -78), (9007199254740992, -53)),
+# ((7074237752028441, -52), (7516377621530218, -46)),
+# ((7626912575405663, -46), (7626912577405663, -46)),
+# ((7737447531281107, -46), (6853167812277552, -45)),
+# ((6853167832277552, -45), (6963702777152996, -45)),
+# ((6963702797152996, -45), (7074237742028440, -45)),
+# ((7074237762028440, -45), (9007199254740992, -42))]
+def statall(f):
+   f = open(f,"r")
+   l = []
+   while true:
+      s = f.readline()
+      if s=='':
+         break
+      s = s.split(" ")
+      assert len(s) == 5
+      t0 = ZZ(s[0])
+      t1 = ZZ(s[1])
+      e = ZZ(s[2])
+      n = ZZ(s[3])
+      nn = ZZ(s[4])
+      assert nn == 53, "nn == 53"
+      assert t0.nbits() == n, "t0.nbits() == n"
+      assert (t1-1).nbits() == n, "(t1-1).nbits() == n"
+      l.append((t0,t1,e-n))
+   f.close()
+   l.sort(key=cmp_to_key(cmp))
+   l2 = []
+   for t0,t1,e in l:
+      if l2==[]:
+         l2 = [((t0,e),(t1,e))]
+      else:
+         t1old,e1old = l2[-1][1]
+         if t1old*2^e1old > t0*2^e:
+            print ((t1old,e1old), (t0, e))
+         assert t1old*2^e1old <= t0*2^e, "t1old*2^e1old <= t0*2^e"
+         if t1old*2^e1old == t0*2^e:
+            l2[-1] = (l2[-1][0],(t1,e))
+         else:
+            l2.append(((t0,e),(t1,e)))
+   l = l2
+   return l
