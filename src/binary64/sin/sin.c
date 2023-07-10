@@ -31,8 +31,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <fenv.h>
 
-#define TRACE 0x1.6p+1023
-
 /******************** code copied from dint.h and pow.[ch] *******************/
 
 typedef unsigned __int128 u128;
@@ -1282,14 +1280,12 @@ fast_two_sum(double *hi, double *lo, double a, double b)
 }
 
 /* Put in h+l an approximation of sin2pi(xh+xl), for |xh| < 2^-11 + 2^-24,
-   and |xl| < 2^-52.36, with absolute error < 2^-77.09. */
+   and |xl| < 2^-52.36, with absolute error < 2^-77.09.
+   Assume uh + ul approximates (xh+xl)^2. */
 static void
-evalPSfast (double *h, double *l, double xh, double xl)
+evalPSfast (double *h, double *l, double xh, double xl, double uh, double ul)
 {
-  double uh, ul, t;
-  a_mul (&uh, &ul, xh, xh);
-  ul = __builtin_fma (xh + xh, xl, ul);
-  // uh+ul approximates (xh+xl)^2
+  double t;
   *h = PSfast[4]; // degree 7
   *h = __builtin_fma (*h, uh, PSfast[3]); // degree 5
   *h = __builtin_fma (*h, uh, PSfast[2]); // degree 3
@@ -1301,14 +1297,12 @@ evalPSfast (double *h, double *l, double xh, double xl)
 }
 
 /* Put in h+l an approximation of cos2pi(xh+xl), for |xh| < 2^-11 + 2^-24,
-   and |xl| < 2^-52.36, with relative error < 2^-69.96. */
+   and |xl| < 2^-52.36, with relative error < 2^-69.96.
+   Assume uh + ul approximates (xh+xl)^2. */
 static void
-evalPCfast (double *h, double *l, double xh, double xl)
+evalPCfast (double *h, double *l, double uh, double ul)
 {
-  double uh, ul, t;
-  a_mul (&uh, &ul, xh, xh);
-  ul = __builtin_fma (xh + xh, xl, ul);
-  // uh+ul approximates (xh+xl)^2
+  double t;
   *h = PCfast[4]; // degree 6
   *h = __builtin_fma (*h, uh, PCfast[3]); // degree 4
   *h = __builtin_fma (*h, uh, PCfast[2]); // degree 2
@@ -1778,11 +1772,15 @@ sin_fast (double *h, double *l, double x)
   *h -= SC[i][0];
   // now -2^-24 < h < 2^-11+2^-24
   // from reduce_fast() we have |l| < 2^-52.36
-  evalPSfast (&sh, &sl, *h, *l);
+  double uh, ul;
+  a_mul (&uh, &ul, *h, *h);
+  ul = __builtin_fma (*h + *h, *l, ul);
+  // uh+ul approximates (h+l)^2
+  evalPSfast (&sh, &sl, *h, *l, uh, ul);
   /* the absolute error of evalPSfast() is less than 2^-77.09 from
      routine evalPSfast() in sin.sage:
      | sh + sh - sin(h+l) | < 2^-77.09 */
-  evalPCfast (&ch, &cl, *h, *l);
+  evalPCfast (&ch, &cl, uh, ul);
   /* the relative error of evalPCfast() is less than 2^-69.96 from
      routine evalPCfast(rel=true) in sin.sage:
      | ch + cl - cos(h+l) | < 2^-69.96 * |ch + cl| */
