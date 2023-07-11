@@ -373,17 +373,6 @@ static inline double dint_tod(dint64_t *a) {
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
-#if 0
-static void
-print_dint (dint64_t *X)
-{
-  if (X->sgn == 0)
-    printf ("2^%ld*(%lu/2^64+%lu/2^128)\n", X->ex, X->hi, X->lo);
-  else
-    printf ("-2^%ld*(%lu/2^64+%lu/2^128)\n", X->ex, X->hi, X->lo);
-}
-#endif
-
 /* This table approximates 1/(2pi) downwards with precision 1280:
    1/(2*pi) ~ T[0]/2^64 + T[1]/2^128 + ... + T[i]/2^((i+1)*64) + ...
    Computed with computeT() from sin.sage. */
@@ -1822,7 +1811,6 @@ sin_fast (double *h, double *l, double x)
 static double
 sin_accurate (double x)
 {
-  // printf ("enter sin_accurate, x=%la\n", x);
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff;
 
