@@ -1915,7 +1915,7 @@ sin_accurate (double x)
        after add_dint (U, U, V) below.
 
        For the approximation error in R, we have:
-       cos |x| = cos2pi (R * (1 + eps))
+       sin |x| = cos2pi (R * (1 + eps))
        R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
        Thus sin|x| = cos2pi(R+R*eps)
                    = cos2pi(R)-R*eps*2*pi*sin2pi(theta), theta in [R,R+R*eps]
