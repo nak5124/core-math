@@ -1579,7 +1579,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
      | h + l - frac(x/(2pi)) | < 2^-75.999 + 2^-106 < 2^-75.998 */
 }
 
-/* Assuming 0x1.7137449123ef6p-26 < x < +Inf,
+/* Assuming 0x1.6a09e667f3bccp-27 < x < +Inf,
    return i and set h,l such that i/2^11+h+l approximates frac(x/(2pi)).
    If x <= 0x1.921fb54442d18p+2:
    | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |i/2^11 + h + l|
@@ -1711,38 +1711,39 @@ reduce_fast (double *h, double *l, double x, double *err1)
   return i;
 }
 
-/* return the maximal absolute error */
+/* Assume x is a regular number and x > 0x1.6a09e667f3bccp-27,
+   return a bound on the maximal absolute error err:
+   | h + l - cos(x) | < err */
 static double
-sin_fast (double *h, double *l, double x)
+cos_fast (double *h, double *l, double x)
 {
-  int neg = x < 0, is_sin = 1;
-  double absx = neg ? -x : x;
+  int neg = 0, is_cos = 1;
 
-  /* now x > 0x1.7137449123ef6p-26 */
   double err1;
-  int i = reduce_fast (h, l, absx, &err1);
+  int i = reduce_fast (h, l, x, &err1);
   /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
      | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
-  // we use sin(pi+x) = -sin(x)
+  // we use cos(pi+x) = -cos(x)
   neg = neg ^ (i >> 10);
   i = i & 0x3ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/2 < err1
 
   // now i < 2^10
   // if i >= 2^9: 1/4 <= frac(x/(2pi)) < 1/2 thus pi/2 <= x <= pi
-  // we use sin(pi/2+x) = cos(x)
-  is_sin = is_sin ^ (i >> 9);
+  // we use cos(pi/2+x) = -sin(x)
+  is_cos = is_cos ^ (i >> 9);
+  neg = neg ^ (i >> 9);
   i = i & 0x1ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/4 < err1
 
   // now 0 <= i < 2^9
   // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4
-  // we use sin(pi/2-x) = cos(x)
+  // we use cos(pi/2-x) = sin(x)
   if (i & 0x100) // case pi/4 <= x_red <= pi/2
     {
-      is_sin = !is_sin;
+      is_cos = !is_cos;
       i = 0x1ff - i;
       /* 0x1p-11 - h is exact below: indeed, reduce_fast first computes
          a first value of h (say h0, with 0 <= h0 < 1), then i = floor(h0*2^11)
@@ -1759,8 +1760,8 @@ sin_fast (double *h, double *l, double x)
 
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
      with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < err1
-     If is_sin=1, sin |x| = sin2pi (R + err1);
-     if is_sin=0, sin |x| = cos2pi (R + err1).
+     If is_cos=1, cos(x) = cos2pi(R + err1);
+     if is_cos=0, cos(x) = sin2pi (R + err1).
      In both cases R = i/2^11 + h + l, 0 <= R < 1/4.
   */
   double sh, sl, ch, cl;
@@ -1787,7 +1788,7 @@ sin_fast (double *h, double *l, double x)
      routine evalPCfast(rel=true) in sin.sage:
      | ch + cl - cos(h+l) | < 2^-69.96 * |ch + cl| */
   double err;
-  if (is_sin)
+  if (!is_cos)
     {
       s_mul (&sh, &sl, SC[i][2], sh, sl);
       s_mul (&ch, &cl, SC[i][1], ch, cl);
@@ -1821,12 +1822,10 @@ sin_fast (double *h, double *l, double x)
   return err + err1;
 }
 
-/* Assume x is a regular number and |x| > 0x1.6a09e667f3bccp-27. */
+/* Assume x is a regular number and x > 0x1.6a09e667f3bccp-27. */
 static double
 cos_accurate (double x)
 {
-  x = (x > 0) ? x : -x;
-
   dint64_t X[1];
   dint_fromd (X, x);
 
@@ -1963,9 +1962,13 @@ cos_accurate (double x)
   if ((hi0 >> 10) != (hi1 >> 10))
     {
       static const double exceptions[][3] = {
-        {0x1.e0000000001c2p-20, 0x1.dfffffffff02ep-20, 0x1.dcba692492527p-146},
+        {0x1.8000000000009p-23, 0x1.fffffffffff7p-1, 0x1.b56666666666cp-143},
+        {0x1.8000000000024p-22, 0x1.ffffffffffdcp-1, 0x1.b56666666667ep-137},
+        {0x1.800000000009p-21,  0x1.ffffffffff7p-1,  0x1.b5666666666c4p-131},
+        {0x1.20000000000f3p-20, 0x1.fffffffffebcp-1, 0x1.37642666666fdp-127},
+        {0x1.800000000024p-20,  0x1.fffffffffdcp-1,  0x1.b5666666667ddp-125},
       };
-      for (int i = 0; i < 1; i++)
+      for (int i = 0; i < 5; i++)
         {
           if (__builtin_fabs (x) == exceptions[i][0])
             return (x > 0) ? exceptions[i][1] + exceptions[i][2]
@@ -2010,20 +2013,18 @@ cr_cos (double x)
      For e <= -27, since c^2 < 1, we have c^2*2^(2e+53) < 1/2 < 1.
      For e=-26, (1) rewrites c^2*2 < 1 which yields c <= 0x1.6a09e667f3bccp-1.
   */
-  uint64_t ux = t.u & 0x7fffffffffffffff;
+  t.u &= 0x7fffffffffffffff;
   // 0x3e46a09e667f3bcc = 0x1.6a09e667f3bccp-27
-  if (ux <= 0x3e46a09e667f3bcc)
+  if (t.u <= 0x3e46a09e667f3bcc)
     return __builtin_fma (0x1p-27, -0x1p-27, 1.0);
 
-#if 0
   double h, l, err;
-  err = sin_fast (&h, &l, x);
+  err = cos_fast (&h, &l, t.f);
   double left  = h + (l - err), right = h + (l + err);
   /* With SC[] from ./buildSC 15 we get 1100 failures out of 50000000
      random tests, i.e., about 0.002%. */
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
-#endif
 
-  return cos_accurate (x);
+  return cos_accurate (t.f);
 }
