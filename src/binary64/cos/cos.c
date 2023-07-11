@@ -371,6 +371,8 @@ static inline double dint_tod(dint64_t *a) {
 
 /**************** end of code copied from dint.h and pow.[ch] ****************/
 
+/**************** the following is copied from sin.c *************************/
+
 typedef union {double f; uint64_t u;} b64u64_u;
 
 #if 0
@@ -1819,70 +1821,46 @@ sin_fast (double *h, double *l, double x)
   return err + err1;
 }
 
+/* Assume x is a regular number and |x| > 0x1.6a09e667f3bccp-27. */
 static double
-sin_accurate (double x)
+cos_accurate (double x)
 {
-  // printf ("enter sin_accurate, x=%la\n", x);
-  b64u64_u t = {.f = x};
-  int e = (t.u >> 52) & 0x7ff;
+  x = (x > 0) ? x : -x;
 
-  if (e == 0x7ff) /* NaN, +Inf and -Inf. */
-    return 0.0 / 0.0;
-
-  /* now x is a regular number */
-
-  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
-     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
-     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
-     |sin(x) - x| < x^3/6.
-     Write x = c*2^e with 1/2 <= c < 1.
-     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
-     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
-     or c^3*2^(2e+53) < 3 (1).
-     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
-     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
-  */
-  uint64_t ux = t.u & 0x7fffffffffffffff;
-  if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-    // Taylor expansion of sin(x) is x - x^3/6 around zero
-    return __builtin_fma (x, -0x1p-54, x);
-
-  double absx = (x > 0) ? x : -x;
-
-  /* now x > 0x1.7137449123ef6p-26 */
   dint64_t X[1];
-  dint_fromd (X, absx);
+  dint_fromd (X, x);
 
   /* reduce argument */
   reduce (X);
   
   // now |X - x/(2pi) mod 1| < 2^-126.67*X, with 0 <= X < 1.
 
-  int neg = x < 0, is_sin = 1;
+  int neg = 0, is_cos = 1;
 
   // Write X = i/2^11 + r with 0 <= r < 2^11.
   int i = reduce2 (X); // exact
 
-  if (i & 0x400) // pi <= x < 2*pi: sin(x) = -sin(x-pi)
+  if (i & 0x400) // pi <= x < 2*pi: cos(x) = -cos(x-pi)
   {
-    neg = !neg;
+    neg = 1;
     i = i & 0x3ff;
   }
 
   // now i < 2^10
 
-  if (i & 0x200) // pi/2 <= x < pi: sin(x) = cos(x-pi/2)
+  if (i & 0x200) // pi/2 <= x < pi: cos(x) = -sin(x-pi/2)
   {
-    is_sin = 0;
+    neg = !neg;
+    is_cos = 0;
     i = i & 0x1ff;
   }
 
   // now 0 <= i < 2^9
 
   if (i & 0x100)
-    // pi/4 <= x < pi/2: sin(x) = cos(pi/2-x), cos(x) = sin(pi/2-x)
+    // pi/4 <= x < pi/2: cos(x) = sin(pi/2-x), sin(x) = cos(pi/2-x)
   {
-    is_sin = !is_sin;
+    is_cos = !is_cos;
     X->sgn = 1; // negate X
     add_dint (X, &MAGIC, X); // X -> 2^-11 - X
     // here: 256 <= i <= 511
@@ -1892,9 +1870,9 @@ sin_accurate (double x)
 
   // now 0 <= i < 256 and 0 <= X < 2^-11
 
-  /* If is_sin=1, sin |x| = sin2pi (R * (1 + eps))
+  /* If is_cos=1, cos |x| = cos2pi (R * (1 + eps))
         (cases 0 <= x < pi/4 and 3pi/4 <= x < pi)
-     if is_sin=0, sin |x| = cos2pi (R * (1 + eps))
+     if is_cos=0, cos |x| = sin2pi (R * (1 + eps))
         (case pi/4 <= x < 3pi/4)
      In both cases R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
   */
@@ -1905,9 +1883,9 @@ sin_accurate (double x)
   /* since 0 <= X < 2^-11, we have 0.999 < U <= 1 */
   evalPS (V, X, X2); // sin2pi(X)
   /* since 0 <= X < 2^-11, we have 0 <= V < 0.0005 */
-  if (is_sin)
+  if (!is_cos)
   {
-    // sin2pi(x) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
+    // sin2pi(R) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
     mul_dint (U, S+i, U);
     /* since 0 <= S[i] < 0.705 and 0.999 < Uin <= 1, we have
        0 <= U < 0.705 */
@@ -1941,7 +1919,7 @@ sin_accurate (double x)
   }
   else
   {
-    // approximate sin2pi(x) by cos2pi(i/2^11)*cos2pi(X)-sin2pi(i/2^11)*sin2pi(X)
+    // cos2pi(R) ~ cos2pi(i/2^11)*cos2pi(X)-sin2pi(i/2^11)*sin2pi(X)
     mul_dint (U, C+i, U);
     mul_dint (V, S+i, V);
     V->sgn = 1 - V->sgn; // negate V
@@ -1967,9 +1945,9 @@ sin_accurate (double x)
     */
   }
   add_dint (U, U, V);
-  /* If is_sin=1:
+  /* If is_cos=0:
      | sin|x| - U | < |U| * 2^-122.650
-     If is_sin=0:
+     If is_cos=1:
      | cos|x| - U | < |U| * 2^-123.367.
      In all cases the total error is bounded by |U| * 2^-122.650.
      The term |U| * 2^-122.650 contributes to at most 2^(128-122.650) < 41 ulps
@@ -1993,7 +1971,7 @@ sin_accurate (double x)
             return (x > 0) ? exceptions[i][1] + exceptions[i][2]
               : -exceptions[i][1] - exceptions[i][2];
         }
-      printf ("Rounding test of accurate path failed for sin(x)=%la\n", x);
+      printf ("Rounding test of accurate path failed for cos(x)=%la\n", x);
       printf ("Please report the above to core-math@inria.fr\n");
       exit (1);
     }
@@ -2037,6 +2015,7 @@ cr_cos (double x)
   if (ux <= 0x3e46a09e667f3bcc)
     return __builtin_fma (0x1p-27, -0x1p-27, 1.0);
 
+#if 0
   double h, l, err;
   err = sin_fast (&h, &l, x);
   double left  = h + (l - err), right = h + (l + err);
@@ -2044,6 +2023,7 @@ cr_cos (double x)
      random tests, i.e., about 0.002%. */
   if (left == right)
     return left;
+#endif
 
-  return sin_accurate (x);
+  return cos_accurate (x);
 }
