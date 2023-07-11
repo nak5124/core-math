@@ -1871,7 +1871,7 @@ sin_accurate (double x)
   /* since 0 <= X < 2^-11, we have 0 <= V < 0.0005 */
   if (is_sin)
   {
-    // sin2pi(x) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
+    // sin2pi(R) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
     mul_dint (U, S+i, U);
     /* since 0 <= S[i] < 0.705 and 0.999 < Uin <= 1, we have
        0 <= U < 0.705 */
@@ -1905,7 +1905,7 @@ sin_accurate (double x)
   }
   else
   {
-    // approximate sin2pi(x) by cos2pi(i/2^11)*cos2pi(X)-sin2pi(i/2^11)*sin2pi(X)
+    // cos2pi(R) ~ cos2pi(i/2^11)*cos2pi(X)-sin2pi(i/2^11)*sin2pi(X)
     mul_dint (U, C+i, U);
     mul_dint (V, S+i, V);
     V->sgn = 1 - V->sgn; // negate V
