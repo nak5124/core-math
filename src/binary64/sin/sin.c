@@ -1808,36 +1808,12 @@ sin_fast (double *h, double *l, double x)
   return err + err1;
 }
 
+/* Assume x is a regular number, and |x| > 0x1.7137449123ef6p-26. */
 static double
 sin_accurate (double x)
 {
-  b64u64_u t = {.f = x};
-  int e = (t.u >> 52) & 0x7ff;
-
-  if (e == 0x7ff) /* NaN, +Inf and -Inf. */
-    return 0.0 / 0.0;
-
-  /* now x is a regular number */
-
-  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
-     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
-     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
-     |sin(x) - x| < x^3/6.
-     Write x = c*2^e with 1/2 <= c < 1.
-     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
-     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
-     or c^3*2^(2e+53) < 3 (1).
-     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
-     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
-  */
-  uint64_t ux = t.u & 0x7fffffffffffffff;
-  if (ux <= 0x3e57137449123ef6) // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-    // Taylor expansion of sin(x) is x - x^3/6 around zero
-    return __builtin_fma (x, -0x1p-54, x);
-
   double absx = (x > 0) ? x : -x;
 
-  /* now x > 0x1.7137449123ef6p-26 */
   dint64_t X[1];
   dint_fromd (X, absx);
 
