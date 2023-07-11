@@ -1798,8 +1798,8 @@ cos_fast (double *h, double *l, double x)
          from global_error(is_sin=true,rel=false) in sin.sage:
          | h + l - sin2pi (R) | < 2^-68.588
          thus:
-         | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
-                             < 2^-68.588 + err1 */
+         | h + l - cos(x) | < 2^-68.588 + | sin2pi (R) - sin |x| |
+                            < 2^-68.588 + err1 */
       err = 0x1.55p-69; // 2^-66.588 < 0x1.55p-69
     }
   else
@@ -1812,8 +1812,8 @@ cos_fast (double *h, double *l, double x)
          from global_error(is_sin=false,rel=false) in sin.sage:
          | h + l - cos2pi (R) | < 2^-68.414
          thus:
-         | h + l - sin |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
-                             < 2^-68.414 * |h + l| + err1 */
+         | h + l - cos(x) | < 2^-68.414 + | cos2pi (R) - sin |x| |
+                            < 2^-68.414 * |h + l| + err1 */
       err = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
     }
   static double sgn[2] = {1.0, -1.0};
@@ -1902,16 +1902,16 @@ cos_accurate (double x)
        after add_dint (U, U, V) below.
 
        For the approximation error in R, we have:
-       sin |x| = sin2pi (R * (1 + eps))
+       cos(x) = sin2pi (R * (1 + eps))
        R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
-       Thus sin|x| = sin2pi(R+R*eps)
+       Thus cos(x) = sin2pi(R+R*eps)
                    = sin2pi(R)+R*eps*2*pi*cos2pi(theta), theta in [R,R+R*eps]
        Since 2*pi*R/sin(2*pi*R) < pi/2 for R < 1/4, it follows:
-       | sin|x| - sin2pi(R) | < pi/2*R*|sin(2*pi*R)|
-       | sin|x| - sin2pi(R) | < 2^-126.018 * |sin2pi(R)|.
+       | cos(x) - sin2pi(R) | < pi/2*R*|sin(2*pi*R)|
+       | cos(x) - sin2pi(R) | < 2^-126.018 * |sin2pi(R)|.
 
        Adding both errors we get:
-       | sin|x| - U | < |U| * 2^-122.797 + 2^-126.018 * |sin2pi(R)|
+       | cos(x) - U | < |U| * 2^-122.797 + 2^-126.018 * |sin2pi(R)|
                       < |U| * 2^-122.797 + 2^-126.018 * |U| * (1 + 2^-122.797)
                       < |U| * 2^-122.650.
     */
@@ -1928,26 +1928,26 @@ cos_accurate (double x)
        after add_dint (U, U, V) below.
 
        For the approximation error in R, we have:
-       cos |x| = cos2pi (R * (1 + eps))
+       cos(x) = cos2pi (R * (1 + eps))
        R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
-       Thus sin|x| = cos2pi(R+R*eps)
+       Thus cos(x) = cos2pi(R+R*eps)
                    = cos2pi(R)-R*eps*2*pi*sin2pi(theta), theta in [R,R+R*eps]
        Since we have R < 1/4, we have cos2pi(R) >= sqrt(2)/2,
        and it follows:
-       | sin|x|/cos2pi(R) - 1 | < 2*pi*R*eps/(sqrt(2)/2)
+       | cos(x)/cos2pi(R) - 1 | < 2*pi*R*eps/(sqrt(2)/2)
                                 < pi/2*eps/sqrt(2)          [since R < 1/4]
                                 < 2^-126.518.
        Adding both errors we get:
-       | sin|x| - U | < |U| * 2^-123.540 + 2^-126.518 * |cos2pi(R)|
+       | cos(x) - U | < |U| * 2^-123.540 + 2^-126.518 * |cos2pi(R)|
                       < |U| * 2^-123.540 + 2^-126.518 * |U| * (1 + 2^-123.540)
                       < |U| * 2^-123.367.
     */
   }
   add_dint (U, U, V);
   /* If is_cos=0:
-     | sin|x| - U | < |U| * 2^-122.650
+     | cos(x) - U | < |U| * 2^-122.650
      If is_cos=1:
-     | cos|x| - U | < |U| * 2^-123.367.
+     | cos(x) - U | < |U| * 2^-123.367.
      In all cases the total error is bounded by |U| * 2^-122.650.
      The term |U| * 2^-122.650 contributes to at most 2^(128-122.650) < 41 ulps
      relatively to U->lo.
