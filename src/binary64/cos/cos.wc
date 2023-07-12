@@ -30963,3 +30963,5 @@
 0x1.78fdb9effea47p+6
 0x1.9eb0b2ee64e81p+6
 0x1.ab41b09886feap+6
+# non-regression tests
+0x1.3f06778c3c6a1p+104
