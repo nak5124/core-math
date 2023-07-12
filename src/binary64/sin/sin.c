@@ -926,23 +926,25 @@ static const dint64_t C[256] = {
 };
 
 /* The following is a degree-7 polynomial with odd coefficients
-   approximating sin2pi(x) for 0 <= x < 2^-11 with relative error 2^-77.307.
+   approximating sin2pi(x) for -2^-24 < x < 2^-11+2^-24
+   with relative error 2^-77.306.
    Generated with sin_fast.sollya. */
 static const  double PSfast[] = {
-  0x1.921fb54442d18p+2, 0x1.1a62645458ee1p-52, // degree 1 (h+l)
+  0x1.921fb54442d18p+2, 0x1.1a62645446203p-52, // degree 1 (h+l)
   -0x1.4abbce625be53p5,                        // degree 3
-  0x1.466bc678d8e3fp6,                         // degree 5
-  -0x1.33155a7aff959p6,                        // degree 7
+  0x1.466bc678d8d63p6,                         // degree 5
+  -0x1.331554ca19669p6,                        // degree 7
 };
 
 /* The following is a degree-6 polynomial with even coefficients
-   approximating cos2pi(x) for 0 <= x < 2^-11 with relative error 2^-75.189.
+   approximating cos2pi(x) for -2^-24 < x < 2^-11+2^-24
+   with relative error 2^-75.188.
    Generated with cos_fast.sollya. */
 static const  double PCfast[] = {
-  0x1p+0, -0x1.9249c1ep-77,                    // degree 0
+  0x1p+0, -0x1.923015cp-77,                    // degree 0
   -0x1.3bd3cc9be45dep4,                        // degree 2
-  0x1.03c1f080ad7f9p6,                         // degree 4
-  -0x1.55a5c19e443dcp6,                        // degree 6
+  0x1.03c1f080ad892p6,                         // degree 4
+  -0x1.55a5c590f9e6ap6,                        // degree 6
 };
 
 /* The following is a degree-11 polynomial with odd coefficients
@@ -1268,8 +1270,10 @@ fast_two_sum(double *hi, double *lo, double a, double b)
   *lo = b - e; /* exact */
 }
 
-/* Put in h+l an approximation of sin2pi(xh+xl), for |xh| < 2^-11 + 2^-24,
-   and |xl| < 2^-52.36, with absolute error < 2^-77.09.
+/* Put in h+l an approximation of sin2pi(xh+xl),
+   for 2^-24 <= xh+xl < 2^-11 + 2^-24,
+   and |xl| < 2^-52.36, with absolute error < 2^-77.09
+   (see evalPSfast() in sin.sage).
    Assume uh + ul approximates (xh+xl)^2. */
 static void
 evalPSfast (double *h, double *l, double xh, double xl, double uh, double ul)
@@ -1285,8 +1289,10 @@ evalPSfast (double *h, double *l, double xh, double xl, double uh, double ul)
   d_mul (h, l, *h, *l, xh, xl);
 }
 
-/* Put in h+l an approximation of cos2pi(xh+xl), for |xh| < 2^-11 + 2^-24,
-   and |xl| < 2^-52.36, with relative error < 2^-69.96.
+/* Put in h+l an approximation of cos2pi(xh+xl),
+   for 2^-24 <= xh+xl < 2^-11 + 2^-24,
+   and |xl| < 2^-52.36, with relative error < 2^-69.96
+   (see evalPCfast() in sin.sage).
    Assume uh + ul approximates (xh+xl)^2. */
 static void
 evalPCfast (double *h, double *l, double uh, double ul)

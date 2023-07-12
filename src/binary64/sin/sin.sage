@@ -523,14 +523,14 @@ def d_mul(ah,al,bh,bl):
 
 # analyze the absolute error of evalPSfast
 # evalPSfast()
-# (6.176503676015?e-24, 0.00?, 0.?e-14)
+# (6.180212618596?e-24, 0.00?, 0.?e-14)
 def evalPSfast(verbose=false,xh=None,xl=None):
    P7 = RR("-0x1.33155a7aff959p6",16)
    P5 = RR("0x1.466bc678d8e3fp6", 16)
    P3 = RR("-0x1.4abbce625be53p5", 16)
    P1h = RR("0x1.921fb54442d18p+2", 16)
    P1l = RR("0x1.1a62645458ee1p-52", 16)
-   err0 = 2^-77.307
+   err0 = 2^-77.306
    if xh==None:
       xh = 2^-11+2^-24
       xh = RIF(-xh,xh)
@@ -634,14 +634,14 @@ def evalPSfast_all():
 
 # analyze the absolute error of	evalPCfast
 # evalPCfast(rel=true)
-# (8.70465129972?e-22, 1.00000?, 0.?e-15)
+# (8.70481230262?e-22, 1.00000?, 0.?e-15)
 def evalPCfast(verbose=false,xh=None,xl=None,rel=false):
    P6 = RR("-0x1.55a5c19e443dcp6",16)
    P4 = RR("0x1.03c1f080ad7f9p6", 16)
    P2 = RR("-0x1.3bd3cc9be45dep4", 16)
    P0h = RR("0x1p+0", 16)
    P0l = RR("-0x1.9249c1ep-77", 16)
-   err0 = 2^-75.189
+   err0 = 2^-75.188
    if xh==None:
       xh = 2^-11+2^-24
       xh = RIF(-xh,xh)
