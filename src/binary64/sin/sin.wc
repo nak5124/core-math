@@ -40813,3 +40813,5 @@ nan
 -inf
 +0
 -0
+# non-regression tests
+0x1.62d237048d83p+940

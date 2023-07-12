@@ -1746,8 +1746,11 @@ sin_fast (double *h, double *l, double x)
          Then 0x1p-11 - h = (2^44-k)*2^-55 is exactly representable.
          We can have a huge cancellation in 0x1p-11 - h, for example for
          x = 0x1.61a3db8c8d129p+1023 where we have before this operation
-         h = 0x1.ffffffffff8p-12, and h = 0x1p-53 afterwards. */
-      fast_two_sum (h, l, 0x1p-11 - *h, -*l);
+         h = 0x1.ffffffffff8p-12, and h = 0x1p-53 afterwards. But this
+         does not hurt since we bound the absolute error and not the
+         relative error at the end. */
+      *h = 0x1p-11 - *h;
+      *l = -*l;
     }
 
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
@@ -1774,11 +1777,11 @@ sin_fast (double *h, double *l, double x)
   evalPSfast (&sh, &sl, *h, *l, uh, ul);
   /* the absolute error of evalPSfast() is less than 2^-77.09 from
      routine evalPSfast() in sin.sage:
-     | sh + sh - sin(h+l) | < 2^-77.09 */
+     | sh + sh - sin2pi(h+l) | < 2^-77.09 */
   evalPCfast (&ch, &cl, uh, ul);
   /* the relative error of evalPCfast() is less than 2^-69.96 from
      routine evalPCfast(rel=true) in sin.sage:
-     | ch + cl - cos(h+l) | < 2^-69.96 * |ch + cl| */
+     | ch + cl - cos2pi(h+l) | < 2^-69.96 * |ch + cl| */
   double err;
   if (is_sin)
     {
