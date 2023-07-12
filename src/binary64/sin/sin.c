@@ -1998,7 +1998,7 @@ cr_sin (double x)
      we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
      |sin(x) - x| < x^3/6.
      Write x = c*2^e with 1/2 <= c < 1.
-     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
+     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/6*2^(3e), thus
      x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
      or c^3*2^(2e+53) < 3 (1).
      For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
