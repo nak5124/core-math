@@ -1831,38 +1831,96 @@ reduce_fast (double *h, double *l, double x, double *err1)
   return i;
 }
 
-/* return the maximal absolute error */
-static double
-sin_fast (double *h, double *l, double x)
+/* h + l <- (bh + bl) / (ah + al) with |bl|, |al| < 2^-49.47
+   with relative error bounded by 2^-96.99:
+   | h + l - (bh + bl) / (ah + al) | < 2^-96.99 * |h + l|. */
+static inline void
+fast_div (double *h, double *l, double bh, double bl, double ah, double al)
 {
-  int neg = x < 0, is_sin = 1;
+  /* We use here Karp-Markstein's trick for division:
+     let b = bh+bl, a = ah+al, y = o(1/a), and z = o(b*y),
+     then the approximation of b/a is z' = z + y*(b-a*z):
+     b-a*z' = b-a*(z + y*(b-a*z)) = (b-a*z)*(1-a*y).
+     We distinguish two errors:
+     * the mathematical error, assuming z + y*(b-a*z) is computed exactly
+       (but taking into account that y is not exactly 1/a, and z is not
+       exactly b/a
+     * the rounding errors in z + y*(b-a*z)
+     For the error analysis, we assume 1 <= ah, bh < 2 for now.
+  */
+     
+  double y = 1.0 / ah;
+  /* y = 1/ah / (1 + eps1) with |eps1| < 2^-52.
+     |1-ah*y| < |eps1| < 2^-52. */
+  *h = bh * y;
+  /* h = bh * y / (1 + eps2) with |eps2| < 2^-52
+       = bh/ah / (1 + eps1) / (1 + eps2)
+     thus writing z = h:
+     bh = ah*z * (1 + eps1) * (1 + eps2)
+     |bh - ah*z| < ah*z * (eps1 + eps2 + eps1*eps2)
+     Since ah < 2 and z <= bh*y < 2, we have:
+     |bh - ah*z| < 4 * (2*2^-52 + 2^-104) < 2^-48.999.
+     It follows |bh-ah*z'| < (bh-ah*z)*(1-ah*y) < 2^-48.999*2^-52 < 2^-100.999
+     Dividing by ah>=1 yields: |bh/ah-z'| < 2^-100.999 too.
+     We assume the same bound hold for b,a: |b/a-z'| < 2^-100.999.
+  */
+
+  double eh = __builtin_fma (ah, -*h, bh);
+  /* from the analysis above, we have |eh| < 2^-48.999 thus the rounding error
+     is bounded by ulp(2^-48.999) = 2^-101 */
+  double el = __builtin_fma (al, -*h, bl);
+  /* here |al|, |bl| < 2^-49.47 and |h| < 2, thus |el| < 3*2^-49.47 and
+     the rounding error is bounded by ulp(3*2^-49.47) = 2^-100. */
+  *l = y * (eh + el);
+  /* we have |eh+el| < 2^-48.999+3*2^-49.47 < 2^-47.33 thus the rounding error
+     on eh+el is bounded by ulp(2^-47.33) = 2^-100.
+     Then since y <= 1, the rounding error on l is bounded by 2^-100 too.
+     The total rounding error is thus bounded by:
+     2^-101+3*2^-100 < 2^-98.19.
+     Adding the mathematical error yields:
+     2^-100.999 + 2^-98.19 < 2^-97.99:
+     | h + l - (bh + bl) / (ah + al) | < 2^-97.99.
+
+     This was assuming 1 <= a,b < 2, thus with 1/2 <= h+l <= 2.
+     For the relative error, this corresponds to 2^-97.99/(1/2) = 2^-96.99
+     where 1/2 is the smallest possible value of h+l. */
+}
+
+/* given a finite input x with |x| > 0x1.d12ed0af1a27ep-27,
+   put in h + l an approximation of tan(x),
+   return the maximal absolute error err such that
+   | h + l - tan(x) | < err */
+static double
+tan_fast (double *h, double *l, double x)
+{
+  int neg = x < 0, is_tan = 1;
   double absx = neg ? -x : x;
 
-  /* now x > 0x1.7137449123ef6p-26 */
+  /* now absx > 0x1.d12ed0af1a27ep-27 */
   double err1;
   int i = reduce_fast (h, l, absx, &err1);
   /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
      | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
-  // we use sin(pi+x) = -sin(x)
-  neg = neg ^ (i >> 10);
+  // we use tan(pi+x) = tan(x)
   i = i & 0x3ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/2 < err1
 
   // now i < 2^10
   // if i >= 2^9: 1/4 <= frac(x/(2pi)) < 1/2 thus pi/2 <= x <= pi
-  // we use sin(pi/2+x) = cos(x)
-  is_sin = is_sin ^ (i >> 9);
+  // we use tan(pi/2+x) = -cot(x)
+  is_tan = is_tan ^ (i >> 9);
+  neg = neg ^ (i >> 9);
   i = i & 0x1ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/4 < err1
 
   // now 0 <= i < 2^9
   // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4
-  // we use sin(pi/2-x) = cos(x)
+  // we use tan(pi/2-x) = cot(x)
   if (i & 0x100) // case pi/4 <= x_red <= pi/2
     {
-      is_sin = !is_sin;
+      is_tan = !is_tan;
       i = 0x1ff - i;
       /* 0x1p-11 - h is exact below: indeed, reduce_fast first computes
          a first value of h (say h0, with 0 <= h0 < 1), then i = floor(h0*2^11)
@@ -1874,13 +1932,14 @@ sin_fast (double *h, double *l, double x)
          We can have a huge cancellation in 0x1p-11 - h, for example for
          x = 0x1.61a3db8c8d129p+1023 where we have before this operation
          h = 0x1.ffffffffff8p-12, and h = 0x1p-53 afterwards. */
-      fast_two_sum (h, l, 0x1p-11 - *h, -*l);
+      *h = 0x1p-11 - *h;
+      *l = -*l;
     }
 
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
      with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < err1
-     If is_sin=1, sin |x| = sin2pi (R + err1);
-     if is_sin=0, sin |x| = cos2pi (R + err1).
+     If is_tan=1, tan |x| = tan2pi (R + err1);
+     if is_tan=0, tan |x| = cot2pi (R + err1).
      In both cases R = i/2^11 + h + l, 0 <= R < 1/4.
   */
   double sh, sl, ch, cl;
@@ -1903,42 +1962,49 @@ sin_fast (double *h, double *l, double x)
      routine evalPSfast() in sin.sage:
      | sh + sh - sin(h+l) | < 2^-77.09 */
   evalPCfast (&ch, &cl, uh, ul);
-  /* the relative error of evalPCfast() is less than 2^-69.96 from
-     routine evalPCfast(rel=true) in sin.sage:
-     | ch + cl - cos(h+l) | < 2^-69.96 * |ch + cl| */
-  double err;
-  if (is_sin)
-    {
-      s_mul (&sh, &sl, SC[i][2], sh, sl);
-      s_mul (&ch, &cl, SC[i][1], ch, cl);
-      fast_two_sum (h, l, ch, sh);
-      *l += sl + cl;
-      /* absolute error bounded by 2^-68.588
-         from global_error(is_sin=true,rel=false) in sin.sage:
-         | h + l - sin2pi (R) | < 2^-68.588
-         thus:
-         | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
-                             < 2^-68.588 + err1 */
-      err = 0x1.55p-69; // 2^-66.588 < 0x1.55p-69
-    }
+  /* the absolute error of evalPCfast() is less than 2^-69.96 from
+     routine evalPCfast() in sin.sage:
+     | ch + cl - cos(h+l) | < 2^-69.96 */
+
+  double errs, errc, sh0, sl0, ch0, cl0;
+  s_mul (&sh0, &sl0, SC[i][2], sh, sl);
+  s_mul (&ch0, &cl0, SC[i][1], ch, cl);
+  fast_two_sum (h, l, ch0, sh0);
+  *l += sl0 + cl0;
+  /* absolute error bounded by 2^-68.588
+     from global_error(is_sin=true,rel=false) in sin.sage:
+     | h + l - sin2pi (R) | < 2^-68.588
+     thus:
+     | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
+                         < errs + err1
+     with in addition |l| < 2^-49.47 */
+  errs = 0x1.55p-69; // 2^-66.588 < 0x1.55p-69
+
+  double hh[1], ll[1];
+  s_mul (&ch, &cl, SC[i][2], ch, cl);
+  s_mul (&sh, &sl, SC[i][1], sh, sl);
+  fast_two_sum (hh, ll, ch, -sh);
+  *ll += cl - sl;
+  /* absolute error bounded by 2^-68.414
+     from global_error(is_sin=false,rel=false) in sin.sage:
+     | hh + ll - cos2pi (R) | < 2^-68.414
+     thus:
+     | hh + ll - cos |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
+                           < errc + err1
+     with in addition |ll| < 2^-49.62 */
+  errc = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
+
+  /* here we have |l|, |ll| < 2^-49.47 */
+  if (is_tan)
+    fast_div (h, l, *h, *l, *hh, *ll);
+    /* |h+l - (h+l)/(hh+ll)| < 2^-96.99 * |h+l| */
   else
-    {
-      s_mul (&ch, &cl, SC[i][2], ch, cl);
-      s_mul (&sh, &sl, SC[i][1], sh, sl);
-      fast_two_sum (h, l, ch, -sh);
-      *l += cl - sl;
-      /* absolute error bounded by 2^-68.414
-         from global_error(is_sin=false,rel=false) in sin.sage:
-         | h + l - cos2pi (R) | < 2^-68.414
-         thus:
-         | h + l - sin |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
-                             < 2^-68.414 * |h + l| + err1 */
-      err = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
-    }
+    fast_div (h, l, *hh, *ll, *h, *l);
+
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
-  return err + err1;
+  return errs + errc + err1;
 }
 
 /* Assume x is a regular number, and |x| > 0x1.d12ed0af1a27ep-27. */
@@ -2134,15 +2200,11 @@ cr_tan (double x)
     // for x=-0, fma (x, 0x1p-54, x) returns +0
     return (x == 0) ? x :__builtin_fma (x, 0x1p-54, x);
 
-#if 0
   double h, l, err;
-  err = sin_fast (&h, &l, x);
+  err = tan_fast (&h, &l, x);
   double left  = h + (l - err), right = h + (l + err);
-  /* With SC[] from ./buildSC 15 we get 1100 failures out of 50000000
-     random tests, i.e., about 0.002%. */
   if (left == right)
     return left;
-#endif
 
   return tan_accurate (x);
 }
