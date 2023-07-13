@@ -1969,8 +1969,7 @@ cos_accurate (double x)
       for (int i = 0; i < 5; i++)
         {
           if (__builtin_fabs (x) == exceptions[i][0])
-            return (x > 0) ? exceptions[i][1] + exceptions[i][2]
-              : -exceptions[i][1] - exceptions[i][2];
+            return exceptions[i][1] + exceptions[i][2];
         }
       printf ("Rounding test of accurate path failed for cos(x)=%la\n", x);
       printf ("Please report the above to core-math@inria.fr\n");
