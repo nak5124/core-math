@@ -1808,7 +1808,7 @@ sin_fast (double *h, double *l, double x)
          | h + l - cos2pi (R) | < 2^-68.414
          thus:
          | h + l - sin |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
-                             < 2^-68.414 * |h + l| + err1 */
+                             < 2^-68.414 + err1 */
       err = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
     }
   static double sgn[2] = {1.0, -1.0};
