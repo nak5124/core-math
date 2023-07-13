@@ -1,3 +1,5 @@
+// TODO: removed skipped
+
 /* Correctly-rounded tangent function for binary64 value.
 
 Copyright (c) 2022-2023 Paul Zimmermann and Tom Hubrecht
@@ -41,6 +43,7 @@ typedef union {
     int64_t _ex;
     uint64_t _sgn;
   };
+  /* the number represented is (-1)^sgn*(hi/2^64+lo/2^128)*2^ex */
   struct {
     uint64_t lo;
     uint64_t hi;
@@ -85,6 +88,9 @@ static inline char cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
 /* ZERO is a dint64_t representation of 0, which ensures that
    dint_tod(ZERO) = 0 */
 static const dint64_t ZERO = {.hi = 0x0, .lo = 0x0, .ex = -1076, .sgn = 0x0};
+/* ONE is a dint64_t representation of 1 */
+static const dint64_t ONE = {
+    .hi = 0x8000000000000000, .lo = 0x0, .ex = 1, .sgn = 0x0};
 // MAGIC is a dint64_t representation of 1/2^11
 static const dint64_t MAGIC = {.hi = 0x8000000000000000, .lo = 0x0, .ex = -10, .sgn = 0x0};
 
@@ -272,6 +278,127 @@ mul_dint_21 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
 
   /* The ignored part can be as large as 1 ulp before the shift (truncated
      part of lo). After the shift this can be as large as 2 ulps. */
+}
+
+/* for 0 <= i < 256, Tinv[i] = floor(2^127/(2^63+i*2^55+2^55-1)) */
+static uint64_t Tinv[256] = { 0xff00ff00ff00ff02, 0xfe03f80fe03f80ff, 0xfd08e5500fd08e56, 0xfc0fc0fc0fc0fc11, 0xfb18856506ddaba7, 0xfa232cf252138ac1, 0xf92fb2211855a867, 0xf83e0f83e0f83e11, 0xf74e3fc22c700f76, 0xf6603d980f6603db, 0xf57403d5d00f5742, 0xf4898d5f85bb3952, 0xf3a0d52cba872338, 0xf2b9d6480f2b9d66, 0xf1d48bcee0d399fc, 0xf0f0f0f0f0f0f0f2, 0xf00f00f00f00f010, 0xef2eb71fc4345239, 0xee500ee500ee5010, 0xed7303b5cc0ed731, 0xec979118f3fc4da3, 0xebbdb2a5c1619c8d, 0xeae56403ab959010, 0xea0ea0ea0ea0ea10, 0xe939651fe2d8d35d, 0xe865ac7b7603a198, 0xe79372e225fe30da, 0xe6c2b4481cd8568a, 0xe5f36cb00e5f36cc, 0xe525982af70c880f, 0xe45932d7dc52100f, 0xe38e38e38e38e38f, 0xe2c4a6886a4c2e11, 0xe1fc780e1fc780e3, 0xe135a9c97500e137, 0xe070381c0e070383, 0xdfac1f74346c5760, 0xdee95c4ca037ba58, 0xde27eb2c41f3d9d2, 0xdd67c8a60dd67c8b, 0xdca8f158c7f91ab9, 0xdbeb61eed19c5959, 0xdb2f171df770291a, 0xda740da740da740f, 0xd9ba4256c0366e92, 0xd901b2036406c80f, 0xd84a598ec9151f44, 0xd79435e50d79435f, 0xd6df43fca482f00e, 0xd62b80d62b80d62c, 0xd578e97c3f5fe552, 0xd4c77b03531dec0e, 0xd4173289870ac52e, 0xd3680d3680d3680e, 0xd2ba083b445250ac, 0xd20d20d20d20d20e, 0xd161543e28e50275, 0xd0b69fcbd2580d0c, 0xd00d00d00d00d00e, 0xcf6474a8819ec8ea, 0xcebcf8bb5b4169cc, 0xce168a7725080ce2, 0xcd712752a886d243, 0xccccccccccccccce, 0xcc29786c7607f99f, 0xcb8727c065c393e1, 0xcae5d85f1bbd6c96, 0xca4587e6b74f032a, 0xc9a633fcd967300d, 0xc907da4e871146ad, 0xc86a78900c86a78a, 0xc7ce0c7ce0c7ce0d, 0xc73293d789b9f839, 0xc6980c6980c6980d, 0xc5fe740317f9d00d, 0xc565c87b5f9d4d1c, 0xc4ce07b00c4ce07c, 0xc4372f855d824ca6, 0xc3a13de60495c774, 0xc30c30c30c30c30d, 0xc2780613c0309e02, 0xc1e4bbd595f6e948, 0xc152500c152500c2, 0xc0c0c0c0c0c0c0c1, 0xc0300c0300c0300d, 0xbfa02fe80bfa02ff, 0xbf112a8ad278e8de, 0xbe82fa0be82fa0bf, 0xbdf59c91700bdf5a, 0xbd69104707661aa3, 0xbcdd535db1cc5b7c, 0xbc52640bc52640bd, 0xbbc8408cd63069a1, 0xbb3ee721a54d880c, 0xbab656100bab6562, 0xba2e8ba2e8ba2e8c, 0xb9a7862a0ff46588, 0xb92143fa36f5e02f, 0xb89bc36ce3e0453b, 0xb81702e05c0b8171, 0xb79300b79300b794, 0xb70fbb5a19be3659, 0xb68d31340e4307d9, 0xb60b60b60b60b60c, 0xb58a485518d1e7e4, 0xb509e68a9b948220, 0xb48a39d44685fe97, 0xb40b40b40b40b40c, 0xb38cf9b00b38cf9b, 0xb30f63528917c80c, 0xb2927c29da5519d0, 0xb21642c8590b2165, 0xb19ab5c45606f00c, 0xb11fd3b80b11fd3c, 0xb0a59b418d749d54, 0xb02c0b02c0b02c0b, 0xafb321a1496fdf0f, 0xaf3addc680af3ade, 0xaec33e1f671529a5, 0xae4c415c9882b931, 0xadd5e6323fd48a87, 0xad602b580ad602b6, 0xaceb0f891e6551bc, 0xac7691840ac76919, 0xac02b00ac02b00ac, 0xab8f69e28359cd12, 0xab1cbdd3e2970f60, 0xaaaaaaaaaaaaaaab, 0xaa392f35dc17f00b, 0xa9c84a47a07f5638, 0xa957fab5402a55ff, 0xa8e83f5717c0a8e9, 0xa87917088e262b70, 0xa80a80a80a80a80b, 0xa79c7b16ea64d422, 0xa72f05397829cbc2, 0xa6c21df6e1625c80, 0xa655c4392d7b73a8, 0xa5e9f6ed347f0721, 0xa57eb50295fad40b, 0xa513fd6bb00a5140, 0xa4a9cf1d96833751, 0xa44029100a440291, 0xa3d70a3d70a3d70b, 0xa36e71a2cb033129, 0xa3065e3fae7cd0e0, 0xa29ecf163bb6500a, 0xa237c32b16cfd772, 0xa1d139855f7268ee, 0xa16b312ea8fc377d, 0xa105a932f2ca891f, 0xa0a0a0a0a0a0a0a1, 0xa03c1688732b3032, 0x9fd809fd809fd80a, 0x9f747a152d7836d0, 0x9f1165e7254813e2, 0x9eaecc8d53ae2ddf, 0x9e4cad23dd5f3a20, 0x9deb06c9194aa416, 0x9d89d89d89d89d8a, 0x9d2921c3d6411308, 0x9cc8e160c3fb19b9, 0x9c69169b30446dfa, 0x9c09c09c09c09c0a, 0x9baade8e4a2f6e10, 0x9b4c6f9ef03a3caa, 0x9aee72fcf957c10f, 0x9a90e7d95bc609a9, 0x9a33cd67009a33ce, 0x99d722dabde58f06, 0x997ae76b50efd00a, 0x991f1a515885fb37, 0x98c3bac74f5db00a, 0x9868c809868c8099, 0x980e4156201301c8, 0x97b425ed097b425f, 0x975a750ff68a58af, 0x97012e025c04b80a, 0x96a850096a850097, 0x964fda6c0964fda7, 0x95f7cc72d1b887e9, 0x95a02568095a0257, 0x9548e4979e0829fd, 0x94f2094f2094f209, 0x949b92ddc02526e5, 0x9445809445809446, 0x93efd1c50e726b7c, 0x939a85c40939a85c, 0x93459be6b009345a, 0x92f113840497889c, 0x929cebf48bbd90e5, 0x9249249249249249, 0x91f5bcb8bb02d9cd, 0x91a2b3c4d5e6f809, 0x9150091500915009, 0x90fdbc090fdbc091, 0x90abcc0242af3009, 0x905a38633e06c43b, 0x9009009009009009, 0x8fb823ee08fb823f, 0x8f67a1e3fdc26179, 0x8f1779d9fdc3a219, 0x8ec7ab397255e41d, 0x8e78356d1408e783, 0x8e2917e0e702c6ce, 0x8dda520237694809, 0x8d8be33f95d71590, 0x8d3dcb08d3dcb08d, 0x8cf008cf008cf009, 0x8ca29c046514e023, 0x8c55841c815ed5ca, 0x8c08c08c08c08c09, 0x8bbc50c8deb420c0, 0x8b70344a139bc75b, 0x8b246a87e19008b2, 0x8ad8f2fba9386823, 0x8a8dcd1feeae465c, 0x8a42f8705669db46, 0x89f87469a23920e0, 0x89ae4089ae4089ae, 0x89645c4f6e055dec, 0x891ac73ae9819b50, 0x88d180cd3a4133d7, 0x8888888888888889, 0x883fddf00883fddf, 0x87f78087f78087f8, 0x87af6fd5992d0d40, 0x8767ab5f34e47ef1, 0x872032ac13008720, 0x86d905447a34acc6, 0x869222b1acf1ce96, 0x864b8a7de6d1d608, 0x86053c345a0b8473, 0x85bf37612cee3c9b, 0x85797b917765ab89, 0x8534085340853408, 0x84eedd357c1b0085, 0x84a9f9c8084a9f9d, 0x84655d9bab2f1008, 0x8421084210842108, 0x83dcf94dc7570ce1, 0x839930523fbe3368, 0x8355ace3c897db10, 0x83126e978d4fdf3b, 0x82cf750393ac3319, 0x828cbfbeb9a020a3, 0x824a4e60b3262bc5, 0x8208208208208208, 0x81c635bc123fdf8e, 0x81848da8faf0d277, 0x814327e3b94f462f, 0x8102040810204081, 0x80c121b28bd1ba98, 0x8080808080808081, 0x8040201008040201, 0x8000000000000000};
+
+// Prints a dint64_t value for debugging purposes
+static inline void print_dint(const dint64_t *a) {
+  printf("{.hi=0x%lx, .lo=0x%lx, .ex=%ld, .sgn=0x%lx}\n", a->hi, a->lo, a->ex,
+         a->sgn);
+}
+
+/* put in r an approximation of 1/a, assuming a is not zero,
+   with error bounded by 4.003 ulps (relative error < 2^-124.999) */
+static inline void inv_dint (dint64_t *r, dint64_t *a)
+{
+  uint64_t h = a->hi; /* 2^63 <= h < 2^64 */
+  /* First compute a 64-bit inverse t of h, such that
+     t*h ~ 2^127, see routine inv_dint() in tan.sage.
+     We note a = h/2^63, then 1 <= a < 2, and we write x = t/2^64 for
+     the approximation of 1/a, with 1/2 <= x < 1. */
+  if ((h >> 63) == 0) { printf ("a="); print_dint (a); }
+  int i = (h>>55) & 0xff;
+  uint64_t t = Tinv[i];
+  /* now t is accurate to about 8 bits, more precisely the integer residual
+     2^127 - h*t is bounded by 662027951208051476078044039717322752 < 2^118.995
+     (attained for i=0 and h=2^63). The integer residual 2^127 - t*h
+     equals 2^127*(1-a*x), thus 0 <= 1-ax < 2^-8.005. */
+
+  /* first Newton iteration */
+  u128 e = (((u128) 1) << 127) - (u128) h * (u128) t; // exact
+  /* as Tinv was computed, we have 0 < e < 2^119 */
+  e = (u128) t * (e >> 55);
+  t += e >> 72;
+  /* If we had no truncation, the residual 1-ax is squared at each iteration,
+     thus we would get 2^127 - h*t < 2^(2*118.995)/2^127 <= 2^110.99.
+     The truncation e>>55 induces an error of at most t < 2^64 on the
+     value of e after e = (u128) t * (e >> 55), thus of at most 2^-8 on t,
+     while the truncation e >> 72 induces an error of at most 1 on t,
+     thus the error on t is at most 1+2^-8.
+     Since h < 2^64, this can increase by at most 2^64*(1+2^-8) the value
+     of 2^127 - h*t:
+     2^127 - h*t < 2^110.99 + 2^64*(1+2^-8) < 2^110.991.
+  */
+
+  /* second Newton iteration */
+  e = (((u128) 1) << 127) - (u128) h * (u128) t; // 0 <= e < 2^111
+  e = (u128) t * (e >> 47);
+  t += e >> 80;
+  /* With the same reasoning as above, the truncation e >> 47 induces an
+     error of at most 2^-16 on t, and the truncation e >> 80 an error of
+     at most 1, giving a total of 1+2^-16.
+     Since h < 2^64, this can increase by at most 2^64*(1+2^-16) the value
+     of 2^127 - h*t:
+     2^127 - h*t < 2^(2*110.991)/2^127 + 2^64*(1+2^-16) < 2^94.9821. */
+     
+
+  /* third Newton iteration */
+  e = (((u128) 1) << 127) - (u128) h * (u128) t; // 0 <= e < 2^95
+  e = (u128) t * (e >> 31);
+  t += e >> 96;
+  /* With the same reasoning as above, the truncation e >> 31 induces an
+     error of at most 2^-32 on t, and the truncation e >> 96 an error of
+     at most 1, giving a total of 1+2^-32.
+     Since h < 2^64, this can increase by at most 2^64*(1+2^-32) the value
+     of 2^127 - h*t:
+     2^127 - h*t < 2^(2*94.9821)/2^127 + 2^64*(1+2^-32) < 2^64.574.
+     This corresponds to:
+     1 - a*x < 2^64.574/2^127 = 2^-62.426, thus the relative error is at
+     most 2^-62.426. */
+  
+  dint64_t q[1];
+  r->hi = t;
+  r->lo = 0;
+  /* if a->ex = 0, then 1/2 <= a < 1, thus we should have
+     1 < 1/a <= 2, thus r->ex = 1 */
+  r->ex = 1 - a->ex;
+  r->sgn = 1;
+  /* we use Newton's iteration: r -> r + r*(1-a*r) */
+  mul_dint_21 (q, a, r);     /* -a*r, error <= 2 ulps */
+  r->sgn = 0;                /* restore sign */
+  add_dint (q, &ONE, q);     /* 1-a*r, error <= 2 ulps */
+  mul_dint (q, r, q);        /* r*(1-a*r), error <= 6 ulps */
+  add_dint (r, r, q);        /* error <= 2 ulps */
+  /* If all computations were exact, the residual would be squared,
+     thus we would get 1-a*r = 2^(-2*62.426) = 2^-124.852.
+     To simplify the error analysis, we assume 1 <= a < 2 and thus
+     1/2 <= r <= 1.
+     * since |ar| <= 1, the error of at most 2 ulps from mul_dint_21()
+       translates to an absolute error of at most 2^-127; this error
+       is multiplied by r <= 1, thus contributes to at most 2^-127 in the
+       final value of r.
+     * since 1-a*r < 2^-62.426, the error of at most 2 ulps in
+       add_dint (&q, &ONE, &q) translates to an absolute error of at most
+       2^-189; this error is multiplied by r <= 1, thus contributes to at most
+       2^-189 in the final value of r.
+     * since q < 2^-62.426 and r < 1, the value of q after mul_dint()
+       satisfies q < 2^-62.426, thus the error of at most 6 ulps translates
+       into an absolute error of at most 2^-187 in the final value of r.
+     * since r <= 1, the error of at most 2 ulps in add_dint (r, r, &q)
+       translates into an absolute error of at most 2^-127 in the final
+       value of r.
+     This yields a maximal absolute error of 2^-127+2^-189+2^-187+2^-127
+     < 2^-125.999. Since r >= 1/2, this corresponds to a relative error
+     bounded by 2^-124.999, or to less than 4.003 ulps, since in the
+     binade [1/2,1), the ulp is 2^-128.
+  */
+}
+
+/* put in r an approximation of b/a, assuming a is not zero,
+   with relative error < 2^-123.67 */
+static inline void div_dint (dint64_t *r, dint64_t *b, dint64_t *a)
+{
+  inv_dint (r, a);    // relative error bounded by 2^-124.999
+  mul_dint (r, r, b); // error bounded by 6 ulps
+  /* The error bound of 6 ulps for mul_dint() corresponds to a maximal
+     error of 6*2^-128 in the binade [1/2,1), thus to a maximal relative
+     error of 12*2^-128:
+     r = b/a * (1 + eps1) * (1 + eps2)
+     with |eps1| < 2^-124.999 and |eps2| < 12*2^-128,
+     thus r = b/a * (1 + eps) with eps < (1 + 2^-124.999) * (1 + 12*2^-128) - 1
+     < 2^-123.67. */
 }
 
 // Convert a non-zero double to the corresponding dint64_t value
@@ -1814,9 +1941,9 @@ sin_fast (double *h, double *l, double x)
   return err + err1;
 }
 
-/* Assume x is a regular number, and |x| > 0x1.7137449123ef6p-26. */
+/* Assume x is a regular number, and |x| > 0x1.d12ed0af1a27ep-27. */
 static double
-sin_accurate (double x)
+tan_accurate (double x)
 {
   double absx = (x > 0) ? x : -x;
 
@@ -1828,31 +1955,28 @@ sin_accurate (double x)
   
   // now |X - x/(2pi) mod 1| < 2^-126.67*X, with 0 <= X < 1.
 
-  int neg = x < 0, is_sin = 1;
+  int is_tan = 1, neg = x < 0;
 
   // Write X = i/2^11 + r with 0 <= r < 2^11.
   int i = reduce2 (X); // exact
 
-  if (i & 0x400) // pi <= x < 2*pi: sin(x) = -sin(x-pi)
-  {
-    neg = !neg;
-    i = i & 0x3ff;
-  }
+  i = i & 0x3ff; // if pi <= x < 2*pi, tan(x) = tan(x-pi)
 
   // now i < 2^10
 
-  if (i & 0x200) // pi/2 <= x < pi: sin(x) = cos(x-pi/2)
+  if (i & 0x200) // pi/2 <= x < pi: tan(x) = -1/tan(x-pi/2)
   {
-    is_sin = 0;
+    is_tan = 0;
+    neg = !neg;
     i = i & 0x1ff;
   }
 
   // now 0 <= i < 2^9
 
   if (i & 0x100)
-    // pi/4 <= x < pi/2: sin(x) = cos(pi/2-x), cos(x) = sin(pi/2-x)
+    // pi/4 <= x < pi/2: tan(x) = 1/tan(pi/2-x)
   {
-    is_sin = !is_sin;
+    is_tan = !is_tan;
     X->sgn = 1; // negate X
     add_dint (X, &MAGIC, X); // X -> 2^-11 - X
     // here: 256 <= i <= 511
@@ -1862,9 +1986,9 @@ sin_accurate (double x)
 
   // now 0 <= i < 256 and 0 <= X < 2^-11
 
-  /* If is_sin=1, sin |x| = sin2pi (R * (1 + eps))
+  /* If is_tan=1, tan |x| = tan2pi (R * (1 + eps))
         (cases 0 <= x < pi/4 and 3pi/4 <= x < pi)
-     if is_sin=0, sin |x| = cos2pi (R * (1 + eps))
+     if is_tan=0, tan |x| = cot2pi (R * (1 + eps))
         (case pi/4 <= x < 3pi/4)
      In both cases R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
   */
@@ -1875,77 +1999,79 @@ sin_accurate (double x)
   /* since 0 <= X < 2^-11, we have 0.999 < U <= 1 */
   evalPS (V, X, X2); // sin2pi(X)
   /* since 0 <= X < 2^-11, we have 0 <= V < 0.0005 */
-  if (is_sin)
-  {
-    // sin2pi(R) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
-    mul_dint (U, S+i, U);
-    /* since 0 <= S[i] < 0.705 and 0.999 < Uin <= 1, we have
-       0 <= U < 0.705 */
-    mul_dint (V, C+i, V);
-    /* For the error analysis, we distinguish the case i=0.
-       For i=0, we have S[i]=0 and C[1]=1, thus V is the value computed
-       by evalPS() above, with relative error < 2^-124.648.
 
-       For 1 <= i < 256, analyze_sin_case1(rel=true) from sin.sage gives a
-       relative error bound of -122.797 (obtained for i=1).
-       In all cases, the relative error for the computation of
-       sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X) is bounded by -122.797
-       not taking into account the approximation error in R:
-       |U - sin2pi(R)| < |U| * 2^-122.797, with U the value computed
-       after add_dint (U, U, V) below.
+  // sin2pi(R) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
+  dint64_t Sin[1], UU[1], VV[1];
+  mul_dint (UU, S+i, U);
+  /* since 0 <= S[i] < 0.705 and 0.999 < Uin <= 1, we have
+     0 <= U < 0.705 */
+  mul_dint (VV, C+i, V);
+  add_dint (Sin, UU, VV);
+  /* For the error analysis, we distinguish the case i=0.
+     For i=0, we have S[i]=0 and C[1]=1, thus V is the value computed
+     by evalPS() above, with relative error < 2^-124.648.
+     
+     For 1 <= i < 256, analyze_sin_case1(rel=true) from sin.sage gives a
+     relative error bound of -122.797 (obtained for i=1).
+     In all cases, the relative error for the computation of
+     sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X) is bounded by -122.797
+     not taking into account the approximation error in R:
+     |S - sin2pi(R)| < |S| * 2^-122.797.
 
-       For the approximation error in R, we have:
-       sin |x| = sin2pi (R * (1 + eps))
-       R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
-       Thus sin|x| = sin2pi(R+R*eps)
-                   = sin2pi(R)+R*eps*2*pi*cos2pi(theta), theta in [R,R+R*eps]
-       Since 2*pi*R/sin(2*pi*R) < pi/2 for R < 1/4, it follows:
-       | sin|x| - sin2pi(R) | < pi/2*R*|sin(2*pi*R)|
-       | sin|x| - sin2pi(R) | < 2^-126.018 * |sin2pi(R)|.
+     For the approximation error in R, we have:
+     sin |x| = sin2pi (R * (1 + eps))
+     R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
+     Thus sin|x| = sin2pi(R+R*eps)
+     = sin2pi(R)+R*eps*2*pi*cos2pi(theta), theta in [R,R+R*eps]
+     Since 2*pi*R/sin(2*pi*R) < pi/2 for R < 1/4, it follows:
+     | sin|x| - sin2pi(R) | < pi/2*R*|sin(2*pi*R)|
+     | sin|x| - sin2pi(R) | < 2^-126.018 * |sin2pi(R)|.
 
-       Adding both errors we get:
-       | sin|x| - U | < |U| * 2^-122.797 + 2^-126.018 * |sin2pi(R)|
-                      < |U| * 2^-122.797 + 2^-126.018 * |U| * (1 + 2^-122.797)
-                      < |U| * 2^-122.650.
-    */
-  }
-  else
-  {
-    // cos2pi(R) ~ cos2pi(i/2^11)*cos2pi(X)-sin2pi(i/2^11)*sin2pi(X)
-    mul_dint (U, C+i, U);
-    mul_dint (V, S+i, V);
-    V->sgn = 1 - V->sgn; // negate V
-    /* For 0 <= i < 256, analyze_sin_case2(rel=true) from sin.sage gives a
-       relative error bound of -123.540 (obtained for i=0):
-       |U - cos2pi(R)| < |U| * 2^-123.540, with U the value computed
-       after add_dint (U, U, V) below.
-
-       For the approximation error in R, we have:
-       sin |x| = cos2pi (R * (1 + eps))
-       R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
-       Thus sin|x| = cos2pi(R+R*eps)
-                   = cos2pi(R)-R*eps*2*pi*sin2pi(theta), theta in [R,R+R*eps]
-       Since we have R < 1/4, we have cos2pi(R) >= sqrt(2)/2,
-       and it follows:
-       | sin|x|/cos2pi(R) - 1 | < 2*pi*R*eps/(sqrt(2)/2)
-                                < pi/2*eps/sqrt(2)          [since R < 1/4]
-                                < 2^-126.518.
-       Adding both errors we get:
-       | sin|x| - U | < |U| * 2^-123.540 + 2^-126.518 * |cos2pi(R)|
-                      < |U| * 2^-123.540 + 2^-126.518 * |U| * (1 + 2^-123.540)
-                      < |U| * 2^-123.367.
-    */
-  }
-  add_dint (U, U, V);
-  /* If is_sin=1:
-     | sin|x| - U | < |U| * 2^-122.650
-     If is_sin=0:
-     | cos|x| - U | < |U| * 2^-123.367.
-     In all cases the total error is bounded by |U| * 2^-122.650.
-     The term |U| * 2^-122.650 contributes to at most 2^(128-122.650) < 41 ulps
-     relatively to U->lo.
+     Adding both errors we get:
+     | sin|x| - S | < |S| * 2^-122.797 + 2^-126.018 * |sin2pi(R)|
+     < |S| * 2^-122.797 + 2^-126.018 * |S| * (1 + 2^-122.797)
+     < |S| * 2^-122.650.
   */
-  uint64_t err = 41;
+  
+  // cos2pi(R) ~ cos2pi(i/2^11)*cos2pi(X)-sin2pi(i/2^11)*sin2pi(X)
+  dint64_t Cos[1];
+  mul_dint (U, C+i, U);
+  mul_dint (V, S+i, V);
+  V->sgn = 1 - V->sgn; // negate V
+  add_dint (Cos, U, V);
+  /* For 0 <= i < 256, analyze_sin_case2(rel=true) from sin.sage gives a
+     relative error bound of -123.540 (obtained for i=0):
+     |C - cos2pi(R)| < |C| * 2^-123.540.
+
+     For the approximation error in R, we have:
+     sin |x| = cos2pi (R * (1 + eps))
+     R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
+     Thus sin|x| = cos2pi(R+R*eps)
+                 = cos2pi(R)-R*eps*2*pi*sin2pi(theta), theta in [R,R+R*eps]
+     Since we have R < 1/4, we have cos2pi(R) >= sqrt(2)/2,
+     and it follows:
+     | sin|x|/cos2pi(R) - 1 | < 2*pi*R*eps/(sqrt(2)/2)
+                              < pi/2*eps/sqrt(2)          [since R < 1/4]
+                              < 2^-126.518.
+     Adding both errors we get:
+     | cos|x| - C | < |C| * 2^-123.540 + 2^-126.518 * |cos2pi(R)|
+                    < |C| * 2^-123.540 + 2^-126.518 * |C| * (1 + 2^-123.540)
+                    < |C| * 2^-123.367.
+  */
+
+  /* Now if is_tan=1 we compute S/C, otherwise we compute C/S. */
+  if (is_tan)
+    div_dint (U, Sin, Cos);
+  else
+    div_dint (U, Cos, Sin);
+
+  /* Relative error on S < eps1 = 2^-122.650
+     Relative error on C < eps2 = 2^-123.367
+     Relative error of div_dint() < eps3 = 2^-123.67
+     Total relative error < (1+eps1)*(1+eps2)*(1+eps3)-1 < 2^-121.578,
+     this is less than 2^-121.578/2^-128 < 86 ulps. */
+
+  uint64_t err = 86;
   uint64_t hi0, hi1, lo0, lo1;
   lo0 = U->lo - err;
   hi0 = U->hi - (lo0 > U->lo);
@@ -1955,7 +2081,7 @@ sin_accurate (double x)
   if ((hi0 >> 10) != (hi1 >> 10))
     {
       static const double exceptions[][3] = {
-        {0x1.e0000000001c2p-20, 0x1.dfffffffff02ep-20, 0x1.dcba692492527p-146},
+        {0x1.dffffffffff1fp-22, 0x1.e000000000151p-22, 0x1.fffffffffffffp-76},
       };
       for (int i = 0; i < 1; i++)
         {
@@ -1963,7 +2089,7 @@ sin_accurate (double x)
             return (x > 0) ? exceptions[i][1] + exceptions[i][2]
               : -exceptions[i][1] - exceptions[i][2];
         }
-      printf ("Rounding test of accurate path failed for sin(x)=%la\n", x);
+      printf ("Rounding test of accurate path failed for tan(x)=%la\n", x);
       printf ("Please report the above to core-math@inria.fr\n");
       exit (1);
     }
@@ -1990,24 +2116,25 @@ cr_tan (double x)
 
   /* now x is a regular number */
 
-  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
-     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
-     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
-     |sin(x) - x| < x^3/6.
+  /* For |x| <= 0x1.d12ed0af1a27ep-27, tan(x) rounds to x (to nearest):
+     we can assume x >= 0 without loss of generality since tan(-x) = -tan(x),
+     we have x < tan(x) < x + x^3/3 for say 0 < x <= 1 thus
+     |tan(x) - x| < x^3/3.
      Write x = c*2^e with 1/2 <= c < 1.
-     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
-     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
-     or c^3*2^(2e+53) < 3 (1).
-     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
-     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
+     Then ulp(x)/2 = 2^(e-54), and x^3/3 = c^3/3*2^(3e), thus
+     x^3/3 < ulp(x)/2 rewrites as c^3/3*2^(3e) < 2^(e-54),
+     or c^3*2^(2e+54) < 3 (1).
+     For e <= -27, since c^3 < 1, we have c^3*2^(2e+54) < 1 < 3.
+     For e=-26, (1) rewrites 4*c^3 < 3 which yields c <= 0x1.d12ed0af1a27ep-1.
   */
   uint64_t ux = t.u & 0x7fffffffffffffff;
-  // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-  if (ux <= 0x3e57137449123ef6)
-    // Taylor expansion of sin(x) is x - x^3/6 around zero
-    // for x=-0, fma (x, -0x1p-54, x) returns +0
-    return (x == 0) ? x :__builtin_fma (x, -0x1p-54, x);
+  // 0x3e4d12ed0af1a27e = 0x1.d12ed0af1a27ep-27
+  if (ux <= 0x3e4d12ed0af1a27e)
+    // Taylor expansion of tan(x) is x + x^3/3 around zero
+    // for x=-0, fma (x, 0x1p-54, x) returns +0
+    return (x == 0) ? x :__builtin_fma (x, 0x1p-54, x);
 
+#if 0
   double h, l, err;
   err = sin_fast (&h, &l, x);
   double left  = h + (l - err), right = h + (l + err);
@@ -2015,6 +2142,7 @@ cr_tan (double x)
      random tests, i.e., about 0.002%. */
   if (left == right)
     return left;
+#endif
 
-  return sin_accurate (x);
+  return tan_accurate (x);
 }
