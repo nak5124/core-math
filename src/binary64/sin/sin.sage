@@ -952,17 +952,19 @@ SC=[
 ]
 
 # global_error(is_sin=true,rel=false)
-# i= 255 err= -68.5887013548669
+# maxl= 1.27708212795389e-15
+# i= 255 err= -68.5886973253303
 # global_error(is_sin=true,rel=true)
 # i= 2 err= -67.295631377593?
 # global_error(is_sin=false,rel=false)
-# i= 6 err= -68.4141957935626
+# i= 6 err= -68.4141910865950
+# maxl= 1.14933194355319e-15
 # global_error(is_sin=false,rel=true)
 # i= 253 err= -68.0711056124201
 def global_error(is_sin=true,rel=false):
    global SC
    maxerr = 0
-   maxratio = 0
+   maxl = 0
    SC = [(RR(x[0],16),RR(x[1],16),RR(x[2],16)) for x in SC]
    # check SC[i][0] is integer multiple of 2^-62, and |SC[i][0]| < 2^-24
    for i in range(256):
@@ -1005,6 +1007,9 @@ def global_error(is_sin=true,rel=false):
          if err>maxerr:
             maxerr = err
             print ("i=", i, "err=", log(err)/log(2.))
+         if l.abs().upper() > maxl:
+            maxl = l.abs().upper()
+            print ("maxl=", maxl)
    else:
       for i in range(256):
          errs, sh, sl = evalPSfast ()
@@ -1038,6 +1043,9 @@ def global_error(is_sin=true,rel=false):
          if err>maxerr:
             maxerr = err
             print ("i=", i, "err=", log(err)/log(2.))
+         if l.abs().upper() > maxl:
+            maxl = l.abs().upper()
+            print ("maxl=", maxl)
 
 from functools import cmp_to_key
 

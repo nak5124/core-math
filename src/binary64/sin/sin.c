@@ -1808,7 +1808,7 @@ sin_fast (double *h, double *l, double x)
          | h + l - cos2pi (R) | < 2^-68.414
          thus:
          | h + l - sin |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
-                             < 2^-68.414 * |h + l| + err1 */
+                             < 2^-68.414 + err1 */
       err = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
     }
   static double sgn[2] = {1.0, -1.0};
@@ -1998,7 +1998,7 @@ cr_sin (double x)
      we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
      |sin(x) - x| < x^3/6.
      Write x = c*2^e with 1/2 <= c < 1.
-     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/3*2^(3e), thus
+     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/6*2^(3e), thus
      x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
      or c^3*2^(2e+53) < 3 (1).
      For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
