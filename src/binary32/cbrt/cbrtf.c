@@ -1,6 +1,6 @@
 /* Correctly-rounded cubic root of binary32 value.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2023 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -39,40 +39,44 @@ float cr_cbrtf (float x){
 #if INEXACTFLAG!=0
   volatile uint32_t flag = _mm_getcsr(); /* store MXCSR Control/Status Register */
 #endif
-  b32u32_u cvt0 = {.f = x};
-  uint32_t hx = cvt0.u, ix = 0x7fffffff&hx, e = ix>>23, mant = hx&0x7fffff;
-  long sign = hx>>31;
-  if(__builtin_expect(((e+1)&0xff)<2, 0)){
-    if(e==0xff||ix==0) return x + x; /* 0, inf, nan */
-    int nz = __builtin_clz(ix) - 8;  /* subnormal */
-    mant <<= nz;
-    mant &= 0x7fffff;
-    e -= nz - 1;
+  b32u32_u t = {.f = x};
+  uint32_t u = t.u, au = u<<1, sgn = u>>31, e = au>>24;
+  if(__builtin_expect(au<1u<<24 || au>=0xffu<<24, 0)){
+    if(au>=0xffu<<24) return x; /* inf, nan */
+    if(au==0) return x; /* +-0 */
+    int nz = __builtin_clz(au) - 7;  /* subnormal */
+    au <<= nz;
+    e -= nz-1;
   }
+  uint32_t mant = au&0xffffff;
+  b64u64_u cvt1 = {.u = (uint64_t)mant<<28|(0x3fful<<52)};
   e += 899;
-  b64u64_u cvt1 = {.u = (uint64_t)mant<<29|(0x3fful<<52)};
   uint32_t et = e/3, it = e%3;
   uint64_t isc = ((const uint64_t*)escale)[it];
   isc += (long)(et - 342)<<52;
-  isc |= sign<<63;
+  isc |= (long)sgn<<63;
   b64u64_u cvt2 = {.u = isc};
-  static const double c[] = {0x1.1b0babccfef9cp-1, 0x1.2c9a3e94d1da5p-1, -0x1.4dc30b1a1ddbap-3, 0x1.7a8d3e4ec9b07p-6};
-  const double u0 = 0x1.5555555555555p-2, u1 = 0x1.c71c71c71c71cp-3, u2 = 0x1.61f9add3c0ca4p-3;
-  double z = cvt1.f, r = 1/z, z2 = z*z;
-  double c0 = c[0] + z*c[1], c2 = c[2] + z*c[3], y = c0 + z2*c2, y2 = y*y;
-  double w0 = y*u0, w1 = y*u1, w2 = y*u2;
-  double h = y2*(y*r) - 1, h2 = h*h;
-  y -= h*((w0 - w1*h) + w2*h2);
-  y *= cvt2.f;
-  b64u64_u cvt3 = {.f = y};
-  float yf = y;
-  long m0 = cvt3.u<<19, m1 = m0>>63;
+  static const double c[] =
+    {0x1.2319d352ea5d5p-1, 0x1.67ad8ee258d1ap-1, -0x1.9342edf9cbad9p-2, 0x1.b6388fc510a75p-3,
+     -0x1.6002455599e2fp-4, 0x1.7b096936192c4p-6, -0x1.e5577187e8bf8p-9, 0x1.169ef81d6c34ep-12};
+  double z = cvt1.f, r0 = -0x1.9931c6c2d19d1p-6/z, z2 = z*z, z4 = z2*z2;
+  double f = ((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])) + r0;
+  double r = f * cvt2.f;
+  float ub = r, lb = r - cvt2.f*1.4182e-9;
+  if(__builtin_expect(ub==lb, 1)) return ub;
+  const double u0 = -0x1.ab16ec65d138fp+3;
+  double h = f*f*f - z;
+  f -= (f*r0*u0)*h;
+  r = f * cvt2.f;
+  cvt1.f = r;
+  ub = r;
+  long m0 = cvt1.u<<19, m1 = m0>>63;
   if(__builtin_expect((m0^m1)<(1l<<31),0)){
-    b64u64_u cvt4 = {.u = (cvt3.u + (1ul<<31))&0xffffffff00000000ul};
-    yf = cvt4.f;
+    cvt1.u = (cvt1.u + (1ul<<31))&0xffffffff00000000ul;
+    ub = cvt1.f;
 #if INEXACTFLAG!=0
     _mm_setcsr(flag); /* restore MXCSR Control/Status Register for exact roots to get rid of the inexact flag if risen inside the function */
 #endif
   }
-  return yf;
+  return ub;
 }
