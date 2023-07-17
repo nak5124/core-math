@@ -32,7 +32,9 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#ifndef CORE_MATH_NO_OPENMP
 #include <omp.h>
+#endif
 
 #include "function_under_test.h"
 
@@ -117,7 +119,9 @@ doloop(void)
 
   readstdin(&items, &count);
 
+#ifndef CORE_MATH_NO_OPENMP
 #pragma omp parallel for reduction(+: failures,tests)
+#endif
   for (int i = 0; i < count; i++) {
     ref_init();
     ref_fesetround(rnd);
