@@ -33,6 +33,8 @@ SOFTWARE.
 #include <stdint.h>
 #include <fenv.h>
 
+#define TRACE 0x1.0558b9e9c38c6p+0
+
 /******************** code copied from dint.h and pow.[ch] *******************/
 
 typedef unsigned __int128 u128;
@@ -1896,11 +1898,14 @@ tan_fast (double *h, double *l, double x)
   int neg = x < 0, is_tan = 1;
   double absx = neg ? -x : x;
 
+  if (x == TRACE) printf ("absx=%la\n", absx);
+
   /* now absx > 0x1.d12ed0af1a27ep-27 */
   double err1;
   int i = reduce_fast (h, l, absx, &err1);
   /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
      | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
+  if (x == TRACE) printf ("i=%d h=%la l=%la err1=%la\n", i, *h, *l, err1);
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
   // we use tan(pi+x) = tan(x)
@@ -1936,6 +1941,8 @@ tan_fast (double *h, double *l, double x)
       *l = -*l;
     }
 
+  if (x == TRACE) printf ("i=%d h=%la l=%la err1=%la\n", i, *h, *l, err1);
+
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
      with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < err1
      If is_tan=1, tan |x| = tan2pi (R + err1);
@@ -1948,9 +1955,9 @@ tan_fast (double *h, double *l, double x)
   /* Here h = k*2^-55 with 0 <= k < 2^44, and SC[i][0] is an integer
      multiple of 2^-62, with |SC[i][0]| < 2^-24, thus SC[i][0] = m*2^-62
      with |m| < 2^38. It follows h-SC[i][0] = (k*2^7 + m)*2^-62 with
-     2^51 - 2^38 < k*2^7 + m < 2^51 + 2^38, thus h-SC[i][0] is exact.
-     Now |h| < 2^-11 + 2^-24. */
+     2^51 - 2^38 < k*2^7 + m < 2^51 + 2^38, thus h-SC[i][0] is exact. */
   *h -= SC[i][0];
+  if (x == TRACE) printf ("h1=%la l1=%la\n", *h, *l);
   // now -2^-24 < h < 2^-11+2^-24
   // from reduce_fast() we have |l| < 2^-52.36
   double uh, ul;
@@ -1958,25 +1965,29 @@ tan_fast (double *h, double *l, double x)
   ul = __builtin_fma (*h + *h, *l, ul);
   // uh+ul approximates (h+l)^2
   evalPSfast (&sh, &sl, *h, *l, uh, ul);
+  if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
   /* the absolute error of evalPSfast() is less than 2^-77.09 from
      routine evalPSfast() in sin.sage:
-     | sh + sh - sin(h+l) | < 2^-77.09 */
+     | sh + sh - sin2pi(h+l) | < 2^-77.09 */
   evalPCfast (&ch, &cl, uh, ul);
+  if (x == TRACE) printf ("ch=%la cl=%la\n", ch, cl);
   /* the absolute error of evalPCfast() is less than 2^-69.96 from
      routine evalPCfast() in sin.sage:
-     | ch + cl - cos(h+l) | < 2^-69.96 */
+     | ch + cl - cos2pi(h+l) | < 2^-69.96 */
 
   double errs, errc, sh0, sl0, ch0, cl0;
   s_mul (&sh0, &sl0, SC[i][2], sh, sl);
   s_mul (&ch0, &cl0, SC[i][1], ch, cl);
   fast_two_sum (h, l, ch0, sh0);
   *l += sl0 + cl0;
+  if (x == TRACE) printf ("h2=%la l2=%la\n", *h, *l);
   /* absolute error bounded by 2^-68.588
      from global_error(is_sin=true,rel=false) in sin.sage:
      | h + l - sin2pi (R) | < 2^-68.588
      thus:
      | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
                          < errs + err1
+     (where sin|x| has to be replaced by cos|x| for is_tan=0)
      with in addition |l| < 2^-49.47 */
   errs = 0x1.55p-69; // 2^-66.588 < 0x1.55p-69
 
@@ -1985,21 +1996,24 @@ tan_fast (double *h, double *l, double x)
   s_mul (&sh, &sl, SC[i][1], sh, sl);
   fast_two_sum (hh, ll, ch, -sh);
   *ll += cl - sl;
+  if (x == TRACE) printf ("hh=%la ll=%la\n", *hh, *ll);
   /* absolute error bounded by 2^-68.414
      from global_error(is_sin=false,rel=false) in sin.sage:
      | hh + ll - cos2pi (R) | < 2^-68.414
      thus:
-     | hh + ll - cos |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
+     | hh + ll - cos |x| | < 2^-68.414 + | cos2pi (R) - cos |x| |
                            < errc + err1
+     (where cos|x| has to be replaced by sin|x| for is_tan=0)
      with in addition |ll| < 2^-49.62 */
   errc = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
 
   /* here we have |l|, |ll| < 2^-49.47 */
   if (is_tan)
     fast_div (h, l, *h, *l, *hh, *ll);
-    /* |h+l - (h+l)/(hh+ll)| < 2^-96.99 * |h+l| */
+    /* |h_out+l_out - (h_in+l_in)/(hh+ll)| < 2^-96.99 * |h_out+l_out| */
   else
     fast_div (h, l, *hh, *ll, *h, *l);
+  if (x == TRACE) printf ("is_tan=%d h3=%la l3=%la\n", is_tan, *h, *l);
 
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
@@ -2146,10 +2160,13 @@ tan_accurate (double x)
   /* check the upper 54 bits are equal */
   if ((hi0 >> 10) != (hi1 >> 10))
     {
-      static const double exceptions[][3] = {
+      static const double exceptions[2][3] = {
+        /* the following has 78 identical bits after the round bit */
         {0x1.dffffffffff1fp-22, 0x1.e000000000151p-22, 0x1.fffffffffffffp-76},
+        /* the following has 72 identical bits after the round bit */
+        {0x1.dfffffffffc7cp-21, 0x1.e000000000546p-21, -0x1.658bcedb6e1d4p-147},
       };
-      for (int i = 0; i < 1; i++)
+      for (int i = 0; i < 2; i++)
         {
           if (__builtin_fabs (x) == exceptions[i][0])
             return (x > 0) ? exceptions[i][1] + exceptions[i][2]
@@ -2202,6 +2219,7 @@ cr_tan (double x)
 
   double h, l, err;
   err = tan_fast (&h, &l, x);
+  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left  = h + (l - err), right = h + (l + err);
   if (left == right)
     return left;
