@@ -746,55 +746,6 @@ def global_error(is_sin=true,rel=false):
             maxerr = err
             print ("i=", i, "err=", log(err)/log(2.))
 
-# compute error relerr1 of reduce_fast relative to sin2pi(R):
-# | sin2pi(R) - sin|x| | < relerr1 * |sin2pi(R)|
-# where R = i/2^11 + h + l
-def reduce_fast(K=8):
-   Xmax = RR("0x1.921fb54442d17p+2",16)
-   CH = RR("0x1.45f306dc9c883p-3", 16)
-   CL = RR("-0x1.6b01ec5417056p-57", 16)
-   maxerr = 0
-   for e in range(-28,1):
-      xmin = Xmax*2^(e-1)
-      xmax = Xmax*2^e
-      H = (xmax-xmin)/2^K
-      for k in range(2^K):
-         xmin1 = xmin + H*k
-         xmax1 = xmin + H*(k+1)
-         x = RIF(xmin1,xmax1)
-         # a_mul (h, l, CH, x)
-         h, l = a_mul (CH, x)
-         # *l = __builtin_fma (CL, x, *l)
-         l = CL*x+l
-         err = RIFulp(l)
-         imin = floor(h.lower() * 2^11)
-         imax = floor(h.upper() * 2^11)
-         for i in [imin..imax]:
-            i0 = i
-            hmin = max(h.lower(), RR(i/2^11))
-            hmax = min(h.upper(), RR((i+1)/2^11).nextbelow())
-            hh = RIF(hmin,hmax)
-            is_tan = true
-            i = i & 0x3ff
-            if i >= 2^9:
-               is_tan = not is_tan
-               i = i & 0x1ff
-            if i >= 2^8:
-               is_tan = not is_tan
-               i = 0x1ff - i
-               hh = RIF(2^-11) - hh
-               l = -l
-            R = i/2^11 + hh + l
-            if is_tan:
-               sin2piR = sin(2*RIF(pi)*R)
-            else:
-               sin2piR = cos(2*RIF(pi)*R)
-            relerr = (err/sin2piR).abs().upper()
-            if relerr>maxerr:
-               maxerr = relerr
-               print ("e=", e, "k=", k, "i=", i0, "relerr=", log(relerr)/log(2.))
-   return maxerr
-
 # bound error relerr1 of reduce_fast relative to sin2pi(R):
 # | sin2pi(R) - sin|x| | < relerr1 * |sin2pi(R)|
 # where R = i/2^11 + h + l

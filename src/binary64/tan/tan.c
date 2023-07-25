@@ -1967,7 +1967,7 @@ tan_fast (double *h, double *l, double x)
      |l| <= 2^-52 |h| at input of evalPSfast() and evalPCfast() */
   fast_two_sum (h, l, *h, *l);
   // now -2^-24 < h < 2^-11+2^-24
-  // from reduce_fast() we have |l| < 2^-52.36
+  // from comments in reduce_fast() we have |l| < 2^-52.36
   double uh, ul;
   a_mul (&uh, &ul, *h, *h);
   ul = __builtin_fma (*h + *h, *l, ul);
