@@ -746,25 +746,26 @@ def global_error(is_sin=true,rel=false):
             maxerr = err
             print ("i=", i, "err=", log(err)/log(2.))
 
-# bound error relerr1 of reduce_fast relative to sin2pi(R):
+# bound error relerr1 of reduce_fast relative to sin2pi(R)
+# in the case x <= 0x1.921fb54442d17p+2:
 # | sin2pi(R) - sin|x| | < relerr1 * |sin2pi(R)|
 # where R = i/2^11 + h + l
 # with i==0 and h.upper() < 2^-37 excluded:
-# reduce_fast2(bound=2^-71.,check_sin=true)
+# reduce_fast_case1(bound=2^-71.,check_sin=true)
 # (5.39256669855553e-22, -70.6514459718932)
-# reduce_fast2(bound=2^-71., check_sin=false)
+# reduce_fast_case1(bound=2^-71., check_sin=false)
 # (5.39257815387375e-22, -70.6514429072092)
-def reduce_fast2(bound=2^-57.,check_sin=true):
+def reduce_fast_case1(bound=2^-57.,check_sin=true):
    xmin = RR("0x1.7137449123ef6p-26",16)
    xmax = RR("0x1.921fb54442d17p+2", 16)
-   err = reduce_fast2_aux (xmin, xmax, bound,check_sin)
+   err = reduce_fast_case1_aux (xmin, xmax, bound,check_sin)
    return err, log(err)/log(2.)
 
 def excluded(i,h):
    return i==0 and (h.upper() < 2^-37)
 
 # try to bound error relerr1 of reduce_fast relative to sin2pi(R) by bound
-def reduce_fast2_aux(xmin,xmax,bound,check_sin):
+def reduce_fast_case1_aux(xmin,xmax,bound,check_sin):
    if xmax<xmin:
       return 0
    CH = RR("0x1.45f306dc9c883p-3", 16)
@@ -816,7 +817,7 @@ def reduce_fast2_aux(xmin,xmax,bound,check_sin):
    xmid = (xmin+xmax)/2
    if xmid==xmax:
       xmid = xmid.nextbelow()
-   e1 = reduce_fast2_aux(xmin,xmid,bound,check_sin)
-   e2 = reduce_fast2_aux(xmid.nextabove(),xmax,bound,check_sin)
+   e1 = reduce_fast_case1_aux(xmin,xmid,bound,check_sin)
+   e2 = reduce_fast_case1_aux(xmid.nextabove(),xmax,bound,check_sin)
    return max(e1,e2)
                      

@@ -1936,7 +1936,7 @@ tan_fast (double *h, double *l, double x)
       *l = -*l;
     }
 
-  /* The function reduce_fast2(bound=2^-71.) in tan.sage proves that
+  /* The function reduce_fast_case1(bound=2^-71.) in tan.sage proves that
      if we except i=0 and h<2^-37, then the error of reduce_fast
      relative to both sin2pi(R) and cos2pi(R) is bounded by 2^-70.651:
      | R - frac(x/(2pi)) mod 1/4 | < 2^-70.651 * |sin2pi(R)|
