@@ -1400,9 +1400,9 @@ fast_two_sum(double *hi, double *lo, double a, double b)
 }
 
 /* Put in h+l an approximation of sin2pi(xh+xl),
-   for 2^-24 <= xh+xl < 2^-11 + 2^-24,
-   and |xl| < 2^-52.36, with absolute error < 2^-77.09
-   (see evalPSfast() in sin.sage).
+   for -2^-24 <= xh+xl < 2^-11 + 2^-24,
+   and |xl| < 2^-52*|xh|, with relative error < 2^-71.61
+   (see evalPSfast_all(K=8) in tan.sage).
    Assume uh + ul approximates (xh+xl)^2. */
 static void
 evalPSfast (double *h, double *l, double xh, double xl, double uh, double ul)
@@ -1419,9 +1419,9 @@ evalPSfast (double *h, double *l, double xh, double xl, double uh, double ul)
 }
 
 /* Put in h+l an approximation of cos2pi(xh+xl),
-   for 2^-24 <= xh+xl < 2^-11 + 2^-24,
+   for -2^-24 <= xh+xl < 2^-11 + 2^-24,
    and |xl| < 2^-52.36, with relative error < 2^-69.96
-   (see evalPCfast() in sin.sage).
+   (see evalPCfast(rel=true) in tan.sage).
    Assume uh + ul approximates (xh+xl)^2. */
 static void
 evalPCfast (double *h, double *l, double uh, double ul)
@@ -1957,6 +1957,9 @@ tan_fast (double *h, double *l, double x)
      with |m| < 2^38. It follows h-SC[i][0] = (k*2^7 + m)*2^-62 with
      2^51 - 2^38 < k*2^7 + m < 2^51 + 2^38, thus h-SC[i][0] is exact. */
   *h -= SC[i][0];
+  /* the following fast_two_sum() guarantees that |l| <= ulp(h) thus
+     |l| <= 2^-52 |h| at input of evalPSfast() and evalPCfast() */
+  fast_two_sum (h, l, *h, *l);
   if (x == TRACE) printf ("h1=%la l1=%la\n", *h, *l);
   // now -2^-24 < h < 2^-11+2^-24
   // from reduce_fast() we have |l| < 2^-52.36
@@ -1966,14 +1969,14 @@ tan_fast (double *h, double *l, double x)
   // uh+ul approximates (h+l)^2
   evalPSfast (&sh, &sl, *h, *l, uh, ul);
   if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
-  /* the absolute error of evalPSfast() is less than 2^-77.09 from
-     routine evalPSfast() in sin.sage:
-     | sh + sh - sin2pi(h+l) | < 2^-77.09 */
+  /* the relative error of evalPSfast() is less than 2^-71.61 from
+     routine evalPSfast_all(K=8) in tan.sage:
+     | sh + sh - sin2pi(h+l) | < 2^-71.61 * |sin2pi(h+l)| */
   evalPCfast (&ch, &cl, uh, ul);
   if (x == TRACE) printf ("ch=%la cl=%la\n", ch, cl);
-  /* the absolute error of evalPCfast() is less than 2^-69.96 from
+  /* the relative error of evalPCfast() is less than 2^-69.96 from
      routine evalPCfast() in sin.sage:
-     | ch + cl - cos2pi(h+l) | < 2^-69.96 */
+     | ch + cl - cos2pi(h+l) | < 2^-69.96 * |cos2pi(h+l)| */
 
   double errs, errc, sh0, sl0, ch0, cl0;
   s_mul (&sh0, &sl0, SC[i][2], sh, sl);
