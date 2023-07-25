@@ -33,8 +33,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <fenv.h>
 
-#define TRACE 0x1.0558b9e9c38c6p+0
-
 /******************** code copied from dint.h and pow.[ch] *******************/
 
 typedef unsigned __int128 u128;
@@ -1898,14 +1896,11 @@ tan_fast (double *h, double *l, double x)
   int neg = x < 0, is_tan = 1;
   double absx = neg ? -x : x;
 
-  if (x == TRACE) printf ("absx=%la\n", absx);
-
   /* now absx > 0x1.d12ed0af1a27ep-27 */
   double err1;
   int i = reduce_fast (h, l, absx, &err1);
   /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
      | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
-  if (x == TRACE) printf ("i=%d h=%la l=%la err1=%la\n", i, *h, *l, err1);
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
   // we use tan(pi+x) = tan(x)
@@ -1941,7 +1936,18 @@ tan_fast (double *h, double *l, double x)
       *l = -*l;
     }
 
-  if (x == TRACE) printf ("i=%d h=%la l=%la err1=%la\n", i, *h, *l, err1);
+  /* The function reduce_fast2(bound=2^-71.) in tan.sage proves that
+     if we except i=0 and h<2^-37, then the error of reduce_fast
+     relative to both sin2pi(R) and cos2pi(R) is bounded by 2^-70.651:
+     | R - frac(x/(2pi)) mod 1/4 | < 2^-70.651 * |sin2pi(R)|
+     | R - frac(x/(2pi)) mod 1/4 | < 2^-70.651 * |cos2pi(R)|
+     where R = i/2^11 + h + l, thus since the derivative of sin2pi and
+     cos2pi is bounded by 2*pi and 2*pi*2^-70.651 < 2^-67.999:
+     | sin2pi(R) - sin(x mod pi/2) | < 2^-67.999 * |sin2pi(R)|.
+     | cos2pi(R) - cos(x mod pi/2) | < 2^-67.999 * |cos2pi(R)|.
+     For i=0 and h<2^-37, we defer to the slow path. */
+  if (__builtin_expect (i==0 && *h < 0x1p-37, 0))
+    return 0x1p0;
 
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
      with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < err1
@@ -1960,7 +1966,6 @@ tan_fast (double *h, double *l, double x)
   /* the following fast_two_sum() guarantees that |l| <= ulp(h) thus
      |l| <= 2^-52 |h| at input of evalPSfast() and evalPCfast() */
   fast_two_sum (h, l, *h, *l);
-  if (x == TRACE) printf ("h1=%la l1=%la\n", *h, *l);
   // now -2^-24 < h < 2^-11+2^-24
   // from reduce_fast() we have |l| < 2^-52.36
   double uh, ul;
@@ -1968,60 +1973,62 @@ tan_fast (double *h, double *l, double x)
   ul = __builtin_fma (*h + *h, *l, ul);
   // uh+ul approximates (h+l)^2
   evalPSfast (&sh, &sl, *h, *l, uh, ul);
-  if (x == TRACE) printf ("sh=%la sl=%la\n", sh, sl);
   /* the relative error of evalPSfast() is less than 2^-71.61 from
      routine evalPSfast_all(K=8) in tan.sage:
      | sh + sh - sin2pi(h+l) | < 2^-71.61 * |sin2pi(h+l)| */
   evalPCfast (&ch, &cl, uh, ul);
-  if (x == TRACE) printf ("ch=%la cl=%la\n", ch, cl);
   /* the relative error of evalPCfast() is less than 2^-69.96 from
      routine evalPCfast() in sin.sage:
      | ch + cl - cos2pi(h+l) | < 2^-69.96 * |cos2pi(h+l)| */
 
-  double errs, errc, sh0, sl0, ch0, cl0;
+  double sh0, sl0, ch0, cl0, h1, l1;
   s_mul (&sh0, &sl0, SC[i][2], sh, sl);
   s_mul (&ch0, &cl0, SC[i][1], ch, cl);
-  fast_two_sum (h, l, ch0, sh0);
-  *l += sl0 + cl0;
-  if (x == TRACE) printf ("h2=%la l2=%la\n", *h, *l);
-  /* absolute error bounded by 2^-68.588
-     from global_error(is_sin=true,rel=false) in sin.sage:
-     | h + l - sin2pi (R) | < 2^-68.588
-     thus:
-     | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
-                         < errs + err1
-     (where sin|x| has to be replaced by cos|x| for is_tan=0)
-     with in addition |l| < 2^-49.47 */
-  errs = 0x1.55p-69; // 2^-66.588 < 0x1.55p-69
+  fast_two_sum (&h1, &l1, ch0, sh0);
+  l1 += sl0 + cl0;
+  /* relative error bounded by 2^-67.777
+     from global_error(is_sin=true,rel=true) in tan.sage:
+     | h1 + l1 - sin2pi (R) | < 2^-67.777 * |sin2pi(R)|
+     with in addition |l1| < 2^-49.47 */
 
-  double hh[1], ll[1];
+  double h2, l2;
   s_mul (&ch, &cl, SC[i][2], ch, cl);
   s_mul (&sh, &sl, SC[i][1], sh, sl);
-  fast_two_sum (hh, ll, ch, -sh);
-  *ll += cl - sl;
-  if (x == TRACE) printf ("hh=%la ll=%la\n", *hh, *ll);
-  /* absolute error bounded by 2^-68.414
-     from global_error(is_sin=false,rel=false) in sin.sage:
-     | hh + ll - cos2pi (R) | < 2^-68.414
-     thus:
-     | hh + ll - cos |x| | < 2^-68.414 + | cos2pi (R) - cos |x| |
-                           < errc + err1
+  fast_two_sum (&h2, &l2, ch, -sh);
+  l2 += cl - sl;
+  /* relative error bounded by 2^-68.073
+     from global_error(is_sin=false,rel=true) in sin.sage:
+     | h2 + l2 - cos2pi (R) | < 2^-68.073 * |cos2pi(R)|
      (where cos|x| has to be replaced by sin|x| for is_tan=0)
-     with in addition |ll| < 2^-49.62 */
-  errc = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
+     with in addition |l2| < 2^-49.62 */
 
-  /* here we have |l|, |ll| < 2^-49.47 */
+  /* here we have |l1|, |l1| < 2^-49.47 */
   if (is_tan)
-    fast_div (h, l, *h, *l, *hh, *ll);
+    fast_div (h, l, h1, l1, h2, l2);
     /* |h_out+l_out - (h_in+l_in)/(hh+ll)| < 2^-96.99 * |h_out+l_out| */
   else
-    fast_div (h, l, *hh, *ll, *h, *l);
-  if (x == TRACE) printf ("is_tan=%d h3=%la l3=%la\n", is_tan, *h, *l);
+    fast_div (h, l, h2, l2, h1, l1);
+
+  /* In summary we have when is_tan=1:
+     h1+l1 = sin2pi(R) * (1 + eps1) with |eps1| < 2^-67.777
+     h2+l2 = cos2pi(R) * (1 + eps2) with |eps2| < 2^-68.073
+     sin2pi(R) = sin(x mod pi/2) * (1 + eps3) with |eps3| < 2^-67.999
+     cos2pi(R) = cos(x mod pi/2) * (1 + eps4) with |eps4| < 2^-67.999
+     h+l = (h1+l1)/(h2+l2) * (1 + eps5) with |eps5| < 2^-96.99
+     This yields:
+     h+l = tan(x mod pi/2) * (1+eps1)*(1+eps3)*(1+eps5)/(1+eps2)/(1+eps4)
+     The largest value is obtained when eps1,eps3,eps5 are maximum, and
+     eps2,eps4 minimum, and we get:
+     h+l = tan(x mod pi/2) * (1+eps) with |eps| < 2^-65.957
+     (the same bound holds for eps1,eps3,eps5 minimum and eps2,eps4 maximum).
+     When is_tan=0, we get the same reasoning with inverse ratio, but the
+     bounds are the same.
+  */
 
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
-  return errs + errc + err1;
+  return *h * 0x1.08p-66; // 2^-65.957 < 0x1.08p-66
 }
 
 /* Assume x is a regular number, and |x| > 0x1.d12ed0af1a27ep-27. */
@@ -2222,7 +2229,6 @@ cr_tan (double x)
 
   double h, l, err;
   err = tan_fast (&h, &l, x);
-  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left  = h + (l - err), right = h + (l + err);
   if (left == right)
     return left;
