@@ -1700,16 +1700,10 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
 }
 
 /* Assuming 0x1.7137449123ef6p-26 < x < +Inf,
-   return i and set h,l such that i/2^11+h+l approximates frac(x/(2pi)).
-   If x <= 0x1.921fb54442d18p+2:
-   | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |i/2^11 + h + l|
+   return i and set h,l such that i/2^11+h+l approximates frac(x/(2pi)):
+
+   | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.815,
    with |h| < 2^-11 and |l| < 2^-52.36.
-
-   Otherwise only the absolute error is bounded:
-   | i/2^11 + h + l - frac(x/(2pi)) | < 2^-75.998
-   with 0 <= h < 2^-11 and |l| < 2^-53.
-
-   In both cases we have |l| < 2^-51.64*|i/2^11 + h|.
 */
 static int
 reduce_fast (double *h, double *l, double x)
@@ -1757,7 +1751,7 @@ reduce_fast (double *h, double *l, double x)
           v = (u128) m * (u128) T[2];
           u = (u128) m * (u128) T[1];
           c[0] = u + (v >> 64);
-          c[1] = (u >> 64) + (c[0] < u);
+          c[1] = (u >> 64) + (c[0] < (uint64_t) u);
           /* There can be no overflow in (u >> 64) + (c[0] < u) since
              u <= (2^64-1)*T[1] thus (u >> 64) < T[1], and T[1]+1
              does not overflow. */
@@ -1797,7 +1791,7 @@ reduce_fast (double *h, double *l, double x)
           /* There can be no overflow in (u >> 64) + (c[0] < u) since
              u <= (2^64-1)*T[i+2] thus (u >> 64) < T[i+2], and T[i+2]+1
              does not overflow. */
-          c[1] = (u >> 64) + (c[0] < u);
+          c[1] = (u >> 64) + (c[0] < (uint64_t) u);
           u = (u128) m * (u128) T[i+1];
           c[1] += u;
           c[2] = (u >> 64) + (c[1] < (uint64_t) u);
@@ -1834,11 +1828,11 @@ reduce_fast (double *h, double *l, double x)
     }
 
   /* In case x < 2pi we have:
-  |h + l - x/(2pi)| < 2^-104.815,
+     |h + l - x/(2pi)| < 2^-104.815,
   and in case 2pi < x we have:
-  |h + l - fracx/(2pi)| < 2^-105.999,
+  |h + l - frac(x/(2pi))| < 2^-105.999,
   thus in all cases:
-  |h + l - fracx/(2pi)| < 2^-104.815.
+  |h + l - frac(x/(2pi))| < 2^-104.815.
   
   Since we exclude |h+l| < 2^-37, the induced error
   relative to sin2pi(h+l) is bounded by
@@ -1916,13 +1910,12 @@ tan_fast (double *h, double *l, double x)
 
   /* now absx > 0x1.d12ed0af1a27ep-27 */
   int i = reduce_fast (h, l, absx);
-  /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
-     | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
+  /* | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.815 */
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
   // we use tan(pi+x) = tan(x)
   i = i & 0x3ff;
-  // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/2 < err1
+  // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/2 < 2^-104.815
 
   // now i < 2^10
   // if i >= 2^9: 1/4 <= frac(x/(2pi)) < 1/2 thus pi/2 <= x <= pi
@@ -1930,7 +1923,7 @@ tan_fast (double *h, double *l, double x)
   is_tan = is_tan ^ (i >> 9);
   neg = neg ^ (i >> 9);
   i = i & 0x1ff;
-  // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/4 < err1
+  // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/4 < 2^-104.815
 
   // now 0 <= i < 2^9
   // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4
@@ -1967,9 +1960,9 @@ tan_fast (double *h, double *l, double x)
     return 0x1p0;
 
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
-     with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < err1
-     If is_tan=1, tan |x| = tan2pi (R + err1);
-     if is_tan=0, tan |x| = cot2pi (R + err1).
+     with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < 2^-104.815
+     If is_tan=1, tan |x| = tan2pi (R + err1) with |err1| < 2^-104.815,
+     if is_tan=0, tan |x| = cot2pi (R + err1) with |err1| < 2^-104.815.
      In both cases R = i/2^11 + h + l, 0 <= R < 1/4.
   */
   double sh, sl, ch, cl;
