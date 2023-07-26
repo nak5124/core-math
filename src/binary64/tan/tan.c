@@ -1642,7 +1642,7 @@ reduce2 (dint64_t *X)
   return i;
 }
 
-/* h+l <- c1/2^64 + c0/2^128 */
+/* h+l <- c1/2^64 + c0/2^128, rounded towards zero */
 static void
 set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
 {
@@ -1710,12 +1710,9 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
    with 0 <= h < 2^-11 and |l| < 2^-53.
 
    In both cases we have |l| < 2^-51.64*|i/2^11 + h|.
-
-   Put in err1 a bound for the absolute error:
-   | i/2^11 + h + l - frac(x/(2pi)) |.
 */
 static int
-reduce_fast (double *h, double *l, double x, double *err1)
+reduce_fast (double *h, double *l, double x)
 {
   if (__builtin_expect(x <= 0x1.921fb54442d17p+2, 1)) // x < 2*pi
     {
@@ -1726,28 +1723,18 @@ reduce_fast (double *h, double *l, double x, double *err1)
       *l = __builtin_fma (CL, x, *l);
       /* The error in the above fma() is at most ulp(l),
          where |l| <= CL*|x|+|l_in|.
-         Assume 2^(e-1) <= x < 2^e.
-         Then |h| < 2^(e-2) and |l_in| <= 1/2 ulp(2^(e-2)) = 2^(e-55),
+         Let xmax = 0x1.921fb54442d17p+2.
+         We have x <= xmax and we can check that CH * xmax < 1.
+         Then h <= 1 and |l_in| <= ulp(0.5) = 2^-53,
          where l_in is the value of l after a_mul.
-         Then |l| <= CL*x + 2^(e-55) <= 2^e*(CL+2-55) < 2^e * 2^-55.6.
+         Then |l| <= |CL|*xmax + 2^-53 < 2^-52.361.
          The rounding error of the fma() is bounded by
-         ulp(l) <= 2^e * ulp(2^-55.6) = 2^(e-108).
+         ulp(l) <= ulp(2^-52.361) = 2^-105.
          The error due to the approximation of 1/(2pi)
-         is bounded by 2^-110.523*x <= 2^(e-110.523).
+         is bounded by 2^-110.523*xmax <= 2^-107.871.
          Adding both errors yields:
-         |h + l - x/(2pi)| < 2^e * (2^-108 + 2^-110.523) < 2^e * 2^-107.768.
-         Since |x/(2pi)| > 2^(e-1)/(2pi), the relative error is bounded by:
-         2^e * 2^-107.768 / (2^(e-1)/(2pi)) = 4pi * 2^-107.768 < 2^-104.116.
-
-         Bound on l: since |h| < 1, we have after |l| <= ulp(h) <= 2^-53
-         after a_mul(), and then |l| <= |CL|*0x1.921fb54442d17p+2 + 2^-53
-         < 2^-52.36.
-
-         Bound on l relative to h: after a_mul() we have |l| <= ulp(h)
-         <= 2^-52*h. After fma() we have |l| <= CL*x + 2^-52*h
-         <= 2^-53.84*CH*x + 2^-52*h <= (2^-53.84+2^-52)*h < 2^-51.64*h.
+         |h + l - x/(2pi)| < 2^-105 + 2^-107.871 < 2^-104.815.
       */
-      *err1 = 0x1.d9p-105 * *h; // error < 2^-104.116 * h
     }
   else // x > 0x1.921fb54442d17p+2
     {
@@ -1755,7 +1742,7 @@ reduce_fast (double *h, double *l, double x, double *err1)
       int e = (t.u >> 52) & 0x7ff; /* 1025 <= e <= 2046 */
       /* We have 2^(e-1023) <= x < 2^(e-1022), thus
          ulp(x) is a multiple of 2^(e-1075), for example
-         if x is just above 2*pi, e=1025, 2^2 <= x < 2^e,
+         if x is just above 2*pi, e=1025, 2^2 <= x < 2^3,
          and ulp(x) is a multiple of 2^-50.
          On the other side 1/(2pi) ~ T[0]/2^64 + T[1]/2^128 + T[2]/2^192 + ...
          Let i be the smallest integer such that 2^(e-1075)/2^(64*(i+1))
@@ -1763,25 +1750,34 @@ reduce_fast (double *h, double *l, double x, double *err1)
          i >= (e-1138)/64. */
       uint64_t m = (1ul << 52) | (t.u & 0xffffffffffffful);
       uint64_t c[3];
-      u128 u;
+      u128 u, v;
       // x = m/2^53 * 2^(e-1022)
       if (e <= 1074) // 1025 <= e <= 1074: 2^2 <= x < 2^52
         {
-          /* In that case the contribution of x*T[2]/2^192 is less than
-             2^(52+64-192) <= 2^-76. */
+          v = (u128) m * (u128) T[2];
           u = (u128) m * (u128) T[1];
-          c[0] = u;
-          c[1] = u >> 64;
+          c[0] = u + (v >> 64);
+          c[1] = (u >> 64) + (c[0] < u);
+          /* There can be no overflow in (u >> 64) + (c[0] < u) since
+             u <= (2^64-1)*T[1] thus (u >> 64) < T[1], and T[1]+1
+             does not overflow. */
           u = (u128) m * (u128) T[0];
           c[1] += u;
           c[2] = (u >> 64) + (c[1] < (uint64_t) u);
-          /* | c[2]*2^128+c[1]*2^64+c[0] - m/(2pi)*2^128 | < m*T[2]/2^64 < 2^53
+          /* Up to here, we multiplied exactly m by T[0] and T[1] and
+             took into account the upper part of m*T[2]:
+             c[2]*2^128+c[1]*2^64+c[0] = m*(T[1]+2^64*T[0])+floor(m*T[2]/2^64)
+             |c[2]*2^128+c[1]*2^64+c[0]-m/(2pi)*2^128|
+                < frac(m*T[2]/2^64) + (T[3]+1)/2^128
+                < (2^64-1)/2^64 + (2^64-1)/2^128 < 1
              thus:
-             | (c[2]*2^128+c[1]*2^64+c[0])*2^(e-1203) - x/(2pi) | < 2^(e-1150)
-             The low 1075-e bits of c[2] contribute to frac(x/(2pi)).
-          */
+             | (c[2]*2^128+c[1]*2^64+c[0])*2^(e-1203) - x/(2pi) | < 2^(e-1203)
+             | c[2]*2^(e-1075)+c[1]*2^(e-1139)+c[0]*2^(e-1203) - x/(2pi) |
+               < 2^(e-1203)
+             The low 1075-e bits of c[2] contribute to frac(x/(2pi)),
+             and the ignored part is bounded by 1 with respect to c[0]. */
           e = 1075 - e; // 1 <= e <= 50
-          // e is the number of low bits of C[2] contributing to frac(x/(2pi))
+          // e is the number of low bits of c[2] contributing to frac(x/(2pi))
         }
       else // 1075 <= e <= 2046, 2^52 <= x < 2^1024
         {
@@ -1795,36 +1791,58 @@ reduce_fast (double *h, double *l, double x, double *err1)
              m*T[i+3] contributes a multiple of 2^(-f-192),
                       and at most to 2^(-75-f) <= 2^-76
           */
+          v = (u128) m * (u128) T[i+3];
           u = (u128) m * (u128) T[i+2];
-          c[0] = u;
-          c[1] = u >> 64;
+          c[0] = u + (v >> 64);
+          /* There can be no overflow in (u >> 64) + (c[0] < u) since
+             u <= (2^64-1)*T[i+2] thus (u >> 64) < T[i+2], and T[i+2]+1
+             does not overflow. */
+          c[1] = (u >> 64) + (c[0] < u);
           u = (u128) m * (u128) T[i+1];
           c[1] += u;
           c[2] = (u >> 64) + (c[1] < (uint64_t) u);
           u = (u128) m * (u128) T[i];
           c[2] += u;
           e = 1139 + (i<<6) - e; // 1 <= e <= 64
-          // e is the number of low bits of C[2] contributing to frac(x/(2pi))
+          /* Like in the previous case, the ignored part due to the
+             ignored low part of m*T[i+3], and to the further terms
+             m*T[i+4], ..., is at most 1 relative to c[0]. */
         }
+      // e is the number of bits of c[2] to ignore
       if (e == 64)
         {
+          /* we ignore all bits of c[0]: the ignored part with respect to
+             the new value of c[0] is (2^64-1)/2^64 + 1/2^64 < 1 */
           c[0] = c[1];
           c[1] = c[2];
         }
       else
         {
+          /* we ignore the low bits of c[0]: the ignored part with respect to
+             the new value of c[0] is (2^64-1)/2^64 + 1/2^64 < 1 */
           c[0] = (c[1] << (64 - e)) | c[0] >> e;
           c[1] = (c[2] << (64 - e)) | c[1] >> e;
         }
-      /* In all cases the ignored contribution from x*T[2] or x*T[i+3]
-         is less than 2^-76,
-         and the truncated part from the above shift is less than 2^-128 thus:
-         | c[1]/2^64 + c[0]/2^128 - frac(x/(2pi)) | < 2^-76+2^-128 < 2^-75.999
-      */
+      /* In all cases the ignored contribution from low(x*T[2]) and
+         x*(T[i+3] + T[i+4] + ...) is less than 1 with respect to c[0],
+         thus since we consider (c[1]*2^64+c[0])/2^128, it is < 2^-128. */
       set_dd (h, l, c[1], c[0]);
-      /* set_dd() ensures |h| < 1 and |l| < ulp(h) <= 2^-53 */
-      *err1 = 0x1.01p-76;
+      /* set_dd() ensures |h| < 1 and |l| < ulp(h) <= 2^-53,
+         with truncation error < 2^-106, thus the absolute error is
+         bounded by 2^-106 + 2^-128 < 2^-105.999:
+         |h + l - fracx/(2pi)| < 2^-105.999. */
     }
+
+  /* In case x < 2pi we have:
+  |h + l - x/(2pi)| < 2^-104.815,
+  and in case 2pi < x we have:
+  |h + l - fracx/(2pi)| < 2^-105.999,
+  thus in all cases:
+  |h + l - fracx/(2pi)| < 2^-104.815.
+  
+  Since we exclude |h+l| < 2^-37, the induced error
+  relative to sin2pi(h+l) is bounded by
+  2^-104.815/sin2pi(2^-37) < 2^-70.466. */
 
   double i = __builtin_floor (*h * 0x1p11);
   *h = __builtin_fma (i, -0x1p-11, *h);
@@ -1897,8 +1915,7 @@ tan_fast (double *h, double *l, double x)
   double absx = neg ? -x : x;
 
   /* now absx > 0x1.d12ed0af1a27ep-27 */
-  double err1;
-  int i = reduce_fast (h, l, absx, &err1);
+  int i = reduce_fast (h, l, absx);
   /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
      | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
 
@@ -1936,15 +1953,15 @@ tan_fast (double *h, double *l, double x)
       *l = -*l;
     }
 
-  /* The function reduce_fast_case1(bound=2^-71.) in tan.sage proves that
-     if we except i=0 and h<2^-37, then the error of reduce_fast
-     relative to both sin2pi(R) and cos2pi(R) is bounded by 2^-70.651:
-     | R - frac(x/(2pi)) mod 1/4 | < 2^-70.651 * |sin2pi(R)|
-     | R - frac(x/(2pi)) mod 1/4 | < 2^-70.651 * |cos2pi(R)|
+  /* The analysis of reduce_fast() proves that if we except i=0 and h<2^-37,
+     then the error of reduce_fast() relative to both sin2pi(R) and cos2pi(R)
+     is bounded by 2^-70.466:
+     | R - frac(x/(2pi)) mod 1/4 | < 2^-70.466 * |sin2pi(R)|
+     | R - frac(x/(2pi)) mod 1/4 | < 2^-70.466 * |cos2pi(R)|
      where R = i/2^11 + h + l, thus since the derivative of sin2pi and
-     cos2pi is bounded by 2*pi and 2*pi*2^-70.651 < 2^-67.999:
-     | sin2pi(R) - sin(x mod pi/2) | < 2^-67.999 * |sin2pi(R)|.
-     | cos2pi(R) - cos(x mod pi/2) | < 2^-67.999 * |cos2pi(R)|.
+     cos2pi is bounded by 2*pi and 2*pi*2^-70.466 < 2^-67.814:
+     | sin2pi(R) - sin(x mod pi/2) | < 2^-67.814 * |sin2pi(R)|.
+     | cos2pi(R) - cos(x mod pi/2) | < 2^-67.814 * |cos2pi(R)|.
      For i=0 and h<2^-37, we defer to the slow path. */
   if (__builtin_expect (i==0 && *h < 0x1p-37, 0))
     return 0x1p0;
@@ -2012,14 +2029,14 @@ tan_fast (double *h, double *l, double x)
   /* In summary we have when is_tan=1:
      h1+l1 = sin2pi(R) * (1 + eps1) with |eps1| < 2^-67.777
      h2+l2 = cos2pi(R) * (1 + eps2) with |eps2| < 2^-68.073
-     sin2pi(R) = sin(x mod pi/2) * (1 + eps3) with |eps3| < 2^-67.999
-     cos2pi(R) = cos(x mod pi/2) * (1 + eps4) with |eps4| < 2^-67.999
+     sin2pi(R) = sin(x mod pi/2) * (1 + eps3) with |eps3| < 2^-67.814
+     cos2pi(R) = cos(x mod pi/2) * (1 + eps4) with |eps4| < 2^-67.814
      h+l = (h1+l1)/(h2+l2) * (1 + eps5) with |eps5| < 2^-96.99
      This yields:
      h+l = tan(x mod pi/2) * (1+eps1)*(1+eps3)*(1+eps5)/(1+eps2)/(1+eps4)
      The largest value is obtained when eps1,eps3,eps5 are maximum, and
      eps2,eps4 minimum, and we get:
-     h+l = tan(x mod pi/2) * (1+eps) with |eps| < 2^-65.957
+     h+l = tan(x mod pi/2) * (1+eps) with |eps| < 2^-65.864
      (the same bound holds for eps1,eps3,eps5 minimum and eps2,eps4 maximum).
      When is_tan=0, we get the same reasoning with inverse ratio, but the
      bounds are the same.
@@ -2028,7 +2045,7 @@ tan_fast (double *h, double *l, double x)
   static double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
-  return *h * 0x1.08p-66; // 2^-65.957 < 0x1.08p-66
+  return *h * 0x1.1ap-66; // 2^-65.864 < 0x1.1ap-66
 }
 
 /* Assume x is a regular number, and |x| > 0x1.d12ed0af1a27ep-27. */
