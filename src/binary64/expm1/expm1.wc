@@ -7579,3 +7579,10 @@
 -0x1.ffb67ab8b34fdp-37
 -0x1.ffccec4c86504p+4
 -0x1.fff08a6896f93p+4
+# special cases
++nan
+-nan
++inf
+-inf
++0
+-0

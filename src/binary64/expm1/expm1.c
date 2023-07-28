@@ -24,6 +24,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+// FIXME: remove skipped in check_worst_uni.c
+
+#define TRACE 0
+
+#include <stdio.h>
 #include <stdint.h>
 
 typedef union {double f; uint64_t u;} b64u64_u;
@@ -33,7 +38,7 @@ typedef union {double f; uint64_t u;} b64u64_u;
    which approximates expm1(x) with relative error bounded by 2^-67.183
    for |x| <= 0.125. */
 static const double P[] = {
-  0x0                    // degree 0 (unused)
+  0x0,                   // degree 0 (unused)
   0x1p0,                 // degree 1
   0x1p-1,                // degree 2
   0x1.5555555555555p-3,  // degree 3
@@ -89,20 +94,20 @@ expm1_fast_tiny (double *h, double *l, double x)
   // multiply c4 by x and add P[3]
   a_mul (h, l, c4, x);
   double t;
-  fast_two_sum (h, &t, P[3], h);
-  t += l;
+  fast_two_sum (h, &t, P[3], *h);
+  t += *l;
   // multiply (h,t) by x and add P[2]
-  a_mul (h, l, h, x);
+  a_mul (h, l, *h, x);
   *l = __builtin_fma (t, x, *l);
-  fast_two_sum (h, &t, P[2], h);
-  t += l;
+  fast_two_sum (h, &t, P[2], *h);
+  t += *l;
   // multiply (h,t) by x and add P[1]
-  a_mul (h, l, h, x);
+  a_mul (h, l, *h, x);
   *l = __builtin_fma (t, x, *l);
-  fast_two_sum (h, &t, P[1], h);
-  t += l;
+  fast_two_sum (h, &t, P[1], *h);
+  t += *l;
   // multiply (h,t) by x
-  a_mul (h, l, h, x);
+  a_mul (h, l, *h, x);
   *l = __builtin_fma (t, x, *l);
   return 0x1.d4p-65; // 2^-64.13 < 0x1.d4p-65
 }
@@ -121,9 +126,9 @@ expm1_fast (double *h, double *l, double x)
   if (ax <= 0x3fc0000000000000lu) // |x| <= 0.125
     return expm1_fast_tiny (h, l, x);
 
-  *h = 0;
+  *h = -2;
   *l = 0;
-  return 1;
+  return 0;
 }
 
 double
@@ -135,10 +140,10 @@ cr_expm1 (double x)
   if (__builtin_expect (ux >= 0xc042b708872320e2, 0))
   {
     // x = -NaN or x <= -0x1.2b708872320e2p+5
-    if ((ux >> 52) == 0xfff) // -NaN
-      return x;
+    if ((ux >> 52) == 0xfff) // -NaN or -Inf
+      return (ux > 0xfff0000000000000lu) ? x : -1.0;
     // for x <= -0x1.2b708872320e2p+5, expm1(x) rounds to -1 to nearest
-    return -1.0 + 0x1p-53;
+    return -1.0 + 0x1p-54;
   }
   else if (__builtin_expect (ax >= 0x40862e42fefa39f0, 0))
   {
@@ -170,9 +175,13 @@ cr_expm1 (double x)
 
   double err, h, l;
   err = expm1_fast (&h, &l, x);
-  double left = h + (l - h * err), right = h + (l + h * err);
+  double left = h + __builtin_fma (err, -h, l);
+  double right = h + __builtin_fma (err, h, l);
+  if (x==TRACE) printf ("x=%la h=%la l=%la err=%la left=%la right=%la\n", x, h, l, err, left, right);
   if (left == right)
     return left;
 
-  return 0;
+  if (x==TRACE) printf ("fast path failed\n");
+
+  return -2;
 }
