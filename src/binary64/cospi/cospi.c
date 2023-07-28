@@ -28,7 +28,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
-#include <math.h>
+#include <math.h> // needed to provide cospi() since glibc does not have it
 
 __float128 as_cos(__float128);
 
@@ -352,5 +352,5 @@ void sincosn2(int s, double *sh, double *sl, double *ch, double *cl){
 
 /* just to compile since glibc does not have it*/
 double cospi(double x){
-  return cos(x);
+  return cos(M_PI*x);
 }

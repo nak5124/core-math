@@ -28,7 +28,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
-#include <math.h>
+#include <math.h> // needed to provide sinpi() since glibc does not have it
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -374,5 +374,5 @@ void sincosn2(int s, double *sh, double *sl, double *ch, double *cl){
 
 /* just to compile since glibc does not have it*/
 double sinpi(double x){
-  return sin(x);
+  return sin(M_PI*x);
 }
