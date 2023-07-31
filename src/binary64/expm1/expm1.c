@@ -521,6 +521,8 @@ expm1_accurate_tiny (double x)
   double c13 = __builtin_fma (Q[18], x, Q[17]);
   double c11 = __builtin_fma (Q[16], x, Q[15]);
 
+  /* exceptions below have between 46 and 57 identical bits after the
+     round bit */
 #define EXCEPTIONS 46
   static const double exceptions[EXCEPTIONS][3] = {
    {0x1.0b5d6cc46b3f8p-28, 0x1.0b5d6ccd251f9p-28, 0x1.fffffffffffffp-82},
@@ -625,9 +627,11 @@ static double expm1_accurate (double x)
   if (ax <= 0x3fc0000000000000lu) // |x| <= 0.125
     return expm1_accurate_tiny (x);
 
+  /* exceptions below have between 47 and 57 identical bits after the
+     round bit */
 #define EXCEPTIONS 81
   static const double exceptions[EXCEPTIONS][3] = {
-       {-0x1.add1dce7cd5bcp-2, -0x1.5f0357a4cf6c6p-2, 0x1.398091600cd41p-105},
+   {-0x1.add1dce7cd5bcp-2, -0x1.5f0357a4cf6c6p-2, 0x1.398091600cd41p-105},
    {0x1.aca7ae8da5a7bp+0, 0x1.157d4acd7e557p+2, -0x1.fffffffffffffp-52},
    {0x1.d6336a88077aap+0, 0x1.51a8dff540ff7p+2, 0x1.78f1982b593afp-105},
    {-0x1.1397add4538acp-1, -0x1.aa3b02b31d93ep-2, 0x1.0f8991f2f9ffp-104},
