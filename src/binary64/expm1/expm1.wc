@@ -1,5 +1,4 @@
-0x1.0b5d6cc46b3f8p-28
-0x1.5178df87adcfap-4
+0x1.9ee75af27774bp-4
 # worst cases from https://www.vinc17.net/research/testlibm/testlibm-data.xz
 # (update from 2020-11-27), from 0 to pi, with 40 to 58 identical bits after
 # the round bit

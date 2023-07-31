@@ -226,22 +226,22 @@ def expm1_accurate_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err_x4 = RIFulp(x4) + 2*err_x2*x2.abs().upper()
    # c15 = __builtin_fma (Q[20], x, Q[19])
    c15 = Q[20]*x+Q[19]
-   err[1] = RIFulp(c15)*x.abs().upper()^19
+   err[1] = RIFulp(c15)*x.abs().upper()^15
    if verbose:
       print ("err[1]=", log(err[1])/log(2.))
    # c13 = __builtin_fma (Q[18], x, Q[17])
    c13 = Q[18]*x+Q[17]
-   err[2] = RIFulp(c13)*x.abs().upper()^17
+   err[2] = RIFulp(c13)*x.abs().upper()^13
    if verbose:
       print ("err[2]=", log(err[2])/log(2.))
    # c11 = __builtin_fma (Q[16], x, Q[15])
    c11 = Q[16]*x+Q[15]
-   err[3] = RIFulp(c11)*x.abs().upper()^15
+   err[3] = RIFulp(c11)*x.abs().upper()^11
    if verbose:
       print ("err[3]=", log(err[3])/log(2.))
    # c9 = __builtin_fma (Q[14], x, Q[13])
    c9 = Q[14]*x+Q[13]
-   err[4] = RIFulp(c9)*x.abs().upper()^13
+   err[4] = RIFulp(c9)*x.abs().upper()^9
    if verbose:
       print ("err[4]=", log(err[4])/log(2.))
    # c13 = __builtin_fma (c15, x2, c13)
@@ -249,20 +249,25 @@ def expm1_accurate_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err[5] = (RIFulp(c13)+c15.abs().upper()*err_x2)*x.abs().upper()^13
    if verbose:
       print ("err[5]=", log(err[5])/log(2.))
-   # c9 = __builtin_fma (c11, x2, c9)
-   c9 = c11*x2+c9
-   err[6] = (RIFulp(c9)+c11.abs().upper()*err_x2)*x.abs().upper()^9
-   if verbose:
-      print ("err[6]=", log(err[6])/log(2.))
-   # c9 = __builtin_fma (c13, x4, c9)   
-   c9 = c13*x4+c9
-   err[7] = (RIFulp(c9)+c13.abs().upper()*err_x4)*x.abs().upper()^9
-   if verbose:
-      print ("err[7]=", log(err[7])/log(2.))
-   # a_mul (&h, &l, c9, x)
-   h = c9*x
+   # fast_two_sum (&h, &l, c9, c11 * x2 + c13 * x4)
+   t1 = c11 * x2
+   t2 = c13 * x4
+   t3 = t1+t2
+   h = c9+t3
    u = RIFulp(h)
    l = RIF(-u,u)
+   err[6] = (RIFulp(t1)+RIFulp(t2)+RIFulp(t3)+h.abs().upper()*2^-105)*x.abs().upper()^9
+   if verbose:
+      print ("err[6]=", log(err[6])/log(2.))
+   # s_mul (&h, &l, x, h, l)
+   lin = l
+   h = h*x
+   u = RIFulp(h)
+   t = RIF(-u,u)
+   l = lin*x+t
+   err[7] = (RIFulp(lin*x)+RIFulp(l))*x.abs().upper()^8
+   if verbose:
+      print ("err[7]=", log(err[7])/log(2.))
    # fast_two_sum (&h, &t, Q[12], h)
    h = Q[12]+h
    u = RIFulp(h)
@@ -371,7 +376,7 @@ def expm1_accurate_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err[j] = RIFulp(l)
    Err = 0
    for i in [0..j]:
-      Err += err[j]
+      Err += err[i]
    if rel:
       Err = Err/x.abs().lower()
    if verbose:

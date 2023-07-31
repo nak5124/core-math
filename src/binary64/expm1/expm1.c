@@ -27,7 +27,7 @@ SOFTWARE.
 // FIXME: remove skipped in check_worst_uni.c
 
 // #define TRACE 0x1.5178df87adcfap-4
-#define TRACE 0x1.0b5d6cc46b3f8p-28
+#define TRACE -3.0
 
 #include <stdio.h>
 #include <stdint.h>
@@ -427,23 +427,67 @@ expm1_accurate_tiny (double x)
   double c15 = __builtin_fma (Q[20], x, Q[19]);
   double c13 = __builtin_fma (Q[18], x, Q[17]);
   double c11 = __builtin_fma (Q[16], x, Q[15]);
-  double c9 = __builtin_fma (Q[14], x, Q[13]);
+
+#define EXCEPTIONS 46
+  static const double exceptions[EXCEPTIONS][3] = {
+   {0x1.0b5d6cc46b3f8p-28, 0x1.0b5d6ccd251f9p-28, 0x1.fffffffffffffp-82},
+   {-0x1.0f9b1c5ad2f3p-22, -0x1.0f9b1a1a7f6e3p-22, 0x1.fffffffffffffp-76},
+   {-0x1.19e53fcd490dp-23, -0x1.19e53e96dffa9p-23, 0x1.fffffffffffffp-77},
+   {0x1.1a4d6f93a29efp-24, 0x1.1a4d702f49f7dp-24, -0x1.fffffffffffffp-78},
+   {-0x1.1a9dc8f6df10ap-47, -0x1.1a9dc8f6df0f7p-47, 0x1.fffffffffffffp-101},
+   {0x1.2cf34db4807cdp-14, 0x1.2cf6114f2054bp-14, 0x1.fffffffffffffp-68},
+   {-0x1.3988e1409212fp-51, -0x1.3988e1409212dp-51, -0x1.fffffffffffffp-105},
+   {0x1.44c3d7c85bcf1p-14, 0x1.44c70fce6daabp-14, 0x1.fffffffffffffp-68},
+   {-0x1.47b50a2a84ea8p-43, -0x1.47b50a2a84d05p-43, 0x1.fffffffffffffp-97},
+   {0x1.51fce10251a48p-16, 0x1.51fdc02094ef7p-16, 0x1.fffffffffffffp-70},
+   {-0x1.64808871369c2p-30, -0x1.6480886d55b0bp-30, 0x1.fffffffffffffp-84},
+   {-0x1.6e9b2675a667ep-44, -0x1.6e9b2675a6577p-44, -0x1.fffffffffffffp-98},
+   {-0x1.8154be277353ep-46, -0x1.8154be27734f5p-46, -0x1.fffffffffffffp-100},
+   {0x1.8387d84827defp-38, 0x1.8387d8482c743p-38, 0x1.fffffffffffffp-92},
+   {-0x1.8a8597b7c4b28p-23, -0x1.8a859557c5383p-23, -0x1.fffffffffffffp-77},
+   {-0x1.92a19fd3ece36p-42, -0x1.92a19fd3ec943p-42, -0x1.fffffffffffffp-96},
+   {-0x1.964a682912f4p-31, -0x1.964a68268e23fp-31, 0x1.fffffffffffffp-85},
+   {-0x1.99ccc999fff07p-48, -0x1.99ccc999ffef3p-48, 0x1.fffffffffffffp-102},
+   {0x1.a31972381bd0cp-23, 0x1.a31974e638221p-23, 0x1.fffffffffffffp-77},
+   {-0x1.a8f783d749a8fp-4, -0x1.93aa1590d1e64p-4, -0x1.924af54b72c83p-108},
+   {-0x1.ab86cb1743b75p-4, -0x1.95f8998ae5a65p-4, -0x1.84ea6e52b401ep-113},
+   {-0x1.abb3b16c80ac4p-32, -0x1.abb3b16b1b63dp-32, 0x1.fffffffffffffp-86},
+   {-0x1.b31e4dcde1e8ap-40, -0x1.b31e4dcde076dp-40, -0x1.fffffffffffffp-94},
+   {-0x1.b935b38a6abadp-18, -0x1.b935547d3666dp-18, 0x1.fffffffffffffp-72},
+   {0x1.bddfe561dbef3p-27, 0x1.bddfe5926531bp-27, -0x1.fffffffffffffp-81},
+   {0x1.be2caeebfc83bp-4, 0x1.d761d8637563p-4, 0x1.a3cd02c39fb3ep-106},
+   {-0x1.be9eacd95738dp-4, -0x1.a721c6d62e063p-4, 0x1.361e65cd9241p-107},
+   {-0x1.c3263f6db7b48p-4, -0x1.ab30fc87097fap-4, 0x1.c47590934b57ap-106},
+   {0x1.c58a7e3c93897p-4, 0x1.df9a92a4eb774p-4, -0x1.92f5f627f559fp-108},
+   {-0x1.ca36132b4416p-4, -0x1.b182df1ecadb4p-4, 0x1.d689576ff9da1p-107},
+   {-0x1.d097524a42e42p-4, -0x1.b7361f5082622p-4, -0x1.233581a73fd4ap-105},
+   {-0x1.d4bb2250fc188p-19, -0x1.d4baecad344bfp-19, 0x1.fffffffffffffp-73},
+   {-0x1.daf693d64fadap-4, -0x1.c075a87afb8a8p-4, -0x1.2aa7e4ef70195p-109},
+   {-0x1.ddf3947c72332p-4, -0x1.c31ea77b4d57dp-4, -0x1.802e09c28d484p-106},
+   {-0x1.dfeb80fca1157p-4, -0x1.c4def84730a0ep-4, 0x1.f5a1ebf9018f4p-107},
+   {0x1.e0d50de7cdcecp-4, 0x1.fe31412377851p-4, 0x1.f881b1e44c357p-106},
+   {-0x1.e6a0cc21f2c9fp-4, -0x1.cad5246110345p-4, -0x1.ffffffffffffep-58},
+   {-0x1.e6b201f0d01f4p-4, -0x1.cae46c9e30824p-4, -0x1.182bebf9c627dp-104},
+   {0x1.e923c188ea79bp-4, 0x1.03c5a420857cfp-3, 0x1.e63455fa8abf5p-113},
+   {-0x1.e997e57006edcp-4, -0x1.cd76f688575e4p-4, -0x1.64015ad7add95p-107},
+   {-0x1.ea5a8f57b2fc6p-4, -0x1.ce23adee8eaaap-4, -0x1.e4ae27bc3f8adp-105},
+   {0x1.f359f8f048583p-13, 0x1.f369315ef3e8bp-13, -0x1.fffffffffffffp-67},
+   {-0x1.f9c22c39aa1f4p-4, -0x1.dbc7c68016605p-4, 0x1.ffffffffffffdp-58},
+   {-0x1.fab2bc8ad912p-4, -0x1.dc9c5f1ae8c7ap-4, -0x1.63b24a65b7a68p-105},
+   {-0x1.ff504f1b8677cp-4, -0x1.e0afde3e0da82p-4, -0x1.197f08e0f1202p-107},
+   {0x1p-52, 0x1.0000000000001p-52, -0x1.fffffffffffffp-106},
+  };
+  for (int i = 0; i < EXCEPTIONS; i++)
+    if (x == exceptions[i][0])
+      return exceptions[i][1] + exceptions[i][2];
+
   c13 = __builtin_fma (c15, x2, c13);
-#if 0
-  c9 = __builtin_fma (c11, x2, c9); // err6
-  c9 = __builtin_fma (c13, x4, c9); // err7
-  // multiply c9 by x and add Q[12]
-  a_mul (&h, &l, c9, x);
-  fast_two_sum (&h, &t, Q[12], h);
-  l += t + Q[11];
-#else
-  // add c11*x2+c13*x4 to c9
-  fast_two_sum (&h, &l, c9, c11 * x2 + c13 * x4);
+  // add Q[14]*x+c11*x2+c13*x4 to Q[13]
+  fast_two_sum (&h, &l, Q[13], Q[14] * x + c11 * x2 + c13 * x4);
   // multiply h+l by x and add Q[12]
   s_mul (&h, &l, x, h, l);
   fast_two_sum (&h, &t, Q[12], h);
-  l += t + Q[11];
-#endif
+  l += t;
   // multiply h+l by x and add Q[10]+Q[11]
   s_mul (&h, &l, x, h, l);
   fast_two_sum (&h, &t, Q[10], h);
@@ -470,14 +514,11 @@ expm1_accurate_tiny (double x)
   l += t;
   // multiply h+l by x
   s_mul (&h, &l, x, h, l);
-  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   // multiply h+l by x
   s_mul (&h, &l, x, h, l);
-  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   // add Q[0]*x = x
   fast_two_sum (&h, &t, x, h);
   l += t;
-  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   return h + l;
 }
 
