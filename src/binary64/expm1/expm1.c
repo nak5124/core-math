@@ -26,7 +26,8 @@ SOFTWARE.
 
 // FIXME: remove skipped in check_worst_uni.c
 
-#define TRACE 0x1.01a084237abe6p-4
+// #define TRACE 0x1.5178df87adcfap-4
+#define TRACE 0x1.0b5d6cc46b3f8p-28
 
 #include <stdio.h>
 #include <stdint.h>
@@ -430,10 +431,13 @@ expm1_accurate_tiny (double x)
   c13 = __builtin_fma (c15, x2, c13);
   c9 = __builtin_fma (c11, x2, c9);
   c9 = __builtin_fma (c13, x4, c9);
-  h = __builtin_fma (c9, x, Q[12]);
   double t;
-  // multiply h by x and add Q[10]+Q[11]
-  a_mul (&h, &l, h, x);
+  // multiply c9 by x and add Q[12]
+  a_mul (&h, &l, c9, x);
+  fast_two_sum (&h, &t, Q[12], h);
+  l += t + Q[11];
+  // multiply h+l by x and add Q[10]+Q[11]
+  s_mul (&h, &l, x, h, l);
   fast_two_sum (&h, &t, Q[10], h);
   l += t + Q[11];
   // multiply h+l by x and add Q[8]+Q[9]
@@ -456,15 +460,16 @@ expm1_accurate_tiny (double x)
   s_mul (&h, &l, x, h, l);
   fast_two_sum (&h, &t, Q[1], h);
   l += t;
-  // multiply h+l by x and add Q[0]
-  s_mul (&h, &l, x, h, l);
-  fast_two_sum (&h, &t, Q[0], h);
-  l += t;
   // multiply h+l by x
   s_mul (&h, &l, x, h, l);
-
-  if (x == TRACE) printf ("expm1_accurate_tiny: h=%la l=%la\n", h, l);
-
+  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
+  // multiply h+l by x
+  s_mul (&h, &l, x, h, l);
+  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
+  // add Q[0]*x = x
+  fast_two_sum (&h, &t, x, h);
+  l += t;
+  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   return h + l;
 }
 
@@ -529,6 +534,8 @@ cr_expm1 (double x)
   if (x==TRACE) printf ("x=%la h=%la l=%la err=%la left=%la right=%la\n", x, h, l, err, left, right);
   if (left == right)
     return left;
+
+  if (x==TRACE) printf ("fast path failed\n");
   
   return expm1_accurate (x);
 }
