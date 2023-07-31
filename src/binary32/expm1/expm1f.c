@@ -50,7 +50,7 @@ float cr_expm1f(float x){
   double z = x;
   uint32_t ux = t.u, ax = ux<<1;
   if(__builtin_expect(ax<0x7c400000u,1)){ // |x| < 0.15625
-    if(__builtin_expect(ax<0x676a09e8u, 0)){ // |x| < 8.42937e-08(0x1.6a09e8p-24)
+    if(__builtin_expect(ax<0x676a09e8u, 0)){ // |x| < 0x1.6a09e8p-24
       if(__builtin_expect(ax==0x0u, 0)) return x; // x = +-0
       return __builtin_fmaf(__builtin_fabsf(x),0x1p-25f,x);
     }
