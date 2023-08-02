@@ -1,5 +1,3 @@
-// TODO: removed skipped
-
 /* Correctly-rounded tangent function for binary64 value.
 
 Copyright (c) 2022-2023 Paul Zimmermann and Tom Hubrecht
