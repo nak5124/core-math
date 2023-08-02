@@ -523,7 +523,7 @@ expm1_accurate_tiny (double x)
 
   /* exceptions below have between 46 and 57 identical bits after the
      round bit */
-#define EXCEPTIONS 46
+#define EXCEPTIONS 47
   static const double exceptions[EXCEPTIONS][3] = {
    {0x1.0b5d6cc46b3f8p-28, 0x1.0b5d6ccd251f9p-28, 0x1.fffffffffffffp-82},
    {-0x1.0f9b1c5ad2f3p-22, -0x1.0f9b1a1a7f6e3p-22, 0x1.fffffffffffffp-76},
@@ -571,6 +571,7 @@ expm1_accurate_tiny (double x)
    {-0x1.fab2bc8ad912p-4, -0x1.dc9c5f1ae8c7ap-4, -0x1.63b24a65b7a68p-105},
    {-0x1.ff504f1b8677cp-4, -0x1.e0afde3e0da82p-4, -0x1.197f08e0f1202p-107},
    {0x1p-52, 0x1.0000000000001p-52, -0x1.fffffffffffffp-106},
+   {-0x1.bb67ae8584cabp-52, -0x1.bb67ae8584ca9p-52, -0x1.ffffffffffffep-106},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == exceptions[i][0])
@@ -629,7 +630,7 @@ static double expm1_accurate (double x)
 
   /* exceptions below have between 47 and 57 identical bits after the
      round bit */
-#define EXCEPTIONS 81
+#define EXCEPTIONS 96
   static const double exceptions[EXCEPTIONS][3] = {
    {-0x1.add1dce7cd5bcp-2, -0x1.5f0357a4cf6c6p-2, 0x1.398091600cd41p-105},
    {0x1.aca7ae8da5a7bp+0, 0x1.157d4acd7e557p+2, -0x1.fffffffffffffp-52},
@@ -712,6 +713,21 @@ static double expm1_accurate (double x)
    {0x1.677e81300d1f4p-3, 0x1.88f9dbf1b4e57p-3, 0x1.8a69b407735c4p-105},
    {0x1.4297ec53f6b7fp-1, 0x1.c16640ad39959p-1, 0x1.ffffffffffffdp-55},
    {-0x1.0a54d87783d6fp+0, -0x1.4b1887d4d477cp-1, 0x1.d81f352752164p-108},
+   {0x1.1f0da93354198p+7, 0x1.0bd73b73fc74cp+207, 0x1.588526e93304cp+103},
+   {0x1.7a60ee15e3e9dp+6, 0x1.62e4dc3bbf53fp+136, 0x1.ae7c8ed9b6bcbp+30},
+   {0x1.0bc04af1b09f5p+9, 0x1.7b1d97c902985p+772, 0x1.551dfecc05bd4p+667},
+   {0x1.9e7b643238a14p+8, 0x1.f5da7fe652978p+597, 0x1.0429700e71228p+494},
+   {0x1.3f37fb551e418p+9, 0x1.0ccdc52c38712p+921, 0x1.376e0ad4f23b9p+818},
+   {0x1.2da9e5e6af0bp+8, 0x1.27d6fe867d6f6p+435, 0x1.0a1d500c39996p+330},
+   {0x1.556c678d5e976p+7, 0x1.37e7ac4e7f9b3p+246, 0x1.01a99afd82b06p+142},
+   {0x1.519fd95037e31p+6, 0x1.b53c2f00bb322p+121, 0x1.fa70a379db2fbp+18},
+   {0x1.54cd1fea7663ap+7, 0x1.c90810d354618p+245, 0x1.2925a9627fb2cp+136},
+   {0x1.6474c604cc0d7p+6, 0x1.7a8f65ad009bdp+128, -0x1.0b611958ec877p+21},
+   {0x1.d6479eba7c971p+8, 0x1.62a88613629b6p+678, -0x1.3f69a2085428cp+569},
+   {0x1.7945e34b18a9ap+7, 0x1.1b0e4936a8c9bp+272, -0x1.f983e7e9b16f1p+167},
+   {0x1.c44ce0d716a1ap+4, 0x1.b890ca8636ae2p+40, -0x1.bde9e7639f651p-68},
+   {0x1.c7206c1b753e4p+8, 0x1.8670de0b68cadp+656, -0x1.7599cebd802f7p+549},
+   {0x1.89d56a0c38e6fp+5, 0x1.0410c95b580b9p+71, -0x1.7d1a66d4c94f2p-40},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == exceptions[i][0])

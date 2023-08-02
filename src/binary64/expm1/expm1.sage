@@ -161,6 +161,8 @@ def cmp(x,y):
       return int(1)
    return int(0)
 
+# statall("out3") # explor + nancy
+# [((-5267796835639522, -47), (-6369051672525772, -105)), ((6369051672525772, -105), (6243314768165360, -43))]
 def statall(f):
    f = open(f,"r")
    l = []
