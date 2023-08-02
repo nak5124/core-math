@@ -1,4 +1,4 @@
-/* Correctly-rounded cosine function for binary64 value.
+/* Correctly-rounded sine function for binary64 value.
 
 Copyright (c) 2022-2023 Paul Zimmermann and Tom Hubrecht
 
@@ -370,8 +370,6 @@ static inline double dint_tod(dint64_t *a) {
 }
 
 /**************** end of code copied from dint.h and pow.[ch] ****************/
-
-/**************** the following is copied from sin.c *************************/
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -1574,7 +1572,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
      | h + l - frac(x/(2pi)) | < 2^-75.999 + 2^-106 < 2^-75.998 */
 }
 
-/* Assuming 0x1.6a09e667f3bccp-27 < x < +Inf,
+/* Assuming 0x1.7137449123ef6p-26 < x < +Inf,
    return i and set h,l such that i/2^11+h+l approximates frac(x/(2pi)).
    If x <= 0x1.921fb54442d18p+2:
    | i/2^11 + h + l - frac(x/(2pi)) | < 2^-104.116 * |i/2^11 + h + l|
@@ -1706,39 +1704,38 @@ reduce_fast (double *h, double *l, double x, double *err1)
   return i;
 }
 
-/* Assume x is a regular number and x > 0x1.6a09e667f3bccp-27,
-   return a bound on the maximal absolute error err:
-   | h + l - cos(x) | < err */
+/* return the maximal absolute error */
 static double
-cos_fast (double *h, double *l, double x)
+sin_fast (double *h, double *l, double x)
 {
-  int neg = 0, is_cos = 1;
+  int neg = x < 0, is_sin = 1;
+  double absx = neg ? -x : x;
 
+  /* now x > 0x1.7137449123ef6p-26 */
   double err1;
-  int i = reduce_fast (h, l, x, &err1);
+  int i = reduce_fast (h, l, absx, &err1);
   /* err1 is an absolute bound for | i/2^11 + h + l - frac(x/(2pi)) |:
      | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
-  // we use cos(pi+x) = -cos(x)
+  // we use sin(pi+x) = -sin(x)
   neg = neg ^ (i >> 10);
   i = i & 0x3ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/2 < err1
 
   // now i < 2^10
   // if i >= 2^9: 1/4 <= frac(x/(2pi)) < 1/2 thus pi/2 <= x <= pi
-  // we use cos(pi/2+x) = -sin(x)
-  is_cos = is_cos ^ (i >> 9);
-  neg = neg ^ (i >> 9);
+  // we use sin(pi/2+x) = cos(x)
+  is_sin = is_sin ^ (i >> 9);
   i = i & 0x1ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/4 < err1
 
   // now 0 <= i < 2^9
   // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4
-  // we use cos(pi/2-x) = sin(x)
+  // we use sin(pi/2-x) = cos(x)
   if (i & 0x100) // case pi/4 <= x_red <= pi/2
     {
-      is_cos = !is_cos;
+      is_sin = !is_sin;
       i = 0x1ff - i;
       /* 0x1p-11 - h is exact below: indeed, reduce_fast first computes
          a first value of h (say h0, with 0 <= h0 < 1), then i = floor(h0*2^11)
@@ -1758,8 +1755,8 @@ cos_fast (double *h, double *l, double x)
 
   /* Now 0 <= i < 256 and 0 <= h+l < 2^-11
      with | i/2^11 + h + l - frac(x/(2pi)) | cmod 1/4 < err1
-     If is_cos=1, cos(x) = cos2pi(R + err1);
-     if is_cos=0, cos(x) = sin2pi (R + err1).
+     If is_sin=1, sin |x| = sin2pi (R + err1);
+     if is_sin=0, sin |x| = cos2pi (R + err1).
      In both cases R = i/2^11 + h + l, 0 <= R < 1/4.
   */
   double sh, sl, ch, cl;
@@ -1780,13 +1777,13 @@ cos_fast (double *h, double *l, double x)
   evalPSfast (&sh, &sl, *h, *l, uh, ul);
   /* the absolute error of evalPSfast() is less than 2^-77.09 from
      routine evalPSfast() in sin.sage:
-     | sh + sh - sin(h+l) | < 2^-77.09 */
+     | sh + sh - sin2pi(h+l) | < 2^-77.09 */
   evalPCfast (&ch, &cl, uh, ul);
   /* the relative error of evalPCfast() is less than 2^-69.96 from
      routine evalPCfast(rel=true) in sin.sage:
-     | ch + cl - cos(h+l) | < 2^-69.96 * |ch + cl| */
+     | ch + cl - cos2pi(h+l) | < 2^-69.96 * |ch + cl| */
   double err;
-  if (!is_cos)
+  if (is_sin)
     {
       s_mul (&sh, &sl, SC[i][2], sh, sl);
       s_mul (&ch, &cl, SC[i][1], ch, cl);
@@ -1796,8 +1793,8 @@ cos_fast (double *h, double *l, double x)
          from global_error(is_sin=true,rel=false) in sin.sage:
          | h + l - sin2pi (R) | < 2^-68.588
          thus:
-         | h + l - cos(x) | < 2^-68.588 + | sin2pi (R) - sin |x| |
-                            < 2^-68.588 + err1 */
+         | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
+                             < 2^-68.588 + err1 */
       err = 0x1.55p-69; // 2^-66.588 < 0x1.55p-69
     }
   else
@@ -1810,8 +1807,8 @@ cos_fast (double *h, double *l, double x)
          from global_error(is_sin=false,rel=false) in sin.sage:
          | h + l - cos2pi (R) | < 2^-68.414
          thus:
-         | h + l - cos(x) | < 2^-68.414 + | cos2pi (R) - sin |x| |
-                            < 2^-68.414 * |h + l| + err1 */
+         | h + l - sin |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
+                             < 2^-68.414 + err1 */
       err = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
     }
   static double sgn[2] = {1.0, -1.0};
@@ -1820,44 +1817,45 @@ cos_fast (double *h, double *l, double x)
   return err + err1;
 }
 
-/* Assume x is a regular number and x > 0x1.6a09e667f3bccp-27. */
+/* Assume x is a regular number, and |x| > 0x1.7137449123ef6p-26. */
 static double
-cos_accurate (double x)
+sin_accurate (double x)
 {
+  double absx = (x > 0) ? x : -x;
+
   dint64_t X[1];
-  dint_fromd (X, x);
+  dint_fromd (X, absx);
 
   /* reduce argument */
   reduce (X);
   
   // now |X - x/(2pi) mod 1| < 2^-126.67*X, with 0 <= X < 1.
 
-  int neg = 0, is_cos = 1;
+  int neg = x < 0, is_sin = 1;
 
   // Write X = i/2^11 + r with 0 <= r < 2^11.
   int i = reduce2 (X); // exact
 
-  if (i & 0x400) // pi <= x < 2*pi: cos(x) = -cos(x-pi)
+  if (i & 0x400) // pi <= x < 2*pi: sin(x) = -sin(x-pi)
   {
-    neg = 1;
+    neg = !neg;
     i = i & 0x3ff;
   }
 
   // now i < 2^10
 
-  if (i & 0x200) // pi/2 <= x < pi: cos(x) = -sin(x-pi/2)
+  if (i & 0x200) // pi/2 <= x < pi: sin(x) = cos(x-pi/2)
   {
-    neg = !neg;
-    is_cos = 0;
+    is_sin = 0;
     i = i & 0x1ff;
   }
 
   // now 0 <= i < 2^9
 
   if (i & 0x100)
-    // pi/4 <= x < pi/2: cos(x) = sin(pi/2-x), sin(x) = cos(pi/2-x)
+    // pi/4 <= x < pi/2: sin(x) = cos(pi/2-x), cos(x) = sin(pi/2-x)
   {
-    is_cos = !is_cos;
+    is_sin = !is_sin;
     X->sgn = 1; // negate X
     add_dint (X, &MAGIC, X); // X -> 2^-11 - X
     // here: 256 <= i <= 511
@@ -1867,9 +1865,9 @@ cos_accurate (double x)
 
   // now 0 <= i < 256 and 0 <= X < 2^-11
 
-  /* If is_cos=1, cos |x| = cos2pi (R * (1 + eps))
+  /* If is_sin=1, sin |x| = sin2pi (R * (1 + eps))
         (cases 0 <= x < pi/4 and 3pi/4 <= x < pi)
-     if is_cos=0, cos |x| = sin2pi (R * (1 + eps))
+     if is_sin=0, sin |x| = cos2pi (R * (1 + eps))
         (case pi/4 <= x < 3pi/4)
      In both cases R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
   */
@@ -1880,7 +1878,7 @@ cos_accurate (double x)
   /* since 0 <= X < 2^-11, we have 0.999 < U <= 1 */
   evalPS (V, X, X2); // sin2pi(X)
   /* since 0 <= X < 2^-11, we have 0 <= V < 0.0005 */
-  if (!is_cos)
+  if (is_sin)
   {
     // sin2pi(R) ~ sin2pi(i/2^11)*cos2pi(X)+cos2pi(i/2^11)*sin2pi(X)
     mul_dint (U, S+i, U);
@@ -1900,16 +1898,16 @@ cos_accurate (double x)
        after add_dint (U, U, V) below.
 
        For the approximation error in R, we have:
-       cos(x) = sin2pi (R * (1 + eps))
+       sin |x| = sin2pi (R * (1 + eps))
        R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
-       Thus cos(x) = sin2pi(R+R*eps)
+       Thus sin|x| = sin2pi(R+R*eps)
                    = sin2pi(R)+R*eps*2*pi*cos2pi(theta), theta in [R,R+R*eps]
        Since 2*pi*R/sin(2*pi*R) < pi/2 for R < 1/4, it follows:
-       | cos(x) - sin2pi(R) | < pi/2*R*|sin(2*pi*R)|
-       | cos(x) - sin2pi(R) | < 2^-126.018 * |sin2pi(R)|.
+       | sin|x| - sin2pi(R) | < pi/2*R*|sin(2*pi*R)|
+       | sin|x| - sin2pi(R) | < 2^-126.018 * |sin2pi(R)|.
 
        Adding both errors we get:
-       | cos(x) - U | < |U| * 2^-122.797 + 2^-126.018 * |sin2pi(R)|
+       | sin|x| - U | < |U| * 2^-122.797 + 2^-126.018 * |sin2pi(R)|
                       < |U| * 2^-122.797 + 2^-126.018 * |U| * (1 + 2^-122.797)
                       < |U| * 2^-122.650.
     */
@@ -1926,26 +1924,26 @@ cos_accurate (double x)
        after add_dint (U, U, V) below.
 
        For the approximation error in R, we have:
-       cos(x) = cos2pi (R * (1 + eps))
+       sin |x| = cos2pi (R * (1 + eps))
        R = i/2^11 + X, 0 <= R < 1/4, and |eps| < 2^-126.67.
-       Thus cos(x) = cos2pi(R+R*eps)
+       Thus sin|x| = cos2pi(R+R*eps)
                    = cos2pi(R)-R*eps*2*pi*sin2pi(theta), theta in [R,R+R*eps]
        Since we have R < 1/4, we have cos2pi(R) >= sqrt(2)/2,
        and it follows:
-       | cos(x)/cos2pi(R) - 1 | < 2*pi*R*eps/(sqrt(2)/2)
+       | sin|x|/cos2pi(R) - 1 | < 2*pi*R*eps/(sqrt(2)/2)
                                 < pi/2*eps/sqrt(2)          [since R < 1/4]
                                 < 2^-126.518.
        Adding both errors we get:
-       | cos(x) - U | < |U| * 2^-123.540 + 2^-126.518 * |cos2pi(R)|
+       | sin|x| - U | < |U| * 2^-123.540 + 2^-126.518 * |cos2pi(R)|
                       < |U| * 2^-123.540 + 2^-126.518 * |U| * (1 + 2^-123.540)
                       < |U| * 2^-123.367.
     */
   }
   add_dint (U, U, V);
-  /* If is_cos=0:
-     | cos(x) - U | < |U| * 2^-122.650
-     If is_cos=1:
-     | cos(x) - U | < |U| * 2^-123.367.
+  /* If is_sin=1:
+     | sin|x| - U | < |U| * 2^-122.650
+     If is_sin=0:
+     | cos|x| - U | < |U| * 2^-123.367.
      In all cases the total error is bounded by |U| * 2^-122.650.
      The term |U| * 2^-122.650 contributes to at most 2^(128-122.650) < 41 ulps
      relatively to U->lo.
@@ -1960,18 +1958,15 @@ cos_accurate (double x)
   if ((hi0 >> 10) != (hi1 >> 10))
     {
       static const double exceptions[][3] = {
-        {0x1.8000000000009p-23, 0x1.fffffffffff7p-1, 0x1.b56666666666cp-143},
-        {0x1.8000000000024p-22, 0x1.ffffffffffdcp-1, 0x1.b56666666667ep-137},
-        {0x1.800000000009p-21,  0x1.ffffffffff7p-1,  0x1.b5666666666c4p-131},
-        {0x1.20000000000f3p-20, 0x1.fffffffffebcp-1, 0x1.37642666666fdp-127},
-        {0x1.800000000024p-20,  0x1.fffffffffdcp-1,  0x1.b5666666667ddp-125},
+        {0x1.e0000000001c2p-20, 0x1.dfffffffff02ep-20, 0x1.dcba692492527p-146},
       };
-      for (int i = 0; i < 5; i++)
+      for (int i = 0; i < 1; i++)
         {
           if (__builtin_fabs (x) == exceptions[i][0])
-            return exceptions[i][1] + exceptions[i][2];
+            return (x > 0) ? exceptions[i][1] + exceptions[i][2]
+              : -exceptions[i][1] - exceptions[i][2];
         }
-      printf ("Rounding test of accurate path failed for cos(%la)\n", x);
+      printf ("Rounding test of accurate path failed for sin(%la)\n", x);
       printf ("Please report the above to core-math@inria.fr\n");
       exit (1);
     }
@@ -1985,7 +1980,7 @@ cos_accurate (double x)
 }
 
 double
-cr_cos (double x)
+cr_sin (double x)
 {
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff;
@@ -1998,30 +1993,31 @@ cr_cos (double x)
 
   /* now x is a regular number */
 
-  /* For |x| <= 0x1.6a09e667f3bccp-27, cos(x) rounds to x (to nearest):
-     we can assume x >= 0 without loss of generality since cos(-x) = cos(x),
-     we have 1 - x^2/2 < cos(x) < 1 for say 0 < x <= 1 thus
-     |cos(x) - 1| < x^2/2.
-     Assume 0 < x < 1, and write x = c*2^e with 1/2 <= c < 1.
-     For 0 < x < 1, 1/2 < cos(x) < 1, thus ulp(cos(x)) = 2^-53,
-     and x^2/2 = c^2/2*2^(2e), thus
-     x^2/2 < ulp(cos(x))/2 rewrites as c^2/2*2^(2e) < 2^-54,
-     or c^2*2^(2e+53) < 1 (1).
-     For e <= -27, since c^2 < 1, we have c^2*2^(2e+53) < 1/2 < 1.
-     For e=-26, (1) rewrites c^2*2 < 1 which yields c <= 0x1.6a09e667f3bccp-1.
+  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
+     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
+     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
+     |sin(x) - x| < x^3/6.
+     Write x = c*2^e with 1/2 <= c < 1.
+     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/6*2^(3e), thus
+     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
+     or c^3*2^(2e+53) < 3 (1).
+     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
+     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
   */
-  t.u &= 0x7fffffffffffffff;
-  // 0x3e46a09e667f3bcc = 0x1.6a09e667f3bccp-27
-  if (t.u <= 0x3e46a09e667f3bcc)
-    return __builtin_fma (0x1p-27, -0x1p-27, 1.0);
+  uint64_t ux = t.u & 0x7fffffffffffffff;
+  // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
+  if (ux <= 0x3e57137449123ef6)
+    // Taylor expansion of sin(x) is x - x^3/6 around zero
+    // for x=-0, fma (x, -0x1p-54, x) returns +0
+    return (x == 0) ? x :__builtin_fma (x, -0x1p-54, x);
 
   double h, l, err;
-  err = cos_fast (&h, &l, t.f);
+  err = sin_fast (&h, &l, x);
   double left  = h + (l - err), right = h + (l + err);
   /* With SC[] from ./buildSC 15 we get 1100 failures out of 50000000
      random tests, i.e., about 0.002%. */
-  if (__builtin_expect (left == right, 1))
+  if (left == right)
     return left;
 
-  return cos_accurate (t.f);
+  return sin_accurate (x);
 }

@@ -70,7 +70,7 @@ fi
 if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
    OPENMP=-fopenmp
 else
-   OPENMP=
+   export CFLAGS="$CFLAGS -DCORE_MATH_NO_OPENMP"
 fi
 
 has_symbol () {
