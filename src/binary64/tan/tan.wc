@@ -1709,7 +1709,7 @@
 0x1.ffd52750e79e2p-12
 # additional worst cases computed with bacsel with -m 44,
 # i.e., with at least 43 identical bits after the round bit,
-# in the range 0x1.d12ed0af1a27ep-27 <= x < 0x1.921fb54442d19p+0
+# in the range 0x1.d12ed0af1a27ep-27 <= x < 0x1.07e4cef4cbd98p+5 (10.5*pi)
 0x1.d12ed0af1a27ep-27
 0x1.d12ed0af1a27fp-27
 0x1.d12ed0af1a28p-27
@@ -27527,9 +27527,6 @@
 0x1.911142c9e4a8bp+0
 0x1.9137baef86fdcp+0
 0x1.91beeb637f56p+0
-# additional worst cases computed with bacsel with -m 44,
-# i.e., with at least 43 identical bits after the round bit,
-# in the range 0x1.921fb54442d19p+0 <= x < 10.5*pi
 0x1.000373e6df745p+1
 0x1.00b7534ef2b3fp+1
 0x1.00be89b5e9fd5p+1
