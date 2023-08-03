@@ -510,12 +510,6 @@ static const double Q[] = {
 static double
 expm1_accurate_tiny (double x)
 {
-  double h, l, t;
-  double x2 = x * x, x4 = x2 * x2;
-  double c15 = __builtin_fma (Q[20], x, Q[19]);
-  double c13 = __builtin_fma (Q[18], x, Q[17]);
-  double c11 = __builtin_fma (Q[16], x, Q[15]);
-
   /* exceptions below have between 46 and 57 identical bits after the
      round bit */
 #define EXCEPTIONS 47
@@ -573,6 +567,11 @@ expm1_accurate_tiny (double x)
       return exceptions[i][1] + exceptions[i][2];
 #undef EXCEPTIONS
 
+  double h, l, t;
+  double x2 = x * x, x4 = x2 * x2;
+  double c15 = __builtin_fma (Q[20], x, Q[19]);
+  double c13 = __builtin_fma (Q[18], x, Q[17]);
+  double c11 = __builtin_fma (Q[16], x, Q[15]);
   c13 = __builtin_fma (c15, x2, c13);
   // add Q[14]*x+c11*x2+c13*x4 to Q[13]
   fast_two_sum (&h, &l, Q[13], Q[14] * x + c11 * x2 + c13 * x4);
