@@ -24,8 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// FIXME: remove skipped in check_worst_uni.c
-
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
@@ -459,15 +457,12 @@ expm1_fast_tiny (double *h, double *l, double x)
 /* Given -0x1.2b708872320e2p+5 < x < -0x1.6a09e667f3bccp-53 or
    0x1.6a09e667f3bccp-53 < x < 0x1.62e42fefa39fp+9, put in h + l a
    double-double approximation of expm1(x), and return the maximal
-   corresponding absolute error. */
+   corresponding absolute error.
+   The input tiny is true iff |x| <= 0.125. */
 static double
-expm1_fast (double *h, double *l, double x)
+expm1_fast (double *h, double *l, double x, int tiny)
 {
-  b64u64_u t = {.f = x};
-  // FIXME: pass ax from cr_expm1()
-  uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
-
-  if (ax <= 0x3fc0000000000000lu) // |x| <= 0.125
+  if (tiny) // |x| <= 0.125
     return expm1_fast_tiny (h, l, x);
 
   /* now -0x1.2b708872320e2p+5 < x < 0.125 or
@@ -622,7 +617,6 @@ expm1_accurate_tiny (double x)
 static double expm1_accurate (double x)
 {
   b64u64_u t = {.f = x};
-  // FIXME: pass ax from cr_expm1()
   uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
 
   if (ax <= 0x3fc0000000000000lu) // |x| <= 0.125
@@ -771,19 +765,17 @@ cr_expm1 (double x)
     if ((ux >> 52) == 0x7ff) // +NaN
       return x;
     // for x >= 0x1.62e42fefa39fp+9, expm1(x) rounds to +Inf to nearest
-    return 0x1.fffffffffffffp+1023 + 0x1.fffffffffffffp+1023;
+    return 0x1.fffffffffffffp+1023 * x;
   }
   else if (ax <= 0x3ca6a09e667f3bcc) // |x| <= 0x1.6a09e667f3bccp-53
     /* then expm1(x) rounds to x (to nearest), with Taylor expansion
        x + x^2/2 + ... */
   {
-    if (ax < 0x3ca0000000000000)
-    {
-      /* |x| < 0x1p-53: x^2 < 1/2 ulp(x), we have to deal with -0 apart
-         since fma (-0, -0, -0) is (+0) + (-0) which evaluates to +0
+    if (ax <= 0x3c96a09e667f3bcc)
+      /* |x| <= 0x1.6a09e667f3bccp-54: x^2 < 1/2 ulp(x), we have to deal with
+         -0 apart since fma (-0, -0, -0) is (+0) + (-0) which evaluates to +0
          for some rounding modes */
       return (x == 0) ? x : __builtin_fma (x, x, x);
-    }
     else
       /* 0x1p-53 <= |x| <= 0x1.6a09e667f3bccp-53: x/4 is exactly
          representable, and x^2/4 < 1/2 ulp(x) */
@@ -794,7 +786,7 @@ cr_expm1 (double x)
      0x1.6a09e667f3bccp-53 < x < 0x1.62e42fefa39fp+9 */
 
   double err, h, l;
-  err = expm1_fast (&h, &l, x);
+  err = expm1_fast (&h, &l, x, ax <= 0x3fc0000000000000lu);
   double left = h + (l - err);
   double right = h + (l + err);
   if (left == right)
