@@ -425,7 +425,7 @@ static const double P[] = {
 static double
 expm1_fast_tiny (double *h, double *l, double x)
 {
-  /* The maximal value of |P_fast_tiny[4]*x^4/expm1(x)| over [-0.125,0.125]
+  /* The maximal value of |P[4]*x^4/expm1(x)| over [-0.125,0.125]
      is less than 2^-13.495, thus we can compute the coefficients of degree
      4 or higher using double precision only. */
   double x2 = x * x, x4 = x2 * x2;
