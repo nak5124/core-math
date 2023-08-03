@@ -340,3 +340,9 @@ cr_exp2m1 (double x)
 
   return exp2m1_accurate (x);
 }
+
+// fake function as long as GNU libc does not provide it
+double exp2m1 (double x)
+{
+  return exp (x) - 1.0;
+}
