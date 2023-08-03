@@ -108,18 +108,22 @@ def exp2m1_fast_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err8 = h.abs().upper()*2^-105*x.abs().upper()^3
    if verbose:
       print ("err8=", log(err8)/log(2.))
-   # t += *l
-   t += l
-   err9 = RIFulp(t)*x.abs().upper()^3
+   # *l += t
+   l += t
+   err9 = RIFulp(l)*x.abs().upper()^3
    if verbose:
       print ("err9=", log(err9)/log(2.))
-   # a_mul (h, l, *h, x)
+   # s_mul (h, l, x, *h, *l) decomposes into:
+   #   a_mul (h, t, *h, x)
+   #   *l = __builtin_fma (*l, x, t)
+   # a_mul (h, t, *h, x)
    h = h*x
    u = RIFulp(h)
-   l = RIF(-u,u)
-   # *l = __builtin_fma (t, x, *l)
-   l = t*x+l
-   err10 = (RIFulp(t*x)+RIFulp(l))*x.abs().upper()^2
+   t = RIF(-u,u)
+   # *l = __builtin_fma (*l, x, t)
+   l_in = l
+   l = l*x+t
+   err10 = (RIFulp(l_in*x)+RIFulp(l))*x.abs().upper()^2
    if verbose:
       print ("err10=", log(err10)/log(2.))
    # fast_two_sum (h, &t, P[2], *h)
@@ -129,42 +133,70 @@ def exp2m1_fast_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err11 = h.abs().upper()*2^-105*x.abs().upper()^2
    if verbose:
       print ("err11=", log(err11)/log(2.))
-   # t += *l
-   t += l
-   err12 = RIFulp(t)*x.abs().upper()^2
+   # *l += t + P[3]
+   l_in = l
+   l += t + P[3]
+   err12 = (RIFulp(t+P[3])+RIFulp(l_in))*x.abs().upper()^2
    if verbose:
       print ("err12=", log(err12)/log(2.))
-   # a_mul (h, l, *h, x)
+   # s_mul (h, l, x, *h, *l) decomposes into:
+   #   a_mul (h, t, *h, x)
+   #   *l = __builtin_fma (*l, x, t)
+   # a_mul (h, t, *h, x)
    h = h*x
    u = RIFulp(h)
-   l = RIF(-u,u)
-   # *l = __builtin_fma (t, x, *l)
-   l = t*x+l
-   err13 = (RIFulp(t*x)+RIFulp(l))*x.abs().upper()
+   t = RIF(-u,u)
+   # *l = __builtin_fma (*l, x, t)
+   l_in = l
+   l = l*x+t
+   err13 = (RIFulp(l_in*x)+RIFulp(l))*x.abs().upper()
    if verbose:
       print ("err13=", log(err13)/log(2.))
-   # fast_two_sum (h, &t, P[1], *h)
-   h = P[1]+h
+   # fast_two_sum (h, &t, P[0], *h)
+   h = P[0]+h
    u = RIFulp(h)
    t = RIF(-u,u)
    err14 = h.abs().upper()*2^-105*x.abs().upper()
    if verbose:
       print ("err14=", log(err14)/log(2.))
-   # t += *l
-   t += l
-   err15 = RIFulp(t)*x.abs().upper()
+   # *l += t + P[1]
+   l_in = l
+   l += t + P[1]
+   err15 = (RIFulp(t+P[1])+RIFulp(l))*x.abs().upper()
    if verbose:
       print ("err15=", log(err15)/log(2.))
-   # a_mul (h, l, *h, x)
+   # s_mul (h, l, x, *h, *l) decomposes into:
+   #   a_mul (h, t, *h, x)
+   #   *l = __builtin_fma (*l, x, t)
+   # a_mul (h, t, *h, x)
    h = h*x
    u = RIFulp(h)
-   l = RIF(-u,u)
-   # *l = __builtin_fma (t, x, *l)
-   l = t*x+l
-   err16 = RIFulp(t*x)+RIFulp(l)
+   t = RIF(-u,u)
+   # *l = __builtin_fma (*l, x, t)
+   l_in = l
+   l = l_in*x+t
+   err16 = RIFulp(l_in*x)+RIFulp(l)
    if verbose:
       print ("err16=", log(err16)/log(2.))
    err = err0+err2+err3+err4+err5+err6+err7+err8+err9+err10+err11+err12+err13+err14+err15+err16
    if rel:
       err = err/(h+l).abs().lower()
    return err
+
+# try to prove the given bound for the relative error of exp2m1_fast_tiny()
+# returns a bound less than the given bound, or loops infinitely
+# xmin=RR("0x1.0527dbd87e24dp-51",16)
+# exp2m1_fast_tiny_all(xmin,0.125,2^-65.63)
+# 1.74952121608842e-20 # 2^-65.6316017377937
+# exp2m1_fast_tiny_all(-0.125,-xmin,2^-65.54)
+# 1.86402194391062e-20 # 2^-65.5401430537504
+def exp2m1_fast_tiny_all(xmin,xmax,bound):
+   err = exp2m1_fast_tiny(xmin=xmin,xmax=xmax,rel=true)
+   if err <= bound or xmin==xmax:
+      return err
+   xmid = (xmin+xmax)/2
+   if xmid==xmax:
+      xmid = xmin
+   err1 = exp2m1_fast_tiny_all(xmin, xmid, bound)
+   err2 = exp2m1_fast_tiny_all(xmid.nextabove(), xmax, bound)
+   return max(err1,err2)

@@ -36,6 +36,24 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
   *lo = __builtin_fma (a, b, -*hi);
 }
 
+// Multiply a double with a double double : a * (bh + bl)
+static inline void s_mul (double *hi, double *lo, double a, double bh,
+                          double bl) {
+  a_mul (hi, lo, a, bh); /* exact */
+  *lo = __builtin_fma (a, bl, *lo);
+}
+
+// Add a + b, assuming |a| >= |b|
+static inline void
+fast_two_sum(double *hi, double *lo, double a, double b)
+{
+  double e;
+
+  *hi = a + b;
+  e = *hi - a; /* exact */
+  *lo = b - e; /* exact */
+}
+
 /****************** end of code copied from pow.[ch] *************************/
 
 typedef union {double f; uint64_t u;} b64u64_u;
@@ -59,7 +77,13 @@ static const double P[] = {
 
 /* |x| <= 0.125, put in h + l a double-double approximation of exp2m1(x),
    and return the maximal corresponding absolute error.
-   We also have |x| > 0x1.0527dbd87e24dp-51. */
+   We also have |x| > 0x1.0527dbd87e24dp-51.
+   With xmin=RR("0x1.0527dbd87e24dp-51",16), the routine
+   exp2m1_fast_tiny_all(xmin,0.125,2^-65.63) in exp2m1.sage returns
+   1.74952121608842e-20 < 2^-65.63, and
+   exp2m1_fast_tiny_all(-0.125,-xmin,2^-65.54) returns
+   1.86402194391062e-20 < 2^-65.54, which proves the relative
+   error is bounded by 2^-65.54. */
 static double
 exp2m1_fast_tiny (double *h, double *l, double x)
 {
@@ -88,7 +112,7 @@ exp2m1_fast_tiny (double *h, double *l, double x)
   *l += t + P[1];
   // multiply (h,l) by x
   s_mul (h, l, x, *h, *l);
-  return 0x1.d4p-65 * *h; // 2^-64.13 < 0x1.d4p-65
+  return 0x1.61p-66 * *h; // 2^-65.54 < 0x1.61p-66
 }
 
 /* Given -54 < x < -0x1.0527dbd87e24dp-51 or
@@ -102,7 +126,9 @@ exp2m1_fast (double *h, double *l, double x, int tiny)
   if (tiny) // |x| <= 0.125
     return exp2m1_fast_tiny (h, l, x);
 
-  return -2;
+  *h = -2;
+  *l = 0;
+  return 0;
 }
 
 double
