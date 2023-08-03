@@ -62,18 +62,22 @@ def expm1_fast_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err8 = h.abs().upper()*2^-105*x.abs().upper()^3
    if verbose:
       print ("err8=", log(err8)/log(2.))
-   # t += *l
-   t += l
-   err9 = RIFulp(t)*x.abs().upper()^3
+   # *l += t
+   l += t
+   err9 = RIFulp(l)*x.abs().upper()^3
    if verbose:
       print ("err9=", log(err9)/log(2.))
-   # a_mul (h, l, *h, x)
+   # s_mul (h, l, x, *h, *l) decomposes into
+   #    a_mul (h, t, *h, x)
+   #    *l = __builtin_fma (*l, x, t)
+   # a_mul (h, t, *h, x)
    h = h*x
    u = RIFulp(h)
-   l = RIF(-u,u)
-   # *l = __builtin_fma (t, x, *l)
-   l = t*x+l
-   err10 = (RIFulp(t*x)+RIFulp(l))*x.abs().upper()^2
+   t = RIF(-u,u)
+   # *l = __builtin_fma (*l, x, t)
+   l_in = l
+   l = l*x+t
+   err10 = (RIFulp(l_in*x)+RIFulp(l))*x.abs().upper()^2
    if verbose:
       print ("err10=", log(err10)/log(2.))
    # fast_two_sum (h, &t, P[2], *h)
@@ -83,18 +87,22 @@ def expm1_fast_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err11 = h.abs().upper()*2^-105*x.abs().upper()^2
    if verbose:
       print ("err11=", log(err11)/log(2.))
-   # t += *l
-   t += l
-   err12 = RIFulp(t)*x.abs().upper()^2
+   # *l += t
+   l += t
+   err12 = RIFulp(l)*x.abs().upper()^2
    if verbose:
       print ("err12=", log(err12)/log(2.))
-   # a_mul (h, l, *h, x)
+   # s_mul (h, l, x, *h, *l) decomposes into:
+   #   a_mul (h, t, *h, x)
+   #   *l = __builtin_fma (*l, x, t)
+   # a_mul (h, t, *h, x)
    h = h*x
    u = RIFulp(h)
-   l = RIF(-u,u)
-   # *l = __builtin_fma (t, x, *l)
-   l = t*x+l
-   err13 = (RIFulp(t*x)+RIFulp(l))*x.abs().upper()
+   t = RIF(-u,u)
+   # *l = __builtin_fma (*l, x, t)
+   l_in = l
+   l = l*x+t
+   err13 = (RIFulp(l_in*x)+RIFulp(l))*x.abs().upper()
    if verbose:
       print ("err13=", log(err13)/log(2.))
    # fast_two_sum (h, &t, P[1], *h)
@@ -104,18 +112,22 @@ def expm1_fast_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    err14 = h.abs().upper()*2^-105*x.abs().upper()
    if verbose:
       print ("err14=", log(err14)/log(2.))
-   # t += *l
-   t += l
-   err15 = RIFulp(t)*x.abs().upper()
+   # *l += t
+   l += t
+   err15 = RIFulp(l)*x.abs().upper()
    if verbose:
       print ("err15=", log(err15)/log(2.))
-   # a_mul (h, l, *h, x)
+   # s_mul (h, l, x, *h, *l) decomposes into:
+   #   a_mul (h, t, *h, x)
+   #   *l = __builtin_fma (*l, x, t)
+   # a_mul (h, t, *h, x)
    h = h*x
    u = RIFulp(h)
-   l = RIF(-u,u)
-   # *l = __builtin_fma (t, x, *l)
-   l = t*x+l
-   err16 = RIFulp(t*x)+RIFulp(l)
+   t = RIF(-u,u)
+   # *l = __builtin_fma (*l, x, t)
+   l_in = l
+   l = l*x+t
+   err16 = RIFulp(l_in*x)+RIFulp(l)
    if verbose:
       print ("err16=", log(err16)/log(2.))
    err = err0+err1+err2+err3+err4+err5+err6+err7+err8+err9+err10+err11+err12+err13+err14+err15+err16
