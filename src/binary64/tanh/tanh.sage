@@ -57,7 +57,7 @@ def d_div_km(ah,al,bh,bl):
    # Karp-Markstein's trick is z = z + y*(a-b*z)
    eh = fma(bh,-zh,ah)
    el = fma(bl,-zh,al)
-   zl = yh*(eh+el)
+x   zl = yh*(eh+el)
    return zh, zl
 
 def s_mul_acc1(a,bh,bl):

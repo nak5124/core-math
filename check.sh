@@ -83,7 +83,7 @@ if [[ -n "$LIBM" ]] && ! has_symbol; then
 fi
 
 if [ "$CFLAGS" == "" ]; then
-   export CFLAGS="-O3 -march=native -ffinite-math-only -frounding-math"
+   export CFLAGS="-O3 -march=native -ffinite-math-only"
 fi
 
 case "$KIND" in

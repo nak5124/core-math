@@ -28,7 +28,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
-#include <math.h>
+#include <math.h> // needed to provide tanpi() since glibc does not have it
 
 typedef union {double f; uint64_t u;} b64u64_u;
 

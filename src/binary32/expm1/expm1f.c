@@ -1,6 +1,6 @@
 /* Correctly-rounded natural exponent function biased by 1 for binary32 value.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2022-2023 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -25,60 +25,67 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_expm1f(float x){
   static const double c[] =
-    {0x1.62e42fefa398bp-5, 0x1.ebfbdff84555ap-11, 0x1.c6b08d4ad86d3p-17,
-     0x1.3b2ad1b1716a2p-23, 0x1.5d7472718ce9dp-30, 0x1.4a1d7f457ac56p-37};
-  static const double tb[] =
-    {0x1p+0, 0x1.0b5586cf9890fp+0, 0x1.172b83c7d517bp+0, 0x1.2387a6e756238p+0,
-     0x1.306fe0a31b715p+0, 0x1.3dea64c123422p+0, 0x1.4bfdad5362a27p+0, 0x1.5ab07dd485429p+0,
-     0x1.6a09e667f3bcdp+0, 0x1.7a11473eb0187p+0, 0x1.8ace5422aa0dbp+0, 0x1.9c49182a3f09p+0,
-     0x1.ae89f995ad3adp+0, 0x1.c199bdd85529cp+0, 0x1.d5818dcfba487p+0, 0x1.ea4afa2a490dap+0};
-  static const float q[][2] = {{0x1.fffffep127f, 0x1.fffffep127f}, {-1.0f, 0x1p-26f}};
-  const double iln2h = 0x1.7154765p+0*16, iln2l = 0x1.5c17f0bbbe88p-31*16;
+    {1, 0x1.62e42fef4c4e7p-6, 0x1.ebfd1b232f475p-13, 0x1.c6b19384ecd93p-20};
+  static const double ch[] =
+    {0x1.62e42fefa39efp-6, 0x1.ebfbdff82c58fp-13, 0x1.c6b08d702e0edp-20, 0x1.3b2ab6fb92e5ep-27,
+     0x1.5d886e6d54203p-35, 0x1.430976b8ce6efp-43};
+  static const double td[] =
+    {0x1p+0, 0x1.059b0d3158574p+0, 0x1.0b5586cf9890fp+0, 0x1.11301d0125b51p+0,
+     0x1.172b83c7d517bp+0, 0x1.1d4873168b9aap+0, 0x1.2387a6e756238p+0, 0x1.29e9df51fdee1p+0,
+     0x1.306fe0a31b715p+0, 0x1.371a7373aa9cbp+0, 0x1.3dea64c123422p+0, 0x1.44e086061892dp+0,
+     0x1.4bfdad5362a27p+0, 0x1.5342b569d4f82p+0, 0x1.5ab07dd485429p+0, 0x1.6247eb03a5585p+0,
+     0x1.6a09e667f3bcdp+0, 0x1.71f75e8ec5f74p+0, 0x1.7a11473eb0187p+0, 0x1.82589994cce13p+0,
+     0x1.8ace5422aa0dbp+0, 0x1.93737b0cdc5e5p+0, 0x1.9c49182a3f09p+0, 0x1.a5503b23e255dp+0,
+     0x1.ae89f995ad3adp+0, 0x1.b7f76f2fb5e47p+0, 0x1.c199bdd85529cp+0, 0x1.cb720dcef9069p+0,
+     0x1.d5818dcfba487p+0, 0x1.dfc97337b9b5fp+0, 0x1.ea4afa2a490dap+0, 0x1.f50765b6e454p+0};
+  const double iln2 = 0x1.71547652b82fep+5, big = 0x1.8p52;
   b32u32_u t = {.f = x};
   double z = x;
-  uint32_t ux = t.u, ax = ux&(~0u>>1);
-  if(__builtin_expect(ux>0xc18aa123u, 0)){ // x < -17.32
-    if(ax>(0xffu<<23)) return x; // nan
-    return q[1][0] + q[1][1];
-  } else if(__builtin_expect(ax>0x42b17218u, 0)){  // x > 88.72
-    if(ax>(0xffu<<23)) return x; // nan
-    return q[0][0] + q[0][1];
-  } else if (__builtin_expect(ax<0x3e000000u, 1)){ // x < 0.125
-    if (__builtin_expect(ax<0x32000000u, 0)){ // x < 2^-25
+  uint32_t ux = t.u, ax = ux<<1;
+  if(__builtin_expect(ax<0x7c400000u,1)){ // |x| < 0.15625
+    if(__builtin_expect(ax<0x676a09e8u, 0)){ // |x| < 0x1.6a09e8p-24
       if(__builtin_expect(ax==0x0u, 0)) return x; // x = +-0
-      return __builtin_fmaf(x,x,x);
+      return __builtin_fmaf(__builtin_fabsf(x),0x1p-25f,x);
     }
-    static const double p[] =
-      {0x1.ffffffffffff6p-2, 0x1.5555555555572p-3, 0x1.5555555566a8fp-5, 0x1.11111110f18aep-7,
-       0x1.6c16bf78e5645p-10, 0x1.a01a03fd7c6cdp-13, 0x1.a0439d78f6d66p-16, 0x1.71de38ef84d8cp-19};
+    static const double b[] =
+      {0x1.fffffffffffc2p-2, 0x1.55555555555fep-3, 0x1.555555559767fp-5, 0x1.1111111098dc1p-7,
+       0x1.6c16bca988aa9p-10, 0x1.a01a07658483fp-13, 0x1.a05b04d2c3503p-16, 0x1.71de3a960b5e3p-19};
     double z2 = z*z, z4 = z2*z2;
-    double c0 = p[0] + z*p[1];
-    double c2 = p[2] + z*p[3];
-    double c4 = p[4] + z*p[5];
-    double c6 = p[6] + z*p[7];
-    c0 += z2*c2;
-    c4 += z2*c6;
-    c0 += z4*c4;
-    return z + z2*c0;
-  } else {
-    double a = iln2h*z, ia = __builtin_floor(a), h = (a - ia) + iln2l*z;
-    long i = ia, j = i&0xf, e = i - j;
-    e >>= 4;
-    double s = tb[j];
-    b64u64_u su = {.u = (e + 0x3fful)<<52};
-    s *= su.f;
-    double h2 = h*h;
-    double c0 = c[0] + h*c[1];
-    double c2 = c[2] + h*c[3];
-    double c4 = c[4] + h*c[5];
-    c0 += h2*(c2 + h2*c4);
-    double w = s*h;
-    return (s-1.0) + w*c0;
+    double r = z + z2*((b[0]+z*b[1]) + z2*(b[2]+z*b[3]) + z4*((b[4]+z*b[5]) + z2*(b[6]+z*b[7])));
+    return r;
   }
+  if(__builtin_expect(ax>0x8562e430u, 0)){  // |x| > 88.72
+    if(ax>(0xffu<<24)) return x; // nan
+    if(__builtin_expect(ux>>31, 0)){ // x < 0
+      if(ax==(0xffu<<24)) return -1.0f;
+      return -1.0f + 0x1p-26f;
+    }
+    if(ax==(0xffu<<24)) return __builtin_inff();
+    float r = 0x1.fffffep127*z;
+    if(r>0x1.fffffep127f) errno = ERANGE;
+    return r;
+  }
+  double a = iln2*z, ia = __builtin_roundeven(a), h = a - ia, h2 = h*h;
+  b64u64_u u = {.f = ia + big};
+  double c2 = c[2] + h*c[3], c0 = c[0] + h*c[1];
+  const unsigned long *tdl = (const unsigned long *)td;
+  b64u64_u sv = {.u = tdl[u.u&0x1f] + ((u.u>>5)<<52)};
+  double r = (c0 + h2*c2)*sv.f - 1.0;
+  float ub = r, lb = r - sv.f*0x1.3b3p-33;
+  if(__builtin_expect(ub != lb, 0)){
+    if(__builtin_expect(ux>0xc18aa123u, 0)) // x < -17.32
+      return -1.0f + 0x1p-26f;
+    const double iln2h = 0x1.7154765p+5, iln2l = 0x1.5c17f0bbbe88p-26;
+    double h = (iln2h*z - ia) + iln2l*z, s = sv.f, h2 = h*h, w = s*h;
+    double r = (s-1) + w*((ch[0] + h*ch[1]) + h2*((ch[2] + h*ch[3]) + h2*(ch[4] + h*ch[5])));
+    ub = r;
+  }
+  return ub;
 }
