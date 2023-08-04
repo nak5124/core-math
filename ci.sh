@@ -9,8 +9,9 @@ if [ -z "$LAST_COMMIT" ]; then
     fi
 fi
 
+# use the same order as on https://core-math.gitlabpages.inria.fr/
 FUNCTIONS_EXHAUSTIVE=(acosf acoshf acospif asinf asinhf asinpif atanf atanhf atanpif cbrtf cosf coshf cospif erff erfcf expf exp10f exp10m1f exp2f exp2m1f expm1f logf log10f log10p1f log1pf log2f log2p1f rsqrtf sinf sinhf sinpif tanf tanhf tanpif)
-FUNCTIONS_WORST=(acos acosh asin asinh atan atan2f atan2pif atanh cbrt cos cosh cospi erf erfc exp exp2 hypot hypotf log log10 log1p log2 powf rsqrt sin sinh sinpi tan tanh tanpi)
+FUNCTIONS_WORST=(acos acosh asin asinh atan atan2f atan2pif atanh cbrt cos cosh cospi erf erfc exp exp2 expm1 hypot hypotf log log10 log1p log2 powf rsqrt sin sinh sinpi tan tanh tanpi)
 FUNCTIONS_SPECIAL=(atan2pif hypotf)
 
 echo "Reference commit is $LAST_COMMIT"
