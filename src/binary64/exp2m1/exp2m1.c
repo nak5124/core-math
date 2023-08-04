@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#define TRACE -0x1.7e8ad7428117dp-106
+
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
@@ -157,8 +159,12 @@ static const double Q[] = {
 static double
 exp2m1_accurate_tiny (double x)
 {
-#define EXCEPTIONS 28
+#define EXCEPTIONS 36
   static const double exceptions[EXCEPTIONS][3] = {
+    {-0x1.2716da024f6d9p-50, -0x1.9914a112c8dadp-51, 0x1.004287d8393fep-159},
+    {0x1.29d3990338b4ep-50, 0x1.9ce011cf5f46ep-51, -0x1.ba552cb13d27bp-161},
+    {0x1.4bbbd21c8c721p-51, 0x1.cbe169f09f95ep-52, -0x1.256d63281c5efp-158},
+    {-0x1.0e5678a7b8bap-47, -0x1.76c48a7a527bp-48, -0x1.6fbb13d1e3faap-155},
     {-0x1.3b6203ff2cbe6p-29, -0x1.b536a7dace8cap-30, 0x1.07bb47158694fp-137},
     {-0x1.66ff2474821a7p-44, -0x1.f1accede78f51p-45, -0x1.fffffffffffffp-99},
     {-0x1.0f1c08e43f217p-20, -0x1.77d66368613b4p-21, 0x1.0d3de71c269fcp-130},
@@ -187,6 +193,10 @@ exp2m1_accurate_tiny (double x)
     {-0x1.0c3ebbd1a501fp-11, -0x1.73ccf8ee62819p-12, 0x1.3a3965a926c6dp-120},
     {-0x1.0ee8225c19555p-23, -0x1.778e77e8b1e13p-24, -0x1.3da14df43e675p-129},
     {-0x1.3dbf41403c0b2p-15, -0x1.b87c37192e4f7p-16, 0x1.098861b427b13p-123},
+    {-0x1.6d752e77a9dc2p-41, -0x1.faa1cb0d787b3p-42, -0x1.fffffffffffffp-96},
+    {0x1.391609b20beaap-51, 0x1.b2078ba8f6835p-52, -0x1.85099d92fa919p-162},
+    {-0x1.2c506b0368099p-51, -0x1.a052e3d5e791p-52, -0x1.428e13d1da7cap-159},
+    {-0x1.3f596b7b1c5e2p-44, -0x1.bab64e105226ap-45, -0x1.1a2829f825272p-154},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == exceptions[i][0])
@@ -254,7 +264,7 @@ cr_exp2m1 (double x)
   b64u64_u t = {.f = x};
   uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
 
-  if (__builtin_expect (ux >= 0xc04b000000000000, 0))
+  if (__builtin_expect (ux >= 0xc04b000000000000lu, 0))
   {
     // x = -NaN or x <= -54
     if ((ux >> 52) == 0xfff) // -NaN or -Inf
@@ -262,7 +272,7 @@ cr_exp2m1 (double x)
     // for x <= -54, exp2m1(x) rounds to -1 to nearest
     return -1.0 + 0x1p-54;
   }
-  else if (__builtin_expect (ax >= 0x4090000000000000, 0))
+  else if (__builtin_expect (ax >= 0x4090000000000000lu, 0))
   {
     // x = +NaN or x >= 1024
     if ((ux >> 52) == 0x7ff) // +NaN
@@ -270,7 +280,7 @@ cr_exp2m1 (double x)
     // for x >= 1024, exp2m1(x) rounds to +Inf to nearest
     return 0x1.fffffffffffffp+1023 * x;
   }
-  else if (ax <= 0x3cc0527dbd87e24d) // |x| <= 0x1.0527dbd87e24dp-51
+  else if (ax <= 0x3cc0527dbd87e24dlu) // |x| <= 0x1.0527dbd87e24dp-51
     /* then the second term of the Taylor expansion of 2^x-1 at x=0 is
        smaller in absolute value than 1/2 ulp(first term):
        log(2)*x + log(2)^2*x^2/2 + ... */
@@ -302,7 +312,7 @@ cr_exp2m1 (double x)
     }
     else // 0x1.71547652b82fep-968 < |x| <= 0x1.0527dbd87e24dp-51
     {
-#define EXCEPTIONS 6
+#define EXCEPTIONS 53
       static const double exceptions[EXCEPTIONS][3] = {
         {-0x1.d8bedc057858cp-65, -0x1.47aea7608c02bp-65, -0x1.ef8a5d5p-172},
         {-0x1.ec44ae4bc644p-74, -0x1.5536e12eb7335p-74, -0x1.fb8acp-181},
@@ -310,6 +320,53 @@ cr_exp2m1 (double x)
         {-0x1.a16826a8e825dp-56, -0x1.21530a306cc85p-56, -0x1.38ac4a67cep-161},
         {-0x1.8c525b64ed08ep-59, -0x1.12b592f889516p-59, -0x1.7b71d1eep-169},
         {-0x1.bacdbd3005cd7p-60, -0x1.32ed98e196cf5p-60, -0x1.9b32a24b8p-166},
+        {-0x1.0042796d534fdp-81, -0x1.6340571968b67p-82, -0x1.91fa30638e3b8p-188},
+        {0x1.02f371449097fp-51, 0x1.66fb73eec9971p-52, 0x1.8d182ad6f54d8p-157},
+        {-0x1.03eda6663a4b2p-70, -0x1.6856506d8234ap-71, -0x1.f48368854ffd7p-178},
+        {-0x1.0481d96a2dfcap-61, -0x1.6923c31228cd3p-62, -0x1.59432bd8e301p-169},
+        {0x1.086cbb0e900cfp-96, 0x1.6e920d043905ep-97, 0x1.0000000000001p-150},
+        {-0x1.0c197520b26f4p-94, -0x1.73aa2cd72b7ccp-95, -0x1.1p-148},
+        {-0x1.0e8e362e16fe6p-74, -0x1.7711d03d5c7bdp-75, -0x1.63020ffb5bda3p-181},
+        {-0x1.0ede4c1293a9bp-59, -0x1.7780d5e5cf5c5p-60, -0x1.6b820f41efd9p-166},
+        {0x1.101c8b0d7df57p-85, 0x1.793a04a8764ap-86, 0x1.95385b3628535p-194},
+        {-0x1.103fc46963aafp-62, -0x1.796ad95f38488p-63, -0x1.efd4112076edap-170},
+        {-0x1.19f9b6ddcc3e9p-84, -0x1.86e6a6125ee5fp-85, -0x1.d80acb1fd9a48p-191},
+        {-0x1.1d65d5fc31246p-98, -0x1.8ba5360a2b553p-99, -0x1.0bee24969cff9p-204},
+        {-0x1.1e3a6eaa49c6ep-84, -0x1.8ccbeeaab37e4p-85, 0x1p-138},
+        {-0x1.241e7c1327b2ap-97, -0x1.94f6896c09e68p-98, -0x1.ad2fd62d965b7p-203},
+        {0x1.2736f975d3b57p-55, 0x1.994129328c805p-56, -0x1.fffffffffffffp-110},
+        {0x1.31677c77b4d02p-62, 0x1.a7615378454e9p-63, -0x1.fffffffffffffp-117},
+        {-0x1.3db1f733be456p-87, -0x1.b86b45d2c7c74p-88, -0x1.65075b3baa854p-194},
+        {0x1.453f5d718374ap-88, 0x1.c2e3888d4911bp-89, 0x1.fffffffffffffp-143},
+        {0x1.47bc52cdc6bc1p-53, 0x1.c6568b98a9929p-54, 0x1.3977497829482p-159},
+        {-0x1.4abb72eb058bep-91, -0x1.ca7e01c959788p-92, -0x1.9c974667cda43p-198},
+        {0x1.51cc163375e5cp-100, 0x1.d4494fb79c5f9p-101, 0x1.235a318115a7dp-210},
+        {0x1.530a89e8c2834p-79, 0x1.d602c792ff217p-80, 0x1.4d765bf788c32p-186},
+        {-0x1.56fe8536a47e9p-91, -0x1.db7daf1e016dfp-92, -0x1.5a5357cd9fecap-199},
+        {0x1.5f3addb5548c6p-60, 0x1.e6e878c6cb8f4p-61, 0x1.46dbd6dc7b9eep-168},
+        {0x1.6102ff22f3431p-78, 0x1.e960cd938fc71p-79, 0x1.fffffffffffffp-133},
+        {0x1.690ed9e3dd31p-55, 0x1.f4885e22dc71bp-56, -0x1.fffffffffffffp-110},
+        {-0x1.6a480c34c7c5bp-70, -0x1.f63a8ce2364f3p-71, -0x1.11e154c338558p-177},
+        {-0x1.712c6b2a267f5p-90, -0x1.ffc87ce076dfap-91, -0x1.922d1954bd733p-196},
+        {0x1.7382bd647eca8p-59, 0x1.0182f7f3350e1p-59, 0x1.5902345c6d87ep-166},
+        {0x1.760aba9c35ed1p-62, 0x1.03441ed22884fp-62, -0x1.fffffffffffffp-116},
+        {-0x1.7e8ad7428117dp-105, -0x1.09287c79a1b1p-105, -0x1.0b8ae2384a213p-212},
+        {-0x1.7e8ad7428117dp-106, -0x1.09287c79a1b1p-106, -0x1.0f17dd299eb52p-212},
+        {-0x1.83266a65e67b3p-95, -0x1.0c5a1aeb10a7cp-95, -0x1.5d790953d37ccp-202},
+        {0x1.8a5dd21ef35afp-104, 0x1.115aa0fb29a7p-104, -0x1.1p-157},
+        {0x1.8b571f80771bep-90, 0x1.12076e976275dp-90, -0x1.fffffffffffffp-144},
+        {-0x1.8bf6e9484dd46p-91, -0x1.127630515eb89p-91, -0x1.aa2e8ae4b621cp-198},
+        {-0x1.986d43391ffdp-65, -0x1.1b19925f9fc06p-65, -0x1.1aada6205370bp-170},
+        {0x1.99ec5e10fdc8bp-83, 0x1.1c231eacb2814p-83, 0x1.f82d478ebc7fap-192},
+        {-0x1.9b219a1974289p-86, -0x1.1cf977003bdd6p-86, -0x1.2a8a589db0f16p-194},
+        {-0x1.af82b29eef2ecp-74, -0x1.2b19ae19e4f3ep-74, -0x1.730d414c3032cp-180},
+        {-0x1.b102d7663223fp-87, -0x1.2c23f2bc02277p-87, -0x1.1304b8a0f41cdp-194},
+        {-0x1.c48ddf5beba98p-98, -0x1.39afc8fadbb98p-98, -0x1.37656827f3549p-203},
+        {-0x1.cf23f6232620ep-94, -0x1.4106468e7b671p-94, -0x1.a1de1e34f2642p-200},
+        {-0x1.e48acc7d41976p-97, -0x1.4fdbea8f31897p-97, -0x1.889c4c9736da4p-202},
+        {0x1.f8d2954ab444fp-91, 0x1.5dea9642be3ccp-91, 0x1.109cd4f731735p-199},
+        {-0x1.fe0e7458ac1fcp-105, -0x1.618b50a22cecp-105, -0x1.c261b621b891p-214},
+        {-0x1.fe0e7458ac1fcp-106, -0x1.618b50a22cecp-106, -0x1.2c6cf6dc2bc4dp-212},
       };
       for (int i = 0; i < EXCEPTIONS; i++)
         if (x == exceptions[i][0])
