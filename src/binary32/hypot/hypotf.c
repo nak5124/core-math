@@ -24,11 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/*
-  Compile by the command
-  gcc -O3 -march=native -ffinite-math-only -frounding-math -fno-math-errno -W -Wall -c hypotf.c
-*/
-
 #include <stdint.h>
 #include <errno.h>
 

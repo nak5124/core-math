@@ -25,13 +25,6 @@ SOFTWARE.
 
 */
 
-/*
-
-  To compile:
-  gcc -O3 -march=native -ffinite-math-only -frounding-math -fno-math-errno -W -Wall -c atan2f.c
-
-*/
-
 #include <stdint.h>
 
 typedef union {float f; uint32_t u;} b32u32_u;
