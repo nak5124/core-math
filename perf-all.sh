@@ -1,4 +1,8 @@
 #!/bin/bash
+# Usage:
+# ./perf-all.sh
+# CORE_MATH_QUIET=1 ./perf-all.sh
+# CORE_MATH_SIMPLE_STAT=1 ./perf-all.sh (old stat mechanism)
 
 if [ -z "$CORE_MATH_QUIET" ]; then
     make -s -C src/generic/support clean
@@ -9,5 +13,5 @@ fi
 for u in src/binary*/*/Makefile; do
     f="$(sed -n 's/FUNCTION_UNDER_TEST := //p' $u)"
     echo -n "$f "
-    CORE_MATH_SIMPLE_STAT=1 CORE_MATH_QUIET=1 ./perf.sh $f | xargs echo
+    ./perf.sh $f | xargs echo
 done

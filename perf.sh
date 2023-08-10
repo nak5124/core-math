@@ -9,6 +9,7 @@ S=20 # trial
 N=100000 # count
 M=500 # repeat
 
+if [ -z "$CORE_MATH_QUIET" ]; then
 { read -r -d '' prog_end || true; } <<EOF
 END {
   s = 0;
@@ -22,6 +23,21 @@ END {
   printf "Ntrial = %d ; Min = %.3f + %.3f clc/call; Median-Min = %.3f clc/call; Max = %.3f clc/call;\n", i, a[0], rms, nmd, a[i-1];
 }
 EOF
+else
+{ read -r -d '' prog_end || true; } <<EOF
+END {
+  s = 0;
+  nout = int(5*i/100);
+  for(k = 1; k < i-nout; k++){
+    d = a[k] - a[0];
+    s += d*d;
+  }
+  rms = sqrt(s/(i-nout-1));
+  nmd = a[int(i/2)] - a[0];
+  printf "%.3f\n", a[0];
+}
+EOF
+fi
 
 prog_bar () {
     local T=$1 i=$2
