@@ -159,7 +159,10 @@ static const double Q[] = {
 static double
 exp2m1_accurate_tiny (double x)
 {
-#define EXCEPTIONS 36
+  /* the following exceptional cases have at least 51 identical bits after
+     the round bit, thus are hard to correctly round with double-double
+     arithmetic */
+#define EXCEPTIONS 59
   static const double exceptions[EXCEPTIONS][3] = {
     {-0x1.2716da024f6d9p-50, -0x1.9914a112c8dadp-51, 0x1.004287d8393fep-159},
     {0x1.29d3990338b4ep-50, 0x1.9ce011cf5f46ep-51, -0x1.ba552cb13d27bp-161},
@@ -197,6 +200,29 @@ exp2m1_accurate_tiny (double x)
     {0x1.391609b20beaap-51, 0x1.b2078ba8f6835p-52, -0x1.85099d92fa919p-162},
     {-0x1.2c506b0368099p-51, -0x1.a052e3d5e791p-52, -0x1.428e13d1da7cap-159},
     {-0x1.3f596b7b1c5e2p-44, -0x1.bab64e105226ap-45, -0x1.1a2829f825272p-154},
+    {0x1.02cdc0b0f314cp-37, 0x1.66c7342a5b89fp-38, -0x1.fffffffffffffp-92},
+    {0x1.02df58d57f81fp-13, 0x1.66e3866f48983p-14, -0x1.3e42ea0bb96a5p-121},
+    {0x1.1c4baf7475e2dp-23, 0x1.8a1e1272b4997p-24, 0x1.fffffffffffffp-78},
+    {0x1.2162f23d082d5p-36, 0x1.912cc5483c4bbp-37, -0x1.9b93a2f7e5da4p-145},
+    {0x1.2d664653786ecp-36, 0x1.a1d414c603907p-37, 0x1.fffffffffffffp-91},
+    {0x1.3a6de04d8d384p-22, 0x1.b3e437cdb56dep-23, 0x1p-76},
+    {0x1.3dc2574084694p-34, 0x1.b881f93d3d7bcp-35, 0x1.4d32033399826p-141},
+    {0x1.4753a08baf7fbp-22, 0x1.c5c56aeb3c161p-23, 0x1.fffffffffffffp-77},
+    {0x1.6a8ee6a3521fdp-6, 0x1.fa7ca1e176885p-7, 0x1.6530cb0e0ba64p-113},
+    {0x1.8ff59817c7989p-9, 0x1.15862abd340e8p-9, 0x1.6ab813a41d504p-116},
+    {0x1.a949818632705p-13, 0x1.26ceaaf78e39fp-13, -0x1.fffffffffffffp-67},
+    {0x1.ac65fdb418f72p-40, 0x1.28f171f05f6fap-40, -0x1.51612679f6f55p-146},
+    {0x1.b3665a468351p-35, 0x1.2dcbd0c2b922fp-35, -0x1.fffffffffffffp-89},
+    {0x1.b6275c496a3d5p-16, 0x1.2fb5318232c0cp-16, 0x1.666c5e4de0763p-123},
+    {0x1.b988be78bfb6bp-33, 0x1.320c53ed5fb63p-33, -0x1.fffffffffffffp-87},
+    {0x1.c2ff91c241999p-47, 0x1.389bb3cfc42c2p-47, -0x1.023c49dbbc653p-154},
+    {0x1.d4a8ebce833a3p-4, 0x1.52145769df4fbp-4, -0x1.5d8026da33cabp-111},
+    {0x1.d57070df38af8p-50, 0x1.4563f61023f7p-50, -0x1.ac66c9a5a19p-157},
+    {0x1.dcc98bad34bd4p-13, 0x1.4a82829ba33efp-13, 0x1.3a222409353fep-120},
+    {0x1.e4c5c9414182ep-26, 0x1.5004cdd3ec269p-26, -0x1.411c828b7c78ep-133},
+    {0x1.e755f4897c124p-27, 0x1.51cba0164bed2p-27, -0x1.16a01564a1359p-134},
+    {0x1.f06778562781fp-38, 0x1.5814c6c101c7p-38, -0x1.333ad12f679a5p-145},
+    {0x1.f6ac7a2928816p-49, 0x1.5c6d4854f6b3bp-49, 0x1.fffffffffffffp-103},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == exceptions[i][0])
@@ -312,8 +338,18 @@ cr_exp2m1 (double x)
     }
     else // 0x1.71547652b82fep-968 < |x| <= 0x1.0527dbd87e24dp-51
     {
-#define EXCEPTIONS 53
+      /* the following exceptional cases have at least 51 identical bits after
+         the round bit, thus are hard to correctly round with double-double
+         arithmetic */
+#define EXCEPTIONS 60
       static const double exceptions[EXCEPTIONS][3] = {
+        {0x1.d7430e6a40aap-78, 0x1.46a764f31c407p-78, 0x1.fffffffffffffp-132},
+        {-0x1.e2b5692bd0c53p-80, -0x1.4e968fb1b5f41p-80, 0x1.fffffffffffffp-134},
+        {0x1.9a8401f6d9784p-60, 0x1.1c8c3a93ce469p-60, -0x1.fffffffffffffp-114},
+        {-0x1.5754d81696c42p-76, -0x1.dbf55aa9a7eb9p-77, -0x1.c81798a2dea9ep-184},
+        {0x1.8ddd5485a342fp-56, 0x1.13c75940129cbp-56, 0x1.365292846d16p-164},
+        {0x1.d622a201c030bp-52, 0x1.45df797393f11p-52, -0x1.cdcde906092cfp-159},
+        {0x1.e704310d30238p-55, 0x1.5192f360cac0ap-55, 0x1.30562032a2c95p-161},
         {-0x1.d8bedc057858cp-65, -0x1.47aea7608c02bp-65, -0x1.ef8a5d5p-172},
         {-0x1.ec44ae4bc644p-74, -0x1.5536e12eb7335p-74, -0x1.fb8acp-181},
         {-0x1.f1bc3ef3e6f36p-65, -0x1.5900fbf46981dp-65, -0x1.fffffffffffffp-119},
@@ -377,10 +413,10 @@ cr_exp2m1 (double x)
       static const double C2 = 0x1.ebfbdff82c58fp-3; // log(2)^2/2
       a_mul (&h, &l, LN2H, x);
       l = __builtin_fma (LN2L, x, l);
+      /* h+l approximates the first term x*log(2) */
       /* we add C2*x^2 last, so that in case there is a cancellation in
          LN2L*x+l, it will contribute more bits */
       l += C2 * x * x;
-      if (x == -0x1.f1bc3ef3e6f36p-65) printf ("h=%la l=%la\n", h, l);
       return h + l;
     }
   }
