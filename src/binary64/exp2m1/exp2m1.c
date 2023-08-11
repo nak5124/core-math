@@ -24,11 +24,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x1.1bb1b31cf8c98p-3 // 46 identical bits
-
 #include <stdio.h>
 #include <stdint.h>
-#include <math.h>
+#include <math.h> // needed to define exp2m1() since glibc does not have it yet
 
 #define LN2H 0x1.62e42fefa39efp-1
 #define LN2L 0x1.abc9e3b39803fp-56
@@ -266,9 +264,10 @@ typedef union {
 */
 
 static inline void exp_1 (double *hi, double *lo, double xh, double xl) {
-
+  int bug = xh == 0x1.62e42d29db3f1p+9;
 #define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
   double k = __builtin_roundeven (xh * INVLOG2);
+  if (bug) printf ("k=%la\n", k);
 
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
@@ -292,9 +291,16 @@ static inline void exp_1 (double *hi, double *lo, double xh, double xl) {
 
   d_mul (hi, lo, *hi, *lo, qh, ql);
 
+  /* Scale by 2^k. Warning: for x near 1024, we can have k=2^22, thus
+     M = 2047, which encodes Inf */
   f64_u _d;
-
   _d.u = M << 52;
+  if (__builtin_expect (M == 0x7ff, 0))
+  {
+    *hi *= 2.0;
+    *lo *= 2.0;
+    _d.u = (M-1) << 52;
+  }
   *hi *= _d.f;
   *lo *= _d.f;
 }
@@ -386,6 +392,12 @@ static inline void exp_2 (double *hi, double *lo, double x) {
   f64_u _d;
 
   _d.u = M << 52;
+  if (__builtin_expect (M == 0x7ff, 0))
+  {
+    *hi *= 2.0;
+    *lo *= 2.0;
+    _d.u = (M-1) << 52;
+  }
   *hi *= _d.f;
   *lo *= _d.f;
 }
@@ -648,9 +660,8 @@ static double exp2m1_accurate (double x)
   /* now -54 < x < -0.125 or 0.125 < x < 1024: we approximate exp(x*log(2))
      and subtract 1 */
 
-#define EXCEPTIONS 94
+#define EXCEPTIONS 93
   static const double exceptions[EXCEPTIONS][3] = {
-    {0x1.fffffffffffffp+9, 0x1.ffffffffffd3ap+1023, 0x1.bd0105c706c87p+968},
     {-0x1.06c0eba373a18p-3, -0x1.5c86ed4f55301p-4, 0x1.fffffffffffe3p-58},
     {0x1.1e5f48d8ba05ap-1, 0x1.e4f0e78affdcdp-2, 0x1.ffffffffffffep-56},
     {0x1.1bb1b31cf8c98p-3, 0x1.9cc894e900c64p-4, 0x1.218cf2d9f3926p-104},

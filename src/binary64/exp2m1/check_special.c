@@ -133,9 +133,7 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-  printf ("Only check -0.125 <= x && x <= 0.125\n");
-
-#define N 1000000000UL /* total number of tests */
+#define N 100000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
@@ -147,8 +145,7 @@ main (int argc, char *argv[])
     ref_fesetround (rnd);
     double x;
     x = get_random ();
-    if (-0.125 <= x && x <= 0.125)
-      check_random (x);
+    check_random (x);
   }
 
   return 0;
