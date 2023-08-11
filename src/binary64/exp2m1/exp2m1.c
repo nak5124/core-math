@@ -24,8 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// #define TRACE 0x1.638f4fcfa1cfbp+6 // 45 identical bits, RNDZ
-#define TRACE 0x1.ffbb81681e9bap+9 // 46 identical bits, RNDZ
+#define TRACE 0x1.1bb1b31cf8c98p-3 // 46 identical bits
 
 #include <stdio.h>
 #include <stdint.h>
@@ -360,38 +359,17 @@ static inline void q_2 (double *hi, double *lo, double zh, double zl) {
   *lo += t;
 }
 
-/* we have |xl| <= ulp(xh) (up to a factor of 2), and since |xh| < 2^9.48,
-   this yields |xl| <= 2^-43 */
-static inline void exp_2 (double *hi, double *lo, double xh, double xl) {
+// returns a double-double approximation hi+lo of exp(x*log(2)) for |x| < 745
+static inline void exp_2 (double *hi, double *lo, double x) {
 
-  int bug = xh == 0x1.1d1704536a6b6p+0 && xl == 0x1.0e9390977ee67p-53;
-#define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
-  double k = __builtin_roundeven (xh * INVLOG2);
-  // since x <= 0x1.62e42fefa39fp+9 we have k <= 4194305
+  double k = __builtin_roundeven (x * 0x1p12);
+  // since |x| <= 745 we have k <= 3051520
 
   double yh, yl;
-#define LOG2Hacc 0x1.62e42ffp-13
-#define LOG2Macc -0x1.718432a1b0e26p-47
-#define LOG2Lacc -0x1.9ff0342542fc3p-102
-  yh = __builtin_fma (-k, LOG2Hacc, xh); // exact, |yh| < 2^-13.5
-  a_mul (hi, lo, -k, LOG2Macc);          // exact, |hi| < 2^-24.4
-  // we have |lo| <= ulp(hi) <= 2^-77 */
-  if (__builtin_fabs (yh) >= __builtin_fabs (*hi))
-    fast_two_sum (&yh, &yl, yh, *hi);
-  else
-    fast_two_sum (&yh, &yl, *hi, yh);
-  /* |yh| < 2^-13.4, |yl| <= ulp(yh) <= 2^-66 */
-  /* now yh+yl+lo approximates xh - k*(LOG2Hacc + LOG2Macc),
-     with error bounded by 2^-105*|yh| < 2^-118.4 */
-  // we then add the lower term from -k*LOG2Macc and -k*LOG2Lacc
-  yl += __builtin_fma (-k, LOG2Lacc, *lo);
-  /* it remains to add xl, but xl can contribute to yh, thus we use a
-     fast two sum again */
-  if (__builtin_fabs (yh) >= __builtin_fabs (xl))
-    fast_two_sum (&yh, lo, yh, xl);
-  else
-    fast_two_sum (&yh, lo, xl, yh);
-  yl += *lo;
+  yh = __builtin_fma (-k, 0x1p-12, x);  // exact, |yh| <= 2^-13
+  /* now x = k + yh, thus 2^x = 2^k * 2^yh, and we multiply yh by log(2)
+     to use the accurate path of exp() */
+  s_mul (&yh, &yl, yh, LN2H, LN2L);
 
   int64_t K = k;
   int64_t M = (K >> 12) + 0x3ff;
@@ -670,9 +648,102 @@ static double exp2m1_accurate (double x)
   /* now -54 < x < -0.125 or 0.125 < x < 1024: we approximate exp(x*log(2))
      and subtract 1 */
 
-#define EXCEPTIONS 1
+#define EXCEPTIONS 94
   static const double exceptions[EXCEPTIONS][3] = {
     {0x1.fffffffffffffp+9, 0x1.ffffffffffd3ap+1023, 0x1.bd0105c706c87p+968},
+    {-0x1.06c0eba373a18p-3, -0x1.5c86ed4f55301p-4, 0x1.fffffffffffe3p-58},
+    {0x1.1e5f48d8ba05ap-1, 0x1.e4f0e78affdcdp-2, 0x1.ffffffffffffep-56},
+    {0x1.1bb1b31cf8c98p-3, 0x1.9cc894e900c64p-4, 0x1.218cf2d9f3926p-104},
+    {-0x1.75cfa7af70fep-2, -0x1.c9d8c829dad99p-3, -0x1.7e233fcc3fd44p-105},
+    {-0x1.750291d22fdap-1, -0x1.95ffcf1509869p-2, 0x1.2aabef02ae4cbp-103},
+    {-0x1.b444c224a70ccp-1, -0x1.c8b8c01ae382cp-2, -0x1.cb1ddc7fbf64ep-108},
+    {0x1.2eecf76d63cdp-3, 0x1.ba39ff28e3eap-4, -0x1.cb1ddc7fbf64ep-107},
+    {0x1.25dd9eedac79ap+0, 0x1.37473fe51c7d4p+0, -0x1.cb1ddc7fbf64ep-106},
+    {0x1.12eecf76d63cdp+1, 0x1.b7473fe51c7d4p+1, -0x1.cb1ddc7fbf64ep-105},
+    {-0x1.3cb78faaa176ap-1, -0x1.650f7e59509cp-2, 0x1.f00a26c16d035p-106},
+    {0x1.61a4382aaf44bp+0, 0x1.9af081a6af64p+0, 0x1.f00a26c16d035p-104},
+    {0x1.92eecf76d63cdp+1, 0x1.f7473fe51c7d4p+2, -0x1.cb1ddc7fbf64ep-104},
+    {0x1.502f26bc1aa18p-3, 0x1.ed99608511a69p-4, -0x1.603952f77b6d4p-106},
+    {0x1.ffef3f31766b7p+5, 0x1.fd1ae8d0e6abdp+63, -0x1.5ea4d3ad23ccep-42},
+    {-0x1.a81224ff9a5cfp-3, -0x1.11d2b7526eae5p-3, 0x1.6fb9bdbb725b2p-106},
+    {-0x1.38417d7db5a2fp-3, -0x1.9aca18a87c03ap-4, 0x1.76a10886fcc65p-105},
+    {0x1.6f6544ef96539p-3, 0x1.0f2b51ddc90e1p-3, 0x1.06e9b6d330daep-105},
+    {0x1.6c4175ea0c6e1p-3, 0x1.0cb4b9c7701a4p-3, 0x1.a6605f3be564ep-108},
+    {-0x1.fe89353e31cbfp-3, -0x1.44fd97cc9857p-3, -0x1.a549adf007feap-109},
+    {-0x1.4c2bec34d5837p-3, -0x1.b38bcbad2b407p-4, -0x1.b4e03df36240cp-108},
+    {0x1.d5ac74e107b39p-3, 0x1.60db0007c78ffp-3, -0x1.a936bca36028fp-106},
+    {-0x1.418f83945849ap-3, -0x1.a6606e818c2e3p-4, 0x1.145b99cfb763cp-104},
+    {0x1.586b62dc1e8c2p+6, 0x1.134d37339fe93p+86, -0x1.1295610d3deffp-20},
+    {0x1.6f33cdaf56d6p+6, 0x1.bde76c2db52fbp+91, 0x1.564254439c8a9p-15},
+    {0x1.111c072cd8f6ep-3, 0x1.8ca9045ba3e95p-4, 0x1.80f80d8a8722ap-105},
+    {-0x1.5dbf023667d22p-2, -0x1.afbb4c7215b5bp-3, 0x1.3bbc634b006b1p-105},
+    {0x1.06d6b01577482p-3, 0x1.7d11edfaac429p-4, 0x1.ffffffffffffbp-58},
+    {-0x1.5a0fba59f338fp-2, -0x1.abb2028f6491cp-3, 0x1.0a9c5a206828ep-104},
+    {-0x1.31c2bbece259bp-2, -0x1.7ee2b68e61af7p-3, -0x1.7852d3ddee861p-107},
+    {-0x1.6822ccd5b876bp-2, -0x1.bb0f0bff2db03p-3, 0x1.4d6bbe2b72be3p-106},
+    {-0x1.253dd048bf2e7p-2, -0x1.70b709e65877ep-3, 0x1.3625f20d5b638p-104},
+    {-0x1.0f2086c7b8f83p-2, -0x1.57636305fd889p-3, 0x1.9442185db9d73p-104},
+    {0x1.2dbe99fec947ap-3, 0x1.b869aac963d94p-4, 0x1.59f0621f5fc6ep-107},
+    {0x1.926961243babap-3, 0x1.2ad15442773c8p-3, 0x1.112edd525e11cp-105},
+    {0x1.0e2f828c93192p-3, 0x1.88376cd2f4076p-4, -0x1.0bc0000d21ae1p-106},
+    {0x1.079724fbb3d86p-3, 0x1.7e35970e11732p-4, -0x1.b3086fea6e73cp-107},
+    {-0x1.9e5bc7d550bb5p+0, -0x1.5943df965427p-1, 0x1.f00a26c16d035p-107},
+    {-0x1.d2b12277c95d4p-2, -0x1.155f2f4b7a739p-2, 0x1.08b48f6466755p-106},
+    {0x1.8690e0aabd12cp-2, 0x1.35e1034d5ec8p-2, 0x1.f00a26c16d035p-105},
+    {0x1.16a76ec41b516p-1, 0x1.d541a1690b18ep-2, 0x1.08b48f6466755p-105},
+    {0x1.8b53b7620da8bp+0, 0x1.eaa0d0b4858c7p+0, 0x1.08b48f6466755p-104},
+    {0x1.691b76c4b3c1bp-3, 0x1.0a3d166eacab7p-3, 0x1.9a98ee8a745ffp-104},
+    {-0x1.4faff91bda7ddp-3, -0x1.b7e630a3fab2ap-4, 0x1.47706b5ad802ap-105},
+    {-0x1.8cd71c092c54dp-3, -0x1.0165759fe661fp-3, 0x1.395807142ed1ep-104},
+    {-0x1.ff6ff72ac299dp-3, -0x1.458423bb5b025p-3, 0x1.140aa7335a14p-104},
+    {0x1.7d33f0271269bp-3, 0x1.1a0842d5b11e4p-3, -0x1.5c29b4c0046f9p-106},
+    {0x1.e9532c87abc5bp-3, 0x1.70e070f8d9706p-3, -0x1.0ab97f38bd529p-106},
+    {0x1.f8432a3c6c453p-2, 0x1.a096f253eca4bp-2, 0x1.56c0f7fb6fa16p-106},
+    {-0x1.1249283f53506p-2, -0x1.5b076e9ede20bp-3, 0x1.14d2b0b9298b2p-105},
+    {0x1.d906bc1caeb3dp-1, 0x1.cb5f21a856e8dp-1, 0x1.c737d097094f7p-104},
+    {-0x1.64b0e525bc004p-3, -0x1.d1cc0e1d08fa9p-4, 0x1.69442904d7698p-104},
+    {-0x1.0006ec0817742p-3, -0x1.53fc5e2bd9f6cp-4, -0x1.6fcda9953133bp-107},
+    {-0x1.8827da1dbf35ep-2, -0x1.dd7867fe8d091p-3, 0x1.ffffffffffff8p-57},
+    {-0x1.cef4c143b5adfp-1, -0x1.dcd9f4d61d31fp-2, 0x1.88f636e171893p-109},
+    {-0x1.e511f8c5f829fp-1, -0x1.ecfd3f665583fp-2, 0x1.cd0996b2d6842p-106},
+    {-0x1.93314fd04393cp-3, -0x1.053dee1b48ebdp-3, 0x1.2c15fbfa775b3p-104},
+    {0x1.7a3ab625d0dc4p-3, 0x1.17b04242e48fep-3, 0x1.60215b123bdbdp-108},
+    {0x1.5f38bbc1a9944p-3, 0x1.028230c4e5389p-3, 0x1.313458d3f84a2p-105},
+    {-0x1.6b3801c55815ap-2, -0x1.be67897b4ab5ep-3, 0x1.636be28bf2c88p-106},
+    {0x1.4a63ff1d53f53p-1, 0x1.20cc3b425aa51p-1, 0x1.636be28bf2c88p-105},
+    {0x1.c3b0f79893bfcp-3, 0x1.5249b249243b7p-3, 0x1.1a9819f194524p-105},
+    {0x1.2ba99934336fcp-3, 0x1.b5379b9a6155cp-4, 0x1.68cdeb7f25f81p-106},
+    {-0x1.3041fe0fc550bp-3, -0x1.90ccdeae8d3ddp-4, 0x1.f202cb751932p-104},
+    {-0x1.236e786c083dbp-3, -0x1.80b96ddbdb1b3p-4, 0x1.ec381ad5e1718p-105},
+    {-0x1.539353db1bdebp-3, -0x1.bcb50aacb6649p-4, -0x1.a8b1eddf109b5p-107},
+    {0x1.16383a5fe20dp-2, 0x1.a867756a9a8fep-3, -0x1.8ac73f07192e6p-106},
+    {0x1.45c447c5552ddp-3, 0x1.dd721415a4a8dp-4, -0x1.e5111c4062fa9p-108},
+    {-0x1.e242801b45d0dp-2, -0x1.1d32c9d218361p-2, 0x1.03dd41d134594p-109},
+    {0x1.182f8cb329d34p-3, 0x1.976ed12501a66p-4, -0x1.b0e5142b2ec14p-105},
+    {0x1.8fe3adec251f6p-3, 0x1.28d0ae0c0ac4fp-3, 0x1.e1bce5201668bp-104},
+    {0x1.a246f399a957bp-2, 0x1.4f22bccd234f1p-2, 0x1.ffffffffffff6p-56},
+    {0x1.b808c857723e7p-2, 0x1.634ce84a0e79dp-2, 0x1.ffffffffffff4p-56},
+    {0x1.165c1c6243beep-3, 0x1.94a6924c0b159p-4, 0x1.ffffffffffff9p-58},
+    {-0x1.a4ec34efdd3e1p-2, -0x1.fbc1acbd1558ep-3, 0x1.be847d667711dp-105},
+    {-0x1.ec7298061ebfap-3, -0x1.3a68f321de8abp-3, 0x1.7f700400ca84fp-103},
+    {-0x1.439bb08833472p-3, -0x1.a8ebef4998a79p-4, -0x1.2c3a2b30f99cfp-105},
+    {0x1.c14d1ce57d7ebp-2, 0x1.6bfacbdf4334ep-2, 0x1.1cfc31c20bd19p-104},
+    {0x1.1a8801599f756p-3, 0x1.9b02639918dcdp-4, 0x1.736bd9c878fbap-107},
+    {-0x1.06559d8a9ff1ap-3, -0x1.5bfed18cc8ff3p-4, 0x1.87a53f06d41bdp-105},
+    {-0x1.6d729ff937eadp-2, -0x1.c0d1b0bcb29d6p-3, 0x1.7f0f685911fccp-105},
+    {0x1.2a381dbbc8f07p-2, 0x1.ca1a3ba1db0ebp-3, -0x1.7f5a08441b722p-105},
+    {0x1.a066bd757bf54p-3, 0x1.35f4af72a0a25p-3, -0x1.59b2d13ebb9d3p-106},
+    {-0x1.304447dcfa48ap-1, -0x1.59b94aff7c2b5p-2, 0x1.ca6392b99ad78p-106},
+    {0x1.bb2446a7b770fp-2, 0x1.663466e4bb92bp-2, -0x1.a00681268d32cp-106},
+    {-0x1.747fb97a9be61p-3, -0x1.e52ae5003c9dbp-4, -0x1.dbf62ab30e6cp-106},
+    {0x1.5856bdae2f08fp-3, 0x1.fa489ed69464fp-4, 0x1.93f08a7946826p-104},
+    {0x1.b00f80708d157p-3, 0x1.427c60cc0d217p-3, 0x1.344b77789552ap-103},
+    {0x1.b8ee8dcb0e797p-3, 0x1.499d2a386003fp-3, -0x1.e5d43d3c21c2ap-105},
+    {-0x1.540658c7eedcap-2, -0x1.a50f96bbf778cp-3, 0x1.f14fe3c42820cp-105},
+    {-0x1.9de261c7c8623p-1, -0x1.b7448eda85236p-2, 0x1.e2651db687d79p-106},
+    {0x1.887678e0de774p-3, 0x1.22edc495eb728p-3, 0x1.e2651db687d79p-105},
+    {-0x1.d4854d9f87fcap-3, -0x1.2c506fcda97fcp-3, -0x1.a4fedf7b3ca3fp-109},
+    {-0x1.da22611253866p+0, -0x1.722e3006b8e0bp-1, -0x1.cb1ddc7fbf64ep-109},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == exceptions[i][0])
@@ -680,10 +751,7 @@ static double exp2m1_accurate (double x)
 #undef EXCEPTIONS
 
   double h, l;
-  s_mul (&h, &l, x, LN2H, LN2L);
-  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
-  exp_2 (&h, &l, h, l);
-  if (x == TRACE) printf ("h=%la l=%la\n", h, l);
+  exp_2 (&h, &l, x);
   double u;
   if (x >= 0) // implies h >= 1 and the fast_two_sum pre-condition holds
     fast_two_sum (&h, &u, h, -1.0);
@@ -835,16 +903,10 @@ cr_exp2m1 (double x)
 
   double err, h, l;
   err = exp2m1_fast (&h, &l, x, ax <= 0x3fc0000000000000lu);
-  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left = h + (l - err);
   double right = h + (l + err);
   if (left == right)
-  {
-    if (x == TRACE) printf ("fast path succeeded\n");
     return left;
-  }
-
-  if (x == TRACE) printf ("fast path failed\n");
 
   return exp2m1_accurate (x);
 }
