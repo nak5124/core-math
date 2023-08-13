@@ -48,15 +48,17 @@ float cr_rsqrtf(float x){
   }
   unsigned m = ix.u<<8;
   if(__builtin_expect(ix.u == 0x2f7e2au || m == 0xbdf8a800u || m == 0x55b7bd00u, 0)){
-    unsigned e = ix.u>>23, k = 1;
-    if(ix.u == 0x2f7e2au) e = -1;
-    if(m == 0x55b7bd00u) k = 0;
-     static const b32u32_u tb[] = {{.u = 0x000c1740u}, {.u = 0x005222e0u}};
-    b32u32_u r = tb[k], dr;
-    e = (512 - e)/2 - 578;
-    r.u |= e<<23;
-    dr.u = (e-25)<<23;
-    return r.f - dr.f;
+    if(ix.u != 0x0055b7bdu){
+      unsigned e = ix.u>>23, k = 1;
+      if(ix.u == 0x2f7e2au) e = -1;
+      if(m == 0x55b7bd00u) k = 0;
+      static const b32u32_u tb[] = {{.u = 0x000c1740u}, {.u = 0x005222e0u}};
+      b32u32_u r = tb[k], dr;
+      e = (512 - e)/2 - 578;
+      r.u |= e<<23;
+      dr.u = (e-25)<<23;
+      return r.f - dr.f;
+    }
   }
   return (1.0/xd)*__builtin_sqrt(xd);
 }
