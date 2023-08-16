@@ -805,7 +805,7 @@ cr_exp2m1 (double x)
     /* we use special code when log(2)*|x| < 2^-968, in which case
        the double-double approximation h+l has its lower part l
        "truncated" */
-    if (ax <= 0x3771547652b82fe) // |x| <= 0x1.71547652b82fep-968
+    if (ax <= 0x3950000000000000lu) // |x| <= 2^-106
     {
       // special case for 0
       if (x == 0)
