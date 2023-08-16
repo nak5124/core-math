@@ -91,13 +91,22 @@ asuint64 (double f)
   return u.i;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
 static inline int
 is_equal (double x, double y)
 {
-  if (isnan (x))
-    return isnan (y);
-  if (isnan (y))
-    return isnan (x);
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
   return asuint64 (x) == asuint64 (y);
 }
 
