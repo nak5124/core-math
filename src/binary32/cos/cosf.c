@@ -1,6 +1,6 @@
 /* Correctly-rounded cosine of binary32 value.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2022-2023 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -22,20 +22,13 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Tested on x86_64-linux with and without FMA (-march=native).
 */
 
 #include <stdint.h>
 #include <errno.h>
-#include <fenv.h>
 
-typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
-typedef unsigned __int128 u128;
-typedef uint64_t u64;
-
-/* __builtin_roundeven was introduced in gcc 10 */
+/* __builtin_roundeven was introduced in gcc 10:
+   https://gcc.gnu.org/gcc-10/changes.html */
 #if defined(__GNUC__) && __GNUC__ >= 10
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
@@ -73,12 +66,10 @@ __builtin_roundeven (double x)
 }
 #endif
 
-static inline double rltl(float z, int *q){
-  double x = z;
-  double idl = -0x1.b1bbead603d8bp-32*x, idh = 0x1.45f306ep-1*x, id = __builtin_roundeven(idh);
-  *q = (long)id;
-  return (idh - id) + idl;
-}
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
+typedef unsigned __int128 u128;
+typedef uint64_t u64;
 
 static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   static const u64 ipi[] = {0xfe5163abdebbc562, 0xdb6295993c439041, 0xfc2757d1f534ddc0, 0xa2f9836e4e441529};
@@ -90,7 +81,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   u128 p3 = (u128)m*ipi[3]; p3 += p2>>64;
   u64 p3h = p3>>64, p3l = p3, p2l = p2, p1l = p1;
   long a;
-  int k = e-127, s = k-23;
+  int k = e-124, s = k-23;
   /* in cr_cosf(), rbig() is called in the case 127+28 <= e < 0xff
      thus 155 <= e <= 254, which yields 28 <= k <= 127 and 5 <= s <= 104 */
   if (s<64) {
@@ -112,75 +103,93 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   return z;
 }
 
-float cr_cosf(float x){
-  static const double
-    cs[] = {
-    -0x1.a51a6625307bdp-2, 0x1.9f9cb402b97ffp-5, -0x1.86a8e46de2fc4p-9,
-    0x1.ac67ffda7836cp-14, -0x1.337d0b88f8cb7p-19, 0x1.3417d9749e139p-25},
-    cc[] = {
-      -0x1.3bd3cc9be458bp+0, 0x1.03c1f081b078ep-2, -0x1.55d3c7dbfe042p-6,
-      0x1.e1f4fb610f151p-11, -0x1.a6c9c224d18abp-16, 0x1.f3dbf0909677fp-22},
-    q[] = {1.0, 0, -1.0, 0};
+static inline double rltl(float z, int *q){
+  double x = z;
+  double idl = -0x1.b1bbead603d8bp-29*x, idh = 0x1.45f306ep+2*x, id = __builtin_roundeven(idh);
+  b64u64_u Q = {.f = 0x1.8p52 + id}; *q = Q.u;
+  return (idh - id) + idl;
+}
 
+static inline double rltl0(double x, int *q){
+  double idh = 0x1.45f306dc9c883p+2*x, id = __builtin_roundeven(idh);
+  b64u64_u Q = {.f = 0x1.8p52 + id}; *q = Q.u;
+  return idh - id;
+}
+
+static float __attribute__((noinline)) as_cosf_database(float x, double r){
+  static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
+    {{0x1.2d97c8p+2}, 0x1.99bc5cp-27, -0x1p-52},
+    {{0x1.4555p+51}, 0x1.115d7ep-1, -0x1p-26},
+    {{0x1.48a858p+54}, 0x1.f48148p-2, 0x1p-27},
+    {{0x1.3170fp+63}, 0x1.fe2976p-1, 0x1p-26},
+    {{0x1.2b9622p+67}, 0x1.f0285ep-1, -0x1p-26},
+  };
   b32u32_u t = {.f = x};
-  int e = (t.u>>23)&0xff, i;
-  double z;
-  if (__builtin_expect(e<127+28, 1)){
-    if (__builtin_expect(e<114, 0))
-      return __builtin_fmaf(-x, x, 1.0f);
-    z = rltl(x, &i);
-  } else if (e<0xff) {
-    z = rbig(t.u, &i);
-  } else {
-    if(t.u<<9) return x; // nan
+  uint32_t ax = t.u&(~0u>>1);
+  for(unsigned i=0; i<sizeof(st)/sizeof(st[0]); i++)
+    if(__builtin_expect(st[i].uarg == ax, 0)) return st[i].rh + st[i].rl;
+  return r;
+}
+
+static const double b[] =
+  {0x1.3bd3cc9be45dcp-6, -0x1.03c1f081b0833p-14, 0x1.55d3c6fc9ac1fp-24, -0x1.e1d3ff281b40dp-35};
+static const double a[] =
+  {0x1.921fb54442d17p-3, -0x1.4abbce6256a39p-10, 0x1.466bc5a518c16p-19, -0x1.32bdc61074ff6p-29};
+static const double tb[] =
+  {0x1p+0, 0x1.f6297cff75cbp-1, 0x1.d906bcf328d46p-1, 0x1.a9b66290ea1a3p-1,
+   0x1.6a09e667f3bcdp-1, 0x1.1c73b39ae68c8p-1, 0x1.87de2a6aea963p-2, 0x1.8f8b83c69a60bp-3,
+   0x0p+0, -0x1.8f8b83c69a60bp-3, -0x1.87de2a6aea963p-2, -0x1.1c73b39ae68c8p-1,
+   -0x1.6a09e667f3bcdp-1, -0x1.a9b66290ea1a3p-1, -0x1.d906bcf328d46p-1, -0x1.f6297cff75cbp-1,
+   -0x1p+0, -0x1.f6297cff75cbp-1, -0x1.d906bcf328d46p-1, -0x1.a9b66290ea1a3p-1,
+   -0x1.6a09e667f3bcdp-1, -0x1.1c73b39ae68c8p-1, -0x1.87de2a6aea963p-2, -0x1.8f8b83c69a60bp-3,
+   0x0p+0, 0x1.8f8b83c69a60bp-3, 0x1.87de2a6aea963p-2, 0x1.1c73b39ae68c8p-1,
+   0x1.6a09e667f3bcdp-1, 0x1.a9b66290ea1a3p-1, 0x1.d906bcf328d46p-1, 0x1.f6297cff75cbp-1};
+
+static float __attribute__((noinline)) as_cosf_big(float x){
+  b32u32_u t = {.f = x};
+  unsigned ax = t.u<<1;
+  if(__builtin_expect(ax>=0xffu<<24, 0)){ // nan or +-inf
+    if(ax<<8) return x; // nan
     errno = EDOM;
-    feraiseexcept(FE_INVALID);
-    return __builtin_nanf("cinf"); // inf
+    return 0.0f/0.0f; // to raise FE_INVALID
+  }
+  int ia;
+  double z = rbig(t.u, &ia);
+  double z2 = z*z, z4 = z2*z2;
+  double aa = (a[0] + z2*a[1]) + z4*(a[2] + z2*a[3]);
+  double bb = (b[0] + z2*b[1]) + z4*(b[2] + z2*b[3]);
+  double s0 = tb[(ia+8)&31], c0 = tb[ia&31];
+  double r = c0 + z*(aa*s0 - bb*(z*c0));
+  b64u64_u tr = {.f = r}; u64 tail = (tr.u + 6)&(~0ul>>36);
+  if(__builtin_expect(tail<=12, 0)) return as_cosf_database(x, r);
+  return r;
+}
+
+float cr_cosf(float x){
+  b32u32_u t = {.f = x};
+  uint32_t ax = t.u<<1;
+  int ia;
+  double z0 = x, z;
+  if (__builtin_expect(ax>0x99000000u || ax<0x73000000, 0)){
+    if (__builtin_expect(ax<0x73000000, 1)){
+      if (__builtin_expect(ax<0x66000000u, 0)){
+	if(__builtin_expect(ax==0u, 0)) return 1.0f;
+	return 1.0f - 0x1p-25f;
+      }
+      return -0x1p-1f*x*x + 1.0f;
+    }
+    return as_cosf_big(x);
+  }
+  if(__builtin_expect(ax<0x82a41896u, 1)){
+    if(__builtin_expect(ax==0x812d97c8u, 0)) return as_cosf_database(x, 0.0);
+    z = rltl0(z0, &ia);
+  } else {
+    z = rltl(z0, &ia);
   }
   double z2 = z*z, z4 = z2*z2;
-  double ms = q[(i+1)&3], mc = q[i&3];
-  z *= 0x1.921fb54442d18p+0*ms;
-  if(__builtin_expect(z2<0x1p-25, 0)){
-    if(!(i&1)){
-      float a = z2;
-      int j = (i>>1)&1;
-      static const float tb[] = {1, -1};
-      return __builtin_fmaf(((float)cc[0])*tb[j], a, tb[j]);
-    }
-  }
-  double s0 = cs[0] + z2*cs[1];
-  double s2 = cs[2] + z2*cs[3];
-  double s4 = cs[4] + z2*cs[5];
-  double rs = (z*z2)*(s0 + z4*(s2 + z4*s4)) + z;
-  double c0 = cc[0] + z2*cc[1];
-  double c2 = cc[2] + z2*cc[3];
-  double c4 = cc[4] + z2*cc[5];
-  double rc = (z2*mc)*(c0 + z4*(c2 + z4*c4)) + mc;
-  double r = rs + rc;
-  float or = r;
-  b64u64_u tr = {.f = r}; u64 tail = (tr.u + 6)&(~0ul>>36);
-  if(__builtin_expect(tail<=12, 0)){
-    static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
-      {{0x1.4555p+51f}, 0x1.115d7ep-1f, -0x1.fffffep-26f},
-      {{0x1.3170fp+63f}, 0x1.fe2976p-1f, 0x1.fffffep-26f},
-      {{0x1.119ae6p+115f}, 0x1.f3176ap-1f, 0x1.fffffep-26f},
-      {{0x1.96344ep+117f}, 0x1.f8a9b4p-1f, 0x1.fffffep-26f},
-      {{0x1.24f2eep+85f}, 0x1.af5c6ap-2f, -0x1.91995ap-54f},
-      {{0x1.ddebdep+120f}, 0x1.114438p-1f, 0x1.0b776ep-53f},
-      {{0x1.ba5a98p+95f}, -0x1.ac093cp-1f, -0x1.7b13cep-53f},
-      {{0x1.a13cb2p+1f}, -0x1.fc6f6cp-1f, 0x1.28b55ap-53f},
-      {{0x1.417a5cp+8f}, 0x1.052988p-1f, 0x1.2f43fp-53f},
-      {{0x1.34486p+19f}, -0x1.edfe3p-1f, 0x1.4ff1aep-55f},
-      {{0x1.48a858p+54f}, 0x1.f48148p-2f, 0x1.e09b5p-56f},
-      {{0x1.f4a7f4p+106f}, -0x1.b503dap-1f, 0x1.0c60e4p-53f},
-      {{0x1.0a1f74p+58f}, -0x1.404ecep-2f, 0x1.58808ap-54f},
-      {{0x1.ea56e2p+73f}, -0x1.d74dfap-3f, 0x1.7fa9c2p-55f},
-    };
-    uint32_t ax = t.u&(~0u>>1);
-    for(int i=0;i<14;i++) {
-      if(__builtin_expect(st[i].uarg == ax, 0))
-	return st[i].rh + st[i].rl;
-    }
-  }
-  return or;
+  double aa = (a[0] + z2*a[1]) + z4*(a[2] + z2*a[3]);
+  double bb = (b[0] + z2*b[1]) + z4*(b[2] + z2*b[3]);
+  double c0 = tb[ia&31], s0 = tb[(ia+8)&31];
+  double r = c0 + aa*(z*s0) - bb*(z2*c0);
+  return r;
 }
