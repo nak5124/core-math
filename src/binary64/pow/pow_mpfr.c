@@ -1,5 +1,8 @@
 /* Correctly-rounded power of two binary64 values.
 
+Copyright (c) 2022, 2023 CERN and Inria
+Authors: Tom Hubrecht and Paul Zimmermann
+
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
 
