@@ -1416,53 +1416,38 @@ double cr_pow (double x, double y) {
   } /* end of case x <= 0 */
 
 #if ENABLE_FP > 0
-  // First approximation
-  // Use two doubles for a better accuracy
+  /* This is Algorithm phase_1 from reference [5]. */
   double res_h, res_l;
 
-  // Store the result of log(x)
   double lh, ll;
 
+  // approximate log(x)
   int cancel = log_1 (&lh, &ll, x);
 
-  /* When cancel=0, i.e., x outside [sqrt(2)/2,sqrt(2)],
-     the relative error |lh + ll - log(x)|/|log(x)| is bounded by 2^-73.528,
-     and |ll/lh| < 2^-23.9.
-
-     For cancel=1 (x in [sqrt(2)/2,sqrt(2)]),
-     we have |lh + ll - log(x)|/|log(x)| < 2^-67.052 and |ll/lh| < 2^-52. */
-
-  // Compute y * log(x)
+  // approximate y * log(x)
   double rh, rl;
   s_mul (&rh, &rl, y, lh, ll);
 
-  /* Let eps2 = |rh + rl - y log(x)|, we prove in pow.tex (Lemma 5) that:
-     eps2 <= 2^-63.729 if x is not in (1/sqrt(2), sqrt(2)) [case cancel0]
-     eps2 <= 2^-57.509 if 1/sqrt(2) < x < sqrt(2) [cases cancel1 and cancel2]
+  /* We prove in Lemma 5 from reference [5] that if the exact product y*lh
+     satisfies 2^-969 <= |y*lh| <= 709.7827, then 2^-970 <= |rh| <= 709.79,
+     |rl| <= 2^-14.4187, |rl/rh| <= 2^-23.8899, |rh+rl| <= 709.79 and:
+
+     |rh + rl - y log(x)| <= emul
+
+     with emul = 2^-63.799 if x is not in (1/sqrt(2), sqrt(2))
+     and  emul = 2^-57.580 if 1/sqrt(2) < x < sqrt(2)
   */
 
-  // Now, y * log(x) = rh + rl
   exp_1 (&res_h, &res_l, rh, rl); /* 1 <= res_h < 2 */
-  /* res_h+res_l approximates exp(rh+rl) with relative error:
-     res_h + res_l = exp(rh + rl) * (1 + eps) with |eps| < 2^-74.139
-     and exp(rh + rl) = x^y * exp(eps2) with |eps2| < 2^-63.729 for cancel=0
-     and |eps2| < 2^-57.509 for cancel=1.
-     Thus:
-     res_h + res_l = x^y * (1 + eps) * exp(eps2)
-                   = x^y * (1 + eps3)
-                        with |eps3| < 2^-63.727 for cancel=0 and
-                             |eps3| < 2^-57.508 for cancel=1.
-  */
+  /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
   double res_min, res_max;
   res_h *= s;
   res_l *= s;
-  /* Since below we multiply err[cancel] by res_h only (and not res_h+res_l),
-     we have to multiply the relative error by 1+res_l/res_h, which since
-     |res_l/res_h| < 2^-41.4 (see analysis of exp_1) is bounded by
-     eps7 = 1 + 2^-41.4. */
-  static double err[] = { 0x1.36p-64, /* eps7*2^-63.727 < 0x1.36p-64 */
-                          0x1.69p-58, /* eps7*2^-57.508 < 0x1.69p-58 */
+  /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
+     phase_1 from reference [5]. */
+  static double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
+                          0x1.57p-58, /* 2^-57.579 < 0x1.57p-58 */
   };
   res_min = res_h + __builtin_fma (err[cancel], -res_h, res_l);
   res_max = res_h + __builtin_fma (err[cancel], res_h, res_l);
@@ -1472,6 +1457,7 @@ double cr_pow (double x, double y) {
   /* FIXME: in the underflow region, for rounding to nearest,
      res_l+/-res_h*err rounds to res_l, thus we always have
      res_min = res_max. Can this happen except for x=1 and y=+inf?
+     Yes for x=-0x1p-109 and y=0x1.3p+4.
      In pow.tex, res_h >= 2^-991, thus res_h*err >= 2^-1054.727. */
 
   /* FIXME: for rounding to nearest, if res_h was rounded to +Inf in exp_1(),
