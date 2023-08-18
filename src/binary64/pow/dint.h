@@ -104,12 +104,11 @@ static const dint64_t M_ONE = {
     .hi = 0x8000000000000000, .lo = 0x0, .ex = 0, .sgn = 0x1};
 
 /* LOG2 is a dint64_t approximation of log(2) to nearest, with absolute error
-   bounded by 2^-129.97 (checked by Tom) */
+   bounded by 2^-129.97 */
 static const dint64_t LOG2 = {
     .hi = 0xb17217f7d1cf79ab, .lo = 0xc9e3b39803f2f6af, .ex = -1, .sgn = 0x0};
 
-/* LOG2_INV approximates 2^12/log(2), with absolute error < 2^-52.96
-   (checked by Tom) */
+/* LOG2_INV approximates 2^12/log(2), with absolute error < 2^-52.96 */
 static const dint64_t LOG2_INV = {
     .hi = 0xb8aa3b295c17f0bc, .lo = 0x0, .ex = 12, .sgn = 0x0};
 
@@ -164,7 +163,6 @@ static inline void print_dint(const dint64_t *a) {
 // (more precisely 1 ulp when a and b have same sign, 2 ulps otherwise)
 // Moreover, when Sterbenz theorem applies, i.e., |b| <= |a| <= 2|b|
 // and a,b are of different signs, there is no error, i.e., r = a-b.
-// Checked by Tom.
 static inline void
 add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
   if (!(a->hi | a->lo)) {
@@ -267,7 +265,6 @@ add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
 
 // same as add_dint, but assumes the lower limbs and a and b are zero
 // error is bounded by 2 ulps (ulp_64)
-// Checked by Tom
 static inline void
 add_dint_11 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
   if (a->hi == 0) {
@@ -369,7 +366,6 @@ add_dint_11 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
 // Multiply two dint64_t numbers, with error bounded by 6 ulps
 // on the 128-bit floating-point numbers.
 // Overlap between r and a is allowed
-// Checked by Tom
 static inline void
 mul_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
   u128 bh = b->hi, bl = b->lo;
@@ -402,7 +398,6 @@ mul_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
 
 // Multiply two dint64_t numbers, assuming the low part of b is zero
 // with error bounded by 2 ulps
-// Checked by Tom
 static inline void
 mul_dint_21 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
   u128 bh = b->hi;
@@ -428,8 +423,7 @@ mul_dint_21 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
 }
 
 /* Same as mul_dint_21, but assumes the low part of a and b is zero.
-   This operation is exact.
-   Checked by Tom. */
+   This operation is exact. */
 static inline void
 mul_dint_11 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
   /* put the 128-bit product of the high terms in r */
@@ -446,7 +440,6 @@ mul_dint_11 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
 
 // Multiply an integer with a dint64_t variable, with error < 1 ulp
 // r and b should not overlap
-// Checked by Tom
 static inline void
 mul_dint_int64 (dint64_t *r, const dint64_t *a, int64_t b) {
   if (!b) {
@@ -499,7 +492,7 @@ mul_dint_int64 (dint64_t *r, const dint64_t *a, int64_t b) {
    If was generated with output_inverse_2_1(7,9,90,181) from the
    accompanying file dint.sage.
    There is no rounding error here, the only approximation error is in
-   _LOG_INV_2_1[]. Checked by Tom. */
+   _LOG_INV_2_1[]. */
 static const dint64_t _INVERSE_2_1[] = {
     {.hi = 0xb500000000000000, .lo = 0x0, .ex = 0, .sgn = 0x0}, /* i=90 */
     {.hi = 0xb300000000000000, .lo = 0x0, .ex = 0, .sgn = 0x0}, /* i=91 */     
@@ -603,7 +596,7 @@ static const dint64_t _INVERSE_2_1[] = {
    If was generated with output_inverse_2_2(6,14,8128,8256,7,62) from the
    accompanying file dint.sage.
    There is no rounding error here, the only approximation error is in
-   _LOG_INV_2_2[]. Checked by Tom. */
+   _LOG_INV_2_2[]. */
 static const dint64_t _INVERSE_2_2[] = {
     {.hi = 0x8100000000000000, .lo = 0x0, .ex = 0, .sgn = 0x0}, /* j=8128 */
     {.hi = 0x80fc000000000000, .lo = 0x0, .ex = 0, .sgn = 0x0}, /* j=8129 */
@@ -742,8 +735,7 @@ static const dint64_t _INVERSE_2_2[] = {
    (the binary point is after the most significant bit of hi).
    If was generated with output_log_inv_2_1(7,9,90,181) from the
    accompanying file dint.sage.
-   The approximation error is bounded by 2^-130 (absolute) and 2^-128 (rel).
-   Checked by Tom. */
+   The approximation error is bounded by 2^-130 (absolute) and 2^-128 (rel). */
 static const dint64_t _LOG_INV_2_1[] = {
     {.hi = 0xb1641795ce3ca97b, .lo = 0x7af915300e517391, .ex = -2, .sgn = 0x1}, /* i=90 */
     {.hi = 0xabb3b8ba2ad362a4, .lo = 0xd5b6506cc17a01f1, .ex = -2, .sgn = 0x1}, /* i=91 */
@@ -846,8 +838,7 @@ static const dint64_t _LOG_INV_2_1[] = {
    If was generated with output_log_inv_2_2(6,14,8128,8256,7,62) from the
    accompanying file dint.sage.
    The approximation error is bounded by 2^-136 (absolute, attained for j=8256)
-   and 2^-128 (relative, attained for j=8209).
-   Checked by Tom. */
+   and 2^-128 (relative, attained for j=8209). */
 static const dint64_t _LOG_INV_2_2[] = {
     {.hi = 0xff015358833c47e1, .lo = 0xbb481c8ee141695a, .ex = -8, .sgn = 0x1}, /* j=8128 */
     {.hi = 0xfb0933b732572a6d, .lo = 0x214cca3dd1d4796a, .ex = -8, .sgn = 0x1}, /* j=8129 */
@@ -982,8 +973,7 @@ static const dint64_t _LOG_INV_2_2[] = {
 
 /* for 0 <= i < 64, T1_2[i] is a 128-bit nearest approximation of 2^(i/64),
    with error bounded by 2^-128 (both absolutely and relatively).
-   Table generated by output_T1_2() from the accompanying dint.sage file.
-   Checked by Tom. */
+   Table generated by output_T1_2() from the accompanying dint.sage file. */
 static const dint64_t T1_2[] = {
     {.hi = 0x8000000000000000, .lo = 0x0, .ex = 0, .sgn = 0x0},
     {.hi = 0x8164d1f3bc030773, .lo = 0x7be56527bd14def5, .ex = 0, .sgn = 0x0},
@@ -1053,8 +1043,7 @@ static const dint64_t T1_2[] = {
 
 /* for 0 <= i < 64, T2_2[i] is a 128-bit nearest approximation of 2^(i/2^12),
    with error bounded by 2^-128 (both absolutely and relatively).
-   Table generated by output_T2_2() from the accompanying dint.sage file.
-   Checked by Tom. */
+   Table generated by output_T2_2() from the accompanying dint.sage file. */
 static const dint64_t T2_2[] = {
     {.hi = 0x8000000000000000, .lo = 0x0, .ex = 0, .sgn = 0x0},
     {.hi = 0x80058baf7fee3b5d, .lo = 0x1c718b38e549cb93, .ex = 0, .sgn = 0x0},

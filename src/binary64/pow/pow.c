@@ -609,8 +609,7 @@ static inline int log_1 (double *h, double *l, double x) {
 }
 
 /* Put in r an approximation of log(x), with relative error bounded by
-   2^-122.88. Error analysis checked by Tom (assuming the error on p_2()
-   is correct). */
+   2^-122.88. */
 static void log_2 (dint64_t *r, dint64_t *x) {
   int64_t E = x->ex;
   uint16_t i, j;
@@ -900,218 +899,75 @@ static void log_3 (qint64_t *r, qint64_t *x) {
   */
 }
 
-/*
-  Approximation of exp(x), where x = xh + xl
+/* Given RHO1 <= rh <= RHO2, |rl/rh| < 2^-23.8899 and |rl| < 2^-14.4187,
+   this routine computes an approximation eh+el of exp(rh+rl) such that:
 
-  exp(x) is approximated by hi + lo.
+   | (eh+el) / exp(rh+rl) - 1 | < 2^-74.16.
 
-  For the error analysis, we only consider the case where x^y does not
-  overflow or underflow. We get:
+   Moreover |el/eh| <= 2^-41.7.
 
-  (hi + lo) / exp(xh + xl) = 1 + eps with |eps| < 2^-74.139
-
-  Assumes |xl/xh| < 2^-23.89 and |xl| < 2^-14.3486.
-
-  See analysis before the exp_1() call in cr_pow(), which proves
-  |rl| < 2^-23.89 |rh| (here xh=rh and xl=rl).
-
-  At output, we also have 0.99985 < hi+lo < 1.99995 and |lo/hi| < 2^-41.4.
-
-  For the bound on |xl|, we have
-  |xh| < 744.786649588269 from analyze_log1_cancel0_all(),
-  |xh| < 0.346581817985340 from analyze_log1_cancel1_all(),
-  and |xh| < 0.00391389932113634 from analyze_log1_cancel2_all(),
-  thus in all cases |xl| < 744.786649588269*2^-23.89 < 2^-14.3486.
-
-  Largest observed value of |xl| is 0x1.613da5ed28b92p-15 (< 2^-14.5354)
-  for x=0x1.77ffffffffc75p+0 y=0x1.e498fc1cf04c1p+10 (rndz/rndd).
+   See Lemma 7 from reference [5].
 */
-
-static inline void exp_1 (double *hi, double *lo, double xh, double xl) {
+static inline void exp_1 (double *eh, double *el, double rh, double rl) {
 
 #define RHO0 -0x1.74910ee4e8a27p+9
 #define RHO1 -0x1.577453f1799a6p+9
 #define RHO2 0x1.62e42e709a95bp+9
 #define RHO3 0x1.62e4316ea5df9p+9
 
-  if (__builtin_expect(xh > RHO2, 0)) {
-    if (xh > RHO3) {
-      *hi = 0x1.fffffffffffffp+1023;
-      *lo = 0x1.fffffffffffffp+1023;
+  if (__builtin_expect(rh > RHO2, 0)) {
+    if (rh > RHO3) {
+      *eh = 0x1.fffffffffffffp+1023;
+      *el = 0x1.fffffffffffffp+1023;
     }
     else
-      *hi = *lo = NAN;
+      *eh = *el = NAN;
     return;
   }
 
-  if (__builtin_expect(xh < RHO1, 0)) {
-    if (xh < RHO0)
+  if (__builtin_expect(rh < RHO1, 0)) {
+    if (rh < RHO0)
     {
-      *hi = 0x1p-1074;
-      *lo = -0x1p-1074;
+      *eh = 0x1p-1074;
+      *el = -0x1p-1074;
     }
     else
-      *hi = *lo = NAN;
+      *eh = *el = NAN;
     return;
   }
 
-  /* Note: all the bounds below are for the case where x^y does not overflow
-     nor underflow, i.e., 2^-1075 <= exp(xh+xl) < 2^1024 (we take 2^-1075 on
-     the left which is the rounding boundary between 0 and the smallest
-     subnormal for rounding to nearest),
-     thus |xh + xl| < |log(2^-1075)| < 745.14 */
+#define INVLOG2 0x1.71547652b82fep+12
+  double k = round_nearest (rh * INVLOG2);
 
-  // let k be the closest integer to x·(2^{12}/log(2))
-#define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
-  /* we only consider xh here */
-  double k = round_nearest (xh * INVLOG2);
-  /* |x| < 745.14 implies |k| <= 4403240 */
-  /* |k - (xh+xl)*2^12/log(2)|
-     <= |k - (xh+xl)*INVLOG2| + |xh+xl|*|INVLOG2-2^12/log(2)|
-     <= |k - xh*INVLOG2| + |xl|*INVLOG2 + 745.14*2^-43.4
-     <= |k - o(xh*INVLOG2)| + |o(xh*INVLOG2) - xh*INVLOG2| + |xl|*INVLOG2
-        + 2^-33.85
-     <= 1/2 + ulp(745.14*INVLOG2) + 2^-14.3486*INVLOG2 + 2^-33.85
-     <= 1/2 + 2^-30 + 0.283254 + 2^-33.85 <= 0.783255
-     thus xh+xl - k*log(2)/2^12 is bounded in absolute value by:
-     0.783255*log(2)/2^12 < 0.00013255 < 2^-12.88. */
-
-  // y = z - k·log(2)/2^{12}
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
 #define LOG2L 0x1.abc9e3b39803fp-68
-  /* |LOG2H + LOG2L - log(2)/2^12| < 2^-122.4 */
   s_mul (&kh, &kl, k, LOG2H, LOG2L);
-  /* |kh + kl - k * (LOG2H + LOG2L)| < ulp(kl)
-     where |kh| <= |k| * (LOG2H + LOG2L) <= 745.14
-     and   |kl| < |k|*LOG2L + ulp(kh)
-                <= 4403240*LOG2L + ulp(745.14) <= 2^-42.7
-     thus |kh + kl - k * (LOG2H + LOG2L)| <= 2^-95,
-     and |kh + kl - k * log(2)/2^12| <= 2^-95 + |k|*2^-122.4 < 2^-94.9
-     thus |kh + kl - (xh+xl)| < 2^-94.9 + |k * log(2)/2^12 - (xh + xl)|
-                         <= 2^-94.9 + 0.783255*log(2)/2^12
-                         <= 2^-12.88 */
 
   double yh, yl;
-  /* since kh is very near xh, by Sterbenz's theorem xh-kh is exact */
-  fast_two_sum (&yh, &yl, xh - kh, xl);
+  fast_two_sum (&yh, &yl, rh - kh, rl);
   yl -= kl;
-  /* |yh| < 2^-12.88 */
-  /* for yl, after the fast_two_sum() call we have |yl| < ulp(yh) thus
-     |yl| < 2^-65. Since |kl| < 2^-42.7 (see above),
-     we have |yl| < 2^-42.6 after yl -= kl */
-  /* |yh + yl - ((xh + xl) - (kh + kl))| <= 2^-105 |yh| + ulp(yl)
-     <= 2^-105*2^-12.88 + ulp(2^-42.6) < 2^-94.9 */
-  /* |yh + yl - ((xh + xl) - k*log(2)/2^12)| <=
-     |yh + yl - ((xh + xl) - (kh + kl))| + |kh + kl - k*(LOG2H + LOG2L)|
-                                       + |k*(LOG2H + LOG2L) - k*log(2)/2^12| <=
-     2^-94.9 + 2^-95 + |k|*2^-122.4 <= 2^-94.9 + 2^-95 + 2^-100.3
-     < 2^-93.9 */
-
-  /* thus xh + xl = k*log(2)/2^12 + (yh + yl) + eps with |eps| < 2^-93.9:
-     exp(xh + xl) = exp(k*log(2)/2^12) * exp(yh + yl) * (1 + eps1)
-                  = 2^(k/2^12) * exp(yh + yl) * (1 + eps1)
-     with |eps1| < 2^-93.8 */
 
   int64_t K = k; /* Note: k is an integer, this is just a conversion. */
   int64_t M = (K >> 12) + 0x3ff;
   int64_t i2 = (K >> 6) & 0x3f;
   int64_t i1 = K & 0x3f;
-  /* k = e*2^12*i2*2^6+i1 with 0 <= i1,i1 < 2^6 thus
-     2^(k/2^12) = 2^e * 2^(i2/2^6) * 2^(i1/2^12) where M = e + 1023 (bias) */
 
   double t1h = T1[i2][0], t1l = T1[i2][1], t2h = T2[i1][0], t2l = T2[i1][1];
-  /* |t1h + t1l - 2^(i2/2^6)|/2^(i2/2^6) < 2^-107
-     |t2h + t2l - 2^(i1/2^12)|/2^(i1/2^12) < 2^-107 */
-  d_mul (hi, lo, t2h, t2l, t1h, t1l);
-  /* this d_mul call decomposes into:
-     a_mul (hi, s, t2h, t1h);
-     t = fma (t2l, t1h, s)
-     lo = fma (t2h, t1l, t)
-     The a_mul() call is exact, we neglect the t2l*t1l term,
-     which is bounded by (1/2ulp(1))^2 = 2^-106l
-     we have |t2l| < 2^-53, |t1h| < 2, |s| < ulp(hi) = 2^-52,
-     thus |t| <= 2^-51 and the error in the 1st fma is bounded by 2^-104;
-     |t2h| < 2, |t1l| < 2^-53, |t| <= 2^-51 thus |lo| < 2^-50.4
-     and the error in the 2nd fma is bounded by 2^-103.
-     This gives a total error of at most 2^-106+2^-104+2^-103 < 2^-102.2.
-     Since |hi+lo| >= 1, we also have for the relative error:
-     |(hi + lo) / ((t2h + t2l) * (t1h + t1l)) - 1| < 2^-102.2.
-
-     Since 1 <= T1[i] <= 0x1.fa7c1819e90d9p+0 and
-     1 <= T2[j] <= 0x1.02be6e199c812p+0, we have
-     1 <= T1[i]*T2[j] <= 0x1.ffe9d237fe374p+0, and with the relative error
-     bound above we get 1 <= hi + lo <= 0x1.ffe9d237fe375p+0 < 1.99967
-     (we can go below 1 since a_mul (hi, s, t2h, t1h) gives hi >= 1, and in
-     the two fma's we only add non-negative values). */
-
-  /* Now (hi + lo) / 2^(k/2^12) = (hi + lo) / ((t2h + t2l) * (t1h + t1l))
-   * (t2h + t2l) / 2^(i1/2^12) * (t1h + t1l) / 2^(i2/2^6)
-   = (1 + eps1) * (1 + eps2) * (1 + eps3)
-   where |eps1| < 2^-102.2, |eps2|, |eps3| < 2^-107
-   thus (hi + lo) / 2^(k/2^12) = 1 + eps4 with |eps4| < 2^-102.1 */
+  d_mul (eh, el, t2h, t2l, t1h, t1l);
 
   double qh, ql;
   q_1 (&qh, &ql, yh, yl);
-  /* From the error analysis of q_1() we know the relative error is bounded
-     by 2^-74.16: |(qh + ql) / exp(yh + yl) - 1| < eps5 with
-     eps5 = 2^-74.16.
 
-     Since |yh+yl| < 2^-12.88 we have qh+ql < exp(2^-12.88)*(1+eps5)
-     < 1.00014.
-     We also have qh+ql > exp(-2^-12.88)*(1-eps5) > 0.99986.
-     Thus 0.99986 < qh+ql < 1.00014. */
-
-  d_mul (hi, lo, *hi, *lo, qh, ql);
-  /* this d_mul call decomposes into:
-     a_mul (hi, s, hi1, qh);
-     t = fma (lo1, qh, s)
-     lo = fma (hi1, ql, t)
-     where hi1,lo1 are computed by the first d_mul() call.
-     The a_mul() call is exact, we neglect the lo1*ql term,
-     which is bounded by 2^-50.4*2^-29.9 = 2^-80.3;
-     we have |lo1| < 2^-50.4, |qh| < 1.0001, |s| < ulp(hi1) = 2^-52,
-     thus |t| <= 2^-49.9 and the error in the 1st fma is bounded by 2^-102;
-     |hi1| < 2, |ql| < 2^-42.595 (from the analysis of q_1), |t| <= 2^-49.9
-     thus |lo| < 2^-41.5 and the error in the 2nd fma is bounded by 2^-94.
-     This gives a total error of at most 2^-80.3+2^-102+2^-94 < 2^-80.299.
-     Since |hi+lo| >= exp(-2^-12.88), we also have for the relative error:
-     hi + lo = (hi1 + lo1) * (qh + ql) * (1 + eps6) with |eps6| < 2^-80.298.
-
-     Since at input we have 1 <= hi+lo <= 1.99967 and
-     0.99986 < qh+ql < 1.00014, this yields at output
-     0.99986*(1-2^-80.298) < (hi+lo)*(qh+ql) < 1.99967*1.00014*(1+2^-80.298),
-     thus 0.99985 < hi+lo < 1.99995, thus since |lo| < 2^-41.5, it yields
-     |lo/hi| < 2^-41.5/(0.99985-2^-41.5) < 2^-41.4.
-  */
-
-  /* Relative error analysis:
-     (hi + lo) / exp(xh + xl)
-     = (hi + lo) / (exp(k*log(2)/2^12) * exp(yh + yl)) / (1 + eps1)
-              with |eps1| < 2^-93.8
-     = (hi + lo) / (hi1 + lo1) / exp(yh + yl) / (1 + eps1) * (1 + eps4)
-              with |eps4| < 2^-102.1
-     = (hi + lo) / (hi1 + lo1) / (qh + ql) / (1 + eps1) * (1 + eps4)
-              * (1 + eps5) with |eps5| < 2^-74.16
-     = (1 + eps4) * (1 + eps5) * (1 + eps6) / (1 + eps1)
-              with |eps6| < 2^-80.298.
-     The largest value is obtained for eps4, eps5, eps6 positive and attaining
-     their respective bound, and eps1 negative, We get:
-     (hi + lo) / exp(xh + xl) < 1 + 2^-74.139.
-     The smallest value is obtained for eps4, eps5, eps6 negative and eps1
-     positive. We get: (hi + lo) / exp(xh + xl) > 1 - 2^-74.139.
-     Thus we have:
-     (hi + lo) / exp(xh + xl) = 1 + eps with |eps| < 2^-74.139.
-  */
+  d_mul (eh, el, *eh, *el, qh, ql);
   f64_u _d;
 
   /* we should have 1 < M < 2047 here, since we filtered out
      potential underflow/overflow cases at the beginning of this function */
 
-  // General case
   _d.u = M << 52;
-  *hi *= _d.f;
-  *lo *= _d.f;
+  *eh *= _d.f;
+  *el *= _d.f;
 }
 
 /* put in r an approximation of exp(x), for |x| < 744.45,
