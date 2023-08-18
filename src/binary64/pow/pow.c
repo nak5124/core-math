@@ -69,32 +69,21 @@ SOFTWARE.
 #define ENABLE_EXACT (POW_ITERATION & 0x4)
 #define ENABLE_ZIV3 (POW_ITERATION & 0x8)
 
-/*
-  Polynomial approximations of z \mapsto \exp(z)
-*/
-
-// Approximation for the fast path of exp(z) for z=zh+zl,
-// with |z| < 0.000130273 < 2^-12.88 and |zl| < 2^-42.6
-// (assuming x^y does not overflow or underflow)
-// Since the target accuracy is about 74 bits (the absolute error of the
-// Sollya polynomial is < 2^-74.221), we can evaluate q2*z^2+...+q4*z^4
-// in double precision, and only use double-double for q0+q1*z.
-// Ensures the following bound on the relative error:
-// |hi + lo - exp(zh + zl)|/exp(zh + zl) < 2^-74.16
-// and |lo| < 2^-42.595 (see pow.tex, Lemma 6).
-static inline void q_1 (double *hi, double *lo, double zh, double zl) {
+/* Given (zh,zl) such that |zh+zl| < 0.000130273 and |zl| < 2^-42.7260,
+   this routine computes (qh,ql) such that
+   | (qh+ql) / exp(zh+zl) - 1 | < 2^-74.169053
+   (see Lemma 6 from [5]) */
+static inline void q_1 (double *qh, double *ql, double zh, double zl) {
   double z = zh + zl;
   double q = __builtin_fma (Q_1[4], zh, Q_1[3]); /* q3+q4*z */
 
   q = __builtin_fma (q, z, Q_1[2]); /* q2+q3*z+q4*z^2 */
 
-  fast_two_sum (hi, lo, Q_1[1], q * z);
+  fast_two_sum (qh, ql, Q_1[1], q * z);
 
-  /* now hi+lo approximates q1+q2*z+q3*z^2+q4*z^3 */
+  d_mul (qh, ql, zh, zl, *qh, *ql);
 
-  d_mul (hi, lo, zh, zl, *hi, *lo);
-
-  fast_sum (hi, lo, Q_1[0], *hi, *lo);
+  fast_sum (qh, ql, Q_1[0], *qh, *ql);
 }
 
 /* Given |y| < 0.00016923 < 2^-12.52, put in r an approximation of exp(y),
