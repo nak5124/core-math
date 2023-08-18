@@ -77,6 +77,7 @@ doit (uint32_t n)
   y = ref_function_under_test (x);
   fesetround (rnd1[rnd]);
   z = cr_function_under_test (x);
+  if (x == 0) printf ("x=%a y=%a z=%a\n", x, y, z);
   /* Note: the test y != z would not distinguish +0 and -0, instead we compare
      the 32-bit encodings. */
   if (asuint (y) != asuint (z))
