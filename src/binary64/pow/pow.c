@@ -76,7 +76,8 @@ SOFTWARE.
 
    | (qh+ql) / exp(zh+zl) - 1 | < 2^-74.169053
 
-   (see Lemma 6 from [5]) */
+   See Lemma 6 from reference [5].
+*/
 static inline void q_1 (double *qh, double *ql, double zh, double zl) {
   double z = zh + zl;
   double q = __builtin_fma (Q_1[4], zh, Q_1[3]); /* q3+q4*z */
@@ -278,7 +279,7 @@ static inline void q_3 (qint64_t *r, qint64_t *y) {
 
    | (z + ph + pl) / log(1+z) - 1 | < 2^-67.441
 
-   (see Lemma 2 from [5]).
+   See Lemma 2 from reference [5].
 */
 static inline void p_1 (double *ph, double *pl, double z) {
   double wh, wl;
@@ -527,24 +528,18 @@ p_3 (qint64_t *r, qint64_t *z) {
      (The analyze_p3() routine in the accompanying file yields 2^-252.66.) */
 }
 
-/* Approximation of log|x|, assuming x is not zero:
-   log|x| is approximated by hi + lo.
+/* Given 2^-1074 <= x <= 0x1.fffffffffffffp+1023, this routine puts in h+l
+   an approximation of log(x) such that |l| < 2^-23.89*|h| and
 
-  For E <> 0, i.e., for x outside [0x1.6a09e667f3bcdp-1, 0x1.6a09e667f3bcdp+0).
-  the relative error is bounded by: |hi + lo - log|x||/|log|x|| < 2^-73.528
-  (this bound is maybe not tight, the largest relative error we observe is for
-  x=0x1.77f73e3aefee7p+0 with 2^-75.74).
+   | h + l - log(x) | <= elog * |log x|
 
-  Return 0 if E<>0, and 1 if E=0.
+   with elog = 2^-73.527  if x < 1/sqrt(2) or sqrt(2) < x,
+   and  elog = 2^-67.0544 if 1/sqrt(2) < x < sqrt(2)
+   (note that x cannot equal 1/sqrt(2) nor sqrt(2)).
 
-  If E<>0, i.e., x < sqrt(2)/2 or sqrt(2) < x, then the relative error
-  is bounded by 2^-73.528, and |lo/hi| < 2^-23.9.
-
-  if E=0, i.e., sqrt(2)/2 < x < sqrt(2), then the relative error is bounded
-  by 2^-67.052, and |lo/hi| < 2^-52.
+   See Lemma 4 from reference [5].
 */
-
-static inline int log_1 (double *hi, double *lo, double x) {
+static inline int log_1 (double *h, double *l, double x) {
   f64_u _x = {.f = x};
   uint64_t _m = _x.u & (~0ul >> 12);
   int64_t _e = (_x.u >> 52) & 0x7ff;
@@ -566,14 +561,13 @@ static inline int log_1 (double *hi, double *lo, double x) {
   /* now |x| = 2^_e*_t = 2^(_e-52)*m with 1 <= _t < 2,
      and 2^52 <= _m < 2^53 */
 
-  // t is a float between sqrt(2)^{-1} and sqrt(2) such that
   //   log(x) = log(t) + E · log(2)
   double t = _t.f;
 
   // Find the lookup index
   uint64_t i;
 
-  // If m > sqrt(2) we divide it by 2 to avoid cancellation
+  // If m > sqrt(2) we divide it by 2 so ensure 1/sqrt(2) < t < sqrt(2)
   uint64_t c = _m >= 0x16a09e667f3bcd;
   static const double cy[] = {1.0, 0.5};
   static const uint64_t cm[] = {44, 45};
@@ -590,162 +584,24 @@ static inline int log_1 (double *hi, double *lo, double x) {
   double r = (_INVERSE - 181)[i];
   double l1 = (_LOG_INV - 181)[i][0];
   double l2 = (_LOG_INV - 181)[i][1];
-  /* l1 + l2 approximates -log(r) */
 
-  double z = __builtin_fma (r, t, -1.0); /* exact */
+  double z = __builtin_fma (r, t, -1.0);
 
-  /* For t <= 1, r is a multiple of 2^-8, and t a multiple of 2^-53, thus
-     r*t is a multiple of 2^-61.
-     For t > 1, r is a multiple of 2^-9, and t a multiple of 2^-52, thus
-     r*t is a multiple of 2^-61 too.
-     Thus in all cases, z is an integer multiple of 2^-61. */
-
-  /* log(x) = E * log(2) - log(r) + log(1+z), everything is exact up to here */
-  /* since 2^(E-1/2) <= x <= 2^(E+1/2) we get
-     |y|*(E-1/2)*log(2) <= 1074*log(2) thus E <= 1074/|y| + 1/2
-     (we also have |E| <= 1074) */
-
-/* LOG2_H + LOG2_L is a double-double nearest approximation of log(2),
-   with LOG2_H an integer multiple of 2^-42, so that the multiplication
-   E * LOG2_H is exact (E is an integer, with |E| <= 1074) */
 #define LOG2_H 0x1.62e42fefa38p-1
 #define LOG2_L 0x1.ef35793c7673p-45
 
-  // *th + *tl = E * log(2) - log(r)
   double th, tl;
-  /* since |E| <= 1074 and |l1| <= 0x1.630030b3abp-2 (for i=362),
-     we have |l1| <= 1524716581803*2^-42, thus since LOG2_H=3048493539143*2^-42
-     we get 2^42*|E*LOG2_H+l1| <= 1074*3048493539143+1524716581803 < 2^52,
-     thus E*LOG2_H+l1 is exact */
   th = __builtin_fma (E, LOG2_H, l1);
-  /* |l2| < 2^-43, thus |tl| < 2^-33.9 and the rounding error in the following
-     fma call is bounded by ulp(2^-33.9) = 2^-86.
-     This error is denoted err1 in the analyze_log1_xxx functions. */
   tl = __builtin_fma (E, LOG2_L, l2);
 
-  /* add the term z from log(1+z) */
-  fast_sum (hi, lo, th, z, tl);
-  /* The above fast_sum() calls first fast_two_sum (hi, lo, th, z),
-     then performs lo += tl.
-     The fast_two_sum() call error is bounded by 2^-105*|hi| from
-     Theorem 1 from [1]. This error is denoted err2 in
-     the analyze_log1_xxx functions. (When E=0 and i in {255,256},
-     case "cancel2", we have r = 1 thus th = tl = 0, and err2=0.)
-
-     The rounding error in lo += tl is bounded by ulp(lo), where lo
-     denotes the final value. We know that |lo| <= ulp(hi) + |tl|
-     <= 2^-43 + 2^-33.9 <= 2^-33.89 thus ulp(lo) <= 2^-86.
-     This error is denoted err3 in the analyze_log1_xxx functions.
-
-     When E=0, we have th=l1 and tl=l2, thus |th| < 0.347 and |tl| < 2^-43.
-     Since |z| < 0.0040283203125, we have |hi| < 0.352, thus
-     |lo| < 2^-54 + 2^-43 < 2^-42.99, and the error is bounded by 2^-95.
-  */
-
+  fast_sum (h, l, th, z, tl);
   double ph, pl;
-  /* compute ph+pl approximation of log(1+z) - z */
-  p_1 (&ph, &pl, z); /* |ph + pl - (log(1+z)-z)| < 2^-75.492
-                        and we also have |ph| < 8.2e-6 and |pl| < 2.2e-8 */
-
-  /* add ph+pl */
-  fast_sum (hi, lo, *hi, ph, *lo + pl);
-  /* The above fast_sum() calls first fast_two_sum (hi, lo, hi_in, ph),
-     then performs lo += lo_in + pl. We have several rounding errors:
-     * the rounding error in the fast_two_sum() call which is bounded by
-       2^-105 |hi|
-     * the rounding error in lo_in + pl which is bounded by 1 ulp of the
-       result
-     * the rounding error in lo += ... which is bounded by ulp(lo_out)
-
-     We have here |lo_in| < 2^-33.89, |pl| < 2.2e-8, thus |lo_in+pl| < 2.21e-8,
-     and the rounding error in *lo + pl is bounded by ulp(2.21e-8) = 2^-78.
-     This error is denoted err5 in the analyze_log1_xxx functions.
-
-     The rounding error in the fast_sum() call is bounded by
-     2^-105 |hi| + ulp(lo). Since |hi_in| < 744.8, |ph| < 8.2e-6 and
-     |lo_in + pl| < 2.21e-8, we have |hi| < 744.9, thus 2^-105 |hi| < 2^-95.4.
-     This error is denoted err4 in the analyze_log1_xxx functions.
-
-     To bound ulp(lo), we know that |lo| <= ulp(hi) + |lo_in + pl|
-     <= 2^-43 + 2.21e-8 <= 2^-25.4 thus ulp(lo) <= 2^-78.
-     This error is denoted err6 in the analyze_log1_xxx functions.
-
-     The cumulated fast_sum() err4 + err6 (excluding that in *lo + pl)
-     is bounded by  2^-95.4 + 2^-78 < 2^-77.99.
-  */
-
-  /* the different errors are:
-   - the approximation error between -log(r) and l1+l2, which is bounded
-     by 2^-97 [err7]
-   - the approximation error between log(2) and LOG2_H+LOG2_L, which is
-     bounded by 1.95e-31, and multiplied by at most 1074, which gives < 2^-91.9
-     [err8]
-   - the rounding error in tl = __builtin_fma (E, LOG2_L, l2), which is
-     bounded by 2^-86 [err1]
-   - 2^-94.458 for the error of the fast_two_sum() call in the first
-     fast_sum(), and 2^-106.5 if E=0 [err2]
-   - 2^-86 for the rounding error from lo += tl in the first fast_sum() call,
-     and 2^-95 if E=0 [err3]
-   - 2^-75.492 for the error in the polynomial approximation ph + pl [err0]
-   - 2^-78 for the rounding error in *lo + pl [err5]
-   - 2^-77.99 for the error in the second fast_sum() call [err4+err6]
-   This gives a total error bounded by:
-   |hi + lo - log(x)| < 2^-75.05 (this bound is not used).
-
-   For E<>0, the main term is E*log(2), and there can be no cancellation.
-   We have |E*log(2)| > 0.6931, |log(r)| < 0.3467 and |log(1+z)| < 0.0041
-   thus |E*log(2)-log(r)+log(1+z)| > 0.3423, and the relative error is thus
-   bounded by 2^-74.87/0.3423 < 2^-73.323.
-   The routine analyze_log1_cancel0_all(rel=true) yields a better relative
-   error bound of 2^-73.528 (attained for E=-1 and i=362), and also yields
-   |lo/hi| < 6.34803960455073e-8 < 2^-23.9.
-
-   If E=0, and i <> {255,256}, the errors err8 and err1 vanish, and the
-   routine analyze_log1_cancel1_all(rel=true) yields a relative error bound
-   of 2^-67.052 (attained for i=257), including the error err9 below.
-
-   If E=0 and i in {255,256}, we have r=1, l1=l2=0, z=t-1=x-1, th=tl=0, hi=z
-   and lo=0 after the first fma_sum, thus the errors err7, err3 and err5
-   also vanish. It only remains err0, err4, err6. The code simplifies as:
-
-   p_1 (&ph, &pl, z);
-   fast_two_sum (hi, lo, z, ph);
-   lo += pl;
-
-   In addition, we know that |z| < 0.0040283203125 and z is an integer multiple
-   of 2^-61.
-   For |z| > 1.57013874261013e-16 (cf routine max_exp_dif_z_ph() in log_1.sage)
-   the exponent difference between ph and z is <= 53, thus
-   fast_two_sum (hi, lo, z, ph) is exact according to Theorem 1 from [1],
-   thus the only errors are the approximation error from p_1 (err0) and the
-   rounding error in lo += pl (err6).
-
-   Since z=x-1 with 255/256 <= x < 257/256, |z| <= 1.57222633437748e-16
-   can only occur for x=1 and x=nextbelow(1), since for x=nextabove(1)
-   we have x-1 = 2^-52 > 1.57222633437748e-16.
-   For x=1 the error in log_1() is zero, and for x=nextbelow(1)=1-2^-53
-   the maximal relative error is < 2^-105.26 (see analyze_log1_tiny in
-   log_1.sage).
-
-   For the other cases (E=0 and i in {255,256}), the maximal relative error
-   is bounded by 2^-67.31, see analyze_log1_cancel2_all(k=8,rel=true).
-   % rel_err <= 5.46167093140910e-21
-
-   In summary, for E=0 the relative error is bounded by 2^-67.052
-   for i <> {255,256}, and by 2^-67.31 for i in {255,256}, thus in
-   all cases by 2^-67.052.
-  */
-
-  /* if E=0, i.e., x is in [1/sqrt(2),sqrt(2)], we force normalization
-     of hi + lo */
+  p_1 (&ph, &pl, z);
+  fast_sum (h, l, *h, ph, *l + pl);
 
   if (_e == 0)
   {
-    /* When e=0 (cancel=1) in the main code, we force normalization of (hi,lo)
-       to ensure |lo| < ulp(hi) and thus |lo/hi| < 2^-52. This induces another
-       error (err9) that is bounded by 2^-105*|hi|. Since |hi| < 744.9,
-       this yields err9 < 2^-95.45. */
-    fast_two_sum (hi, lo, *hi, *lo);
+    fast_two_sum (h, l, *h, *l);
     return 1;
   }
 
