@@ -69,9 +69,13 @@ SOFTWARE.
 #define ENABLE_EXACT (POW_ITERATION & 0x4)
 #define ENABLE_ZIV3 (POW_ITERATION & 0x8)
 
+/***************** polynomial approximations of exp(z) ***********************/
+
 /* Given (zh,zl) such that |zh+zl| < 0.000130273 and |zl| < 2^-42.7260,
-   this routine computes (qh,ql) such that
+   this routine puts in qh+ql an approximation of exp(zh+zl) such that
+
    | (qh+ql) / exp(zh+zl) - 1 | < 2^-74.169053
+
    (see Lemma 6 from [5]) */
 static inline void q_1 (double *qh, double *ql, double zh, double zl) {
   double z = zh + zl;
@@ -261,117 +265,32 @@ static inline void q_3 (qint64_t *r, qint64_t *y) {
      < 2^-242.00. */
 }
 
-/*
-  Put in hi+lo an approximation of log(1 + z) - z,
-  for |z| < 0.0040283203125, and z integer multiple of 2^-61,
-  with maximal error 2^-81.63 from the Sollya polynomial.
-  Let p2,...,p8 be the polynomial coefficients. Since |p3*z^3| < 2^-25.45,
-  it suffices to compute p3*z^3+...+p8*z^8 in double precision, and we only
-  need a double-double representation for p2*z^2.
-  Note: we impose the degree-2 coefficient to be -1/2, which saves a
-  double-double multiplication.
+/**************** polynomial approximations of log(1+x) **********************/
 
-  Maximal absolute error: |hi + lo - (log(1+z) - z)| < 2^-75.492
-  with |hi| < 8.11369e-6 and |lo| < 2.2e-8 (see pow.tex).
+/* Given |z| <= 33*2^-13, with z an integer multiple of 2^-61,
+   this routine puts in ph+pl an approximation of log(1+z)-z such that
 
-  Maximal relative error 2^-67.55 from analyze_p1_all(k=8,rel=true),
-  taking into account the z term (which is not computed here), and
-  assuming there is no rounding error in z + p_1(z).
+   | ph + pl - (log(1 + z) - z) | < 2^-75.492
+
+   with |ph| < 2^-16.9, |pl| < 2^-25.446.
+   Moreover if z<>0, and assuming further |z| < 32*2^-13, the relative error
+   satisfies:
+
+   | (z + ph + pl) / log(1+z) - 1 | < 2^-67.441
+
+   (see Lemma 2 from [5]).
 */
-
-static inline void p_1 (double *hi, double *lo, double z) {
+static inline void p_1 (double *ph, double *pl, double z) {
   double wh, wl;
-
-  a_mul (&wh, &wl, z, z); /* exact */
-
-  double t = __builtin_fma (P_1[5], z, P_1[4]); /* t = p8*z+p7 */
-  /* the rounding error on t is bounded by ulp(t). Since |p8| < 0.13,
-     |z| < 0.0041 and |p7| < 0.15, we have |t| < 0.16, thus the rounding error
-     is bounded by ulp(0.16) = 2^-55. This error will be multiplied by z^7
-     below, which gives a contribution < 2^-110.6 in the final error.
-     This corresponds to err1 in analyze_p1_all. */
-
-  double u = __builtin_fma (P_1[3], z, P_1[2]); /* u = p6*z+p5 */
-  /* the rounding error on u is bounded by ulp(u). Since |p6| < 0.17,
-     |z| < 0.0041 and |p5| < 0.2, we have |u| < 0.21, thus the rounding error
-     is bounded by ulp(0.21) = 2^-55. This error will be multiplied by z^5
-     below, which gives a contribution < 2^-94.7 in the final error.
-     This corresponds to err2 in analyze_p1_all. */
-
-  double v = __builtin_fma (P_1[1], z, P_1[0]); /* v = p4*z+p3 */
-  /* the rounding error on v is bounded by ulp(v). Since |p4| < 0.26,
-     |z| < 0.0041 and |p3| < 0.34, we have |v| < 0.35, thus the rounding error
-     is bounded by ulp(0.35) = 2^-54. This error will be multiplied by z^3
-     below, which gives a contribution < 2^-77.8 in the final error.
-     This corresponds to err3 in analyze_p1_all. */
-
-  u = __builtin_fma (t, wh, u);                 /* u = p5+...+z^3*p8 */
-  /* here we have two errors: the rounding error in the fma(), and the
-     neglected term wl since we should multiply t by z^2 = wh + wl.
-     The rounding error in the fma() is bounded by ulp(u). Since |t| < 0.16,
-     |wh| < 0.000017 and |u_in| < 0.21, we have |u| < 0.22, thus the rounding
-     error is bounded by ulp(0.22) = 2^-55.
-     The term wl is bounded by ulp(wh) <= 2^-68, and is multiplied by t
-     with |t| < 0.16, thus contributes to at most 0.16*2^-68.
-     The sum of these two errors is at most 2^-55 + 0.16*2^-68, and is
-     multiplied by z^5 below, which gives a contribution < 2^-94.7.
-     This corresponds to err4 in analyze_p1_all. */
-
-  v = __builtin_fma (u, wh, v);                 /* v = p3+...+z^5*p8 */
-  /* here again we have two errors: the rounding error in the fma(), and the
-     neglected term wl since we should multiply u by z^2 = wh + wl.
-     The rounding error in the fma() is bounded by ulp(v). Since |u| < 0.22,
-     |wh| < 0.000017 and |v_in| < 0.35, we have |v| < 0.36, thus the rounding
-     error is bounded by ulp(0.36) = 2^-54.
-     The term wl is bounded by ulp(wh) <= 2^-68, and is multiplied by u
-     with |u| < 0.22, thus contributes to at most 0.22*2^-68.
-     The sum of these two errors is at most 2^-54 + 0.22*2^-68, and is
-     multiplied by z^3 below, which gives a contribution < 2^-77.8.
-     This corresponds to err5 in analyze_p1_all. */
-
-  /* now v approximates p3+p4*z+...+p8*z^5 */
-
+  a_mul (&wh, &wl, z, z);
+  double t = __builtin_fma (P_1[5], z, P_1[4]);
+  double u = __builtin_fma (P_1[3], z, P_1[2]);
+  double v = __builtin_fma (P_1[1], z, P_1[0]);
+  u = __builtin_fma (t, wh, u);
+  v = __builtin_fma (u, wh, v);
   u = v * wh;
-  /* The rounding error on u is bounded by ulp(u). Since |v| < 0.36 and
-     |wh| < 0.000017, we get |u| < 6.12e-6 and the rounding error is thus
-     bounded by ulp(6.12e-6) = 2^-70.
-     We also neglect the term v * wl, with |v| < 0.36 and |wl| <= 2^-68,
-     thus |v*wl| < 2^-69.47.
-     The maximal error will be multiplied by z below, which yields
-     (2^-70+2^-69.47)*z < 2^-76.66.
-     This corresponds to err6 in analyze_p1_all. */
-
-  /* now u approximates p3*z^2+p4*z^3+...+p7*z^6, we subtract z^2/2
-     and add u * z */
-  *hi = -0.5 * wh; /* exact */
-  *lo = __builtin_fma (u, z, -0.5 * wl);
-  /* Since |u| < 6.12e-6 and |z| < 0.0041, we get |u*z| < 2.51e-8.
-     Since |wl| < ulp(wh) <= 2^-68 (see above), |0.5 * wl| <= 2^-69.
-     Thus |u*z-0.5*wl| < 2.52e-8 and the rounding
-     error in the fma() is bounded by ulp(2.52e-8) <= 2^-78.
-     This corresponds to err7 in analyze_p1_all. */
-
-  /* The error |hi + lo - (log(1+z)-z| is bounded by:
-     - 2^-81.63 for the approximation error in the Sollya polynomial (err0)
-     - 2^-110.6 for the rounding error in the first fma (err1)
-     - 2^-94.7 for the rounding error in the second fma (err2)
-     - 2^-77.8 for the rounding error in the third fma (err3)
-     - 2^-94.7 for the rounding error in the fourth fma (err4)
-     - 2^-77.8 for the rounding error in the fifth fma (err5)
-     - 2^-76.66 for the rounding error in v*wh and the neglected v*wl (err6)
-     - 2^-78 for the rounding error in the last fma (err7)
-     This yields a total error < 2^-75.43:
-     |hi + lo - (log(1+z) - z)| < 2^-75.43.
-
-     The bound from pow.tex confirms this analysis,
-     we get |err| < 2^-75.492.
-     Maximal absolute error is thus 2^-75.492,
-     with |hi| < 8.11369e-6 and |lo| < 2.2e-8 (from analyze_p1_all).
-
-     Tightness of these bounds:
-     for z=0x1.07fffff8cc7ffp-8 and rndz/rndd we get an error of ~ 2^-75.53
-     for z=-0x1.07fc623a1p-8    and rndn we get ph ~ -8.11281e-6
-     for z=-0x1.07fc623a1p-8    and rndn we get pl ~ -2.18522e-8 */
+  *ph = -0.5 * wh;
+  *pl = __builtin_fma (u, z, -0.5 * wl);
 }
 
 // Approximation for the second iteration
