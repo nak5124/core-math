@@ -71,7 +71,7 @@ doit (double x, double y)
 
 typedef unsigned __int128 u128;
 
-/* check that x = m * 2*k for 2^52 <= m < 2^53,
+/* check that x = m * 2^k for 2^52 <= m < 2^53,
    that 2^52 <= y < 2^53, and that z is exactly representable on 54 bits */
 static int
 valid (u128 x, u128 y, u128 z, int k)
@@ -104,22 +104,26 @@ gcd (u128 a, u128 b)
 
 /* generate all inputs x=j*(p^2-q^2), y=j*(2pq) that satisfy
    2^(52+k) <= x < 2^(53+k), 2^52 <= y < 2^53
-   Return the number of generated inputs. */
+   Return the number of generated inputs.
+   Performs at most max_loop loops on j.
+*/
 static unsigned long
-generate1 (u128 p, u128 q, int k)
+generate1 (u128 p, u128 q, int k, unsigned long max_loop)
 {
   /* ensure p and q are coprime, otherwise we will get duplicates */
   if (gcd (p, q) != 1)
     return 0;
   unsigned long count = 0;
-  if (p <= q) printf ("p=%lu q=%lu\n", (uint64_t) p, (uint64_t) q);
   assert (p > q);
   u128 x = p * p - q * q;
   u128 y = 2 * p * q;
   u128 z = p * p + q * q;
   u128 xmax = 0x1ffffffffffffful << k; /* (2^53-1)*2^k */
   u128 ymax = 0x1ffffffffffffful;      /* 2^53-1 */
-  for (u128 j = 1; ; j++)
+  /* since we want xj = m*2^k >= 2^(52+k), thus j >= 2^(52+k)/x */
+  u128 jmin = (u128) 1 << (52+k);
+  jmin = (jmin + x - 1) / x;
+  for (u128 j = jmin; j <= jmin + max_loop; j++)
   {
     u128 xj = j * x;
     u128 yj = j * y;
@@ -141,7 +145,7 @@ generate1 (u128 p, u128 q, int k)
    2^(52+k) <= x < 2^(53+k), 2^52 <= y < 2^53
    Return the number of generated inputs. */
 static unsigned long
-generate2 (u128 p, u128 q, int k)
+generate2 (u128 p, u128 q, int k, unsigned long max_loop)
 {
   /* ensure p and q are coprime, otherwise we will get duplicates */
   if (gcd (p, q) != 1)
@@ -153,7 +157,10 @@ generate2 (u128 p, u128 q, int k)
   u128 z = p * p + q * q;
   u128 xmax = 0x1ffffffffffffful << k; /* (2^53-1)*2^k */
   u128 ymax = 0x1ffffffffffffful;      /* 2^53-1 */
-  for (u128 j = 1; ; j++)
+  /* since we want xj = m*2^k >= 2^(52+k), thus j >= 2^(52+k)/x */
+  u128 jmin = (u128) 1 << (52+k);
+  jmin = (jmin + x - 1) / x;
+  for (u128 j = jmin; j <= jmin + max_loop; j++)
   {
     u128 xj = j * x;
     u128 yj = j * y;
@@ -171,6 +178,11 @@ generate2 (u128 p, u128 q, int k)
   return count;
 }
 
+/* Since the check_pythagorean_triples() function tests a huge number of
+   values, and will not terminate in reasonable time. you can define
+   REDUCE to a large value to test fewer values. */
+#define REDUCE 0x8000000000000
+
 /* check all Pythagorean triples x^2 + y^2 = z^2,
    with 2^52 <= y < 2^53, 2^(52+k) <= x < 2^(53+k),
    and z of the form m*2^e with m < 2^54 */
@@ -184,12 +196,12 @@ check_pythagorean_triples (int k)
 
   /* Type 1: x = p^2-q^2, y = 2pq, z = p^2+q^2 */
   /* since y = 2pq < 2^53 and q < p, this gives q <= 67108863 */
-#pragma omp parallel for
+#pragma omp parallel for schedule(static,1)
   for (u128 q = 1; q <= 67108863; q++)
   {
     u128 p;
-    for (p = q + 1; 2 * p * q < 0x20000000000000ul; p += 2)
-      count1 += generate1 (p, q, k);
+    for (p = q + 1; 2 * p * q < 0x20000000000000ul; p += 2 * REDUCE)
+      count1 += generate1 (p, q, k, 0xfffffffffffffffful / REDUCE);
   }
 
   if (verbose)
@@ -198,7 +210,7 @@ check_pythagorean_triples (int k)
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^53, this gives p <= 2^52 */
 #pragma omp parallel for
-  for (u128 p = 2; p <= 0x10000000000000; p++)
+  for (u128 p = 2; p <= 0x10000000000000 / REDUCE; p++)
   {
     /* we want y < 2^53, thus p^2-q^2 < 2^53 thus p^2 - 2^53 < q^2 */
     u128 q, qmin = 1;
@@ -215,7 +227,7 @@ check_pythagorean_triples (int k)
     if ((p + qmin) % 2 == 0)
       qmin ++; /* ensure p and q have different parities */
     for (q = qmin; q < p; q += 2)
-      count2 += generate2 (p, q, k);
+      count2 += generate2 (p, q, k, 0xfffffffffffffffful / REDUCE);
   }
   if (verbose) {
     fprintf (stderr, "# Type 2: %lu\n", count2);
