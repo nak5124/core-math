@@ -57,9 +57,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <stdlib.h>
 
-#define TRACEX 0x1.fffffffffffffp+1023
-#define TRACEY -0x1.fffffffffffffp+1023
-
 #ifndef POW_ITERATION
 #define POW_ITERATION 15
 #endif
@@ -907,8 +904,11 @@ static void log_3 (qint64_t *r, qint64_t *x) {
    Moreover |el/eh| <= 2^-41.7.
 
    See Lemma 7 from reference [5].
+
+   The result eh+el is multiplied by s (which is +1 or -1).
 */
-static inline void exp_1 (double *eh, double *el, double rh, double rl) {
+static inline void
+exp_1 (double *eh, double *el, double rh, double rl, double s) {
 
 #define RHO0 -0x1.74910ee4e8a27p+9
 #define RHO1 -0x1.577453f1799a6p+9
@@ -917,8 +917,8 @@ static inline void exp_1 (double *eh, double *el, double rh, double rl) {
 
   if (__builtin_expect(rh > RHO2, 0)) {
     if (rh > RHO3) {
-      *eh = 0x1.fffffffffffffp+1023;
-      *el = 0x1.fffffffffffffp+1023;
+      *eh = 0x1.fffffffffffffp+1023 * s;
+      *el = 0x1.fffffffffffffp+1023 * s;
     }
     else
       *eh = *el = NAN;
@@ -926,12 +926,18 @@ static inline void exp_1 (double *eh, double *el, double rh, double rl) {
   }
 
   if (__builtin_expect(rh < RHO1, 0)) {
-    if (rh < RHO0)
+    if (rh < RHO0 && s > 0)
     {
       *eh = 0x1p-1074;
       *el = -0x1p-1074;
+      /* For s=1, we have eh=el=2^-1074, thus res_h=res_l=2^-1074 in the main
+         code, and in the rounding test fma(err,+/-res_h,rel_l) rounds to
+         2^-1074 for rounding to nearest, thus res_min=res_max=+0, which is
+         the expected result (underflow case).
+         For directed roundings res_min and res_max round to different
+         multiples of 2^-1074, and the rounding test fails. */
     }
-    else
+    else /* RHO0 <= rh < RHO1 or s < 0: we defer to the 2nd phase */
       *eh = *el = NAN;
     return;
   }
@@ -966,6 +972,7 @@ static inline void exp_1 (double *eh, double *el, double rh, double rl) {
      potential underflow/overflow cases at the beginning of this function */
 
   _d.u = M << 52;
+  _d.f *= s;
   *eh *= _d.f;
   *el *= _d.f;
 }
@@ -1438,37 +1445,21 @@ double cr_pow (double x, double y) {
      and  emul = 2^-57.580 if 1/sqrt(2) < x < sqrt(2)
   */
 
-  exp_1 (&res_h, &res_l, rh, rl); /* 1 <= res_h < 2 */
+  exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
-  double res_min, res_max;
-  res_h *= s;
-  res_l *= s;
   /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
      phase_1 from reference [5]. */
   static double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
                           0x1.57p-58, /* 2^-57.579 < 0x1.57p-58 */
   };
+  double res_min, res_max;
   res_min = res_h + __builtin_fma (err[cancel], -res_h, res_l);
   res_max = res_h + __builtin_fma (err[cancel], res_h, res_l);
   /* if res_h < 0, we have res_max < res_min, but since we only check
      equality between res_min and res_max, it does not matter */
 
-  /* FIXME: in the underflow region, for rounding to nearest,
-     res_l+/-res_h*err rounds to res_l, thus we always have
-     res_min = res_max. Can this happen except for x=1 and y=+inf?
-     Yes for x=-0x1p-109 and y=0x1.3p+4.
-     In pow.tex, res_h >= 2^-991, thus res_h*err >= 2^-1054.727. */
-
-  /* FIXME: for rounding to nearest, if res_h was rounded to +Inf in exp_1(),
-     maybe res_h - err[cancel] * res_h would not be rounded to +Inf.
-     This cannot happen with the code from pow.tex, where we properly deal
-     with overflow. */
-  
-  /* We defer the case res_min=0 to the accurate path. This occurs for
-     example for x=-0x1p-109 and y=0x1.3p+4, where we get res_min = +0
-     instead res_min = -0. */
-  if (res_min == res_max && __builtin_expect (res_min != 0, 1))
+  if (res_min == res_max)
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
        to avoid double-rounding issues */
     return res_min;
