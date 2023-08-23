@@ -256,9 +256,14 @@ static inline void q_1 (double *qh, double *ql, double zh, double zl) {
   fast_sum (qh, ql, Q_1[0], *qh, *ql);
 }
 
-/* Code adapted from pow.c. When called from exp10_fast(), the condition
+#define NAN (0.0/0.0)
+
+/* Code adapted from pow.c, by removing the argument s (sign is always
+   positive here).
+   When called from exp10_fast(), the condition
    |rl/rh| is fulfilled because |rl| <= ulp(rh).
    Also the condition |rl| < 2^-14.4187 is fulfilled because |rl| <= 2^-43.
+   We also have -0x1.502d2768807e2p+9 <= rh <= 0x1.62e42fefa39efp+9.
 
    Given RHO1 <= rh <= RHO2, |rl/rh| < 2^-23.8899 and |rl| < 2^-14.4187,
    this routine computes an approximation eh+el of exp(rh+rl) such that:
@@ -274,39 +279,31 @@ static inline void q_1 (double *qh, double *ql, double zh, double zl) {
 static inline void
 exp_1 (double *eh, double *el, double rh, double rl) {
 
-#if 0
 #define RHO0 -0x1.74910ee4e8a27p+9
 #define RHO1 -0x1.577453f1799a6p+9
 #define RHO2 0x1.62e42e709a95bp+9
 #define RHO3 0x1.62e4316ea5df9p+9
 
   if (__builtin_expect(rh > RHO2, 0)) {
-    if (rh > RHO3) {
-      *eh = 0x1.fffffffffffffp+1023 * s;
-      *el = 0x1.fffffffffffffp+1023 * s;
-    }
-    else
-      *eh = *el = NAN;
+    /* since rh <= 0x1.62e42fefa39efp+9 when called from exp10_fast(),
+       we can't have rh > RHO3 */
+    *eh = *el = NAN; // delegate to the accurate step
     return;
   }
 
   if (__builtin_expect(rh < RHO1, 0)) {
-    if (rh < RHO0 && s > 0)
+    if (rh < RHO0)
     {
+      /* the following ensures we get correct rounding for rounding to
+         nearest, for directed roundings the rounding test will fail
+         and delegate to the accurate step */
       *eh = 0x1p-1074;
       *el = -0x1p-1074;
-      /* For s=1, we have eh=el=2^-1074, thus res_h=res_l=2^-1074 in the main
-         code, and in the rounding test fma(err,+/-res_h,rel_l) rounds to
-         2^-1074 for rounding to nearest, thus res_min=res_max=+0, which is
-         the expected result (underflow case).
-         For directed roundings res_min and res_max round to different
-         multiples of 2^-1074, and the rounding test fails. */
     }
-    else /* RHO0 <= rh < RHO1 or s < 0: we defer to the 2nd phase */
+    else // RHO0 <= rh < RHO1: delegate to the accurate step
       *eh = *el = NAN;
     return;
   }
-#endif
 
 #define INVLOG2 0x1.71547652b82fep+12
   double k = __builtin_roundeven (rh * INVLOG2);
@@ -364,6 +361,7 @@ exp10_fast (double *h, double *l, double x)
      thus |rl| <= ulp(rh) <= 2^-43, and ulp(rl) <= 2^-95.
      The approximation error from LOG10H+LOG10L is bounded by
      |x|*2^-106.3 < 2^-97.96.
+     Moreover we have -0x1.502d2768807e2p+9 <= rh <= 0x1.62e42fefa39efp+9.
      Thus:
      | rh + rl - log(10)*x | < 2^-95 + 2^-97.96 < 2^-94.82 */
   exp_1 (h, l, rh, rl);
@@ -391,8 +389,8 @@ double cr_exp10 (double x)
 {
   b64u64_u t = {.f = x};
   uint64_t ax = t.u & (~0ul>>1);
-  if (__builtin_expect (ax >= 0x40723ffc4bdf1111ul, 0))
-    // x = NaN or |x| >= 0x1.23ffc4bdf1111p+8
+  if (__builtin_expect (ax >= 0x40734413509f79fful, 0))
+    // x = NaN or |x| >= 0x1.34413509f79ffp+8
   {
     if (ax > 0x7ff0000000000000ul)
       return x; // NaN
@@ -402,23 +400,17 @@ double cr_exp10 (double x)
       return 0x1p-1074 * 0.5;
     if (x <= -0x1.434e6420f4374p+8) /* 2^-1075 < 10^x < 2^-1074 */
       return 0x3p-1074 * 0.5;
-    if (x <= -0x1.23ffc4bdf1111p+8)
-    {
-      /* then l might be in the subnormal range in exp10_fast(),
-         thus the error analysis does not apply */
-      return 0; // not yet implemented
-    }
   }
   else if (__builtin_expect (ax <= 0x3c7bcb7b1526e50eul, 0))
     // |x| <= 0x1.bcb7b1526e50ep-56
     return 1 + x; /* for |x| <= -0x1.bcb7b1526e50ep-56, exp10(x) rounds to
                      1 to nearest */
-  /* now -0x1.23ffc4bdf1111p+8 < x < -0x1.bcb7b1526e50ep-56
+  /* now -0x1.434e6420f4374p+8 < x < -0x1.bcb7b1526e50ep-56
      or 0x1.bcb7b1526e50ep-56 < x < 0x1.34413509f79ffp+8 */
 
   double h, l, err;
   err = exp10_fast (&h, &l, x);
-  if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
+  // if (x == TRACE) printf ("h=%la l=%la err=%la\n", h, l, err);
   double left =  h + (l - err);
   double right = h + (l + err);
   if (left == right)
