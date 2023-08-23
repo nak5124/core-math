@@ -943,7 +943,7 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
   }
 
 #define INVLOG2 0x1.71547652b82fep+12
-  double k = round_nearest (rh * INVLOG2);
+  double k = __builtin_roundeven (rh * INVLOG2);
 
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13

@@ -39,21 +39,44 @@ SOFTWARE.
 
 double cr_pow(double x, double y);
 
-#if defined(__GNUC__) && __GNUC__ >= 10
+/* __builtin_roundeven was introduced in gcc 10:
+   https://gcc.gnu.org/gcc-10/changes.html,
+   and in clang 17 */
+#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
 
-#if defined(__clang__) && (defined(__AVX__) || defined(__SSE4_1__))
-inline double __builtin_roundeven(double x) {
-  double ix;
+#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__))
+inline double __builtin_roundeven(double x){
+   double ix;
 #if defined __AVX__
-  __asm__("vroundsd $0x8,%1,%1,%0" : "=x"(ix) : "x"(x));
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
 #else /* __SSE4_1__ */
-  __asm__("roundsd $0x8,%1,%0" : "=x"(ix) : "x"(x));
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
 #endif
-  return ix;
+   return ix;
 }
 #define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#ifndef HAS_BUILTIN_ROUNDEVEN
+#include <math.h>
+/* round x to nearest integer, breaking ties to even */
+static double
+__builtin_roundeven (double x)
+{
+  double y = round (x); /* nearest, away from 0 */
+  if (fabs (y - x) == 0.5)
+  {
+    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    union { double f; uint64_t n; } u, v;
+    u.f = y;
+    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
+      y = v.f;
+  }
+  return y;
+}
 #endif
 
 /*
@@ -160,20 +183,8 @@ static inline void d_square(double *hi, double *lo, double ah, double al) {
 
 static inline long dtoi(double x) { return (long)x; };
 
-// Rounds x to the/a nearest integer
-static inline double round_nearest(double x) {
-#ifdef HAS_BUILTIN_ROUNDEVEN
-  return __builtin_roundeven(x);
-#else
-  double k = (long) x;
-  if (x - k > 0.5 || x - k < -0.5)
-    k += (x > 0) ? 1.0 : -1.0;
-  return k;
-#endif
-}
-
 // Returns 1 if x is an integer
-static inline char is_int(double x) { return x == round_nearest(x); }
+static inline char is_int(double x) { return x == __builtin_roundeven (x); }
 
 // Returns (e, m) such that m is odd and x = 2^E \times m
 static inline void extract(int64_t *e, uint64_t *m, double x) {
