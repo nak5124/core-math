@@ -629,8 +629,8 @@ exp10_accurate (double x)
 
   d_mul (&eh, &el, eh, el, qh, ql);
   f64_u _d;
-  
-  if (__builtin_expect (M >= 1, 0)) // normal case
+
+  if (__builtin_expect (M > 1, 0)) // normal case (we might have eh < 1)
   {
     _d.u = M << 52;
     return __builtin_fma (el, _d.f, _d.f * eh);

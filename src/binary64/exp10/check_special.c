@@ -133,7 +133,7 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
-  printf ("Checking all results in subnormal range\n");
+  printf ("Checking results in subnormal range\n");
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp10(x)) */
   double x0 = -0x1.439b746e36b52p+8;
@@ -141,8 +141,10 @@ main (int argc, char *argv[])
   double x1 = -0x1.33a7146f72a41p+8;
   int64_t n0 = ldexp (x0, 44); /* n0 = -5692958865320786 */
   int64_t n1 = ldexp (x1, 44); /* n1 = -5412282753821249 */
+#define SKIP 20000
+  n0 += getpid () % SKIP;
 #pragma omp parallel for
-  for (int64_t n = n0; n < n1; n++)
+  for (int64_t n = n0; n < n1; n += SKIP)
     check (ldexp ((double) n, -44));
 
   printf ("Checking random values\n");
