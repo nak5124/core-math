@@ -584,9 +584,19 @@ exp10_accurate (double x)
     {0x1.cde37694f4d1p+7, 0x1.2210fd5a164b7p+767, -0x1.fffffffffffffp+713},
     {0x1.2999c72e3120dp+8, 0x1.86361271301e9p+988, -0x1.6b6e03f7f22bp+884},
   };
-  for (int i = 0; i < EXCEPTIONS; i++)
-    if (x == exceptions[i][0])
-      return exceptions[i][1] + exceptions[i][2];
+  int a, b, c;
+  for (a = 0, b = EXCEPTIONS; a + 1 != b;)
+  {
+    /* Invariant: if x is an exceptional case, we have
+       exceptions[a][0] <= x and (x < exceptions[b][0] or b = EXCEPTIONS) */
+    c = (a + b) / 2;
+    if (exceptions[c][0] <= x)
+      a = c;
+    else
+      b = c;
+  }
+  if (x == exceptions[a][0])
+    return exceptions[a][1] + exceptions[a][2];
   double eh, el;
 #define INVLOG2_10 0x1.a934f0979a371p+13 // 2^12*log(10)/log(2)
   double k = __builtin_roundeven (x * INVLOG2_10); // -4399104 <= k <= 4194304
