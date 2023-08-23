@@ -662,7 +662,7 @@ double cr_exp10 (double x)
     if (x <= -0x1.439b746e36b53p+8) /* 10^x < 2^-1075 */
       return 0x1p-1074 * 0.5;
     if (x <= -0x1.434e6420f4374p+8) /* 2^-1075 < 10^x < 2^-1074 */
-      return 0x3p-1074 * 0.5;
+      return 0x3p-1074 * 0.25;
   }
   else if (__builtin_expect (ax <= 0x3c7bcb7b1526e50eul, 0))
     // |x| <= 0x1.bcb7b1526e50ep-56

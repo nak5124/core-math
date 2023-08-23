@@ -1,5 +1,3 @@
-0x1.0bff9cbece9e4p+5
--0x1.0bff9cbece9e4p+5
 # worst cases from https://www.vinc17.net/research/testlibm/testlibm-data.xz
 # (update from 2020-11-27), from -0.30 to 302, with 45 to 60 identical bits
 # after the round bit
@@ -66783,3 +66781,5 @@
 -0x1.01bcb99f3650cp-13
 -0x1.003af6cf4a881p-13
 -0x1.0106bb113928ap-13
+# non-regression tests
+-0x1.435ba2ee3ba4dp+8

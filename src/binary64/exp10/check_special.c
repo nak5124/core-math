@@ -30,6 +30,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
+#include <unistd.h>
 
 int ref_fesetround (int);
 void ref_init (void);
