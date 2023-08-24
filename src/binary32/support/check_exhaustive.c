@@ -30,7 +30,9 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#ifndef NO_OPENMP
 #include <omp.h>
+#endif
 
 #include "function_under_test.h"
 
