@@ -311,10 +311,12 @@ static inline void q_1 (double *qh, double *ql, double zh, double zl) {
 
 #define NAN (0.0/0.0)
 
-/* Code adapted from pow.c: put into eh + el an approximation of exp10(x),
-   and return a bound on the corresponding absolute error.
-   Assumes -0x1.434e6420f4374p+8 < x < -0x1.bcb7b1526e50ep-56
-   or 0x1.bcb7b1526e50ep-56 < x < 0x1.34413509f79ffp+8.
+/* Code adapted from pow.c, by removing the argument s (sign is always
+   positive here).
+   When called from exp10_fast(), the condition
+   |rl/rh| is fulfilled because |rl| <= ulp(rh).
+   Also the condition |rl| < 2^-14.4187 is fulfilled because |rl| <= 2^-43.
+   We also have -0x1.74385446d71c3p+9 <= rh <= 0x1.62e42fefa39efp+9.
 
    Given RHO1 <= rh <= RHO2, |rl/rh| < 2^-23.8899 and |rl| < 2^-14.4187,
    this routine computes an approximation eh+el of exp(rh+rl) such that:
@@ -327,49 +329,39 @@ static inline void q_1 (double *qh, double *ql, double zh, double zl) {
 
    The result eh+el is multiplied by s (which is +1 or -1).
 */
-static inline double
-exp10_fast (double *eh, double *el, double x) {
+static inline void
+exp_1 (double *eh, double *el, double rh, double rl) {
 
-  if (__builtin_expect (x <= -0x1.2a5219d26ae98p+8, 0))
-  {
-    /* in this case we might trigger the case rh < RHO1 in the previous
-       code (commit 37c9c37) */
-    *eh = *el = NAN;
-    return 0;
+#define RHO0 -0x1.74910ee4e8a27p+9
+#define RHO1 -0x1.577453f1799a6p+9
+#define RHO2 0x1.62e42e709a95bp+9
+#define RHO3 0x1.62e4316ea5df9p+9
+
+  if (__builtin_expect(rh > RHO2, 0)) {
+    /* since rh <= 0x1.62e42fefa39efp+9 when called from exp10_fast(),
+       we can't have rh > RHO3 */
+    *eh = *el = NAN; // delegate to the accurate step
+    return;
   }
 
-#define INVLOG2_10 0x1.a934f0979a371p+13 // 2^12*log(10)/log(2)
-  double k = __builtin_roundeven (x * INVLOG2_10); // -4399104 <= k <= 4194304
-  /* Let t = rnd(x * INVLOG2_10), then t = x * INVLOG2_10 * (1 + eps1)
-     with |eps1| <= 2^-52, thus
-     |k - x * INVLOG2_10| <= 1/2 + |x| * INVLOG2_10 * 2^-52
-                          <= 1/2 + 2^-29.93 */
+  if (__builtin_expect(rh < RHO1, 0)) {
+    // since -0x1.74385446d71c3p+9 <= rh, we can't have rh < RHO0
+    // RHO0 <= rh < RHO1: delegate to the accurate step
+    *eh = *el = NAN;
+    return;
+  }
+
+#define INVLOG2 0x1.71547652b82fep+12
+  double k = __builtin_roundeven (rh * INVLOG2);
+
+  double kh, kl;
+#define LOG2H 0x1.62e42fefa39efp-13
+#define LOG2L 0x1.abc9e3b39803fp-68
+  s_mul (&kh, &kl, k, LOG2H, LOG2L);
 
   double yh, yl;
-#define LOG2_10H 0x1.34413509f79ffp-14 // approximates log(2)/log(10)/2^12
-  /* |LOG2_10H - log(2)/log(10)/2^12| < 2^-70.30 */
-  yh = __builtin_fma (-k, LOG2_10H, x); // exact
-  /* |k*LOG2_10H - x| <= LOG2_10H * |k-x/LOG2_10H|
-                   <= LOG2_10H * (|k-x*INVLOG2_10| + |x*INVLOG2_10-x/LOG2_10H|)
-                   <= LOG2_10H * (1/2 + 2^-29.93 + |x| * 2^-40.71)
-                   <= LOG2_10H * (1/2 + 2^-29.93 + 2^-32.37)
-                   <= LOG2_10H * (1/2 + 2^-29.68)
-                   <= 2^-14.72
-     thus since ulp(2^-14.72) = 2^-67, if both k*LOG2_10H and x are
-     integer multiples of 2^-67, the above fma() is exact.
-     For k*LOG2_10H this is true since k is an integer and ulp(LOG2_10H)=2^-66.
-     For x, either |x| > 2^-15, then ulp(x) is an integer multiple of 2^-67,
-     or |x| <= 2^-15, then k=0, and the fma() is exact. */
-#define LOG2_10L -0x1.9dc1da994fd21p-71
-  /* |LOG2_10H + LOG2_10L - log(2)/log(10)/2^12| < 2^-125.81 */
-  fast_two_sum (eh, el, yh, -k * LOG2_10L);
-  /* now multiply eh+el by log(10) */
-#define LOG10H 0x1.26bb1bbb55516p+1
-#define LOG10L -0x1.f48ad494ea3e9p-53
-  s_mul (&yh, &yl, *eh, LOG10H, LOG10L);
-  yl = __builtin_fma (*el, LOG10H, yl);
-#undef LOG2_10H
-#undef LOG2_10L
+  fast_two_sum (&yh, &yl, rh - kh, rl);
+  yl -= kl;
 
   int64_t K = k; /* Note: k is an integer, this is just a conversion. */
   int64_t M = (K >> 12) + 0x3ff;
@@ -391,12 +383,59 @@ exp10_fast (double *eh, double *el, double x) {
   _d.u = M << 52;
   *eh *= _d.f;
   *el *= _d.f;
-  return 0x1.cbp-75 * *eh;
 }
 
 /****************** end of code copied from pow.[ch] *************************/
 
 typedef union {double f; uint64_t u;} b64u64_u;
+
+/* Put into h+l a double-double approximation of 10^x, and return a bound
+   on the absolute error.
+   Assumes -0x1.434e6420f4374p+8 < x < -0x1.bcb7b1526e50cp-55
+   or 0x1.bcb7b1526e50cp-55 < x < 0x1.34413509f79ffp+8.
+
+   FIXME: instead of multiplying x by log(10), giving rh+rl, and then in exp_1
+   we  compute k = round(rh*2^12/log(2)), we could compute k directly as
+   round(x*2^12*log(10)/log(2)) as in exp10_accurate(). But this would require
+   to perform the error analysis again.
+*/
+static double
+exp10_fast (double *h, double *l, double x)
+{
+  double rh, rl;
+  /* first multiply x by an approximation of log(10):
+     | LOG10H + LOG10L - log(10) | < 2^-106.3 */
+#define LOG10H 0x1.26bb1bbb55516p+1
+#define LOG10L -0x1.f48ad494ea3e9p-53
+  s_mul (&rh, &rl, x, LOG10H, LOG10L);
+  /* The rounding error from s_mul is bounded by ulp(rl).
+     Since |x| < 0x1.434e6420f4374p+8, we have |rh| < 744.5
+     thus |rl| <= ulp(rh) <= 2^-43, and ulp(rl) <= 2^-95.
+     The approximation error from LOG10H+LOG10L is bounded by
+     |x|*2^-106.3 < 2^-97.96.
+     Moreover we have -0x1.74385446d71c3p+9 <= rh <= 0x1.62e42fefa39efp+9.
+     Thus:
+     | rh + rl - log(10)*x | < 2^-95 + 2^-97.96 < 2^-94.82 */
+  exp_1 (h, l, rh, rl);
+  /* We have from exp_1():
+
+     | h + l - exp(rh + rl) | < 2^-74.16 * |h + l|
+
+     and since |l/h| <= 2^-41.7:
+
+     | h + l - exp(rh + rl) | < 2^-74.16 * |h| * (1 + 2^-41.7)
+                              < 2^-74.159 * |h|                   (1)
+
+     Since rh + rl = log(10)*x - eps with |eps| < 2^-94.82,
+     10^x = exp(rh+rl) * exp(eps) thus:
+     | h + l - 10^x | < 2^-74.159 * |h| + |exp(rh+rl)| * |1 - exp(eps)|
+     and from (1) we get |exp(rh + rl)| < |h| + |l| + 2^-74.159 * |h|
+                                        < (1 + 2^-41.7 + 2^-74.159) * |h|
+                                        < 1.01 * |h|, we obtain:
+     | h + l - 10^x | < 2^-74.159 * |h| + 1.01 * |1 - exp(eps)| * |h|
+                      < 2^-74.158 * |h| */
+  return 0x1.cbp-75 * *h; /* 2^-74.158 < 0x1.cbp-75 */
+}
 
 /* assumes -0x1.434e6420f4374p+8 < x < -0x1.bcb7b1526e50ep-56
    or 0x1.bcb7b1526e50ep-56 < x < 0x1.34413509f79ffp+8 */
