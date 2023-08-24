@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Usages:
 # (1) to use check.sh with GNU MPFR installed in a non-standard
 #     place, say /tmp/include and /tmp/lib, use the following
