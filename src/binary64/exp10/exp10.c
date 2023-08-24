@@ -690,8 +690,15 @@ double cr_exp10 (double x)
   if (__builtin_expect (ax >= 0x40734413509f79fful, 0))
     // x = NaN or |x| >= 0x1.34413509f79ffp+8
   {
-    if (ax > 0x7ff0000000000000ul)
-      return x; // NaN
+    if (ax >= 0x7ff0000000000000ul)
+    {
+      if (ax > 0x7ff0000000000000ul)
+        return x; // NaN
+      if (t.u == 0x7ff0000000000000ul)
+        return x;  // exp10(+Inf) = +Inf
+      else
+        return +0; // exp10(-Inf) = +0
+    }
     if (x >= 0x1.34413509f79ffp+8) /* 10^x > 2^1024*(1-2^-54) */
       return 0x1p1023 + 0x1p1023;
     if (x <= -0x1.439b746e36b53p+8) /* 10^x < 2^-1075 */
