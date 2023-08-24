@@ -1,6 +1,6 @@
 /* Generate special cases for exp testing.
 
-Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
+Copyright (c) 2022-2023 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -30,6 +30,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
+#include <unistd.h>
 
 int ref_fesetround (int);
 void ref_init (void);
@@ -53,19 +54,50 @@ asuint64 (double f)
   return u.i;
 }
 
-static void
-check_subnormal (int64_t n)
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
 {
-  double x = ldexp ((double) n, -43);
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
+static inline int
+is_equal (double x, double y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint64 (x) == asuint64 (y);
+}
+
+static void
+check (double x)
+{
   double y1 = ref_exp (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_exp (x);
-  if (asuint64 (y1) != asuint64 (y2))
+  if (! is_equal (y1, y2))
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
     exit (1);
   }
+}
+
+typedef union {double f; uint64_t u;} b64u64_u;
+
+static double
+get_random ()
+{
+  b64u64_u v;
+  long l;
+  v.u = rand ();
+  v.u |= (uint64_t) rand () << 31;
+  v.u |= (uint64_t) rand () << 62;
+  return v.f;
 }
 
 int
@@ -113,6 +145,7 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
+  printf ("Checking results in subnormal range\n");
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp(x)) */
   double x0 = -0x1.74910d52d3051p+9;
@@ -120,9 +153,27 @@ main (int argc, char *argv[])
   double x1 = -0x1.6232bdd7abcd2p+9;
   int64_t n0 = ldexp (x0, 43); /* n0 = -6554261109157969 */
   int64_t n1 = ldexp (x1, 43); /* n1 = -6231120794008786 */
+#define SKIP 20000
+  n0 += getpid () % SKIP;
 #pragma omp parallel for
-  for (int64_t n = n0; n < n1; n++)
-    check_subnormal (n);
+  for (int64_t n = n0; n < n1; n += SKIP)
+    check (ldexp ((double) n, -43));
+
+  printf ("Checking random values\n");
+#define N 1000000000UL /* total number of tests */
+
+  unsigned int seed = getpid ();
+  srand (seed);
+
+#pragma omp parallel for
+  for (uint64_t n = 0; n < N; n++)
+  {
+    ref_init ();
+    ref_fesetround (rnd);
+    double x;
+    x = get_random ();
+    check (x);
+  }
 
   return 0;
 }
