@@ -393,11 +393,6 @@ typedef union {double f; uint64_t u;} b64u64_u;
    on the absolute error.
    Assumes -0x1.434e6420f4374p+8 < x < -0x1.bcb7b1526e50cp-55
    or 0x1.bcb7b1526e50cp-55 < x < 0x1.34413509f79ffp+8.
-
-   FIXME: instead of multiplying x by log(10), giving rh+rl, and then in exp_1
-   we  compute k = round(rh*2^12/log(2)), we could compute k directly as
-   round(x*2^12*log(10)/log(2)) as in exp10_accurate(). But this would require
-   to perform the error analysis again.
 */
 static double
 exp10_fast (double *h, double *l, double x)
