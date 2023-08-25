@@ -467,11 +467,11 @@ static const double P[] = {
    and return the maximal corresponding absolute error.
    We also have |x| > 0x1.0527dbd87e24dp-51.
    With xmin=RR("0x1.0527dbd87e24dp-51",16), the routine
-   exp2m1_fast_tiny_all(xmin,0.125,2^-65.63) in exp2m1.sage returns
-   1.74952121608842e-20 < 2^-65.63, and
-   exp2m1_fast_tiny_all(-0.125,-xmin,2^-65.54) returns
-   1.86402194391062e-20 < 2^-65.54, which proves the relative
-   error is bounded by 2^-65.54. */
+   exp2m1_fast_tiny_all(xmin,0.125,2^-65.73) in exp2m1.sage returns
+   1.63414352331297e-20 < 2^-65.73, and
+   exp2m1_fast_tiny_all(-0.125,-xmin,2^-65.62) returns
+   1.76283772822891e-20 < 2^-65.62, which proves the relative
+   error is bounded by 2^-65.62. */
 static double
 exp2m1_fast_tiny (double *h, double *l, double x)
 {
@@ -501,7 +501,7 @@ exp2m1_fast_tiny (double *h, double *l, double x)
   *l += t + P[1];
   // multiply (h,l) by x
   s_mul (h, l, x, *h, *l);
-  return 0x1.61p-66 * *h; // 2^-65.54 < 0x1.61p-66
+  return 0x1.4ep-66 * *h; // 2^-65.62 < 0x1.4ep-66
 }
 
 /* Given -54 < x < -0x1.0527dbd87e24dp-51 or
