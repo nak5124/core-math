@@ -29,12 +29,14 @@ SOFTWARE.
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
-/* __builtin_roundeven was introduced in gcc 10 */
-#if defined(__GNUC__) && __GNUC__ >= 10
+/* __builtin_roundeven was introduced in gcc 10:
+   https://gcc.gnu.org/gcc-10/changes.html,
+   and in clang 17 */
+#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
 
-#if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || defined(__SSE2__))
+#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__))
 inline double __builtin_roundeven(double x){
    double ix;
 #if defined __AVX__
