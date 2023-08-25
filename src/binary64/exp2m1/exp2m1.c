@@ -475,9 +475,10 @@ static const double P[] = {
 static double
 exp2m1_fast_tiny (double *h, double *l, double x)
 {
-  /* The maximal value of |P[4]*x^4/exp2m1(x)| over [-0.125,0.125]
-     is less than 2^-15.109, thus we can compute the coefficients of degree
-     4 or higher using double precision only. */
+  /* The maximal value of |c4*x^4/exp2m1(x)| over [-0.125,0.125]
+     is less than 2^-15.109, where c4 is the degree-4 coefficient,
+     thus we can compute the coefficients of degree 4 or higher
+     using double precision only. */
   double x2 = x * x, x4 = x2 * x2;
   double c8 = __builtin_fma (P[10], x, P[9]); // degree 8
   double c6 = __builtin_fma (P[8], x, P[7]);  // degree 6
