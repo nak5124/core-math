@@ -54,13 +54,32 @@ asuint64 (double f)
   return u.i;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
+static inline int
+is_equal (double x, double y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint64 (x) == asuint64 (y);
+}
+
 static void
 check (double x)
 {
   double y1 = ref_exp2 (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_exp2 (x);
-  if (asuint64 (y1) != asuint64 (y2))
+  if (! is_equal (y1, y2))
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
