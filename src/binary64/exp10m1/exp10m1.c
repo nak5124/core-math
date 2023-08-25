@@ -68,8 +68,9 @@ __builtin_roundeven (double x)
 }
 #endif
 
-#define LN2H 0x1.62e42fefa39efp-1
-#define LN2L 0x1.abc9e3b39803fp-56
+/* LN10H+LN10L approximates log(10), with error bounded by 2^-106.3 */
+#define LN10H 0x1.26bb1bbb55516p+1
+#define LN10L -0x1.f48ad494ea3e9p-53
 
 /****************** code copied from pow.[ch] ********************************/
 
@@ -415,7 +416,7 @@ static inline void exp_2 (double *hi, double *lo, double x) {
   yh = __builtin_fma (-k, 0x1p-12, x);  // exact, |yh| <= 2^-13
   /* now x = k + yh, thus 2^x = 2^k * 2^yh, and we multiply yh by log(2)
      to use the accurate path of exp() */
-  s_mul (&yh, &yl, yh, LN2H, LN2L);
+  s_mul (&yh, &yl, yh, LN10H, LN10L);
 
   int64_t K = k;
   int64_t M = (K >> 12) + 0x3ff;
@@ -463,9 +464,9 @@ static const double P[] = {
   0x1.e4d552bed5b9cp-28, // degree 10, P[11]
 };
 
-/* |x| <= 0.125, put in h + l a double-double approximation of exp2m1(x),
+/* |x| <= 0.0625, put in h + l a double-double approximation of exp10m1(x),
    and return the maximal corresponding absolute error.
-   We also have |x| > 0x1.0527dbd87e24dp-51.
+   We also have |x| > 0x1.3a7679bab5437p-54.
    With xmin=RR("0x1.0527dbd87e24dp-51",16), the routine
    exp2m1_fast_tiny_all(xmin,0.125,2^-65.63) in exp2m1.sage returns
    1.74952121608842e-20 < 2^-65.63, and
@@ -473,8 +474,10 @@ static const double P[] = {
    1.86402194391062e-20 < 2^-65.54, which proves the relative
    error is bounded by 2^-65.54. */
 static double
-exp2m1_fast_tiny (double *h, double *l, double x)
+exp10m1_fast_tiny (double *h, double *l, double x)
 {
+  *h = *l = 0;
+  return 0;
   /* The maximal value of |P[4]*x^4/exp2m1(x)| over [-0.125,0.125]
      is less than 2^-15.109, thus we can compute the coefficients of degree
      4 or higher using double precision only. */
@@ -503,37 +506,38 @@ exp2m1_fast_tiny (double *h, double *l, double x)
   return 0x1.61p-66 * *h; // 2^-65.54 < 0x1.61p-66
 }
 
-/* Given -54 < x < -0x1.0527dbd87e24dp-51 or
-   0x1.0527dbd87e24dp-51 < x < 1024, put in h + l a
-   double-double approximation of exp2m1(x), and return the maximal
+/* Given -0x1.041704c068efp+4 < x < 0x1.3a7679bab5437p-54 or
+   0x1.3a7679bab5437p-54 < x <= 0x1.34413509f79fep+8, put in h + l a
+   double-double approximation of exp10m1(x), and return the maximal
    corresponding absolute error.
-   The input tiny is true iff |x| <= 0.125. */
+   The input tiny is true iff |x| <= 0.0625. */
 static double
-exp2m1_fast (double *h, double *l, double x, int tiny)
+exp10m1_fast (double *h, double *l, double x, int tiny)
 {
   if (tiny) // |x| <= 0.125
-    return exp2m1_fast_tiny (h, l, x);
+    return exp10m1_fast_tiny (h, l, x);
 
-  /* now -54 < x < -0.125 or 0.125 < x < 1024: we approximate exp(x*log(2))
+  /* now -0x1.041704c068efp+4 < x < -0.0625 or
+     0.0625 < x <= 0x1.34413509f79fep+8: we approximate exp(x*log(10))
      and subtract 1 */
-  s_mul (h, l, x, LN2H, LN2L);
-  /* s_mul (h, l, x, LN2H, LN2L) decomposes into:
-     a_mul (h, t, x, LN2H)
-     l += fma (x, LN2L, t)
+  s_mul (h, l, x, LN10H, LN10L);
+  /* s_mul (h, l, x, LN10H, LN10L) decomposes into:
+     a_mul (h, t, x, LN10H)
+     l += fma (x, LN10L, t)
      The a_mul() call is exact, and the error of the fma() is bounded by
      ulp(l).
-     We have |t| <= ulp(h) <= ulp(LN2H*1024) = 2^-43,
-     |t+x*LN2L| <= 2^-43 * 1024*LN2L < 2^-42.7,
-     thus |l| <= |t| + |x*LN2L| + ulp(t+x*LN2L)
-              <= 2^-42.7 + 2^-95 <= 2^-42.6, and ulp(l) <= 2^-95.
+     We have |t| <= ulp(h) <= ulp(LN10H*0x1.34413509f79fep+8) = 2^-43,
+     |t+x*LN10L| <= 2^-43 * 0x1.34413509f79fep+8*|LN10L| < 2^-42.3,
+     thus |l| <= |t| + |x*LN10L| + ulp(t+x*LN10L)
+              <= 2^-42.3 + 2^-95 <= 2^-42.2, and ulp(l) <= 2^-95.
      Thus:
-     |h + l - x*log(2)| <= |h + l - x*(LN2H+LN2L)| + |x|*|LN2H+LN2L-log(2)|
-                        <= 2^-95 + 1024*2^-110.4 < 2^-94.9 */
+     |h+l - x*log(10)| <= |h+l - x*(LN10H+LN10L)| + |x|*|LN10H+LN10L-log(10)|
+                        <= 2^-95 + 0x1.34413509f79fep+8*2^-106.3 < 2^-94.8 */
   exp_1 (h, l, *h, *l);
   /* h_out + l_out = exp(h + l) * (1 + eps) with |eps| < 2^-74.139
-                   = exp(x*log(2) + eps0) * (1 + eps)
-                   with |eps0| < 2^-94.9 and |eps| < 2^-74.139
-                   = 2^x * (1 + eps1) with |eps1| < 2^-74.138 */
+                   = exp(x*log(10) + eps0) * (1 + eps)
+                   with |eps0| < 2^-94.8 and |eps| < 2^-74.139
+                   = 10^x * (1 + eps1) with |eps1| < 2^-74.138 */
   double u;
   if (x >= 0) // implies h >= 1 and the fast_two_sum pre-condition holds
     fast_two_sum (h, &u, *h, -1.0);
@@ -544,9 +548,9 @@ exp2m1_fast (double *h, double *l, double x, int tiny)
      with the new value of h, thus the total absolute error is bounded
      by eps1*|h_in|+2^-105*|h|.
      Relatively to h this yields eps1*|h_in/h| + 2^-105, where the maximum
-     of |h_in/h| is obtained for x near -0.125, with |2^x/(2^x-1)| < 11.05.
-     We get a relative error bound of 2^-74.138*11.05 + 2^-105 < 2^-70.67. */
-  return 0x1.42p-71 * *h; /* 2^-70.67 < 0x1.42p-71 */
+     of |h_in/h| is obtained for x near -0.0625, with |10^x/(10^x-1)| < 6.47.
+     We get a relative error bound of 2^-74.138*6.47 + 2^-105 < 2^-71.44. */
+  return 0x1.7ap-72 * *h; /* 2^-71.44 < 0x1.7ap-72 */
 }
 
 /* The following is a degree-15 polynomial generated by Sollya
@@ -700,8 +704,10 @@ exp2m1_accurate_tiny (double x)
   return h + l;
 }
 
-static double exp2m1_accurate (double x)
+static double exp10m1_accurate (double x)
 {
+  return 0;
+
   b64u64_u t = {.f = x};
   uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
 
@@ -843,29 +849,29 @@ cr_exp10m1 (double x)
   b64u64_u t = {.f = x};
   uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
 
-  if (__builtin_expect (ux >= 0xc04b000000000000lu, 0))
+  if (__builtin_expect (ux >= 0xc03041704c068ef0lu, 0))
   {
-    // x = -NaN or x <= -54
+    // x = -NaN or x <= -0x1.041704c068efp+4
     if ((ux >> 52) == 0xfff) // -NaN or -Inf
       return (ux > 0xfff0000000000000lu) ? x : -1.0;
-    // for x <= -54, exp2m1(x) rounds to -1 to nearest
+    // for x <= -0x1.041704c068efp+4, exp10m1(x) rounds to -1 to nearest
     return -1.0 + 0x1p-54;
   }
-  else if (__builtin_expect (ax >= 0x4090000000000000lu, 0))
+  else if (__builtin_expect (ax > 0x40734413509f79felu, 0))
   {
-    // x = +NaN or x >= 1024
+    // x = +NaN or x > 0x1.34413509f79fep+8
     if ((ux >> 52) == 0x7ff) // +NaN
       return x;
-    // for x >= 1024, exp2m1(x) rounds to +Inf to nearest
+    // for x > 0x1.34413509f79fep+8, exp10m1(x) rounds to +Inf to nearest
     return 0x1.fffffffffffffp+1023 * x;
   }
-  else if (ax <= 0x3cc0527dbd87e24dlu) // |x| <= 0x1.0527dbd87e24dp-51
-    /* then the second term of the Taylor expansion of 2^x-1 at x=0 is
+  else if (ax <= 0x3c93a7679bab5437lu) // |x| <= 0x1.3a7679bab5437p-54
+    /* then the second term of the Taylor expansion of 10^x-1 at x=0 is
        smaller in absolute value than 1/2 ulp(first term):
-       log(2)*x + log(2)^2*x^2/2 + ... */
+       log(10)*x + log(10)^2*x^2/2 + ... */
   {
     double h, l;
-    /* we use special code when log(2)*|x| < 2^-968, in which case
+    /* we use special code when log(10)*|x| is very small, in which case
        the double-double approximation h+l has its lower part l
        "truncated" */
     if (ax <= 0x3970000000000000lu) // |x| <= 2^-104
@@ -875,8 +881,8 @@ cr_exp10m1 (double x)
         return x;
       // scale x by 2^53
       x = x * 0x1p53;
-      a_mul (&h, &l, LN2H, x);
-      l = __builtin_fma (LN2L, x, l);
+      a_mul (&h, &l, LN10H, x);
+      l = __builtin_fma (LN10L, x, l);
       double h2 = h + l; // round to 53-bit precision
       // scale back, hoping to avoid double rounding
       h2 = h2 * 0x1p-53;
@@ -887,70 +893,14 @@ cr_exp10m1 (double x)
       // add h2 + h * 2^-53
       return __builtin_fma (h, 0x1p-53, h2);
     }
-    else // 2^-104 < |x| <= 0x1.0527dbd87e24dp-51
+    else // 2^-104 < |x| <= 0x1.3a7679bab5437p-54
     {
-      /* The following exceptional cases have at least 51 identical bits after
+      /* The following exceptional cases have at least XXX identical bits after
          the round bit, thus are hard to correctly round with double-double
          arithmetic. They should be sorted by increasing values of the first
          entry (x). */
-#define EXCEPTIONS 56
+#define EXCEPTIONS 0
       static const double exceptions[EXCEPTIONS][3] = {
-    {-0x1.a16826a8e825dp-56, -0x1.21530a306cc85p-56, -0x1.38ac4a67cep-161},
-    {-0x1.8c525b64ed08ep-59, -0x1.12b592f889516p-59, -0x1.7b71d1eep-169},
-    {-0x1.0ede4c1293a9bp-59, -0x1.7780d5e5cf5c5p-60, -0x1.6b820f41efd9p-166},
-    {-0x1.bacdbd3005cd7p-60, -0x1.32ed98e196cf5p-60, -0x1.9b32a24b8p-166},
-    {-0x1.0481d96a2dfcap-61, -0x1.6923c31228cd3p-62, -0x1.59432bd8e301p-169},
-    {-0x1.103fc46963aafp-62, -0x1.796ad95f38488p-63, -0x1.efd4112076edap-170},
-    {-0x1.f1bc3ef3e6f36p-65, -0x1.5900fbf46981dp-65, -0x1.fffffffffffffp-119},
-    {-0x1.d8bedc057858cp-65, -0x1.47aea7608c02bp-65, -0x1.ef8a5d5p-172},
-    {-0x1.986d43391ffdp-65, -0x1.1b19925f9fc06p-65, -0x1.1aada6205370bp-170},
-    {-0x1.6a480c34c7c5bp-70, -0x1.f63a8ce2364f3p-71, -0x1.11e154c338558p-177},
-    {-0x1.03eda6663a4b2p-70, -0x1.6856506d8234ap-71, -0x1.f48368854ffd7p-178},
-    {-0x1.ec44ae4bc644p-74, -0x1.5536e12eb7335p-74, -0x1.fb8acp-181},
-    {-0x1.af82b29eef2ecp-74, -0x1.2b19ae19e4f3ep-74, -0x1.730d414c3032cp-180},
-    {-0x1.0e8e362e16fe6p-74, -0x1.7711d03d5c7bdp-75, -0x1.63020ffb5bda3p-181},
-    {-0x1.5754d81696c42p-76, -0x1.dbf55aa9a7eb9p-77, -0x1.c81798a2dea9ep-184},
-    {-0x1.e2b5692bd0c53p-80, -0x1.4e968fb1b5f41p-80, 0x1.fffffffffffffp-134},
-    {-0x1.0042796d534fdp-81, -0x1.6340571968b67p-82, -0x1.91fa30638e3b8p-188},
-    {-0x1.1e3a6eaa49c6ep-84, -0x1.8ccbeeaab37e4p-85, 0x1p-138},
-    {-0x1.19f9b6ddcc3e9p-84, -0x1.86e6a6125ee5fp-85, -0x1.d80acb1fd9a48p-191},
-    {-0x1.9b219a1974289p-86, -0x1.1cf977003bdd6p-86, -0x1.2a8a589db0f16p-194},
-    {-0x1.b102d7663223fp-87, -0x1.2c23f2bc02277p-87, -0x1.1304b8a0f41cdp-194},
-    {-0x1.3db1f733be456p-87, -0x1.b86b45d2c7c74p-88, -0x1.65075b3baa854p-194},
-    {-0x1.712c6b2a267f5p-90, -0x1.ffc87ce076dfap-91, -0x1.922d1954bd733p-196},
-    {-0x1.8bf6e9484dd46p-91, -0x1.127630515eb89p-91, -0x1.aa2e8ae4b621cp-198},
-    {-0x1.56fe8536a47e9p-91, -0x1.db7daf1e016dfp-92, -0x1.5a5357cd9fecap-199},
-    {-0x1.4abb72eb058bep-91, -0x1.ca7e01c959788p-92, -0x1.9c974667cda43p-198},
-    {-0x1.cf23f6232620ep-94, -0x1.4106468e7b671p-94, -0x1.a1de1e34f2642p-200},
-    {-0x1.0c197520b26f4p-94, -0x1.73aa2cd72b7ccp-95, -0x1.1p-148},
-    {-0x1.83266a65e67b3p-95, -0x1.0c5a1aeb10a7cp-95, -0x1.5d790953d37ccp-202},
-    {-0x1.e48acc7d41976p-97, -0x1.4fdbea8f31897p-97, -0x1.889c4c9736da4p-202},
-    {-0x1.241e7c1327b2ap-97, -0x1.94f6896c09e68p-98, -0x1.ad2fd62d965b7p-203},
-    {-0x1.c48ddf5beba98p-98, -0x1.39afc8fadbb98p-98, -0x1.37656827f3549p-203},
-    {-0x1.1d65d5fc31246p-98, -0x1.8ba5360a2b553p-99, -0x1.0bee24969cff9p-204},
-    {0x1.8a5dd21ef35afp-104, 0x1.115aa0fb29a7p-104, -0x1.1p-157},
-    {0x1.51cc163375e5cp-100, 0x1.d4494fb79c5f9p-101, 0x1.235a318115a7dp-210},
-    {0x1.086cbb0e900cfp-96, 0x1.6e920d043905ep-97, 0x1.0000000000001p-150},
-    {0x1.f8d2954ab444fp-91, 0x1.5dea9642be3ccp-91, 0x1.109cd4f731735p-199},
-    {0x1.8b571f80771bep-90, 0x1.12076e976275dp-90, -0x1.fffffffffffffp-144},
-    {0x1.453f5d718374ap-88, 0x1.c2e3888d4911bp-89, 0x1.fffffffffffffp-143},
-    {0x1.101c8b0d7df57p-85, 0x1.793a04a8764ap-86, 0x1.95385b3628535p-194},
-    {0x1.99ec5e10fdc8bp-83, 0x1.1c231eacb2814p-83, 0x1.f82d478ebc7fap-192},
-    {0x1.530a89e8c2834p-79, 0x1.d602c792ff217p-80, 0x1.4d765bf788c32p-186},
-    {0x1.6102ff22f3431p-78, 0x1.e960cd938fc71p-79, 0x1.fffffffffffffp-133},
-    {0x1.d7430e6a40aap-78, 0x1.46a764f31c407p-78, 0x1.fffffffffffffp-132},
-    {0x1.31677c77b4d02p-62, 0x1.a7615378454e9p-63, -0x1.fffffffffffffp-117},
-    {0x1.760aba9c35ed1p-62, 0x1.03441ed22884fp-62, -0x1.fffffffffffffp-116},
-    {0x1.5f3addb5548c6p-60, 0x1.e6e878c6cb8f4p-61, 0x1.46dbd6dc7b9eep-168},
-    {0x1.9a8401f6d9784p-60, 0x1.1c8c3a93ce469p-60, -0x1.fffffffffffffp-114},
-    {0x1.7382bd647eca8p-59, 0x1.0182f7f3350e1p-59, 0x1.5902345c6d87ep-166},
-    {0x1.8ddd5485a342fp-56, 0x1.13c75940129cbp-56, 0x1.365292846d16p-164},
-    {0x1.2736f975d3b57p-55, 0x1.994129328c805p-56, -0x1.fffffffffffffp-110},
-    {0x1.690ed9e3dd31p-55, 0x1.f4885e22dc71bp-56, -0x1.fffffffffffffp-110},
-    {0x1.e704310d30238p-55, 0x1.5192f360cac0ap-55, 0x1.30562032a2c95p-161},
-    {0x1.47bc52cdc6bc1p-53, 0x1.c6568b98a9929p-54, 0x1.3977497829482p-159},
-    {0x1.d622a201c030bp-52, 0x1.45df797393f11p-52, -0x1.cdcde906092cfp-159},
-    {0x1.02f371449097fp-51, 0x1.66fb73eec9971p-52, 0x1.8d182ad6f54d8p-157},
       };
    int a, b, c;
    for (a = 0, b = EXCEPTIONS; a + 1 != b;)
@@ -966,34 +916,35 @@ cr_exp10m1 (double x)
   if (x == exceptions[a][0])
     return exceptions[a][1] + exceptions[a][2];
 #undef EXCEPTIONS
-      /* the 2nd term of the Taylor expansion of 2^x-1 at x=0 is
-         log(2)^2/2*x^2 */
-      static const double C2 = 0x1.ebfbdff82c58fp-3; // log(2)^2/2
-      a_mul (&h, &l, LN2H, x);
-      l = __builtin_fma (LN2L, x, l);
+      /* the 2nd term of the Taylor expansion of 10^x-1 at x=0 is
+         log(10)^2/2*x^2 */
+      static const double C2 = 0x1.53524c73cea69p+1; // log(10)^2/2
+      a_mul (&h, &l, LN10H, x);
+      l = __builtin_fma (LN10L, x, l);
       /* h+l approximates the first term x*log(2) */
       /* we add C2*x^2 last, so that in case there is a cancellation in
-         LN2L*x+l, it will contribute more bits */
+         LN10L*x+l, it will contribute more bits */
       l += C2 * x * x;
       return h + l;
     }
   }
 
-  /* now -54 < x < -0x1.0527dbd87e24dp-51
-     or 0x1.0527dbd87e24dp-51 < x < 1024 */
+  /* now -0x1.041704c068efp+4 < x < 0x1.3a7679bab5437p-54
+     or 0x1.3a7679bab5437p-54 < x <= 0x1.34413509f79fep+8 */
 
   double err, h, l;
-  err = exp2m1_fast (&h, &l, x, ax <= 0x3fc0000000000000lu);
+  err = exp10m1_fast (&h, &l, x, ax <= 0x3fb0000000000000lu);
   double left = h + (l - err);
   double right = h + (l + err);
   if (left == right)
     return left;
 
-  return exp2m1_accurate (x);
+  return exp10m1_accurate (x);
 }
 
 // fake function as long as GNU libc does not provide it
 double exp10m1 (double x)
 {
-  return exp10 (x) - 1.0;
+  // we don't use exp10 since it is not in C99 (would need _GNU_SOURCE)
+  return pow (10.0, x) - 1.0;
 }
