@@ -865,7 +865,7 @@ cr_exp2m1 (double x)
        log(2)*x + log(2)^2*x^2/2 + ... */
   {
     double h, l;
-    /* we use special code when log(2)*|x| < 2^-968, in which case
+    /* we use special code when log(2)*|x| is very small, in which case
        the double-double approximation h+l has its lower part l
        "truncated" */
     if (ax <= 0x3970000000000000lu) // |x| <= 2^-104
