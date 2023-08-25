@@ -123,6 +123,9 @@ main (int argc, char *argv[])
         }
     }
 
+  ref_init();
+  ref_fesetround (rnd);
+
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp2(x)) */
