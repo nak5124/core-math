@@ -88,6 +88,30 @@ get_random ()
   return v.f;
 }
 
+/* check inexact flag is not set for exact values */
+static void
+check_inexact (void)
+{
+  double x, y;
+  fexcept_t flagp;
+  for (x = 0.0; x <= 22.; x += 1.0)
+  {
+    for (int r = 0; r < 4; r++)
+    {
+      fesetround (rnd1[rnd]);
+      feclearexcept (FE_INEXACT);
+      y = cr_exp10 (x);
+      fegetexceptflag (&flagp, FE_INEXACT);
+      if (flagp)
+      {
+        printf ("Inexact flag set for x=%la\n", x);
+        fflush (stdout);
+        exit (1);
+      }
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -132,6 +156,9 @@ main (int argc, char *argv[])
 
   ref_init();
   ref_fesetround (rnd);
+
+  printf ("Checking inexact flag for exact values\n");
+  check_inexact ();
 
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
