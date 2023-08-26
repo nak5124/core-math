@@ -33,7 +33,6 @@ SOFTWARE.
  */
 
 #include <stdint.h>
-#include <x86intrin.h> // for inexact flag
 
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
@@ -476,7 +475,7 @@ exp10_fast (double *h, double *l, double x)
 /* assumes -0x1.434e6420f4374p+8 < x < -0x1.bcb7b1526e50ep-56
    or 0x1.bcb7b1526e50ep-56 < x < 0x1.34413509f79ffp+8 */
 static double
-exp10_accurate (double x, unsigned int flag)
+exp10_accurate (double x)
 {
 #define EXCEPTIONS 139
 static const double exceptions[EXCEPTIONS][2] = {
@@ -779,8 +778,6 @@ static const char exceptions_rnd[EXCEPTIONS] = {
   {
     double h = exceptions[a][1];
     char l = exceptions_rnd[a];
-    if (l == 0) // exact value, restore inexact flag
-      _mm_setcsr (flag);
     return h + h * 0x1p-54 * (double) l;
   }
   double eh, el;
@@ -836,7 +833,6 @@ static const char exceptions_rnd[EXCEPTIONS] = {
 
 double cr_exp10 (double x)
 {
-  volatile unsigned int flag = _mm_getcsr(); // save control register
   b64u64_u t = {.f = x};
   uint64_t ax = t.u & (~0ul>>1);
   if (__builtin_expect (ax >= 0x40734413509f79fful, 0))
@@ -865,20 +861,22 @@ double cr_exp10 (double x)
   /* now -0x1.434e6420f4374p+8 < x < -0x1.bcb7b1526e50ep-56
      or 0x1.bcb7b1526e50ep-56 < x < 0x1.34413509f79ffp+8 */
 
+  /* For exact values (0 <= x <= 22, x integer), the rounding test will
+     succeed for rounding to nearest, but will set the inexact flag.
+     We thus have to check those values here. */
+  if(__builtin_expect(!(t.u << 16), 0)){
+    long e = t.u >> 52;
+    if(__builtin_expect(e <= 0x403 && e >= 0x3ff && !(t.u << (e+12-0x3ff)), 0)){
+      long m = (t.u&0xfffffffffffff)|1l<<52, i = m>>(0x3ff-e+52);
+      double z = 1.0, s = 10.0;
+      do { if(i&1) z *= s; if(!(i >>= 1)) break; s *= s;} while(1);
+      return z;
+    }
+  }
   double h, l, err;
   err = exp10_fast (&h, &l, x);
   double left =  h + (l - err);
   double right = h + (l + err);
-  if (left == right)
-  {
-    /* For exact values (0 <= x <= 22, x integer), the rounding test will
-       succeed for rounding to nearest, but will set the inexact flag.
-       We thus have to check those values here. */
-    if (__builtin_expect ((ax << 16) == 0, 0))
-      if (__builtin_roundeven (x) == x && 0 <= x && x <= 22)
-        _mm_setcsr (flag);
-    return left;
-  }
-
-  return exp10_accurate (x, flag);
+  if (left == right) return left;
+  return exp10_accurate (x);
 }
