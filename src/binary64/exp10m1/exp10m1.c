@@ -832,7 +832,7 @@ static double exp10m1_accurate (double x)
      0.0625 < x <= 0x1.34413509f79fep+8: we approximate exp(x*log(10))
      and subtract 1 */
 
-#define EXCEPTIONS 73
+#define EXCEPTIONS 80
   /* The following table should be sorted by increasing values of the first
      entry (x). */
   static const double exceptions[EXCEPTIONS][3] = {
@@ -907,6 +907,13 @@ static double exp10m1_accurate (double x)
     {0x1.ap+3, 0x1.2309ce53ffep+43, 0x0p+0},
     {0x1.cp+3, 0x1.6bcc41e8fffcp+46, 0x0p+0},
     {0x1.ep+3, 0x1.c6bf52633fff8p+49, 0x0p+0},
+    {0x1.2d56d650c0f5dp+4, 0x1.7a834f1ec440bp+62, -0x1.89bc92020db2bp-42},
+    {0x1.cc2cc0a466c1dp+4, 0x1.74a9bac0f0f0ap+95, 0x1.23e58aa95471dp-11},
+    {0x1.da8dec55758a9p+4, 0x1.70ef4e077bcc9p+98, 0x1.e16d5a00d4904p-10},
+    {0x1.9bc658ed53988p+6, 0x1.f601dfa307562p+341, 0x1.e0445076e7a83p+236},
+    {0x1.f5b1d27635637p+6, 0x1.914044aa9cfc8p+416, 0x1.5cf990ba3c0f9p+312},
+    {0x1.f9b1d27635637p+6, 0x1.f59055d5443bap+419, 0x1.b437f4e8cb138p+315},
+    {0x1.464c8348af94ap+7, 0x1.f5b55de961a8ep+541, 0x1.1211abe3b7492p+437},
     {0x1.58c1635f834d6p+7, 0x1.8b2dcb245522fp+572, 0x1.fffffffffffffp+518},
     {0x1.cde37694f4d1p+7, 0x1.2210fd5a164b7p+767, -0x1.fffffffffffffp+713},
   };
