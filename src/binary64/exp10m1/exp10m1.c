@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#define TRACE -0x1.9a0826107ce0fp-54
+
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h> // needed to define exp10m1() since glibc does not have it
@@ -479,8 +481,8 @@ static const double P[] = {
 
 /* |x| <= 0.0625, put in h + l a double-double approximation of exp10m1(x),
    and return the maximal corresponding absolute error.
-   We also have |x| > 0x1.3a7679bab5437p-54.
-   With xmin=RR("0x1.3a7679bab5437p-54",16), the routine
+   We also have |x| > 2^-54.
+   With xmin=RR(2^-54), the routine
    exp10m1_fast_tiny_all(xmin,0.0625,2^-68.08) in exp10m1.sage returns
    3.19954871401135e-21 < 2^-68.08, and
    exp10m1_fast_tiny_all(-0.0625,-xmin,2^-67.95) returns
@@ -522,8 +524,8 @@ exp10m1_fast_tiny (double *h, double *l, double x)
   return 0x1.0ap-68 * *h; // 2^-67.95 < 0x1.0ap-68
 }
 
-/* Given -0x1.041704c068efp+4 < x < 0x1.3a7679bab5437p-54 or
-   0x1.3a7679bab5437p-54 < x <= 0x1.34413509f79fep+8, put in h + l a
+/* Given -0x1.041704c068efp+4 < x < -2^-54 or
+   2^-54 < x <= 0x1.34413509f79fep+8, put in h + l a
    double-double approximation of exp10m1(x), and return the maximal
    corresponding absolute error.
    The input tiny is true iff |x| <= 0.0625. */
@@ -593,7 +595,7 @@ static const double Q[] = {
   0x1.68862b132b6e2p-28,                         // degree 17: Q[24]
 };
 
-/* Accurate path for 0x1.3a7679bab5437p-54 < |x| <= 0.0625. */
+/* Accurate path for 2^-54 < |x| <= 0.0625. */
 static double
 exp10m1_accurate_tiny (double x)
 {
@@ -672,8 +674,8 @@ exp10m1_accurate_tiny (double x)
   return h + l;
 }
 
-/* assume -0x1.041704c068efp+4 < x < 0x1.3a7679bab5437p-54
-   or 0x1.3a7679bab5437p-54 < x <= 0x1.34413509f79fep+8 */
+/* assume -0x1.041704c068efp+4 < x < -2^-54
+   or 2^-54 < x <= 0x1.34413509f79fep+8 */
 static double exp10m1_accurate (double x)
 {
   b64u64_u t = {.f = x};
@@ -686,25 +688,82 @@ static double exp10m1_accurate (double x)
      0.0625 < x <= 0x1.34413509f79fep+8: we approximate exp(x*log(10))
      and subtract 1 */
 
-#define EXCEPTIONS 16
+#define EXCEPTIONS 73
   /* The following table should be sorted by increasing values of the first
      entry (x). */
   static const double exceptions[EXCEPTIONS][3] = {
+    {-0x1.4657d88b39382p+3, -0x1.ffffffff74aebp-1, 0x1p-54},
+    {-0x1.d3c1633a449a3p+2, -0x1.fffffe5a00421p-1, 0x1.fffffffffffffp-55},
+    {-0x1.1416c72a588a6p-1, -0x1.6c13e386e97bp-1, -0x1.b2a409fb9c0bcp-121},
+    {-0x1.c03419f51b93ep-2, -0x1.451dcbdeba42p-1, 0x1.5be35b21b3043p-109},
+    {-0x1.54998a473a961p-2, -0x1.11f554a293bf6p-1, 0x1.713bb17088389p-105},
     {-0x1.f80af51f49489p-3, -0x1.bafcdba0cdf8dp-2, -0x1.ca26eb05ddc4p-107},
+    {-0x1.c360cdde773f7p-3, -0x1.978bd96351a64p-2, 0x1.2411f7a782ef7p-105},
+    {-0x1.81847c8c6deaap-3, -0x1.682ab28ab2348p-2, 0x1.c55507cd7cf97p-104},
     {-0x1.7c356ac2648c6p-3, -0x1.6431514cfe053p-2, 0x1.b7d9e1a5ca32ep-105},
     {-0x1.3a4390b7f0e6fp-3, -0x1.30cc55faf8361p-2, 0x1.9e380aabe2b31p-104},
+    {-0x1.e28f354821527p-4, -0x1.e6967348bdc71p-3, 0x1.2c2a60f82c6d5p-105},
     {-0x1.e01610b3c2533p-4, -0x1.e46a51c73c432p-3, -0x1.4fd2614c5916bp-105},
+    {-0x1.cae39e6f4462cp-4, -0x1.d1ac1214c99a4p-3, 0x1.b9e5e64846b6ap-104},
+    {-0x1.c8ca6663bc852p-4, -0x1.cfcdecefa1fe5p-3, 0x1.1a047a7159994p-104},
+    {-0x1.a9cf11e5adbc5p-4, -0x1.b3f8b5bf45164p-3, -0x1.e29cc5e9bb647p-109},
+    {-0x1.975e407d17a12p-4, -0x1.a32c690c87169p-3, 0x1.dc87da3b927cap-107},
+    {-0x1.918f2be0ea57p-4, -0x1.9dd8893b1f93dp-3, 0x1.ceb965cfc1225p-107},
+    {-0x1.79082f011554ap-4, -0x1.8728696d883c8p-3, 0x1.e842d1e6e6e34p-106},
+    {-0x1.3b9beaf2ede87p-4, -0x1.4cf305f4f1a21p-3, 0x1.97b0f3b7359bap-105},
+    {-0x1.2e839bb3928dcp-4, -0x1.40470ea470675p-3, 0x1.6af8d69621496p-104},
+    {-0x1.29d3570ae8186p-4, -0x1.3bb7c33a8efcbp-3, 0x1.da38bf365b836p-106},
+    {-0x1.1f7349771e70dp-4, -0x1.3195b695980b5p-3, -0x1.3a935b61a8b55p-107},
+    {0x1.15a0f7c4a8687p-4, 0x1.59eca012a98e6p-3, -0x1.f90d2cf88b97ep-105},
+    {0x1.1dfc00e063953p-4, 0x1.653203efd2f6bp-3, 0x1.c965e6a330adp-105},
+    {0x1.3593d47692699p-4, 0x1.854ecf2deaf4dp-3, -0x1.e4911979fceap-107},
+    {0x1.3fece79619d8bp-4, 0x1.9386fff83559dp-3, 0x1.d642453cf3545p-105},
     {0x1.561b9bb7ad057p-4, 0x1.b24a081d6bba4p-3, -0x1.0f8432de18ce9p-106},
+    {0x1.5b9213861e40dp-4, 0x1.b9ec7ee17135dp-3, 0x1.e939ea73fefdbp-105},
+    {0x1.6c77a0615e007p-4, 0x1.d1afe8ddd34d6p-3, -0x1.ff6a2360d258ap-105},
+    {0x1.6ededcebc7a0ep-4, 0x1.d515e03fe183ap-3, 0x1.1b45c68fb7eefp-104},
+    {0x1.73f44c55aa9c8p-4, 0x1.dc4a0771764fap-3, 0x1.5b59fcdc0550bp-106},
+    {0x1.8300c1be3553p-4, 0x1.f1bc037ab49eep-3, -0x1.67f93aa322222p-105},
+    {0x1.87c580aa3de1fp-4, 0x1.f8915ca7db653p-3, -0x1.8f24dea456a24p-108},
+    {0x1.ba4d6b3e1398dp-4, 0x1.210ee0144e997p-2, -0x1.fffffffffffffp-56},
     {0x1.d63ff6db3698p-4, 0x1.35d9a558ce0c2p-2, 0x1.ad7113ba10482p-106},
+    {0x1.1a45d0d5b0a79p-3, 0x1.7e76a0bf6e7d4p-2, 0x1.ad336373da19dp-105},
+    {0x1.515f550769a2bp-3, 0x1.d8590df3e9d2bp-2, 0x1.113452a36ab28p-104},
+    {0x1.e0df7a9a954ccp-3, 0x1.6f2aaa9d3d58p-1, -0x1.4c92a870f8e27p-104},
     {0x1.12e02aa997af2p-2, 0x1.b5f494d0d82ffp-1, -0x1.469dba5dae6a3p-106},
     {0x1.897b402763181p-2, 0x1.6c274b11a4991p+0, 0x1.c84729725389dp-105},
     {0x1.9a7f5bd8f6bd8p-2, 0x1.84578bd34a91dp+0, -0x1.012e7fffa8537p-104},
     {0x1.aa6e0810a7c29p-2, 0x1.9bd82e7aa167dp+0, -0x1.cff14b231bf42p-111},
+    {0x1.c414aa8bd83b1p-2, 0x1.c37f6b36f624ep+0, 0x1.d706652e05873p-105},
+    {0x1.d7d271ab4eeb4p-2, 0x1.e39c8e5d7099p+0, -0x1.0fa6863d41876p-117},
+    {0x1.1fe5f30572361p-1, 0x1.533582532e5bp+1, 0x1.b2dc31ea1fc54p-106},
     {0x1.522c9f19cc202p-1, 0x1.c9be0d3d8d8f5p+1, 0x1.4460504197e99p-106},
-    {0x1p+0,0x1.2p+3,0},
+    {0x1.e107654fb6916p-1, 0x1.ecc99d9421f34p+2, -0x1.d9dce9d4d6d4cp-103},
+    {0x1p+0, 0x1.2p+3, 0x0p+0},
+    {0x1.154b3463f846p+0, 0x1.638d08649702dp+3, 0x1.553c239d8c386p-103},
+    {0x1.1daf94cf0bd01p+0, 0x1.81efc3ce340d2p+3, 0x1.0564e2abb55fbp-102},
+    {0x1.75f49c6ad3badp+0, 0x1.be41d8fa665fap+4, -0x1.539027cc91e93p-114},
+    {0x1.a3c782d4f54fcp+0, 0x1.5505adfa6a8a1p+5, 0x1.c0afe5567f632p-101},
+    {0x1.cc30b915ec8c4p+0, 0x1.ee0165d5bc3e1p+5, 0x1.165e71f25cbfep-102},
+    {0x1.dda978845a2bep+0, 0x1.21b7380cfa53ep+6, 0x1.390b22326b68bp-99},
+    {0x1p+1, 0x1.8cp+6, 0x0p+0},
+    {0x1.8p+1, 0x1.f38p+9, 0x0p+0},
+    {0x1.ee9674267e65fp+1, 0x1.c8dd39b9d8a37p+12, -0x1.d6a2e7398745cp-97},
     {0x1p+2, 0x1.3878p+13, 0x0p+0},
-    {0x1.2d5494eb1dd13p+2, 0x1.8f169a48a6a87p+15, -0x1.fffffffffffffp-39},
-    {0x1.58c1635f834d6p+7, 0x1.8b2dcb245522fp+572, 0x1.fffffffffffffp518},
+    {0x1.2d5494eb1dd13p+2, 0x1.8f169a48a6a87p+15, -0x1p-38},
+    {0x1.4p+2, 0x1.869fp+16, 0x0p+0},
+    {0x1.60266cc425d1p+2, 0x1.367cc49688476p+18, -0x1.d1269fa7b2c2ep-87},
+    {0x1.8p+2, 0x1.e847ep+19, 0x0p+0},
+    {0x1.cp+2, 0x1.312cfep+23, 0x0p+0},
+    {0x1p+3, 0x1.7d783fcp+26, 0x0p+0},
+    {0x1.2p+3, 0x1.dcd64ff8p+29, 0x0p+0},
+    {0x1.4p+3, 0x1.2a05f1ff8p+33, 0x0p+0},
+    {0x1.6p+3, 0x1.74876e7ffp+36, 0x0p+0},
+    {0x1.8p+3, 0x1.d1a94a1ffep+39, 0x0p+0},
+    {0x1.ap+3, 0x1.2309ce53ffep+43, 0x0p+0},
+    {0x1.cp+3, 0x1.6bcc41e8fffcp+46, 0x0p+0},
+    {0x1.ep+3, 0x1.c6bf52633fff8p+49, 0x0p+0},
+    {0x1.58c1635f834d6p+7, 0x1.8b2dcb245522fp+572, 0x1p+519},
     {0x1.cde37694f4d1p+7, 0x1.2210fd5a164b7p+767, -0x1.fffffffffffffp+713},
   };
   int a, b, c;
@@ -757,10 +816,7 @@ cr_exp10m1 (double x)
     // for x > 0x1.34413509f79fep+8, exp10m1(x) rounds to +Inf to nearest
     return 0x1.fffffffffffffp+1023 * x;
   }
-  else if (ax <= 0x3c93a7679bab5437lu) // |x| <= 0x1.3a7679bab5437p-54
-    /* then the second term of the Taylor expansion of 10^x-1 at x=0 is
-       smaller in absolute value than 1/2 ulp(first term):
-       log(10)*x + log(10)^2*x^2/2 + ... */
+  else if (ax <= 0x3c90000000000000lu) // |x| <= 2^-54
   {
     double h, l;
     /* we use special code when log(10)*|x| is very small, in which case
@@ -785,15 +841,88 @@ cr_exp10m1 (double x)
       // add h2 + h * 2^-53
       return __builtin_fma (h, 0x1p-53, h2);
     }
-    else // 2^-104 < |x| <= 0x1.3a7679bab5437p-54
+    else // 2^-104 < |x| <= 2^-54
     {
       /* The following exceptional cases have at least XXX identical bits after
          the round bit, thus are hard to correctly round with double-double
          arithmetic. They should be sorted by increasing values of the first
          entry (x). */
-#define EXCEPTIONS 1
+#define EXCEPTIONS 74
       static const double exceptions[EXCEPTIONS][3] = {
-        {0,0,0},
+    {-0x1.fb30f6a48e36dp-56, -0x1.23f6777b3aab6p-54, 0x1.c9049426dp-164},
+    {-0x1.685c1eb39c333p-58, -0x1.9ee12d961d365p-57, -0x1.fffffffffffffp-111},
+    {-0x1.0eb03b1d1c1a6p-58, -0x1.37a43bf147b79p-57, -0x1.fffffffffffffp-111},
+    {-0x1.de5cc2d9e4c75p-59, -0x1.135e14ad33d19p-57, 0x1.55fe8574b8p-163},
+    {-0x1.b0b5af7e5340bp-60, -0x1.f22ceb2213527p-59, 0x1.32f9e35c4p-165},
+    {-0x1.83b8b09d1b578p-60, -0x1.be617cbda3ea9p-59, 0x1.ed75bd98p-168},
+    {-0x1.62119eb2ea68dp-61, -0x1.97a3057b5a81cp-60, 0x1.f807d14bcp-166},
+    {-0x1.03ed8b9475d7cp-63, -0x1.2b40c8f9b7a5fp-62, 0x1.5d3bd6e6p-169},
+    {-0x1.50a1631dee563p-64, -0x1.838f622f221c3p-63, 0x1.4cf74c2ep-169},
+    {-0x1.65578b44687e7p-67, -0x1.9b67b79904b41p-66, -0x1.fffffffffffffp-120},
+    {-0x1.e9d5413b9429cp-68, -0x1.19f87660814a5p-66, 0x1.fffffffffffffp-120},
+    {-0x1.750e7115f8287p-68, -0x1.ad7f3fd559d8fp-67, -0x1.fffffffffffffp-121},
+    {-0x1.bc4d23c7fd8bfp-70, -0x1.ff8553921376fp-69, 0x1.231e03p-176},
+    {-0x1.47f35080e188cp-70, -0x1.799120b676ad3p-69, 0x1.b31f98p-179},
+    {-0x1.5a26e7b53b899p-71, -0x1.8e85ae04cbfacp-70, 0x1.8efd07p-176},
+    {-0x1.8f68cec0f08dfp-72, -0x1.cbd64a44efacdp-71, 0x1.0e8c4p-179},
+    {-0x1.aa4392ef39e84p-73, -0x1.eac128481f2b7p-72, -0x1.ffffffffffffep-126},
+    {-0x1.273e6e3b4a246p-75, -0x1.53e97d2e3f154p-74, 0x1.74d98p-183},
+    {-0x1.ecf3868caf6bcp-76, -0x1.1bc3fbe7a1cbcp-74, 0x1.48923p-180},
+    {-0x1.c238118690989p-77, -0x1.032ab9ed5b1a4p-75, 0x1.b7fdp-183},
+    {-0x1.82ffc34ee47dep-81, -0x1.bd8c950c70705p-80, -0x1.fffffffffffffp-134},
+    {-0x1.3bcdb2fe94d83p-82, -0x1.6b950d07e9494p-81, 0x1.f95p-187},
+    {-0x1.5f04863e59966p-83, -0x1.941fc08001e0dp-82, 0x1.a2p-189},
+    {-0x1.2395af5f26bb9p-86, -0x1.4fb305548a003p-85, 0x1.a4p-193},
+    {-0x1.5a71e35b53479p-90, -0x1.8edc01d37cfbap-89, 0x1.58p-195},
+    {-0x1.578c0989f96cap-91, -0x1.8b85eb7697072p-90, 0x1.7p-196},
+    {-0x1.8a974bb84877ep-92, -0x1.c64a2838a7d8fp-91, -0x1.fffffffffffffp-145},
+    {-0x1.83341bf6ecae1p-92, -0x1.bdc8d91fd83d9p-91, -0x1.fffffffffffffp-145},
+    {-0x1.4b4c0fd82f4f7p-92, -0x1.7d6b7ea54de4bp-91, 0x1p-199},
+    {-0x1.5707e3ec79c93p-94, -0x1.8aedc7adebba1p-93, 0x1p-199},
+    {-0x1.9e1fb2f2b0e2ep-95, -0x1.dcc71586d1773p-94, 0x1p-199},
+    {-0x1.4302c9e7107f6p-98, -0x1.73e149e682b6cp-97, 0x1p-199},
+    {-0x1.ece7aa850e72fp-99, -0x1.1bbd2839bf225p-97, -0x1.fffffffffffffp-151},
+    {-0x1.052ae507f2c42p-99, -0x1.2cae25a71122fp-98, 0x1p-199},
+    {0x1.02531caaf973p-104, 0x1.2968419e1831fp-103, -0x1.cda8d50851098p-211},
+    {0x1.07f0beaeb0f58p-104, 0x1.2fdf646f71c3bp-103, 0x1.fffffffffffffp-157},
+    {0x1.0d8e60b26878p-104, 0x1.36568740cb558p-103, -0x1.cdd9b4c7facbp-212},
+    {0x1.87ae68d5b1067p-101, 0x1.c2f0933a01643p-100, -0x1p-199},
+    {0x1.11c01e87a351fp-100, 0x1.3b2ab80da86ecp-99, 0x1p-152},
+    {0x1.d3757cacc0d85p-100, 0x1.0d174b51f7361p-98, -0x1p-199},
+    {0x1.0ab698556f26ep-99, 0x1.3310a337d2648p-98, -0x1p-199},
+    {0x1.cf31d0214adeap-99, 0x1.0aa2e04b3c815p-97, -0x1p-199},
+    {0x1.aea42d608df93p-97, 0x1.efcb4cb07acf9p-96, -0x1.faf03b35632a3p-201},
+    {0x1.4b5c9dde66d79p-92, 0x1.7d7e8dd9fb4d8p-91, -0x1.8p-198},
+    {0x1.e629bc6da15cdp-92, 0x1.17dba1c65a64p-90, -0x1.dp-195},
+    {0x1.1b36a9020b0f1p-91, 0x1.460fc5b3d0553p-90, -0x1.ap-196},
+    {0x1.a3ceb72d3cecfp-91, 0x1.e3523bd7c33e3p-90, 0x1.fffffffffffffp-144},
+    {0x1.eb8380da46f64p-91, 0x1.1af022242c32dp-89, -0x1.8p-196},
+    {0x1.9901cfae3e0cp-89, 0x1.d6e305234d12cp-88, -0x1.98p-194},
+    {0x1.dad822d1bc404p-89, 0x1.1157a3a7499a4p-87, -0x1.aep-192},
+    {0x1.1765479305154p-85, 0x1.41aa857242e05p-84, -0x1.96p-190},
+    {0x1.c8c98ca7aa12bp-84, 0x1.06f2aa1ee88b1p-82, 0x1.fffffffffffffp-136},
+    {0x1.c740004de1c9fp-83, 0x1.06101eb546d99p-81, 0x1.fffffffffffffp-135},
+    {0x1.0c281d12594b4p-80, 0x1.34ba0fbcc4b05p-79, 0x1.fffffffffffffp-133},
+    {0x1.737dd85c5c2b9p-78, 0x1.abb20ba53bdefp-77, 0x1.fffffffffffffp-131},
+    {0x1.c8a8eb58ffa81p-75, 0x1.06dfe1920e02ap-73, -0x1.43edcp-179},
+    {0x1.01c1779e5526ep-72, 0x1.28c0939e3c4a1p-71, -0x1.57b938p-178},
+    {0x1.02cf16751917ep-70, 0x1.29f6fd191d3f8p-69, -0x1.4ce94p-179},
+    {0x1.f4cba75c44271p-69, 0x1.2047f49b947dbp-67, -0x1.7c22dcp-174},
+    {0x1.6b7ea50916814p-67, 0x1.a27d1e6b578afp-66, -0x1.12d386p-172},
+    {0x1.3a63acf3d3444p-66, 0x1.69f4417ded8fcp-65, -0x1.f2f29p-174},
+    {0x1.3d9fff014ee3ap-66, 0x1.6dade523142d8p-65, -0x1.1946e0ap-170},
+    {0x1.433c63c1f92bcp-66, 0x1.74239ab18a355p-65, 0x1.fffffffffffffp-119},
+    {0x1.cbfc3d7a26e73p-66, 0x1.08c9f0d7b2f8dp-64, -0x1.f89c467p-171},
+    {0x1.14fe34b9160dbp-65, 0x1.3ee6643e94174p-64, 0x1p-117},
+    {0x1.77a144f79c2ddp-65, 0x1.b075c0b2a07f1p-64, 0x1.fffffffffffffp-118},
+    {0x1.80d2a2a882e81p-65, 0x1.bb0b2a5a28b2fp-64, -0x1.08236988p-170},
+    {0x1.ae448ad5c465fp-62, 0x1.ef5d321effcefp-61, 0x1.fffffffffffffp-115},
+    {0x1.e47bc515bd69ep-62, 0x1.16e41f9dc2092p-60, -0x1.6c90b69p-167},
+    {0x1.4154e55e50477p-60, 0x1.71f25b3cf4627p-59, 0x1.fffffffffffffp-113},
+    {0x1.b0cfaf232f844p-60, 0x1.f24ad9b9f6b1bp-59, 0x1.fffffffffffffp-113},
+    {0x1.e73eb1f1b7f2ap-60, 0x1.187b0ff7df629p-58, -0x1.f42eb87e8p-166},
+    {0x1.735b5da21781bp-59, 0x1.ab8a597feec6fp-58, -0x1.148856ac4p-165},
+    {0x1.9f388b5863db3p-56, 0x1.de0a6b501ba08p-55, 0x1.561de50cp-166},
       };
    int a, b, c;
    for (a = 0, b = EXCEPTIONS; a + 1 != b;)
@@ -817,13 +946,13 @@ cr_exp10m1 (double x)
       /* h+l approximates the first term x*log(2) */
       /* we add C2*x^2 last, so that in case there is a cancellation in
          LN10L*x+l, it will contribute more bits */
-      l += C2 * x * x;
+      l = __builtin_fma (C2 * x, x, l);
       return h + l;
     }
   }
 
-  /* now -0x1.041704c068efp+4 < x < 0x1.3a7679bab5437p-54
-     or 0x1.3a7679bab5437p-54 < x <= 0x1.34413509f79fep+8 */
+  /* now -0x1.041704c068efp+4 < x < -2^-54
+     or 2^-54 < x <= 0x1.34413509f79fep+8 */
 
   double err, h, l;
   err = exp10m1_fast (&h, &l, x, ax <= 0x3fb0000000000000lu);
