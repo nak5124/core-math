@@ -596,7 +596,7 @@ static inline int log_1 (double *h, double *l, double x) {
   p_1 (&ph, &pl, z);
   fast_sum (h, l, *h, ph, *l + pl);
 
-  if (_e == 0)
+  if (_e == 0 && __builtin_fabs (*l) > __builtin_fabs (*h) * 0x1p-24)
   {
     fast_two_sum (h, l, *h, *l);
     return 1;
