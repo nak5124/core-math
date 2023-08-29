@@ -134,8 +134,9 @@ fi
 
 # for clang we might want to add -ffp-contract=on to enable FMA
 if [ "$CFLAGS" == "" ]; then
-   export CFLAGS="-O3 -march=native"
+   CFLAGS="-O3 -march=native"
 fi
+export CFLAGS
 
 if [ -n "$LIBM" ]; then
     BACKUP_LIBM="$LIBM"
