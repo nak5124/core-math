@@ -262,3 +262,20 @@ def analyze_x_plus_p1a(rel=false,verbose_e=[],Xmax=0.03125):
          print ("e=", e, "err=", log(err)/log(2.))
          maxerr = err
 
+# print bacsel command line to find potential values of x
+# such that log1p(x) does not round to the same value as log(x)
+# in the binade 2^(e-1) <= x < 2^e
+def compare_log(e,nthreads=64):
+   # log(x+1) = log(x) + log(1+1/x)
+   # thus |log(x+1) - log(x)| <= |log(1+1/x)| < 1/x <= 1/2^(e-1)
+   # if log(x+1) and log(x) do not round to the same value,
+   # then log(x) is at distance < 1/2^(e-1) from a rounding boundary
+   x = RR(2^(e-1))
+   y = log(x)
+   t = RR(1/2^(e-1))/y.ulp()
+   m = floor(-log(t)/log(2.))
+   prec = max(128,53 + m)
+   # bacsel should be compiled with -DLOG
+   # print ("./bacsel -rnd_mode all -prec " + str(prec) + " -n 53 -nn 53 -m " + str(m) + " -t 30 -t0 4503599627370496 -t1 9007199254740992 -d 2 -alpha 2 -e_in " + str(e) + " -nthreads " + str(nthreads))
+   print ("./compare_log.sh " + str(prec) + " " + str(m) + " " + str(e))
+
