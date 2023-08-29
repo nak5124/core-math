@@ -1131,7 +1131,7 @@ check_tiny (void)
   for (int i = 0; i < N_WORST; i++)
   {
     double x = T[i];
-    for (int e = -1020; e <= -106; e++)
+    for (int e = -1021; e <= -106; e++)
     {
       // check binade 2^(e-1) <= |x| < 2^e
       check (ldexp (x, e + 1021));
