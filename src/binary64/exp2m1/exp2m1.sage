@@ -1,3 +1,5 @@
+exp2m1 = lambda x: 2^x-1
+
 def doit_bacsel_subnormal():
    for e in [-1073..-1022]:
       nn = 1074 + e # number of bits of output
@@ -58,7 +60,7 @@ def exp2m1_fast_tiny(xmin=-0.125,xmax=0.125,verbose=false,rel=false):
    P = ["0x1.62e42fefa39efp-1","0x1.abd1697afcaf8p-56","0x1.ebfbdff82c58fp-3","-0x1.5e5a1d09e1599p-57","0x1.c6b08d704a0bfp-5","0x1.3b2ab6fba4e78p-7","0x1.5d87fe78a84e6p-10","0x1.430912f86a48p-13","0x1.ffcbfbc1f2b36p-17","0x1.62c0226c7f6d1p-20","0x1.b539529819e63p-24","0x1.e4d552bed5b9cp-28"]
    P = [RR(x,16) for x in P]
    x = RIF(xmin,xmax)
-   err0 = 2^-68.559*max(abs(expm1(xmin)),abs(expm1(xmax)))
+   err0 = 2^-68.559*max(abs(exp2m1(xmin)),abs(exp2m1(xmax)))
    if verbose:
       print ("err0=", log(err0)/log(2.))
    # x2 = x * x
