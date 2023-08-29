@@ -832,7 +832,7 @@ static double exp10m1_accurate (double x)
      0.0625 < x <= 0x1.34413509f79fep+8: we approximate exp(x*log(10))
      and subtract 1 */
 
-#define EXCEPTIONS 80
+#define EXCEPTIONS 81
   /* The following table should be sorted by increasing values of the first
      entry (x). */
   static const double exceptions[EXCEPTIONS][3] = {
@@ -915,6 +915,7 @@ static double exp10m1_accurate (double x)
     {0x1.f9b1d27635637p+6, 0x1.f59055d5443bap+419, 0x1.b437f4e8cb138p+315},
     {0x1.464c8348af94ap+7, 0x1.f5b55de961a8ep+541, 0x1.1211abe3b7492p+437},
     {0x1.58c1635f834d6p+7, 0x1.8b2dcb245522fp+572, 0x1.fffffffffffffp+518},
+    {0x1.cbe37694f4d1p+7, 0x1.d01b2ef68a124p+763, 0x1.91f3dd2aff9d7p+657},
     {0x1.cde37694f4d1p+7, 0x1.2210fd5a164b7p+767, -0x1.fffffffffffffp+713},
   };
   int a, b, c;

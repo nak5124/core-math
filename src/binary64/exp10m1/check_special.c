@@ -92,7 +92,7 @@ check (double x)
 
 #define N_WORST 1027
 
-/* worst cases in [2^-1022,2^-1021) extracted from exp10m1.wc */
+/* worst cases in [2^-1022,2^-1021) */
 static double T[1039] = {
 -0x1.ff3e6374ecc2cp-1022,
 -0x1.fef6a89c0043cp-1022,
