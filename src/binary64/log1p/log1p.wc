@@ -1,4 +1,9 @@
-0x1.1f95f5d97b4b6p-6
+# special values
+nan
++inf
+-inf
++0
+-0
 # worst cases for atan(x) computed by Vincent Lefèvre
 # (https://www.vinc17.net/research/testlibm/testlibm-data.xz)
 # update from 2020-11-27
@@ -7553,10 +7558,11 @@
 -0x1.fffffffffffffp-51
 -0x1.fffffffffffffp-52
 # the following are non-regression input tests
+0x1.1f95f5d97b4b6p-6
 0x1.94d915fa88734p-51
 -0x0.1bc6879ea14c5p-1022
 0x0.02efe618534fbp-1022
-# the following are worst-case for log (not already above)
+# the following are worst cases for log (not already above)
 0x1.a6ae5142326b5p+0
 0x1.a6ba95b1520f9p+0
 0x1.a702b2ce91b3p+0

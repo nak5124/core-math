@@ -815,8 +815,9 @@ double
 cr_log1p (double x)
 {
   d64u64 v = {.f = x};
-  int e = (v.u >> 52) - 0x3ff;
-  if (e == 0x400 || e == 0xc00 || x <= -1.0) /* NaN/Inf or x <= -1 */
+  int e = ((v.u >> 52) & 0x7ff) - 0x3ff;
+  if (__builtin_expect (e == 0x400 || x == 0 || x <= -1.0, 0))
+    /* case NaN/Inf, +/-0 or x <= -1 */
   {
     if (x <= -1.0) /* we use the fact that NaN < -1 is false */
     {
@@ -826,7 +827,7 @@ cr_log1p (double x)
       else
         return 1.0 / -0.0;
     }
-    return x; /* NaN or +Inf */
+    return x; /* +/-0, NaN or +Inf */
   }
   /* now x > -1 */
   /* normalize v in [1,2) */
