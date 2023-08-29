@@ -90,10 +90,10 @@ check (double x)
   }
 }
 
-#define N_WORST 1027
+#define N_WORST 1039
 
 /* worst cases in [2^-1022,2^-1021) */
-static double T[1039] = {
+static double T[N_WORST] = {
 -0x1.ff3e6374ecc2cp-1022,
 -0x1.fef6a89c0043cp-1022,
 -0x1.ff6240e163024p-1022,
@@ -1146,7 +1146,7 @@ check_tiny (void)
   for (int i = 0; i < N_WORST; i++)
   {
     double x = T[i];
-    for (int e = -1020; e <= -104; e++)
+    for (int e = -1021; e <= -104; e++)
     {
       // check binade 2^(e-1) <= |x| < 2^e
       check (ldexp (x, e + 1021));
@@ -1199,6 +1199,9 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
+  printf ("Checking tiny worst cases\n");
+  check_tiny ();
+
   printf ("Checking results in subnormal range\n");
   int64_t n0 = 1;
   int64_t n1 = 1955888466868548ul;
@@ -1212,9 +1215,6 @@ main (int argc, char *argv[])
     check (ldexp ((double) n, -1074));
     check (ldexp ((double) -n, -1074));
   }
-
-  printf ("Checking tiny worst cases\n");
-  check_tiny ();
 
   printf ("Checking random values\n");
 #define N 1000000000UL /* total number of tests */
