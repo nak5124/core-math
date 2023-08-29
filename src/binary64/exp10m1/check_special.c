@@ -1199,6 +1199,20 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
+  printf ("Checking results in subnormal range\n");
+  int64_t n0 = 1;
+  int64_t n1 = 1955888466868548ul;
+#define SKIP 20000
+  n0 += getpid () % SKIP;
+#pragma omp parallel for
+  for (int64_t n = n0; n < n1; n += SKIP)
+  {
+    ref_init ();
+    ref_fesetround (rnd);
+    check (ldexp ((double) n, -1074));
+    check (ldexp ((double) -n, -1074));
+  }
+
   printf ("Checking tiny worst cases\n");
   check_tiny ();
 
