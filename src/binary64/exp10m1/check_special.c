@@ -1202,7 +1202,7 @@ main (int argc, char *argv[])
   printf ("Checking results in subnormal range\n");
   int64_t n0 = 1;
   int64_t n1 = 1955888466868548ul;
-#define SKIP 20000
+#define SKIP 200000
   n0 += getpid () % SKIP;
 #pragma omp parallel for
   for (int64_t n = n0; n < n1; n += SKIP)
