@@ -651,7 +651,7 @@ cr_log1p_accurate (double x)
 {
   dint64_t X, Y, C;
 
-#define EXCEPTIONS 34
+#define EXCEPTIONS 38
   static double T[EXCEPTIONS][3] = {
     {-0x1.ee5c09701a8e8p-9, -0x1.ef4b4d559442ep-9, -0x1.51a199b84acd9p-110},
     {-0x1.ec50c1d0101dfp-9, -0x1.ed3e0b991b5dbp-9, 0x1.fffffffffffe6p-63},
@@ -679,7 +679,11 @@ cr_log1p_accurate (double x)
     {-0x1.dffffffffffb5p-46, -0x1.e000000000025p-46, -0x1.fffffffffffffp-100},
     {-0x1.7ffffffffffdp-46, -0x1.8000000000018p-46, 0x1.2000000000056p-187},
     {-0x1.1ffffffffffe5p-46, -0x1.200000000000dp-46, -0x1.fffffffffffffp-100},
+    {-0x1.7ffffffffffe8p-47, -0x1.800000000000cp-47, 0x1.200000000002bp-191},
+    {-0x1.7fffffffffff4p-48, -0x1.8000000000006p-48, 0x1.2000000000016p-195},
+    {-0x1.7fffffffffffap-49, -0x1.8000000000003p-49, 0x1.2000000000008p-199},
     {-0x1.7fffffffffffdp-50, -0x1.8000000000001p-50, -0x1.fffffffffffffp-104},
+    {-0x1.6a09e667f3bccp-52, -0x1.6a09e667f3bcdp-52, -0x1.278c3417a93d7p-159},
     {0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104},
     {0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100},
     {0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100},
