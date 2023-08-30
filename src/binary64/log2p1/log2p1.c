@@ -25,6 +25,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#define TRACE 0x1.bf7bf5978d51fp-92
+
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h> // for log2
@@ -529,6 +531,15 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
   *lo = __builtin_fma(a, b, -*hi);
 }
 
+// Multiply a double with a double double : a * (bh + bl)
+static inline void s_mul (double *hi, double *lo, double a, double bh,
+                          double bl) {
+  double s;
+
+  a_mul (hi, &s, a, bh); /* exact */
+  *lo = __builtin_fma (a, bl, s);
+}
+
 // Returns (ah + al) * (bh + bl) - (al * bl)
 static inline void d_mul(double *hi, double *lo, double ah, double al,
                          double bh, double bl) {
@@ -655,92 +666,64 @@ static inline void dint_fromd (dint64_t *a, double b);
 static void log_2 (dint64_t *r, dint64_t *x);
 static inline double dint_tod (dint64_t *a);
 
+#define INVLOG2H 0x1.71547652b82fep+0
+#define INVLOG2L 0x1.777d0ffda0d24p-56
+
+/* deal with tiny x, then log2p1(x) ~ x/log(2) */
+static double
+cr_log2p1_accurate_tiny (double x)
+{
+  double h, l;
+  /* first scale x to avoid truncation of l in the underflow region */
+  x = x * 0x1p53;
+  s_mul (&h, &l, x, INVLOG2H, INVLOG2L);
+  double res = (h + l) * 0x1p-53; // expected result
+  l = __builtin_fma (-res, 0x1p53, h) + l;
+  // the correction to apply to res is l*2^-53
+  return __builtin_fma (l, 0x1p-53, res);
+}
+
 /* accurate path, using Tom Hubrecht's code below */
 static double
-cr_log1p_accurate (double x)
+cr_log2p1_accurate (double x)
 {
   dint64_t X, Y, C;
 
-#define EXCEPTIONS 34
+  if (__builtin_fabs (x) < 0x1p-91)
+    return cr_log2p1_accurate_tiny (x);
+
+#if 0
+#define EXCEPTIONS 1
   static double T[EXCEPTIONS][3] = {
-    {-0x1.ee5c09701a8e8p-9, -0x1.ef4b4d559442ep-9, -0x1.51a199b84acd9p-110},
-    {-0x1.ec50c1d0101dfp-9, -0x1.ed3e0b991b5dbp-9, 0x1.fffffffffffe6p-63},
-    {-0x1.e81621738c297p-9, -0x1.e8ff5ad035c59p-9, -0x1.fc08a7d86de44p-112},
-    {-0x1.dbd70f17ca7a7p-9, -0x1.dcb4b66956133p-9, -0x1.950be553dfc5dp-111},
-    {-0x1.c559493ed3a9p-9, -0x1.c622754f12eecp-9, 0x1.ffffffffffffcp-63},
-    {-0x1.bdd3211005ea1p-9, -0x1.be95abf29f07p-9, -0x1.480973c20c31dp-112},
-    {-0x1.97ffffffffc9dp-42, -0x1.98000000001b1p-42, -0x1.fffffffffffffp-96},
-    {-0x1.4fffffffffdb4p-42, -0x1.5000000000126p-42, 0x1.51a400000058ap-172},
-    {-0x1.1fffffffffe5p-42, -0x1.20000000000d8p-42, 0x1.6c8000000052p-173},
-    {-0x1.07ffffffffe95p-42, -0x1.08000000000b5p-42, -0x1.fffffffffffffp-96},
-    {-0x1.dfffffffffda8p-43, -0x1.e00000000012cp-43, 0x1.5f9000000041fp-174},
-    {-0x1.afffffffffe1ap-43, -0x1.b0000000000f3p-43, 0x1.cd520000004dep-175},
-    {-0x1.7fffffffffe8p-43, -0x1.80000000000cp-43, 0x1.20000000002b3p-175},
-    {-0x1.4fffffffffedap-43, -0x1.5000000000093p-43, 0x1.51a40000002c5p-176},
-    {-0x1.1ffffffffff28p-43, -0x1.200000000006cp-43, 0x1.6c8000000029p-177},
-    {-0x1.dfffffffffed4p-44, -0x1.e000000000096p-44, 0x1.5f9000000020fp-178},
-    {-0x1.affffffffff0dp-44, -0x1.b000000000079p-44, -0x1.fffffffffffffp-98},
-    {-0x1.7ffffffffff4p-44, -0x1.800000000006p-44, 0x1.200000000015ap-179},
-    {-0x1.4ffffffffff6dp-44, -0x1.5000000000049p-44, -0x1.fffffffffffffp-98},
-    {-0x1.1ffffffffff94p-44, -0x1.2000000000036p-44, 0x1.6c80000000148p-181},
-    {-0x1.dffffffffff6ap-45, -0x1.e00000000004bp-45, 0x1.5f90000000108p-182},
-    {-0x1.7ffffffffffap-45, -0x1.800000000003p-45, 0x1.20000000000adp-183},
-    {-0x1.1ffffffffffcap-45, -0x1.200000000001bp-45, 0x1.6c800000000a4p-185},
-    {-0x1.dffffffffffb5p-46, -0x1.e000000000025p-46, -0x1.fffffffffffffp-100},
-    {-0x1.7ffffffffffdp-46, -0x1.8000000000018p-46, 0x1.2000000000056p-187},
-    {-0x1.1ffffffffffe5p-46, -0x1.200000000000dp-46, -0x1.fffffffffffffp-100},
-    {-0x1.7fffffffffffdp-50, -0x1.8000000000001p-50, -0x1.fffffffffffffp-104},
-    {0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104},
-    {0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100},
-    {0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100},
-    {0x1.5000000000093p-44, 0x1.4ffffffffffb7p-44, -0x1.fffffffffffffp-98},
-    {0x1.b0000000000f3p-44, 0x1.affffffffff87p-44, -0x1.fffffffffffffp-98},
-    {0x1.080000000016bp-42, 0x1.07fffffffff4bp-42, -0x1.fffffffffffffp-96},
-    {0x1.9800000000363p-42, 0x1.97ffffffffe4fp-42, -0x1.fffffffffffffp-96},
+    {0,0,0},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == T[i][0])
       return T[i][1] + T[i][2];
-
-  /* for x > 0x1.6a5df33e01575p+101, log(x) and log1p(x) round to the same
-     value */
-  if (x > 0x1.6a5df33e01575p+101)
-  {
-    dint_fromd (&X, x);
-    log_2 (&Y, &X);
-    return dint_tod (&Y);
-  }
-
-  /* for |x| <= 0.5, we have |log(1+x)-x| < x^2, thus
-     for |x| <= 2^-54, |log(1+x)-x| < 2^-54*|x| < 1/2 ulp(x)
-     thus log(1+x) rounds to x or to the adjacent numbers */
-  if (-0x1p-53 <= x && x <= 0x1p-53)
-  {
-    /* warning: for x subnormal, x^2/2 will underflow */
-    if (-0x1p-54 <= x && x <= 0x1p-54)
-      return __builtin_fma (x, -x, x);
-    else /* 2^-54 < |x| <= 2^-53 thus 0.5*x will not underflow */
-      return __builtin_fma (x, -0.5*x, x);
-  }
+#endif
 
   /* (xh,xl) <- 1+x */
   double xh, xl;
   if (x > 1.0)
     fast_two_sum (&xh, &xl, x, 1.0);
   else
-    /* for small x, fast_two_sum is exact because the exponent difference
-       between 1 and x does not exceed 53 (we have treated |x| <= 2^-53
-       above). */
     fast_two_sum (&xh, &xl, 1.0, x);
+
+  /* log2p1(x) is exact when 1+x = 2^e, thus when 2^e-1 is exactly
+     representable. This can only occur when xl=0 here. */
+  if (xl == 0)
+  {
+    /* check if xh is a power of two */
+    d64u64 t = {.f = xh};
+    if ((t.u << 12) == 0)
+    {
+      int e = (t.u >> 52) - 0x3ff;
+      return (double) e;
+    }
+  }
 
   dint_fromd (&X, xh);
   log_2 (&Y, &X);
-
-  /* if xl=0, we can simply return the accurate path for log(xh) */
-  if (xl == 0)
-    return dint_tod (&Y);
-
-  /* |Y-log(XH)| ~ 8e-52 */
 
   div_dint (&C, xl, xh);
   mul_dint (&X, &C, &C);
@@ -751,6 +734,10 @@ cr_log1p_accurate (double x)
   add_dint (&C, &C, &X);
   /* |C-log(1+xl/xh)| ~ 2e-64 */
   add_dint (&Y, &Y, &C);
+
+  /* multiply by 1/log(2) */
+  mul_dint (&Y, &Y, &LOG2_INV);
+  Y.ex -= 12; // since LOG2_INV approximates 2^12/log(2)
 
   return dint_tod (&Y);
 }
@@ -767,15 +754,14 @@ cr_log2p1_fast (double *h, double *l, double x, int e, d64u64 v)
   if (e < -5) /* e <= -6 thus |x| < 2^-5 */
   {
     double lo;
-    /* taken the following from the accurate path */
-    if (-0x1p-53 <= x && x <= 0x1p-53)
+    if (e <= -970)
     {
-      if (-0x1p-54 <= x && x <= 0x1p-54)
-        *h = __builtin_fma (x, -x, x);
-      else
-        *h = __builtin_fma (x, -0.5*x, x);
-      *l = 0;
-      return 0;
+      /* then |x| might be as small as 2^-970, thus h=x/log(2) might in the
+         binade [2^-970,2^-969), with ulp(h) = 2^-1022, and if |l| < ulp(h),
+         then l.ulp() might be smaller than 2^-1074. We defer that case to
+         the accurate path. */
+      *h = *l = 0;
+      return 1;
     }
     p_1a (h, &lo, x);
     fast_two_sum (h, l, x, *h);
@@ -786,8 +772,6 @@ cr_log2p1_fast (double *h, double *l, double x, int e, d64u64 v)
        positive, since we add/subtract it in the rounding test.
        We also get that the ratio |l/h| is bounded by 2^-50.96. */
     /* now we multiply h+l by 1/log(2) */
-#define INVLOG2H 0x1.71547652b82fep+0
-#define INVLOG2L 0x1.777d0ffda0d24p-56
     d_mul (h, l, *h, *l, INVLOG2H, INVLOG2L);
     /* the d_mul() call decomposes into:
        a_mul (h_out, l1, h, INVLOG2H)
@@ -846,8 +830,31 @@ cr_log2p1_fast (double *h, double *l, double x, int e, d64u64 v)
 
   /* now multiply h+l by 1/log(2) */
   d_mul (h, l, *h, *l, INVLOG2H, INVLOG2L);
+  /* the d_mul() call decomposes into:
+     a_mul (h_out, l1, h, INVLOG2H)
+     l2 = __builtin_fma (h, INVLOG2L, l1)
+     l_out = __builtin_fma (l, INVLOG2H, l2)
+     We have three errors:
+     * the rounding error in l2 = __builtin_fma (h, INVLOG2L, l1)
+     * the rounding error in l_out = __builtin_fma (l, INVLOG2H, l2)
+     * the ignored term l * INVLOG2L
+     We have |h| < 745 thus |h*INVLOG2H| < 1075 thus |h_out| <= 1075
+     and |l1| <= ulp(h_out) <= 2^-42.
+     Then |h*INVLOG2L+l1| <= 745*INVLOG2L+2^-42 < 2^-41.9
+     thus |l2| < 2^-41.9*(1+2^-52) < 2^-41.8
+     and the first rounding error is bounded by ulp(2^-41.8) = 2^-94.
+     Now |l*INVLOG2H+l2| < 2^-18.68*INVLOG2H+2^-41.8 < 2^-18.1
+     thus |l_out| < 2^-18.1*(1+2^-52) < 2^-18.09
+     and the second rounding error is bounded by ulp(2^-18.09) = 2^-71.
+     The ignored term is bounded by |l*INVLOG2L| < 2^-18.68*INVLOG2L < 2^-74.1.
+     Thus the absolute error from d_mul() is bounded by:
+     2^-94 + 2^-71 + 2^-74.1 < 2^-70.84.
 
-  return 0x1.f9p-69; /* 2^-68.02 < 0x1.f9p-69 */
+     Adding to the maximal absolute error of 2^-68.02 before d_mul(),
+     we get 2^-68.02 + 2^-70.84 < 2^-67.82.
+  */
+
+  return 0x1.23p-68; /* 2^-67.82 < 0x1.23p-68 */
 }
 
 double
@@ -875,13 +882,15 @@ cr_log2p1 (double x)
   double h, l, err;
   err = cr_log2p1_fast (&h, &l, x, e, v);
 
+#if 0
   double left = h + (l - err), right = h + (l + err);
   if (left == right)
     return left;
+#endif
 
-  return 0;
+  if (x == TRACE) printf ("fast path failed\n");
 
-  return cr_log1p_accurate (x);
+  return cr_log2p1_accurate (x);
 }
 
 /* the following code was copied from Tom Hubrecht's implementation of

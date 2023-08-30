@@ -98,10 +98,12 @@ static const dint64_t M_ONE = {
     .hi = 0x8000000000000000, .lo = 0x0, .ex = 0, .sgn = 0x1};
 
 /* the following is an approximation of log(2), with absolute error less
-   than 2^-129.97 */
+   than 2^-129.97: |(hi/2^63+lo/2^127)*2^-1 - log(2)| < 2^-129.97 */
 static const dint64_t LOG2 = {
     .hi = 0xb17217f7d1cf79ab, .lo = 0xc9e3b39803f2f6af, .ex = -1, .sgn = 0x0};
 
+/* the following is an approximation of 2^12/log(2), with absolute error less
+   than 2^-118.63: |(hi/2^63+lo/2^127)*2^12 - 2^12/log(2)| < 2^-118.63 */
 static const dint64_t LOG2_INV = {
     .hi = 0xb8aa3b295c17f0bb, .lo = 0xbe87fed0691d3e89, .ex = 12, .sgn = 0x0};
 
@@ -160,8 +162,14 @@ static inline void add_dint(dint64_t *r, const dint64_t *a, const dint64_t *b) {
   int64_t m_ex = a->ex;
 
   if (a->ex > b->ex) {
-    B.r += 0x1 & (B.r >> (a->ex - b->ex - 1));
-    B.r = B.r >> (a->ex - b->ex);
+    int sh = a->ex - b->ex;
+    // round to nearest
+    if (sh <= 128)
+      B.r += 0x1 & (B.r >> (sh - 1));
+    if (sh < 128)
+      B.r = B.r >> sh;
+    else
+      B.r = 0;
   }
 
   uint128_t C;

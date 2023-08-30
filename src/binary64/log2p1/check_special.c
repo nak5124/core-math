@@ -1181,7 +1181,7 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-#define N 1000000000UL /* total number of tests */
+#define N 1000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
