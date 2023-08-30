@@ -42,7 +42,6 @@ SOFTWARE.
 #include <unistd.h>
 #include <getopt.h>
 #include <errno.h>
-#include <unistd.h>
 #include "function_under_test.h"
 
 double cr_function_under_test(double);
