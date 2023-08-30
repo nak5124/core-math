@@ -203,7 +203,7 @@ def analyze_p1a(zmin,zmax,rel=true,verbose=false):
 # analyze_x_plus_p1(rel=true)
 # e= 0 err= -68.3751331997836
 def analyze_x_plus_p1a(rel=false,verbose_e=[],Xmax=0.03125):
-   maxerr = 0
+   maxerr = maxratio = 0
    assert 0<Xmax<=1, "0<Xmax<=1"
    for e in range(0,-1075,-1):
       # consider 2^e*[Xmax/2,Xmax]
@@ -261,6 +261,10 @@ def analyze_x_plus_p1a(rel=false,verbose_e=[],Xmax=0.03125):
       if err>maxerr:
          print ("e=", e, "err=", log(err)/log(2.))
          maxerr = err
+      ratio = l.abs().upper()/h.abs().lower()
+      if ratio > maxratio:
+         print ("e=", e, "ratio=", ratio)
+         maxratio = ratio
 
 # print bacsel command line to find potential values of x
 # such that log1p(x) does not round to the same value as log(x)
