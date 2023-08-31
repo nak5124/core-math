@@ -720,7 +720,7 @@ cr_log10 (double x)
       else
         return 1.0 / -0.0;
     }
-    if (e == 0x400) /* +Inf or NaN */
+    if (e == 0x400 || e == 0xc00) /* +Inf or NaN */
       return x;
     if (e == -0x3ff) /* subnormal */
     {

@@ -65498,3 +65498,10 @@
 0x1.f2ff4a3237f5p+814
 0x1.f9c4da6ea8a6ep+814
 0x1.f9d7f1bd67aa5p+814
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
