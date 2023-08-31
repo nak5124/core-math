@@ -61,6 +61,36 @@ get_random (struct drand48_data *buffer)
   return v.f;
 }
 
+static inline uint64_t
+asuint64 (double f)
+{
+  union
+  {
+    double f;
+    uint64_t i;
+  } u = {f};
+  return u.i;
+}
+
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
+static inline int
+is_equal (double x, double y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint64 (x) == asuint64 (y);
+}
+
 static void
 check (double x, double y)
 {
@@ -73,7 +103,7 @@ check (double x, double y)
   mpfr_set_d (Y, y, MPFR_RNDN);
   z = cr_hypot (x, y);
   t = ref_hypot (x, y);
-  if (z != t)
+  if (!is_equal (z, t))
   {
     printf ("cr_hypot and ref_hypot differ for x=%la y=%la\n", x, y);
     printf ("cr_hypot  gives %la\n", z);
@@ -85,6 +115,8 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
+#define N 1000000000ul
+
 static void
 check_random (int i)
 {
@@ -94,12 +126,10 @@ check_random (int i)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-  while (1)
+  for (unsigned long n = 0; n < N; n++)
   {
     x = get_random (buffer);
     y = get_random (buffer);
-    x = 0x1.282a03d9ba3bap-727;
-    y = 0x1.cf90629a60c16p-711;
     check (x, y);
   }
 }
@@ -118,7 +148,6 @@ check_random_all (void)
 int
 main (int argc, char *argv[])
 {
-  int random = 0;
   while (argc >= 2)
     {
       if (strcmp (argv[1], "--rndn") == 0)
@@ -151,12 +180,6 @@ main (int argc, char *argv[])
           argc --;
           argv ++;
         }
-      else if (strcmp (argv[1], "--random") == 0)
-        {
-          random = 1;
-          argc --;
-          argv ++;
-        }
       else
         {
           fprintf (stderr, "Error, unknown option %s\n", argv[1]);
@@ -164,9 +187,10 @@ main (int argc, char *argv[])
         }
     }
 
-  if (random)
-    check_random_all ();
+  printf ("Checking random values\n");
+  check_random_all ();
 
+  printf ("Checking near overflow, underflow and Pythagorean triples\n");
   /* we check triples with exponent difference 0 <= k <= 26 */
   doloop(0, 26);
   return 0;
