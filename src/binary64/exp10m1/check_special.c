@@ -1204,6 +1204,7 @@ main (int argc, char *argv[])
 
   printf ("Checking results in subnormal range\n");
   int64_t n0 = 1;
+  // n1 is the smallest integer such that exp10m1(n1*2^-1074) > 2^-1022
   int64_t n1 = 1955888466868548ul;
 #define SKIP 200000
   n0 += getpid () % SKIP;
