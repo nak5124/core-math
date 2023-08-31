@@ -69,7 +69,7 @@ get_random ()
 }
 
 static void
-check_random (double x)
+check (double x)
 {
   int bug;
   double y1 = ref_erf (x);
@@ -144,8 +144,8 @@ main (int argc, char *argv[])
     ref_init ();
     ref_fesetround (rnd);
     double x;
-    do x = get_random (); while (fabs (x) > 1);
-    check_random (x);
+    do x = get_random (); while (fabs (x) > 6);
+    check (x);
   }
 
   return 0;

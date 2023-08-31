@@ -93,7 +93,7 @@ check (double x)
 #define N_WORST 1027
 
 /* worst cases in [2^-1022,2^-1021) extracted from exp2m1.wc */
-static double T[1027] = {
+static double T[N_WORST] = {
 0x1.0194648f13ea5p-1022,
 0x1.02638d37d157p-1022,
 0x1.0332b5e08ec3bp-1022,
@@ -1131,7 +1131,7 @@ check_tiny (void)
   for (int i = 0; i < N_WORST; i++)
   {
     double x = T[i];
-    for (int e = -1020; e <= -106; e++)
+    for (int e = -1021; e <= -106; e++)
     {
       // check binade 2^(e-1) <= |x| < 2^e
       check (ldexp (x, e + 1021));

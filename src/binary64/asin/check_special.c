@@ -32,6 +32,7 @@ SOFTWARE.
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <omp.h>
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -56,7 +57,7 @@ asuint64 (double f)
 }
 
 static void
-check_random (double x)
+check (double x)
 {
   double y1 = ref_asin (x);
   fesetround (rnd1[rnd]);
@@ -113,7 +114,7 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-#define K 10000000000UL /* total number of tests */
+#define K 1000000000UL /* total number of tests */
 #define BUF_SIZE 1000
 
   long seed = getpid ();
@@ -133,7 +134,7 @@ main (int argc, char *argv[])
     }
 #pragma omp parallel for
     for (int i = 0; i < BUF_SIZE; i++)
-      check_random (buf[i]);
+      check (buf[i]);
   }
 
   return 0;

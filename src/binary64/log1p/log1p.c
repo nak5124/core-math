@@ -651,40 +651,46 @@ cr_log1p_accurate (double x)
 {
   dint64_t X, Y, C;
 
-#define EXCEPTIONS 16
+#define EXCEPTIONS 38
   static double T[EXCEPTIONS][3] = {
-    /* for following x, log1p(x) has 77 identical bits after the round bit */
-    { 0x1.080000000016bp-42, 0x1.07fffffffff4bp-42, -0x1.fffffffffffffp-96 },
-    /* for following x, log1p(x) has 89 identical bits after the round bit */
-    { 0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100 },
-    /* for following x, log1p(x) has 82 identical bits after the round bit */
-    { 0x1.5000000000093p-44, 0x1.4ffffffffffb7p-44, -0x1.fffffffffffffp-98 },
-    /* for following x, log1p(x) has 99 identical bits after the round bit */
-    { 0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104 },
-    /* for following x, log1p(x) has 75 identical bits after the round bit */
-    { 0x1.9800000000363p-42, 0x1.97ffffffffe4fp-42, -0x1.fffffffffffffp-96 },
-    /* for following x, log1p(x) has 81 identical bits after the round bit */
-    { 0x1.b0000000000f3p-44, 0x1.affffffffff87p-44, -0x1.fffffffffffffp-98 },
-    /* for following x, log1p(x) has 86 identical bits after the round bit */
-    { 0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100 },
-    /* for following x, log1p(x) has 77 identical bits after the round bit */
-    { -0x1.07ffffffffe95p-42, -0x1.08000000000b5p-42, -0x1.fffffffffffffp-96 },
-    /* for following x, log1p(x) has 89 identical bits after the round bit */
-    { -0x1.1ffffffffffe5p-46, -0x1.200000000000dp-46, -0x1.fffffffffffffp-100 },
-    /* for following x, log1p(x) has 82 identical bits after the round bit */
-    { -0x1.4ffffffffff6dp-44, -0x1.5000000000049p-44, -0x1.fffffffffffffp-98 },
-    /* for following x, log1p(x) has 99 identical bits after the round bit */
-    { -0x1.7fffffffffffdp-50, -0x1.8000000000001p-50, -0x1.fffffffffffffp-104 },
-    /* for following x, log1p(x) has 75 identical bits after the round bit */
-    { -0x1.97ffffffffc9dp-42, -0x1.98000000001b1p-42, -0x1.fffffffffffffp-96 },
-    /* for following x, log1p(x) has 81 identical bits after the round bit */
-    { -0x1.affffffffff0dp-44, -0x1.b000000000079p-44, -0x1.fffffffffffffp-98 },
-    /* for following x, log1p(x) has 86 identical bits after the round bit */
-    { -0x1.dffffffffffb5p-46, -0x1.e000000000025p-46, -0x1.fffffffffffffp-100 },
-    /* for following x, log1p(x) has 50 identical bits after the round bit */
-    { -0x1.c559493ed3a9p-9, -0x1.c622754f12eecp-9, 0x1.ffffffffffffcp-63 },
-    /* for following x, log1p(x) has 48 identical bits after the round bit */
-    { -0x1.ec50c1d0101dfp-9, -0x1.ed3e0b991b5dbp-9, 0x1.fffffffffffe6p-63 },
+    {-0x1.ee5c09701a8e8p-9, -0x1.ef4b4d559442ep-9, -0x1.51a199b84acd9p-110},
+    {-0x1.ec50c1d0101dfp-9, -0x1.ed3e0b991b5dbp-9, 0x1.fffffffffffe6p-63},
+    {-0x1.e81621738c297p-9, -0x1.e8ff5ad035c59p-9, -0x1.fc08a7d86de44p-112},
+    {-0x1.dbd70f17ca7a7p-9, -0x1.dcb4b66956133p-9, -0x1.950be553dfc5dp-111},
+    {-0x1.c559493ed3a9p-9, -0x1.c622754f12eecp-9, 0x1.ffffffffffffcp-63},
+    {-0x1.bdd3211005ea1p-9, -0x1.be95abf29f07p-9, -0x1.480973c20c31dp-112},
+    {-0x1.97ffffffffc9dp-42, -0x1.98000000001b1p-42, -0x1.fffffffffffffp-96},
+    {-0x1.4fffffffffdb4p-42, -0x1.5000000000126p-42, 0x1.51a400000058ap-172},
+    {-0x1.1fffffffffe5p-42, -0x1.20000000000d8p-42, 0x1.6c8000000052p-173},
+    {-0x1.07ffffffffe95p-42, -0x1.08000000000b5p-42, -0x1.fffffffffffffp-96},
+    {-0x1.dfffffffffda8p-43, -0x1.e00000000012cp-43, 0x1.5f9000000041fp-174},
+    {-0x1.afffffffffe1ap-43, -0x1.b0000000000f3p-43, 0x1.cd520000004dep-175},
+    {-0x1.7fffffffffe8p-43, -0x1.80000000000cp-43, 0x1.20000000002b3p-175},
+    {-0x1.4fffffffffedap-43, -0x1.5000000000093p-43, 0x1.51a40000002c5p-176},
+    {-0x1.1ffffffffff28p-43, -0x1.200000000006cp-43, 0x1.6c8000000029p-177},
+    {-0x1.dfffffffffed4p-44, -0x1.e000000000096p-44, 0x1.5f9000000020fp-178},
+    {-0x1.affffffffff0dp-44, -0x1.b000000000079p-44, -0x1.fffffffffffffp-98},
+    {-0x1.7ffffffffff4p-44, -0x1.800000000006p-44, 0x1.200000000015ap-179},
+    {-0x1.4ffffffffff6dp-44, -0x1.5000000000049p-44, -0x1.fffffffffffffp-98},
+    {-0x1.1ffffffffff94p-44, -0x1.2000000000036p-44, 0x1.6c80000000148p-181},
+    {-0x1.dffffffffff6ap-45, -0x1.e00000000004bp-45, 0x1.5f90000000108p-182},
+    {-0x1.7ffffffffffap-45, -0x1.800000000003p-45, 0x1.20000000000adp-183},
+    {-0x1.1ffffffffffcap-45, -0x1.200000000001bp-45, 0x1.6c800000000a4p-185},
+    {-0x1.dffffffffffb5p-46, -0x1.e000000000025p-46, -0x1.fffffffffffffp-100},
+    {-0x1.7ffffffffffdp-46, -0x1.8000000000018p-46, 0x1.2000000000056p-187},
+    {-0x1.1ffffffffffe5p-46, -0x1.200000000000dp-46, -0x1.fffffffffffffp-100},
+    {-0x1.7ffffffffffe8p-47, -0x1.800000000000cp-47, 0x1.200000000002bp-191},
+    {-0x1.7fffffffffff4p-48, -0x1.8000000000006p-48, 0x1.2000000000016p-195},
+    {-0x1.7fffffffffffap-49, -0x1.8000000000003p-49, 0x1.2000000000008p-199},
+    {-0x1.7fffffffffffdp-50, -0x1.8000000000001p-50, -0x1.fffffffffffffp-104},
+    {-0x1.6a09e667f3bccp-52, -0x1.6a09e667f3bcdp-52, -0x1.278c3417a93d7p-159},
+    {0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104},
+    {0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100},
+    {0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100},
+    {0x1.5000000000093p-44, 0x1.4ffffffffffb7p-44, -0x1.fffffffffffffp-98},
+    {0x1.b0000000000f3p-44, 0x1.affffffffff87p-44, -0x1.fffffffffffffp-98},
+    {0x1.080000000016bp-42, 0x1.07fffffffff4bp-42, -0x1.fffffffffffffp-96},
+    {0x1.9800000000363p-42, 0x1.97ffffffffe4fp-42, -0x1.fffffffffffffp-96},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == T[i][0])
@@ -815,8 +821,9 @@ double
 cr_log1p (double x)
 {
   d64u64 v = {.f = x};
-  int e = (v.u >> 52) - 0x3ff;
-  if (e == 0x400 || e == 0xc00 || x <= -1.0) /* NaN/Inf or x <= -1 */
+  int e = ((v.u >> 52) & 0x7ff) - 0x3ff;
+  if (__builtin_expect (e == 0x400 || x == 0 || x <= -1.0, 0))
+    /* case NaN/Inf, +/-0 or x <= -1 */
   {
     if (x <= -1.0) /* we use the fact that NaN < -1 is false */
     {
@@ -826,7 +833,7 @@ cr_log1p (double x)
       else
         return 1.0 / -0.0;
     }
-    return x; /* NaN or +Inf */
+    return x; /* +/-0, NaN or +Inf */
   }
   /* now x > -1 */
   /* normalize v in [1,2) */
