@@ -134938,3 +134938,10 @@
 0x1.ffffffffffffcp-1
 0x1.ffffffffffffep-1
 0x1
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
