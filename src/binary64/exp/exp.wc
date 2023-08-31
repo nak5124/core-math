@@ -68071,3 +68071,5 @@
 # check sign of 0
 -0x1p1023
 -0x1.49f33ad2c1c58p+9
+# non-regression tests
+-0x1.6340dd13130b1p+9
