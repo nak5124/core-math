@@ -67,7 +67,7 @@ asfloat64 (uint64_t i)
 }
 
 static void
-check_random (double x)
+check (double x)
 {
   double y1 = ref_log2 (x);
   fesetround (rnd1[rnd]);
@@ -147,7 +147,7 @@ main (int argc, char *argv[])
     }
 #pragma omp parallel for
     for (int i = 0; i < BUF_SIZE; i++)
-      check_random (buf[i]);
+      check (buf[i]);
   }
 
   return 0;
