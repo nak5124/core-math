@@ -1492,6 +1492,8 @@ double cr_pow (double x, double y) {
   static double err[] = { 0x1.0049b8d09331fp+0, 0x1.175d93c9061b1p+0 };
   /* Warning: we should make sure no FMA is used to compute
      res_h + res_l * err! */
+  /* Reference [6] requires that yh+yl rounds to yl. */
+  fast_two_sum (&res_h, &res_l, res_h, res_l);
   double res = res_l * err[cancel];
   if (res_h == res_h + res)
     return res;
