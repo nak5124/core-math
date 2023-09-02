@@ -556,7 +556,8 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
      11 bits. log2_h is an integer multiple of 2^-42, so that e*log2_h
      is exact. */
-  static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
+  static const double log2_h = 0x1.62e42fefa38p-1,
+    log2_l = 0x1.ef35793c7673p-45;
   /* |log(2) - (h+l)| < 2^-102.01 */
   /* let hh = e * log2_h: hh is an integer multiple of 2^-42,
      with |hh| <= 1074*log2_h
@@ -665,7 +666,8 @@ cr_log (double x)
   double h, l;
   cr_log_fast (&h, &l, e, v);
 
-  static double err = 0x1.b6p-69; /* maximal absolute error from cr_log_fast */
+  static const double err = 0x1.b6p-69; /* maximal absolute error from
+                                           cr_log_fast */
 
   /* Note: the error analysis is quite tight since if we replace the 0x1.b6p-69
      bound by 0x1.3fp-69, it fails for x=0x1.71f7c59ede8ep+125 (rndz) */

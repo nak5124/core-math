@@ -2033,7 +2033,7 @@ tan_fast (double *h, double *l, double x)
      bounds are the same.
   */
 
-  static double sgn[2] = {1.0, -1.0};
+  static const double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
   return *h * 0x1.1ap-66; // 2^-65.864 < 0x1.1ap-66

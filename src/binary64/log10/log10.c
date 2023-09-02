@@ -577,7 +577,8 @@ cr_log10_fast (double *h, double *l, int e, d64u64 v)
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
      11 bits. log2_h is exactly representable on 42 bits, so that e*log2_h
      is exact. */
-  static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
+  static const double log2_h = 0x1.62e42fefa38p-1,
+    log2_l = 0x1.ef35793c7673p-45;
   /* |log(2) - (h+l)| < 2^-102.01 */
   /* let hh = e * log2_h: hh is an integer multiple of 2^-42,
      with |hh| <= 1074*log2_h
@@ -667,7 +668,7 @@ cr_log10_accurate (double x)
   dint64_t X, Y;
 
 #define EXCEPTIONS 19
-  static double T[EXCEPTIONS][3] = {
+  static const double T[EXCEPTIONS][3] = {
     { 0x1p0, 0, 0 }, /* 1 */
     { 0x1.4p+3, 1, 0 }, /* 10 */
     { 0x1.9p+6, 2, 0 }, /* 100 */
@@ -740,7 +741,7 @@ cr_log10 (double x)
   /* Maximal absolute error from cr_log10_fast: 2^-68.98 < 1.04p-69.
      This bound is relatively tight, since for 0x1.59p-70 it fails
      for x=0x1.8301ae420f027p+864 (rndz). */
-  static double err = 0x1.04p-69;
+  static const double err = 0x1.04p-69;
 
   double left = h + (l - err), right = h + (l + err);
   if (left == right)

@@ -1814,7 +1814,7 @@ cos_fast (double *h, double *l, double x)
                             < 2^-68.414 * |h + l| + err1 */
       err = 0x1.81p-69; // 2^-68.414 < 0x1.81p-69
     }
-  static double sgn[2] = {1.0, -1.0};
+  static const double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
   return err + err1;

@@ -1455,8 +1455,8 @@ double cr_pow (double x, double y) {
 #ifndef ROUNDING_IS_TO_NEAREST_EVEN
   /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
      phase_1 from reference [5]. */
-  static double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
-                          0x1.57p-58, /* 2^-57.579 < 0x1.57p-58 */
+  static const double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
+                                0x1.57p-58, /* 2^-57.579 < 0x1.57p-58 */
   };
   double res_min, res_max;
   res_min = res_h + __builtin_fma (err[cancel], -res_h, res_l);
