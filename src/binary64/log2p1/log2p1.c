@@ -665,6 +665,8 @@ static inline void dint_fromd (dint64_t *a, double b);
 static void log_2 (dint64_t *r, dint64_t *x);
 static inline double dint_tod (dint64_t *a);
 
+/* INVLOG2H+INVLOG2L is a double-double approximation of 1/log(2):
+   | INVLOG2H + INVLOG2L - 1/log(2) | < 2^-109.53 */
 #define INVLOG2H 0x1.71547652b82fep+0
 #define INVLOG2L 0x1.777d0ffda0d24p-56
 
