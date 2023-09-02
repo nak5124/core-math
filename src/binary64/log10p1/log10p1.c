@@ -686,26 +686,26 @@ cr_log10p1_accurate_tiny (double x)
   return __builtin_fma (l, 0x1p-53, res);
 }
 
-/* the following is a degree-17 polynomial approximating log2p1(x) for
-   |x| <= 2^-5 with relative error < 2^-105.02, cf log2p1_accurate.sollya */
+/* the following is a degree-17 polynomial approximating log10p1(x) for
+   |x| <= 2^-5 with relative error < 2^-105.067, cf log10p1_accurate.sollya */
 static const double Pacc[] = {
-  0x1.71547652b82fep+0, 0x1.777d0ffda0d24p-56,   // degree 1: Pacc[0], Pacc[1]
-  -0x1.71547652b82fep-1, -0x1.777d0ffd9ddb8p-57, // degree 2: Pacc[2], Pacc[3]
-  0x1.ec709dc3a03fdp-2, 0x1.d27f055481523p-56,   // degree 3: Pacc[4], Pacc[5]
-  -0x1.71547652b82fep-2, -0x1.777d1456a14c4p-58, // degree 4: Pacc[6], Pacc[7]
-  0x1.2776c50ef9bfep-2, 0x1.e4b2a04f81513p-56,   // degree 5: Pacc[8], Pacc[9]
-  -0x1.ec709dc3a03fdp-3, -0x1.d2072e751087ap-57, // degree 6: Pacc[10], Pacc[11]
-  0x1.a61762a7aded9p-3, 0x1.f90f4895378acp-58,   // degree 7: Pacc[12], Pacc[13]
-  -0x1.71547652b8301p-3,                         // degree 8: Pacc[14]
-  0x1.484b13d7c02aep-3,                          // degree 9: Pacc[15]
-  -0x1.2776c50ef7591p-3,                         // degree 10: Pacc[16]
-  0x1.0c9a84993cabbp-3,                          // degree 11: Pacc[17]
-  -0x1.ec709de7b1612p-4,                         // degree 12: Pacc[18]
-  0x1.c68f56ba73fd1p-4,                          // degree 13: Pacc[19]
-  -0x1.a616c83da87e7p-4,                         // degree 14: Pacc[20]
-  0x1.89f3042097218p-4,                          // degree 15: Pacc[21]
-  -0x1.72b376930a3fap-4,                         // degree 16: Pacc[22]
-  0x1.5d0211d5ab53p-4,                           // degree 17: Pacc[23]
+  0x1.bcb7b1526e50ep-2, 0x1.95355baaafad4p-57,   // degree 1: Pacc[0], Pacc[1]
+  -0x1.bcb7b1526e50ep-3, -0x1.95355baaae078p-58, // degree 2: Pacc[2], Pacc[3]
+  0x1.287a7636f435fp-3, -0x1.9c871838f83acp-58,  // degree 3: Pacc[4], Pacc[5]
+  -0x1.bcb7b1526e50ep-4, -0x1.95355e23285f2p-59, // degree 4: Pacc[6], Pacc[7]
+  0x1.63c62775250d8p-4, 0x1.442abd5831422p-59,   // degree 5: Pacc[8], Pacc[9]
+  -0x1.287a7636f435fp-4, 0x1.9d116f225c4e4p-59,  // degree 6: Pacc[10], Pacc[11]
+  0x1.fc3fa615105c7p-5, 0x1.4e1d7b479051p-61,    // degree 7: Pacc[12], Pacc[13]
+  -0x1.bcb7b1526e512p-5, 0x1.9f884199ab0cep-59,  // degree 8: Pacc[14], Pacc[15]
+  0x1.8b4df2f3f0486p-5,                          // degree 9: Pacc[16]
+  -0x1.63c6277522391p-5,                         // degree 10: Pacc[17]
+  0x1.436e526a79e5cp-5,                          // degree 11: Pacc[18]
+  -0x1.287a764c5a762p-5,                         // degree 12: Pacc[19]
+  0x1.11ac1e784daecp-5,                          // degree 13: Pacc[20]
+  -0x1.fc3eedc920817p-6,                         // degree 14: Pacc[21]
+  0x1.da5cac3522edbp-6,                          // degree 15: Pacc[22]
+  -0x1.be5ca1f9a97cdp-6,                         // degree 16: Pacc[23]
+  0x1.a44b64ca06e9bp-6,                          // degree 17: Pacc[24]
 };
 
 /* deal with 2^-900 <= x < 2^-5, using the polynomial Pacc */
@@ -723,21 +723,21 @@ cr_log10p1_accurate_small (double x)
       return T[i][1] + T[i][2];
 #undef EXCEPTIONS
 
-  /* for degree 11 or more, ulp(c[d]*x^d) < 2^-105.5*|log2p1(x)|
+  /* for degree 11 or more, ulp(c[d]*x^d) < 2^-105.7*|log10p1(x)|
      where c[d] is the degree-d coefficient of Pacc, thus we can compute
      with a double only */
 
-  h = __builtin_fma (Pacc[23], x, Pacc[22]); // degree 16
+  h = __builtin_fma (Pacc[24], x, Pacc[23]);    // degree 16
   for (int i = 15; i >= 11; i--)
-    h = __builtin_fma (h, x, Pacc[i+6]);        // degree i
+    h = __builtin_fma (h, x, Pacc[i+7]);        // degree i
   l = 0;
-  for (int i = 10; i >= 8; i--)
+  for (int i = 10; i >= 9; i--)
     {
       s_mul (&h, &l, x, h, l);
-      fast_two_sum (&h, &t, Pacc[i+6], h);
+      fast_two_sum (&h, &t, Pacc[i+7], h);
       l += t;
     }
-  for (int i = 7; i >= 1; i--)
+  for (int i = 8; i >= 1; i--)
     {
       s_mul (&h, &l, x, h, l);
       fast_two_sum (&h, &t, Pacc[2*i-2], h);
@@ -767,31 +767,20 @@ cr_log10p1_accurate (double x)
     fast_two_sum (&xh, &xl, 1.0, x);
 
   d64u64 t;
-  /* log2p1(x) is exact when 1+x = 2^e, thus when 2^e-1 is exactly
-     representable. This can only occur when xl=0 here. */
-  if (xl == 0)
+  /* log10p1(x) is exact when 1+x = 10^e, thus when 10^e-1 is exactly
+     representable. This can only occur when xl=0 here, and 1 <= e <= 15. */
+  if (xl == 0 && __builtin_round (x) == x)
   {
-    /* check if xh is a power of two */
-    t.f = xh;
-    if ((t.u << 12) == 0)
-    {
-      int e = (t.u >> 52) - 0x3ff;
+    int e = 0;
+    uint64_t u = __builtin_round (x);
+    while ((u % 10) == 0)
+      {
+        u /= 10;
+        e += 1;
+      }
+    if (u == 1)
       return (double) e;
-    }
   }
-
-  /* if x=2^e, the accurate path will fail for directed roundings */
-  t.f = x;
-  if ((t.u << 12) == 0)
-    {
-      int e = (t.u >> 52) - 0x3ff; // x = 2^e
-      /* for e >= 49, log2p1(x) rounds to e for rounding to nearest;
-         for e >= 48, log2p1(x) rounds to e for rounding toward zero;
-         for e >= 48, log2p1(x) rounds to nextabove(e) for rounding up;
-         for e >= 48, log2p1(x) rounds to e for rounding down. */
-      if (e >= 49)
-        return (double) e + 0x1p-48; // 0x1p-48 = 1/2 ulp(49)
-    }
 
   dint_fromd (&X, xh);
   log_2 (&Y, &X);
@@ -806,9 +795,8 @@ cr_log10p1_accurate (double x)
   /* |C-log(1+xl/xh)| ~ 2e-64 */
   add_dint (&Y, &Y, &C);
 
-  /* multiply by 1/log(2) */
-  mul_dint (&Y, &Y, &LOG2_INV);
-  Y.ex -= 12; // since LOG2_INV approximates 2^12/log(2)
+  /* multiply by 1/log(10) */
+  mul_dint (&Y, &Y, &LOG10_INV);
 
   return dint_tod (&Y);
 }
@@ -954,11 +942,9 @@ cr_log10p1 (double x)
   double h, l, err;
   err = cr_log10p1_fast (&h, &l, x, e, v);
 
-#if 0
   double left = h + (l - err), right = h + (l + err);
   if (left == right)
     return left;
-#endif
 
   return cr_log10p1_accurate (x);
 }
