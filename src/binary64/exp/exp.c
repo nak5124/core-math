@@ -274,7 +274,7 @@ double cr_exp(double x){
     ie += 512;
     vh *= 0x1p-512;
     fl *= 0x1p-512;
-    const double eps = 0x1.79ca10c924223p-575;
+    const double eps = 0x1.8p-575;
     b64u64_u sd = {.u = (u64)(0x3ffl+ie)<<52}, su = {.u = (u64)(0x3ffl-ie)<<52};
     double vd = vh*sd.f, vdl = (vh - vd*su.f) + fl;
     double fp = __builtin_fma(sd.f, vdl+eps, vd);
