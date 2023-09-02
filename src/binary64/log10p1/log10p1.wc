@@ -1,0 +1,9 @@
+# special values
+nan
++inf
+-inf
++0
+-0
+# random values
+-0x1.9d7d391e9f5ecp-1
+0x1.e46c256c42a2ap-1
