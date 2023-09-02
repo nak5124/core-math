@@ -32,6 +32,7 @@ SOFTWARE.
 #include <mpfr.h>
 #include <omp.h>
 #include <unistd.h>
+#include <math.h>
 
 void doloop (int, int);
 extern double cr_hypot (double, double);
@@ -115,8 +116,6 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
-#define N 1000000000ul
-
 static void
 check_random (int i)
 {
@@ -126,12 +125,15 @@ check_random (int i)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
+#define N 1000000000ul
+
   for (unsigned long n = 0; n < N; n++)
   {
     x = get_random (buffer);
     y = get_random (buffer);
     check (x, y);
   }
+#undef N
 }
 
 static void
@@ -143,6 +145,79 @@ check_random_all (void)
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
     check_random (getpid () + i);
+}
+
+/* check values in underflow region */
+static void
+check_underflow (void)
+{
+  double x, y;
+  y = 0x1p-1074;
+#define N 1000
+  for (int i = 0; i < N; i++)
+  {
+    x = 0x1p-1074;
+    for (int j = 0; j < N; j++)
+    {
+      check (x, y);
+      check (x, -y);
+      check (-x, y);
+      check (-x, -y);
+      x = nextafter (x, 2 * x);
+    }
+    y = nextafter (y, 2 * y);
+  }
+#undef N
+}
+
+/* check values with huge exponent difference */
+static void
+check_large_diff (void)
+{
+  double x, y;
+  y = 0x1p-1074;
+#define N 1000
+  for (int i = 0; i < N; i++)
+  {
+    x = 0x1.fffffffffffffp+1023;
+    for (int j = 0; j < N; j++)
+    {
+      check (x, y);
+      check (x, -y);
+      check (-x, y);
+      check (-x, -y);
+      check (y, x);
+      check (-y, x);
+      check (y, -x);
+      check (-y, -x);
+      x = nextafter (x, 0.5 * x);
+    }
+    y = nextafter (y, 2 * y);
+  }
+#undef N
+}
+
+/* check values in overflow range */
+static void
+check_overflow (void)
+{
+  double x, y;
+  y = 0x1.fffffffffffffp+1023;
+#define N 1000
+  for (int i = 0; i < N; i++)
+  {
+    x = 0x1.fffffffffffffp+1023;
+    for (int j = 0; j < N; j++)
+    {
+      check (x, y);
+      check (x, -y);
+      check (-x, y);
+      check (-x, -y);
+      x = nextafter (x, 0.5 * x);
+    }
+    y = nextafter (y, 0.5 * y);
+  }
+#undef N
 }
 
 int
@@ -186,6 +261,15 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking in underflow range\n");
+  check_underflow ();
+
+  printf ("Checking values with large exponent difference\n");
+  check_large_diff ();
+
+  printf ("Checking in overflow range\n");
+  check_overflow ();
 
   printf ("Checking random values\n");
   check_random_all ();
