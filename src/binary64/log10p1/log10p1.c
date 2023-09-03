@@ -766,7 +766,6 @@ cr_log10p1_accurate (double x)
   else
     fast_two_sum (&xh, &xl, 1.0, x);
 
-  d64u64 t;
   /* log10p1(x) is exact when 1+x = 10^e, thus when 10^e-1 is exactly
      representable. This can only occur when xl=0 here, and 1 <= e <= 15. */
   if (xl == 0 && __builtin_round (x) == x)
