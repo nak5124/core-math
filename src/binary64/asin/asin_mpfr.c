@@ -1,4 +1,4 @@
-/* Correctly-rounded arc-sine function for binary32 value.
+/* Correctly-rounded arc-sine function for binary64 value.
 
 Copyright (c) 2022 Alexei Sibidanov.
 
