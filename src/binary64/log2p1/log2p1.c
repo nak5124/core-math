@@ -675,6 +675,11 @@ static double
 cr_log2p1_accurate_tiny (double x)
 {
   double h, l;
+
+  if (x == 0x0.2c316a14459d8p-1022)
+    return __builtin_fma (0x1p-600, 0x1p-600, 0x1.fe0e7458ac1f8p-1025);
+  if (x == -0x0.2c316a14459d8p-1022)
+    return __builtin_fma (-0x1p-600, 0x1p-600, -0x1.fe0e7458ac1f8p-1025);
   /* first scale x to avoid truncation of l in the underflow region */
   x = x * 0x1p53;
   s_mul (&h, &l, x, INVLOG2H, INVLOG2L);
