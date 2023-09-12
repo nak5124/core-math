@@ -145,14 +145,33 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
-  printf ("Checking results in subnormal range\n");
   /* check subnormal results */
-  /* x0 is the smallest x such that 2^-1075 <= RN(exp(x)) */
+  /* x0 is the smallest x such that 2^-1075 <= exp(x) */
   double x0 = -0x1.74910d52d3051p+9;
-  /* x1 is the smallest x such that 2^-1022 <= RN(exp(x)) */
+  /* x1 is the smallest x such that 2^-1022 <= exp(x) */
   double x1 = -0x1.6232bdd7abcd2p+9;
+  /* x2 is the smallest x such that 2^-1074 <= exp(x) */
+  double x2 = -0x1.74385446d71c3p+9;
   int64_t n0 = ldexp (x0, 43); /* n0 = -6554261109157969 */
   int64_t n1 = ldexp (x1, 43); /* n1 = -6231120794008786 */
+  int64_t n2 = ldexp (x2, 43);
+  // first check values around x0
+#define K 1000000
+  printf ("Checking results around log(2^-1075)\n");
+#pragma omp parallel for
+  for (int64_t n = n0 - K; n < n0 + K; n++)
+    check (ldexp ((double) n, -43));
+  // then check values around x2
+  printf ("Checking results around log(2^-1074)\n");
+#pragma omp parallel for
+  for (int64_t n = n2 - K; n < n2 + K; n++)
+    check (ldexp ((double) n, -43));
+  // then check values around x1
+  printf ("Checking results around log(2^-1022)\n");
+#pragma omp parallel for
+  for (int64_t n = n1 - K; n < n1 + K; n++)
+    check (ldexp ((double) n, -43));
+  printf ("Checking results in subnormal range\n");
 #define SKIP 20000
   n0 += getpid () % SKIP;
 #pragma omp parallel for

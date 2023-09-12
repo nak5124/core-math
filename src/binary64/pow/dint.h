@@ -198,7 +198,7 @@ add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
     /* Warning: the right shift x >> k is only defined for 0 <= k < n
        where n is the bit-width of x. See for example
        https://developer.arm.com/documentation/den0024/a/The-A64-instruction-set/Data-processing-instructions/Shift-operations
-       where is is said that k is interpreted modulo n. */
+       where it is said that k is interpreted modulo n. */
     B = (k < 128) ? B >> k : 0;
   }
 
@@ -304,7 +304,7 @@ add_dint_11 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
     /* Warning: the right shift x >> k is only defined for 0 <= k < n
        where n is the bit-width of x. See for example
        https://developer.arm.com/documentation/den0024/a/The-A64-instruction-set/Data-processing-instructions/Shift-operations
-       where is is said that k is interpreted modulo n. */
+       where it is said that k is interpreted modulo n. */
     uint64_t k = a->ex - b->ex;
     B = (k < 64) ? B >> k : 0;
   }

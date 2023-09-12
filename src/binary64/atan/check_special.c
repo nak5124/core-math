@@ -69,7 +69,7 @@ get_random ()
 }
 
 static void
-check_random (double x)
+check (double x)
 {
   int bug;
   double y1 = ref_atan (x);
@@ -144,7 +144,7 @@ main (int argc, char *argv[])
     ref_init ();
     ref_fesetround (rnd);
     double x = get_random ();
-    check_random (x);
+    check (x);
   }
 
   return 0;
