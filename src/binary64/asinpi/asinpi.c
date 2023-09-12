@@ -78,7 +78,7 @@ static u128 pasin(u128 x){
   return mUU(x, ch[0].a + mUU(x, ch[1].a + mUU(x, ch[2].a + mUU(x, t.a))));
 }
 
-static double asin_acc(double x){
+static double asinpi_acc(double x){
   static const u128_u s[] =
     {{.b = {0x4e29cf6e5fed0679, 0x648557de8d99f7e}},
      {.b = {0x76a17954b2b7c517, 0xc8fb2f886ec09f3}},{.b = {0xbeeeae8129a786b9, 0x12d52092ce19f5cc}},
@@ -285,17 +285,17 @@ double cr_asinpi(double x){
     return __builtin_nan ("");
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */
     if (__builtin_expect (e < -26,0)) /* |x| < 2^-26 */
-      /* For |x| < 2^-2, we have |asin(x)-x| < 0.25x^3
-         thus the difference between asin(x) and x is less than
-         0.25|x|^3, and since |x| < 2^53 ulp(x) and |x| < 2^-26:
-         |asin(x)-x| < 2^51 x^2 ulp(x) < 1/2 ulp(x), which
-         proves that asin(x) rounds either to x (always for
-         rounding to nearest), either to nextabove(x), or to nextbelow(x),
-         depending on the rounding mode and the sign of x.
-         The expression x + 2^-54*x rounds identically, where the constant
-         2^-54 can be replaced by any expression c <= 2^-54, such that
-         c*x < 1/2 ulp(x). */
-      return __builtin_fma (x, 0x1p-54, x);
+      {
+        if (x == 0)
+          return x;
+#define ONE_OVER_PIH 0x1.45f306dc9c883p-2
+#define ONE_OVER_PIL -0x1.6b01ec5417056p-56
+        double h, l;
+        h = x * ONE_OVER_PIH;
+        l = __builtin_fma (x, ONE_OVER_PIH, -h);
+        l = __builtin_fma (x, ONE_OVER_PIL, l);
+        return h + l;
+      }
     /* now 2^-26 <= |x| < 2^-6 */
     /* We also have |x| = 2^e*sm/2^63, since e <= -7 we have e+1 <= -6,
        thus we write |x| = 2^(e+1)*y with y=sm/2^64 */
@@ -336,16 +336,30 @@ double cr_asinpi(double x){
     fi.b[0] = d<<ss;
     fi.b[1] = (d>>(64-ss)) + (sm>>1);
     /* fi.a/2^127 approximates y + 1/6*y^3 + 3/40*y^5 + ... + 63/2816*y^11 */
+#define INV_PI_H 0x517cc1b727220a94ul
+#define INV_PI_L 0xfe13abe8fa9a6ee0ul
+    /* INV_PI_H/2+INV_PI_L/2^64 is an approximation by default of 1/pi:
+       INV_PI_H/2+INV_PI_L/2^64 < 1/pi < INV_PI_H/2+(INV_PI_L+1)/2^64 */
+    u128 m1 = (u128) INV_PI_H * (u128) fi.b[0];
+    u128 m2 = (u128) INV_PI_L * (u128) fi.b[1];
+    fi.a = (u128) INV_PI_H * (u128) fi.b[1];
+    fi.a += m1 >> 64;
+    fi.a += m2 >> 64;
+    /* now fi.a/2^127 approximates asinpi(x), with error < 15:
+     * 13/pi < 5 coming from the error in the approximation y + 1/6*y^3 + ...
+       which is multiplied by 1/pi
+     * 1 from the error in the approximation of 1/pi which is multiplied
+       by y + 1/6*y^3 + ... < 2 */
     int nz = __builtin_clzll (fi.b[1]) + (rm==FE_TONEAREST);
     /* the number of leading zeros in fi.b[1] is usually 1, but it can also
        be 0, for example for x=0x1.fffffffffffffp-7, thus nz is 0, 1 or 2 */
     u128_u u = fi;
-    u.a += 12l<<ss;
-    /* Here fi is the 'left' approximation, and u is the 'right' approximation,
-       with error bounded by 9 ulp(d). We check the last bit (or the round bit
-       for FE_TONEAREST) does not change between fi and u. */
+    u.a += 15l<<ss;
+    /* Here fi is the 'left' approximation, and u is the 'right' approximation.
+       We check the last bit (or the round bit for FE_TONEAREST) does not
+       change between fi and u. */
     if( __builtin_expect(((fi.b[1]^u.b[1])>>(11-nz))&1, 0)){
-      return asin_acc (x);
+      return asinpi_acc (x);
     }
     e += 0x3ff;
   } else { /* case |x| >= 2^-6 */
@@ -502,15 +516,23 @@ double cr_asinpi(double x){
     fi.a += V;
     /* now fi/2^127 approximates asin(|x|) */
 
+    u128 m1 = (u128) INV_PI_H * (u128) fi.b[0];
+    u128 m2 = (u128) INV_PI_L * (u128) fi.b[1];
+    fi.a = (u128) INV_PI_H * (u128) fi.b[1];
+    fi.a += m1 >> 64;
+    fi.a += m2 >> 64;
+    /* now fi.a/2^127 approximates asinpi(|x|), with error < 124*2^55:
+     * 24.08*2^59/pi < 123*2^55 coming from the error in the approximation
+       of asin(|x|) which is multiplied by 1/pi
+     * 1 from the error in the approximation of 1/pi which is multiplied
+       by asin(|x|) */
+
     int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
     u128_u u = fi, d = fi;
-    /* The error is bounded by 24.08*2^59 here, thus by 386*2^55.
-       For reference, the original (non proven) error bounds are:
-       u.a += 50l<<55 and d.a -= 27l<<55. */
-    u.a += 386l<<55;
-    d.a -= 386l<<55;
+    u.a += 124l<<55;
+    d.a -= 124l<<55;
     if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
-      return asin_acc(x);
+      return asinpi_acc(x);
     }
     e = 0x3fel;
   }
