@@ -125,6 +125,7 @@ float cr_log10p1f(float x){
       return r;
     }
     if(__builtin_expect(ux==0x7956ba5eu,0)) return 0x1.16bebap+5f + 0x1p-20f;
+    if(__builtin_expect(ux==0xbd86ffb9u,0)) return -0x1.e53536p-6f + 0x1p-31f;
     static const double c[] =
       {0x1.bcb7b1526e50ep-2, -0x1.bcb7b1526e53dp-3, 0x1.287a7636f3fa2p-3, -0x1.bcb7b146a14b3p-4,
        0x1.63c627d5219cbp-4, -0x1.2880736c8762dp-4, 0x1.fc1ecf913961ap-5};
