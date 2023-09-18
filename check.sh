@@ -87,7 +87,11 @@ if [[ -n "$LIBM" ]] && ! has_symbol; then
 fi
 
 if [ "$CFLAGS" == "" ]; then
-   export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
+   if [ "$CC" == "clang" ]; then # clang does not provide -fsignaling-nans
+      export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math"
+   else
+      export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
+   fi
 fi
 
 case "$KIND" in
