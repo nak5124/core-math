@@ -70,24 +70,25 @@ SOFTWARE.
 
 /***************** polynomial approximations of exp(z) ***********************/
 
-/* Given (zh,zl) such that |zh+zl| < 0.000130273 and |zl| < 2^-42.7260,
-   this routine puts in qh+ql an approximation of exp(zh+zl) such that
+/* Given z such that |z| < 2^-12.905,
+   this routine puts in qh+ql an approximation of exp(z) such that
 
-   | (qh+ql) / exp(zh+zl) - 1 | < 2^-74.169053
+   | (qh+ql) / exp(z) - 1 | < 2^-64.902632
 
-   See Lemma 6 from reference [5].
+   and |ql| <= 2^-51.999. See Lemma 6 from reference [5].
 */
-static inline void q_1 (double *qh, double *ql, double zh, double zl) {
-  double z = zh + zl;
-  double q = __builtin_fma (Q_1[4], zh, Q_1[3]); /* q3+q4*z */
+static inline void q_1 (double *qh, double *ql, double z) {
+  double q, h0, h1, l1;
 
-  q = __builtin_fma (q, z, Q_1[2]); /* q2+q3*z+q4*z^2 */
+  q = __builtin_fma (Q_1[4], z, Q_1[3]);
 
-  fast_two_sum (qh, ql, Q_1[1], q * z);
+  q = __builtin_fma (q, z, Q_1[2]);
 
-  d_mul (qh, ql, zh, zl, *qh, *ql);
+  h0 = __builtin_fma (q, z, Q_1[1]);
 
-  fast_sum (qh, ql, Q_1[0], *qh, *ql);
+  a_mul (&h1, &l1, z, h0);
+
+  fast_sum (qh, ql, Q_1[0], h1, l1);
 }
 
 /* Given |y| < 0.00016923 < 2^-12.52, put in r an approximation of exp(y),
@@ -901,9 +902,9 @@ static void log_3 (qint64_t *r, qint64_t *x) {
 /* Given RHO1 <= rh <= RHO2, |rl/rh| < 2^-23.8899 and |rl| < 2^-14.4187,
    this routine computes an approximation eh+el of exp(rh+rl) such that:
 
-   | (eh+el) / exp(rh+rl) - 1 | < 2^-74.16.
+   | (eh+el) / exp(rh+rl) - 1 | < 2^-63.78597.
 
-   Moreover |el/eh| <= 2^-41.7.
+   Moreover |el/eh| <= 2^-49.2999.
 
    See Lemma 7 from reference [5].
 
@@ -947,14 +948,12 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
 #define INVLOG2 0x1.71547652b82fep+12
   double k = __builtin_roundeven (rh * INVLOG2);
 
-  double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
 #define LOG2L 0x1.abc9e3b39803fp-68
-  s_mul (&kh, &kl, k, LOG2H, LOG2L);
 
-  double yh, yl;
-  fast_two_sum (&yh, &yl, rh - kh, rl);
-  yl -= kl;
+  double zh, zl;
+  zh = __builtin_fma (LOG2H, -k, rh);
+  zl = __builtin_fma (LOG2L, -k, rl);
 
   int64_t K = k; /* Note: k is an integer, this is just a conversion. */
   int64_t M = (K >> 12) + 0x3ff;
@@ -965,7 +964,7 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
   d_mul (eh, el, t2h, t2l, t1h, t1l);
 
   double qh, ql;
-  q_1 (&qh, &ql, yh, yl);
+  q_1 (&qh, &ql, zh + zl);
 
   d_mul (eh, el, *eh, *el, qh, ql);
   f64_u _d;
