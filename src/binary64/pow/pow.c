@@ -946,6 +946,12 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
   }
 
 #define INVLOG2 0x1.71547652b82fep+12
+  /* Note: if the rounding mode is to nearest, we can save about 2 cycles
+     (on an i7-8700) by replacing the computation of k by the following
+     classical trick:
+     const double magic = 0x1.8p+52;
+     double k = __builtin_fma (rh, INVLOG2, magic) - magic;
+  */
   double k = __builtin_roundeven (rh * INVLOG2);
 
 #define LOG2H 0x1.62e42fefa39efp-13
