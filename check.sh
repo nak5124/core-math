@@ -92,6 +92,9 @@ if [ "$CFLAGS" == "" ]; then
    else
       export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
    fi
+else
+   # the core-math code assumes -frounding-math
+   export ROUNDING_MATH="-frounding-math"
 fi
 
 case "$KIND" in
