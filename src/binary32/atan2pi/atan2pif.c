@@ -164,7 +164,9 @@ float cr_atan2pif(float y, float x){
   return r;
 }
 
-/* just to compile since glibc does not contain this function*/
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float atan2pif(float x, float y){
   return cr_atan2pif(x, y);
 }
+#endif

@@ -116,7 +116,7 @@ float cr_exp2m1f(float x){
   }
 }
 
-/* just to compile since glibc does not contain this function*/
+/* just to compile since glibc does not contain this function */
 float exp2m1f(float x){
   return cr_exp2m1f(x);
 }

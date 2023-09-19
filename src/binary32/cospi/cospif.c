@@ -93,6 +93,9 @@ float cr_cospif(float x){
   return r;
 }
 
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float cospif(float x){
   return cr_cospif(x);
 }
+#endif

@@ -103,7 +103,9 @@ float cr_asinpif(float x){
   }
 }
 
-/* just to compile since glibc does not contain this function*/
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float asinpif(float x){
   return cr_asinpif(x);
 }
+#endif

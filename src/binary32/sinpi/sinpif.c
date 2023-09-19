@@ -98,6 +98,9 @@ float cr_sinpif(float x){
   return r;
 }
 
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float sinpif(float x){
   return cr_sinpif(x);
 }
+#endif

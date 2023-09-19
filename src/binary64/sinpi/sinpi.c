@@ -372,7 +372,9 @@ void sincosn2(int s, double *sh, double *sl, double *ch, double *cl){
   *sl = __builtin_copysign(1.0, sgn[ss])*tsl;
 }
 
-/* just to compile since glibc does not have it*/
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not provide this function */
 double sinpi(double x){
   return sin(M_PI*x);
 }
+#endif
