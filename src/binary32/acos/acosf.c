@@ -27,6 +27,10 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 
+#if defined(__clang__)
+#pragma STDC FENV_ACCESS ON
+#endif
+
 typedef union {float f; unsigned u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 

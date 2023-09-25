@@ -87,8 +87,11 @@ if [[ -n "$LIBM" ]] && ! has_symbol; then
 fi
 
 if [ "$CFLAGS" == "" ]; then
-   if [ "$CC" == "clang" ]; then # clang does not provide -fsignaling-nans
-      export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math"
+   if [ "$CC" == "clang" ]; then
+      # clang does not provide -fsignaling-nans, and -frounding-math does not
+      # seem to have any effect
+      # (https://gitlab.inria.fr/core-math/core-math/-/issues/8)
+      export CFLAGS="-O3 -march=native -fno-finite-math-only"
    else
       export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
    fi
