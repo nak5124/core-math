@@ -28,6 +28,13 @@ SOFTWARE.
 #include <errno.h>
 #include <fenv.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -94,7 +101,7 @@ float cr_log10f(float x){
     {0x1.bcb7b1526e50ep-2, -0x1.bcb7b1526e53dp-3, 0x1.287a7636f3fa2p-3, -0x1.bcb7b146a14b3p-4,
      0x1.63c627d5219cbp-4, -0x1.2880736c8762dp-4, 0x1.fc1ecf913961ap-5};
   b32u32_u t = {.f = x};
-  unsigned ux = t.u;
+  uint32_t ux = t.u;
   if(__builtin_expect(ux<(1<<23) || ux >= 0x7f800000u, 0)){
     if(ux==0 || ux >= 0x7f800000u) return as_special(x);
     // subnormal

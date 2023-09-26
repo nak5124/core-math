@@ -34,7 +34,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; unsigned u;} b32u32_u;
+typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static __attribute__((noinline)) float as_special(float x){
@@ -42,7 +42,7 @@ static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};
   if(t.u == (0x7fu<<23)) return 0.0f; // x=1
   if(t.u == (0x17fu<<23)) return pih + pil;  // x=-1
-  unsigned ax = t.u<<1;
+  uint32_t ax = t.u<<1;
   if(ax>(0xffu<<24)) return x; // nan
   errno = EDOM;
   return 0.0f/0.0f; // to raise FE_INVALID
@@ -68,7 +68,7 @@ float cr_acosf(float x){
   static const double o[] = {0, 0x1.921fb54442d18p+1};
   double xs = x, r;
   b32u32_u t = {.f = x};
-  unsigned ax = t.u<<1;
+  uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>=0x7f<<24, 0)) return as_special(x);
   if(__builtin_expect(ax<0x7ec29000u, 1)){
     static const double b[] =

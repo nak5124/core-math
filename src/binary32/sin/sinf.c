@@ -27,6 +27,13 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
@@ -152,7 +159,7 @@ static const double tb[] =
 
 static float __attribute__((noinline)) as_sinf_big(float x){
   b32u32_u t = {.f = x};
-  unsigned ax = t.u<<1;
+  uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>=0xffu<<24, 0)){ // nan or +-inf
     if(ax<<8) return x; // nan
     errno = EDOM;
