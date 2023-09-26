@@ -30,6 +30,13 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h> // needed to provide sinpi() since glibc does not have it
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static inline void sincosn(int, double*, double*, double*, double*);

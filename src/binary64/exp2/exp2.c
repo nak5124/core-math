@@ -27,6 +27,13 @@ SOFTWARE.
 #include <stdint.h> /* for uint64_t */
 #include <math.h>   /* for ldexp */
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 /* Add a + b exactly, such that *hi + *lo = a + b.
    Assumes |a| >= |b|.  */
 static void

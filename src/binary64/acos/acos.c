@@ -26,6 +26,13 @@ SOFTWARE.
 
 #include <stdint.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 /* h + l <- a * b */
 static void
 dekker (double *h, double *l, double a, double b)
@@ -79,7 +86,6 @@ mul2_1 (double *h_out, double *l_out, double h_in, double l_in, double y)
   *l_out += l_in * y;
 }
 
-#define TRACEX 0x1.fffffffffffffp-1
 /* The following table was generated with
    Gen_P_aux(6,256,threshold=192,verbose=true,extra0=12,extra1=3,k1=192)
    for the first part (0 <= i < 192), and for the second part (192 <= i < 256)
@@ -526,13 +532,10 @@ slow_path (double x)
   w.x = 1.0 + absx; /* 1 <= w.x <= 2 */
   /* Warning: w.x might be 2 for rounding up or nearest. */
   int i = (w.x == 2.0) ? 127 : (w.i[1] >> 13) & 127;
-  // if (x == TRACEX) printf ("slow path: i=%d\n", i);
   if (i < 64) /* |x| < 0.5 */
   {
     p = T2[i];
-    // if (x == TRACEX) printf ("p[2*DEGREE+2]=%la\n", p[2*DEGREE+2]);
     y = absx - p[DEGREE+LARGE+1]; /* exact */
-    // if (x == TRACEX) printf ("y=%la\n", y);
     h = p[DEGREE+LARGE];
     l = 0;
     for (int j = DEGREE - 1; j >= 0; j--)
@@ -554,19 +557,15 @@ slow_path (double x)
         l += p[2*j+1] + v;
       }
     }
-    // if (x == TRACEX) printf ("h=%la l=%la\n", h, l);
     /* acos(x) ~ pi/2 + (h + l) for x > 0, pi/2 - (h + l) for x < 0 */
     if (x < 0)
       h = -h, l = -l;
     fast_two_sum (&u, &v, pi_hi / 2, h);
     v += pi_lo / 2 + l;
-    // if (x == TRACEX) printf ("slow: u=%la v=%la\n", u, v);
     static const double err = 0x1.01p-106;
     double left = u + (v - err), right = u + (v + err);
-    // if (x == TRACEX) printf ("slow: left=%la right=%la\n", left, right);
     if (left == right)
       return left;
-    // printf ("slow path rounding test failed for x=%la\n", x);
     if (__builtin_fabs (x) <= 0x1.1a62633145c07p-54)
     {
       u = pi_hi / 2;
@@ -615,11 +614,8 @@ slow_path (double x)
     double h1, l1;
     h1 = 1.0 - absx; /* exact since |x| >= 0.5 */
     h1 = sqrt_dbl_dbl (h1, &l1);
-    // if (x == TRACEX) printf ("h1=%la l1=%la\n", h1, l1);
     p = T2[i];
-    // if (x == TRACEX) printf ("p[2*DEGREE+2]=%la\n", p[2*DEGREE+2]);
     y = absx - p[DEGREE+LARGE+1]; /* exact */
-    // if (x == TRACEX) printf ("y=%la\n", y);
     h = p[DEGREE+LARGE];
     l = 0;
     for (int j = DEGREE - 1; j >= 0; j--)
@@ -635,7 +631,6 @@ slow_path (double x)
         l += p[2*j+1] + v;
       }
     }
-    // if (x == TRACEX) printf ("h=%la l=%la\n", h, l);
     /* acos(x) ~ (h1 + l1) * (h + l) */
     dekker (&u, &v, h1, h);
     v += l1 * h + h1 * l;
@@ -644,12 +639,10 @@ slow_path (double x)
       fast_two_sum (&u, &l, pi_hi, -u);
       v = l + pi_lo - v;
     }
-    // printf ("x=%la u=%la v=%la\n", x, u, v);
     static const double err = 0x1p-104;
     double left = u + (v - err), right = u + (v + err);
     if (left == right)
       return left;
-    // printf ("slow path rounding test failed for x=%la\n", x);
     if (x == 0x1.11b3c109f983bp-1)
       u = 0x1.01bd20609b7b3p+0, v = -0x1.fffffffffffffp-54;
     else if (x == 0x1.78daf01036d0dp-1)
@@ -669,7 +662,6 @@ cr_acos (double x)
   u.i[1] &= 0x7fffffff; /* set sign bit to 0 */
   double absx = u.x;
   k = u.i[1];
-  // if (x == TRACEX) printf ("fast path: k=%u\n", k);
   if (k < 0x3fe80000) { /* |x| < 0.75 */
     /* approximate acos(x) by pi/2 +/- p(x-xmid), where [0,0.75) is split
        into 192 sub-intervals */
@@ -678,7 +670,6 @@ cr_acos (double x)
     /* k contains 20 significant bits in its low bits, we shift by 12 to get
        the upper 8 (ignoring the implicit leading bit) */
     int i = (k >> 12) & 255;
-    // if (x == TRACEX) printf ("fast path: i=%d\n", i);
     const double *p = T[i];
     double y = absx - p[7]; /* p[7] = xmid */
     double zh, zl;
@@ -707,10 +698,7 @@ cr_acos (double x)
     /* The value 0x1.5fp-61 is optimal among 9-bit values: with a smaller
        9-bit value and RNDD it fails for x=-0x1.77e6d2adf19c3p-1 (i=187). */
     static const double err = 0x1.5fp-61;
-    // printf ("u=%la v=%la\n", u, v);
-    // if (x == TRACEX) printf ("|x|<0.75: u=%la v=%la\n", u, v);
     double left  = u + (v - err), right = u + (v + err);
-    // if (x == TRACEX) printf ("left=%la right=%la\n", left, right);
     if (left != right)
       return slow_path (x); /* hard to round case */
     return left;
@@ -725,13 +713,11 @@ cr_acos (double x)
        implicit leading bit) of the significand of 1+|x|.
        Warning: v.x might be 2 for rounding up or nearest. */
     int i = (v.x == 2.0) ? 255 : (v.i[1] & 0xff000) >> 12;
-    // if (x == TRACEX) printf ("fast path: i=%d\n", i);
     const double *p = T[i];
     double y = absx - p[6]; /* exact (p[6] = xmid) */
     double h1, l1;
     h1 = 1.0 - absx; /* exact since |x| >= 0.5 */
     h1 = sqrt_dbl_dbl (h1, &l1);
-    // if (x == TRACEX) printf ("h1=%la l1=%la\n", h1, l1);
     double zh, zl;
     /* use Estrin's scheme to evaluate p2 + p3*y + p4*y^2 + p5*y^3 */
     double yy = y * y;
@@ -742,7 +728,6 @@ cr_acos (double x)
     fast_two_sum (&zh, &zl, p[0], zh * y);
     double l1zh = l1 * zh; /* compute earlier */
     double h1zl = h1 * zl;
-    // if (x == TRACEX) printf ("zh=%la zl=%la\n", zh, zl);
     /* acos(x) ~ (h1 + l1) * (zh + zl) */
     double u, v;
     dekker (&u, &v, h1, zh);
@@ -753,12 +738,10 @@ cr_acos (double x)
       /* acos(x) = u + zl + pi_lo - v */
       v = zl + pi_lo - v;
     }
-    // if (x == TRACEX) printf ("0.75<=|x|<1: u=%la v=%la\n", u, v);
     /* The value of 'err' is optimal among 9-bit values, for RNDZ and
        x=-0x1.95f84d64fce97p-1 (i=202) it fails with a smaller 9-bit value. */
     static const double err = 0x1.afp-65;
     double left  = u + (v - err), right = u + (v + err);
-    // if (x == TRACEX) printf ("left=%la right=%la\n", left, right);
     if (left != right)
       return slow_path (x); /* hard to round case */
     return left;

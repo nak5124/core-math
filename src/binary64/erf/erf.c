@@ -26,6 +26,13 @@ SOFTWARE.
 
 #include <stdint.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {double f; uint64_t u;} b64u64_u;
 
 /* CH+CL is a double-double approximation of 2/sqrt(pi) to nearest */

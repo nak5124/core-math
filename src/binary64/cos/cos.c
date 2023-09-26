@@ -31,6 +31,13 @@ SOFTWARE.
 #include <stdint.h>
 #include <fenv.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 /******************** code copied from dint.h and pow.[ch] *******************/
 
 typedef unsigned __int128 u128;

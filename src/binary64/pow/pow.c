@@ -59,6 +59,13 @@ SOFTWARE.
 #include <stdint.h>
 #include <stdlib.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 #ifndef POW_ITERATION
 #define POW_ITERATION 15
 #endif
