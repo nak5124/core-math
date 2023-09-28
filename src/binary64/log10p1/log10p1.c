@@ -25,9 +25,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE -0x1.9d7d391e9f5ecp-1
-
-#include <stdio.h>
 #include <stdint.h>
 #include <math.h> // for log2
 #include "dint.h"
@@ -1179,7 +1176,11 @@ static const char exceptions_rnd[EXCEPTIONS] = {
       b = c;
   }
   if (x == exceptions[a][0])
-    return exceptions[a][1] + exceptions[a][2];
+  {
+    double h = exceptions[a][1];
+    char l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
+    return h + h * 0x1p-54 * (double) l;
+  }
 #undef EXCEPTIONS
 
   /* for degree 11 or more, ulp(c[d]*x^d) < 2^-105.7*|log10p1(x)|
@@ -1475,13 +1476,6 @@ static inline void p_2(dint64_t *r, dint64_t *z) {
 }
 
 static void log_2(dint64_t *r, dint64_t *x) {
-#if DEBUG > 0
-  printf("Calcul du logarithme :\n");
-  printf("  x := ");
-  print_dint(x);
-  printf("\n");
-#endif
-
   int64_t E = x->ex;
 
   // Find the lookup index
@@ -1494,48 +1488,13 @@ static void log_2(dint64_t *r, dint64_t *x) {
 
   x->ex = x->ex - E;
 
-#if DEBUG > 0
-  printf("  E := %ld\n\n", E);
-#endif
-  
   dint64_t z;
   mul_dint(&z, x, &_INVERSE_2[i - 128]);
 
-#if DEBUG > 0
-  printf("  y := ");
-  print_dint(x);
-  printf("  i := %d\n", i);
-  printf("  r_i := ");
-  print_dint(&_INVERSE_2[i - 128]);
-  printf("  y·r_i := ");
-  print_dint(&z);
-  printf("\n");
-#endif
-
   add_dint(&z, &M_ONE, &z);
-
-#if DEBUG > 0
-  printf("  z := ");
-  print_dint(&z);
-  printf("\n");
-#endif
 
   // E·log(2)
   mul_dint_2(r, E, &LOG2);
-
-#if DEBUG > 0
-  printf("  E·log(2) := ");
-  print_dint(r);
-  printf("\n");
-#endif
-
-#if DEBUG > 0
-  printf("  -log(r_i) := ");
-  print_dint(&_LOG_INV_2[i - 128]);
-  printf("  E·log(2) - log(r_i) := ");
-  print_dint(r);
-  printf("\n");
-#endif
 
   dint64_t p;
 
@@ -1543,19 +1502,7 @@ static void log_2(dint64_t *r, dint64_t *x) {
 
   add_dint(&p, &_LOG_INV_2[i - 128], &p);
 
-#if DEBUG > 0
-  printf("  log(1 + z) := ");
-  print_dint(&p);
-  printf("\n");
-#endif
-
   add_dint(r, &p, r);
-
-#if DEBUG > 0
-  printf("  log(x) := ");
-  print_dint(r);
-  printf("\n");
-#endif
 }
 
 // Convert a dint64_t value to a double
