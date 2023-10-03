@@ -1141,6 +1141,30 @@ check_tiny (void)
   }
 }
 
+/* check the inexact exception is not raised when log10p1(x) is exact */
+static void
+check_inexact (void)
+{
+  double x = 0, y;
+  fexcept_t flagp;
+  /* log10p1(x) is exact for x = 10^i-1 for 0 <= i <= 15
+     (10^16-1 has 54 bits and is odd) */
+  printf ("Checking inexact flag\n");
+  for (int i = 0; i <= 15; i++)
+  {
+    feclearexcept (FE_INEXACT);
+    y = cr_log10p1 (x);
+    fegetexceptflag (&flagp, FE_INEXACT);
+    if (flagp)
+    {
+      printf ("Inexact flag set for x=%la\n", x);
+      fflush (stdout);
+      exit (1);
+    }
+    x = 10.0 * x + 9.0;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -1185,7 +1209,9 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-#define N 1000000UL /* total number of tests */
+  check_inexact ();
+
+#define N 10000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);

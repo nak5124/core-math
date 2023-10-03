@@ -1415,6 +1415,47 @@ cr_log10p1 (double x)
     }
     return x; /* +/-0, NaN or +Inf */
   }
+
+  /* check x=10^n-1 for 0 <= n <= 15, where log10p1(x) is exact,
+     and we shouldn't raise the inexact flag */
+  d64u64 t = {.f = x + 1.0};
+  if (__builtin_expect ((t.u << 46) == 0, 0))
+  {
+    static const double T[] = {
+      0x0p+0,
+      -1,
+      0x1.2p+3,
+      0x1.8cp+6,
+      -1,
+      0x1.f38p+9,
+      -1,
+      0x1.3878p+13,
+      0x1.869fp+16,
+      -1,
+      0x1.e847ep+19,
+      -1,
+      0x1.312cfep+23,
+      0x1.7d783fcp+26,
+      -1,
+      0x1.dcd64ff8p+29,
+      -1,
+      0x1.2a05f1ff8p+33,
+      0x1.74876e7ffp+36,
+      -1,
+      0x1.d1a94a1ffep+39,
+      -1,
+      0x1.2309ce53ffep+43,
+      0x1.6bcc41e8fffcp+46,
+      -1,
+      0x1.c6bf52633fff8p+49,
+    };
+    static const double U[] = { 0, -1, 1, 2, -1, 3, -1, 4, 5, -1, 6, -1, 7, 8,
+                               -1, 9, -1, 10, 11, -1, 12, -1, 13, 14, -1, 15 };
+    int i = (t.u >> 53) - 511;
+    if (T[i] == x)
+      return U[i];
+  }
+
   /* now x > -1 */
   /* normalize v in [1,2) */
   v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
