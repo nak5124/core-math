@@ -1149,7 +1149,6 @@ check_inexact (void)
   fexcept_t flagp;
   /* log10p1(x) is exact for x = 10^i-1 for 0 <= i <= 15
      (10^16-1 has 54 bits and is odd) */
-  printf ("Checking inexact flag\n");
   for (int i = 0; i <= 15; i++)
   {
     feclearexcept (FE_INEXACT);
@@ -1209,13 +1208,15 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
+  printf ("Checking inexact flag\n");
   check_inexact ();
 
-#define N 10000000UL /* total number of tests */
+#define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
 
+  printf ("Checking random values\n");
 #pragma omp parallel for
   for (uint64_t n = 0; n < N; n++)
   {
