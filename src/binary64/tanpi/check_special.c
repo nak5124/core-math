@@ -101,7 +101,8 @@ static void check_random(int seed, double a, double b){
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
   struct drand48_data buf[1];
-  printf("seed = %d\n",seed);
+  if (verbose)
+    printf("seed = %d\n",seed);
   srand48_r(seed, buf);
   int fail = 0, maxfail = 10;
   double s = (b - a)*0.5, m = (a+b)*0.5;
@@ -114,11 +115,14 @@ static void check_random(int seed, double a, double b){
       if(fail>=maxfail) break;
     }
     count += i;
-    printf("failure(s) %d, total %ld\n",fail,count);
+    if (verbose)
+      printf("failure(s) %d, total %ld\n",fail,count);
     if(count>=1000l*1000l*1000l) break;
     if(fail>=maxfail) break;
   }
-  printf("%d fails per %ld calls or %.1e %%\n",fail,count,(double)fail/count*100);
+  if (verbose)
+    printf("%d fails per %ld calls or %.1e %%\n",
+           fail, count, (double)fail/count*100);
 }
 
 static void call_random(int seed, long n, double a, double b){
@@ -169,7 +173,8 @@ static void check_random_p(int seed){
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
   struct drand48_data buf[1];
-  printf("seed = %d\n",seed);
+  if (verbose)
+    printf("seed = %d\n",seed);
   srand48_r(seed, buf);
   int fail = 0, maxfail = 10;
   long count = 0;
@@ -181,11 +186,14 @@ static void check_random_p(int seed){
       if(fail>=maxfail) break;
     }
     count += i;
-    printf("failure(s) %d, total %ld\n",fail,count);
+    if (verbose)
+      printf("failure(s) %d, total %ld\n",fail,count);
     if(count>=1000l*1000l*1000l) break;
     if(fail>=maxfail) break;
   }
-  printf("%d fails per %ld calls or %.1e %%\n",fail,count,(double)fail/count*100);
+  if (verbose)
+    printf("%d fails per %ld calls or %.1e %%\n",
+           fail, count, (double)fail/count*100);
 }
 
 static void check_random_all_p(){
@@ -230,7 +238,7 @@ int main(int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 0, seed = 0, darts = 0, conseq = 0, p = 0;
+  int thread = 0, seed = getpid (), darts = 0, conseq = 0, p = 0;
   double x = __builtin_nan(""), a = -1, b = 1;
   long n = 10*1000;
   const char *fname = NULL;

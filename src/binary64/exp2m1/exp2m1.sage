@@ -49,7 +49,7 @@ def print_bacsel_pos (t0, e0, n0, t1, e1, n1, nn):
          print_bacsel_pos (t0, e0, n0, 2^n0, e0, n0, nn)
          print_bacsel_pos (2^(n0-1), e0+1, n0, t1, e1, n1, nn)
       else:
-         print ("./doit1.sh " + str(t0) + " " + str(t1) + " " + str(n0) + " " + str(e0) + " 64 10 " + str(nn) + " >> out")
+         print ("./doit1.sh " + str(t0) + " " + str(t1) + " " + str(n0) + " " + str(e0) + " 64 10 " + str(nn))
 
 # return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
 # this internal routine is used below

@@ -26,6 +26,13 @@ SOFTWARE.
 
 #include <stdint.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 #define INEXACTFLAG 0
 #if INEXACTFLAG!=0
 #  include <x86intrin.h> /* for the x86 architecture with SSE to rise the inexact flag only when the root is indeed inexact */

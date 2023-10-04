@@ -31,6 +31,13 @@ SOFTWARE.
 #include <stdint.h>
 #include <fenv.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 /******************** code copied from dint.h and pow.[ch] *******************/
 
 typedef unsigned __int128 u128;
@@ -152,7 +159,7 @@ add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
     /* Warning: the right shift x >> k is only defined for 0 <= k < n
        where n is the bit-width of x. See for example
        https://developer.arm.com/documentation/den0024/a/The-A64-instruction-set/Data-processing-instructions/Shift-operations
-       where is is said that k is interpreted modulo n. */
+       where it is said that k is interpreted modulo n. */
     B = (k < 128) ? B >> k : 0;
   }
 
@@ -2033,7 +2040,7 @@ tan_fast (double *h, double *l, double x)
      bounds are the same.
   */
 
-  static double sgn[2] = {1.0, -1.0};
+  static const double sgn[2] = {1.0, -1.0};
   *h *= sgn[neg];
   *l *= sgn[neg];
   return *h * 0x1.1ap-66; // 2^-65.864 < 0x1.1ap-66

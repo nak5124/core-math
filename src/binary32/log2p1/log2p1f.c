@@ -26,6 +26,13 @@ SOFTWARE.
 
 #include <stdint.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -101,7 +108,7 @@ float cr_log2p1f(float x) {
 
   double z = x;
   b32u32_u t = {.f = x};
-  unsigned ux = t.u, ax = ux&(~0u>>1);
+  uint32_t ux = t.u, ax = ux&(~0u>>1);
   if (__builtin_expect(ux >= 0x17fu<<23, 0)) { // x <= -1
     if (ux==(0x17fu<<23)) return -1.0/0.0f; // -1.0
     if (ux>(0x1ffu<<23)) return x; // nan
@@ -163,7 +170,7 @@ float cr_log2p1f(float x) {
   }
 }
 
-/* just to compile since glibc does not contain this function*/
+/* just to compile since glibc does not contain this function */
 float log2p1f(float x){
   return cr_log2p1f(x);
 }

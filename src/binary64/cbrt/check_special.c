@@ -1,6 +1,6 @@
 /* Generate exact cases for cbrt testing.
 
-Copyright (c) 2022 Stéphane Glond and Paul Zimmermann, Inria.
+Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -30,8 +30,13 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
+#include <unistd.h>
+#include <omp.h>
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
+
+int ref_init (void);
+int ref_fesetround (int);
 
 double ref_cbrt (double);
 double cr_cbrt (double);
@@ -51,7 +56,7 @@ asuint64 (double f)
 }
 
 static void
-doit (double x)
+check (double x)
 {
   double z1, z2;
   z1 = ref_cbrt (x);
@@ -89,7 +94,7 @@ check_exact (int i)
   for (uint64_t t = t0; t < t1; t += 2)
   {
     double x = ldexp (t * t * t, -54);
-    doit (x);
+    check (x);
   }
 }
 
@@ -135,8 +140,37 @@ main (int argc, char *argv[])
         }
     }
 
+  printf ("Checking exact cube roots\n");
   check_exact (0);
   check_exact (1);
   check_exact (2);
+
+  ref_init ();
+  ref_fesetround (rnd);
+
+  printf ("Checking random values\n");
+#define K 1000000000UL /* total number of tests */
+#define BUF_SIZE 1000
+
+  long seed = getpid ();
+  srand48 (seed);
+
+  double buf[BUF_SIZE];
+  uint64_t N = K / BUF_SIZE;
+  for (uint64_t n = 0; n < N; n++)
+  {
+    /* warning: drand48 is not thread-safe, thus we put it outside
+       the parallel loop */
+    for (int i = 0; i < BUF_SIZE; i++)
+    {
+      buf[i] = drand48 ();
+      if (i & 1)
+        buf[i] = -buf[i];
+    }
+#pragma omp parallel for
+    for (int i = 0; i < BUF_SIZE; i++)
+      check (buf[i]);
+  }
+
   return 0;
 }

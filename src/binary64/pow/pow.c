@@ -48,6 +48,8 @@ SOFTWARE.
        ARITH 2023 - 30th IEEE Symposium on Computer Arithmetic, 2023.
        Detailed version (with full proofs) available at
        https://inria.hal.science/hal-04159652.
+   [6] On Ziv's rounding test, F. De Dinechin, C. Lauter, J.-M. Muller,
+       S. Torres, ACM Trans. Math. Soft., volume 39, number 3, 2013.
 
    This code corresponds to reference [5].       
 */
@@ -56,6 +58,13 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
 
 #ifndef POW_ITERATION
 #define POW_ITERATION 15
@@ -68,24 +77,25 @@ SOFTWARE.
 
 /***************** polynomial approximations of exp(z) ***********************/
 
-/* Given (zh,zl) such that |zh+zl| < 0.000130273 and |zl| < 2^-42.7260,
-   this routine puts in qh+ql an approximation of exp(zh+zl) such that
+/* Given z such that |z| < 2^-12.905,
+   this routine puts in qh+ql an approximation of exp(z) such that
 
-   | (qh+ql) / exp(zh+zl) - 1 | < 2^-74.169053
+   | (qh+ql) / exp(z) - 1 | < 2^-64.902632
 
-   See Lemma 6 from reference [5].
+   and |ql| <= 2^-51.999. See Lemma 6 from reference [5].
 */
-static inline void q_1 (double *qh, double *ql, double zh, double zl) {
-  double z = zh + zl;
-  double q = __builtin_fma (Q_1[4], zh, Q_1[3]); /* q3+q4*z */
+static inline void q_1 (double *qh, double *ql, double z) {
+  double q, h0, h1, l1;
 
-  q = __builtin_fma (q, z, Q_1[2]); /* q2+q3*z+q4*z^2 */
+  q = __builtin_fma (Q_1[4], z, Q_1[3]);
 
-  fast_two_sum (qh, ql, Q_1[1], q * z);
+  q = __builtin_fma (q, z, Q_1[2]);
 
-  d_mul (qh, ql, zh, zl, *qh, *ql);
+  h0 = __builtin_fma (q, z, Q_1[1]);
 
-  fast_sum (qh, ql, Q_1[0], *qh, *ql);
+  a_mul (&h1, &l1, z, h0);
+
+  fast_sum (qh, ql, Q_1[0], h1, l1);
 }
 
 /* Given |y| < 0.00016923 < 2^-12.52, put in r an approximation of exp(y),
@@ -899,9 +909,9 @@ static void log_3 (qint64_t *r, qint64_t *x) {
 /* Given RHO1 <= rh <= RHO2, |rl/rh| < 2^-23.8899 and |rl| < 2^-14.4187,
    this routine computes an approximation eh+el of exp(rh+rl) such that:
 
-   | (eh+el) / exp(rh+rl) - 1 | < 2^-74.16.
+   | (eh+el) / exp(rh+rl) - 1 | < 2^-63.78597.
 
-   Moreover |el/eh| <= 2^-41.7.
+   Moreover |el/eh| <= 2^-49.2999.
 
    See Lemma 7 from reference [5].
 
@@ -943,16 +953,20 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
   }
 
 #define INVLOG2 0x1.71547652b82fep+12
+  /* Note: if the rounding mode is to nearest, we can save about 2 cycles
+     (on an i7-8700) by replacing the computation of k by the following
+     classical trick:
+     const double magic = 0x1.8p+52;
+     double k = __builtin_fma (rh, INVLOG2, magic) - magic;
+  */
   double k = __builtin_roundeven (rh * INVLOG2);
 
-  double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
 #define LOG2L 0x1.abc9e3b39803fp-68
-  s_mul (&kh, &kl, k, LOG2H, LOG2L);
 
-  double yh, yl;
-  fast_two_sum (&yh, &yl, rh - kh, rl);
-  yl -= kl;
+  double zh, zl;
+  zh = __builtin_fma (LOG2H, -k, rh);
+  zl = __builtin_fma (LOG2L, -k, rl);
 
   int64_t K = k; /* Note: k is an integer, this is just a conversion. */
   int64_t M = (K >> 12) + 0x3ff;
@@ -963,7 +977,7 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
   d_mul (eh, el, t2h, t2l, t1h, t1l);
 
   double qh, ql;
-  q_1 (&qh, &ql, yh, yl);
+  q_1 (&qh, &ql, zh + zl);
 
   d_mul (eh, el, *eh, *el, qh, ql);
   f64_u _d;
@@ -1448,10 +1462,13 @@ double cr_pow (double x, double y) {
   exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
+  /* Define ROUNDING_IS_TO_NEAREST_EVEN if the rounding mode is static and
+     to nearest-even, to use Ziv's rounding test instead. */
+#ifndef ROUNDING_IS_TO_NEAREST_EVEN
   /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
      phase_1 from reference [5]. */
-  static double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
-                          0x1.57p-58, /* 2^-57.579 < 0x1.57p-58 */
+  static const double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
+                                0x1.57p-58, /* 2^-57.579 < 0x1.57p-58 */
   };
   double res_min, res_max;
   res_min = res_h + __builtin_fma (err[cancel], -res_h, res_l);
@@ -1463,6 +1480,36 @@ double cr_pow (double x, double y) {
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
        to avoid double-rounding issues */
     return res_min;
+#else
+  /* From Theorem 2.1 of [6], if the rounding is to nearest-even, we can
+     replace the rounding test by yh = RN(yh + RN(yl*e)) ==> yh = RN(y),
+     where yh = res_h, yl = res_l, and
+     e = RU((1+2^-p)/(1-err-2^(p+1)*err)), where err is the relative error:
+     yh + yl = y * (1 + alpha) with |alpha| <= err [Equation (2) from [6]].
+     The reference [5] does not express the relative error in that form,
+     but instead in equation (9) from [5]:
+     |eh + el - x^y| <= tau * eh (*)
+     with tau = 2^-63.7977 if x < 1/sqrt(2) or sqrt(2) < 2, and
+     tau = 2^-57.5798 otherwise.
+     Then we get alpha = tau * eh/x^y, and since |el/eh| < 2^-41.7
+     (Lemma 7 of [5]), we get:
+     From (*) we get: eh <= x^y + |el| + tau * eh
+                         <= x^y + (2^-41.7 + tau)*eh
+     thus eh/x^y <= 1/(1-2^-41.7-tau).
+     It follows we can take alpha = RU(tau/(1-2^-41.7-tau)),
+     thus we can take err = 2^-63.7976 if x < 1/sqrt(2) or sqrt(2) < 2,
+     and err = 2^-57.5797 otherwise. We can thus take
+     e = 0x1.0049b8d09331fp+0 if x < 1/sqrt(2) or sqrt(2) < 2, and
+     e = 0x1.175d93c9061b1p+0 otherwise. */
+  static double err[] = { 0x1.0049b8d09331fp+0, 0x1.175d93c9061b1p+0 };
+  /* Warning: we should make sure no FMA is used to compute
+     res_h + res_l * err! */
+  /* Reference [6] requires that yh+yl rounds to yl. */
+  fast_two_sum (&res_h, &res_l, res_h, res_l);
+  double res = res_l * err[cancel];
+  if (res_h == res_h + res)
+    return res;
+#endif
 
   // Easy cases
   if (y == 1.0) {

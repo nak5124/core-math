@@ -27,6 +27,13 @@ SOFTWARE.
 
 #include <stdint.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {float f; uint32_t u;} b32u32_u;
 
 float cr_atanpif(float x){
@@ -46,7 +53,7 @@ float cr_atanpif(float x){
     if (__builtin_expect(e<127-25, 0)) return sx;
     return sx - (0x1.5555555555555p-2*sx)*(x*x);
   }
-  unsigned ax = t.u&(~0u>>1);
+  uint32_t ax = t.u&(~0u>>1);
   if(__builtin_expect(ax == 0x3fa267ddu, 0)) return __builtin_copysignf(0x1.267004p-2f,x) - __builtin_copysignf(0x1p-55f,x);
   if(__builtin_expect(ax == 0x3f693531u, 0)) return __builtin_copysignf(0x1.e1a662p-3f,x) + __builtin_copysignf(0x1p-28f,x);
   if(__builtin_expect(ax == 0x3f800000u, 0)) return __builtin_copysignf(0x1p-2f,x);
@@ -76,7 +83,9 @@ float cr_atanpif(float x){
   return r;
 }
 
-/* just to compile since glibc does not contain this function*/
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float atanpif(float x){
   return cr_atanpif(x);
 }
+#endif

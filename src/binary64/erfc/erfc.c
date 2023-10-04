@@ -43,6 +43,13 @@ SOFTWARE.
 
 #include <stdint.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 /****************** code copied from cosf.c **********************************/
 
 /* __builtin_roundeven was introduced in gcc 10:
@@ -825,8 +832,9 @@ erfc_asympt_fast (double *h, double *l, double x)
   */
 
   /* look for the right interval for yh */
-  static double threshold[] = {0x1.d5p-4, 0x1.59da6ca291ba6p-3, 0x1.bcp-3,
-                               0x1.0cp-2, 0x1.38p-2, 0x1.63p-2};
+  static const double threshold[] = {0x1.d5p-4, 0x1.59da6ca291ba6p-3,
+                                     0x1.bcp-3, 0x1.0cp-2, 0x1.38p-2,
+                                     0x1.63p-2};
   int i;
   for (i = 0; yh > threshold[i]; i++);
 

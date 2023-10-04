@@ -283,3 +283,74 @@ def compare_log(e,nthreads=64):
    # print ("./bacsel -rnd_mode all -prec " + str(prec) + " -n 53 -nn 53 -m " + str(m) + " -t 30 -t0 4503599627370496 -t1 9007199254740992 -d 2 -alpha 2 -e_in " + str(e) + " -nthreads " + str(nthreads))
    print ("./compare_log.sh " + str(prec) + " " + str(m) + " " + str(e))
 
+from functools import cmp_to_key
+
+# entries are (t0,t1,e)
+def cmp(x,y):
+   xmin = x[0]*2^x[2]
+   xmax = x[1]*2^x[2]
+   ymin = y[0]*2^y[2]
+   ymax = y[1]*2^y[2]
+   if xmax <= ymin:
+      return int(-1)
+   if ymax <= xmin:
+      return int(1)
+   if (xmin <= ymin and xmax < ymax):
+      return int(-1)
+   if (xmin < ymin and xmax <= ymax):
+      return int(-1)
+   if (ymin <= xmin and ymax < xmax):
+      return int(1)
+   if (ymin < xmin and ymax <= xmax):
+      return int(1)
+   return int(0)
+
+# statall("out")
+# [((-9007199254740991, -53), (-6369051672525772, -105)), ((6369051672525773, -105), (6374827554248054, 49))]
+def statall(f):
+   f = open(f,"r")
+   l = []
+   while true:
+      s = f.readline()
+      if s=='':
+         break
+      s = s.split(" ")
+      assert len(s) == 5
+      t0 = ZZ(s[0])
+      t1 = ZZ(s[1])
+      e = ZZ(s[2])
+      n = ZZ(s[3])
+      nn = ZZ(s[4])
+      assert t0.nbits() == n, "t0.nbits() == n"
+      assert (t1-1).nbits() == n, "(t1-1).nbits() == n"
+      l.append((t0,t1,e-n))
+   f.close()
+   l.sort(key=cmp_to_key(cmp))
+   l2 = []
+   for t0,t1,e in l:
+      if l2==[]:
+         l2 = [((t0,e),(t1,e))]
+      elif t0 > 0:
+         t1old,e1old = l2[-1][1]
+         if t1old*2^e1old > t0*2^e:
+            print ((t1old,e1old), (t0, e))
+         assert t1old*2^e1old <= t0*2^e, "t1old*2^e1old <= t0*2^e"
+         if t1old*2^e1old == t0*2^e:
+            l2[-1] = (l2[-1][0],(t1,e))
+         else:
+            l2.append(((t0,e),(t1,e)))
+      else: # t0 < 0
+         t1old,e1old = l2[-1][1]
+         if (t1old-1).nbits() == t1old.nbits():
+            next_x = t1old*2^e1old
+         else:
+            next_x = (2*t1old-1)*2^(e1old-1)
+         if next_x > t0*2^e:
+            print ((t1old,e1old), (t0, e))
+         assert next_x <= t0*2^e, "next_x <= t0*2^e"
+         if next_x == t0*2^e:
+            l2[-1] = (l2[-1][0],(t1,e))
+         else:
+            l2.append(((t0,e),(t1,e)))
+   l = l2
+   return l

@@ -165,8 +165,14 @@ static inline void add_dint(dint64_t *r, const dint64_t *a, const dint64_t *b) {
   int64_t m_ex = a->ex;
 
   if (a->ex > b->ex) {
-    B.r += 0x1 & (B.r >> (a->ex - b->ex - 1));
-    B.r = B.r >> (a->ex - b->ex);
+    int sh = a->ex - b->ex;
+    // round to nearest
+    if (sh <= 128)
+      B.r += 0x1 & (B.r >> (sh - 1));
+    if (sh < 128)
+      B.r = B.r >> sh;
+    else
+      B.r = 0;
   }
 
   uint128_t C;

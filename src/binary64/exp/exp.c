@@ -27,6 +27,13 @@ SOFTWARE.
 #include <stdint.h>
 #include <x86intrin.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef uint64_t u64;
 typedef union {double f; u64 u;} b64u64_u;
 
@@ -76,17 +83,21 @@ static __attribute__((noinline)) double as_exp_database(double x, double f){
     {-0x1.8f80e06f3a04cp+4, 0x1.f80aafa92b498p+0, -0x1p-106}, 
     {-0x1.78ba0840d79e4p+4, 0x1.05960be55d55ap+0, 0x1p-105}, 
     {-0x1.e8bdbfcd9144ep+3, 0x1.f3e558cf4de54p+0, 0x1p-107}, 
+    {-0x1.02393d5976769p+1, 0x1.1064b2c103ddbp+0, -0x1.8p-54},
     {-0x1.cc37ef7de7501p+0, 0x1.534d4de870713p+0, 0x1p-106}, 
     {-0x1.2a9cad9998262p+0, 0x1.3ef1e9b3a81c8p+0, -0x1p-106}, 
     {-0x1.0a54d87783d6fp+0, 0x1.69cef05657108p+0, 0x1p-105}, 
+    {-0x1.bdc7955d1482cp-1, 0x1.acb8cf13bc769p+0, -0x1p-54},
     {-0x1.22e24fa3d5cf9p-1, 0x1.2217147b85eaap+0, -0x1.8p-54}, 
     {-0x1.ea16274b0109bp-3, 0x1.9309142b73ea6p+0, -0x1p-105}, 
     {-0x1.d3f3799439415p-3, 0x1.976a4c9985f5bp+0, 0x1.8p-54}, 
     {-0x1.8aeb636f3ce35p-3, 0x1.a634ae87df6aep+0, 0x1.8p-109}, 
     {-0x1.290ea09e36479p-3, 0x1.baded30cbf1c4p+0, -0x1p-110}, 
     {-0x1.daf693d64fadap-4, 0x1.c7f14af0a08ebp+0, -0x1p-108}, 
+    {-0x1.bd44fdaed819fp-4, 0x1.cb4287f11060ap+0, +0x1p-54},
     {-0x1.a8f783d749a8fp-4, 0x1.cd8abd4de5c33p+0, 0x1.8p-54}, 
     {-0x1.a4187f2ca71f9p-6, 0x1.f309f46111221p+0, -0x1.8p-54}, 
+    {-0x1.8c56ff5326197p-6, 0x1.f3c35328f1d5dp+0, -0x1p-54},
     {-0x1.5c5ed0ec83666p-6, 0x1.f53a751d7db49p+0, 0x1.8p-105}, 
     {-0x1.54511e930898cp-7, 0x1.fab5c6e464e0dp+0, 0x1.8p-54}, 
     {-0x1.381126525f9d9p-7, 0x1.fb25a83c4532p+0, 0x1p-105}, 
@@ -95,7 +106,9 @@ static __attribute__((noinline)) double as_exp_database(double x, double f){
     {-0x1.d792b60084f92p-11, 0x1.ff8a28e429f33p+0, -0x1p-105}, 
     {-0x1.ceff32831e2c2p-12, 0x1.ffc6235eee28dp+0, -0x1.8p-54}, 
     {-0x1.ce3f638d0c742p-12, 0x1.ffc63b5617d47p+0, 0x1.8p-105}, 
+    {-0x1.09a285e42a59bp-12, 0x1.ffdeccc2df65cp+0,  0x1p-55},
     {-0x1.a2fefefd580dfp-13, 0x1.ffe5d0bb7eabfp+0, 0x1.8p-111}, 
+    {-0x1.664716b68a409p-14, 0x1.fff4cde6a0bfbp+0, -0x1.8p-54},
     {-0x1.0401ae48409b5p-28, 0x1.ffffffdf7fca3p-1, 0x1.8p-55}, 
     {-0x1.ff171507f8ba5p-30, 0x1.fffffff007475p-1, 0x1.8p-55}, 
     {-0x1.85e60704a3a9cp-30, 0x1.fffffff3d0cfdp-1, -0x1.8p-55}, 
@@ -137,6 +150,7 @@ static __attribute__((noinline)) double as_exp_database(double x, double f){
     {0x1.458f7365fd894p-8, 0x1.01465ece08736p+0, -0x1p-106}, 
     {0x1.6a4d1af9cc989p-8, 0x1.016b4df3299d7p+0, 0x1.8p-54}, 
     {0x1.5a75293a5dcdap-6, 0x1.05789640bc8adp+0, -0x1.8p-54}, 
+    {0x1.42ea46949b3c7p-5, 0x1.0a4ae9718080cp+0, -0x1p-54},
     {0x1.777d71396a75ep-5, 0x1.0c01d404fae34p+0, 0x1.8p-105}, 
     {0x1.7c8bb0cf5d16p-5, 0x1.0c2c2efbe696p+0, 0x1.8p-105}, 
     {0x1.46370d915991bp-4, 0x1.1538ea18a4585p+0, 0x1p-106}, 
@@ -274,7 +288,7 @@ double cr_exp(double x){
     ie += 512;
     vh *= 0x1p-512;
     fl *= 0x1p-512;
-    const double eps = 0x1.79ca10c924223p-575;
+    const double eps = 0x1.8p-575;
     b64u64_u sd = {.u = (u64)(0x3ffl+ie)<<52}, su = {.u = (u64)(0x3ffl-ie)<<52};
     double vd = vh*sd.f, vdl = (vh - vd*su.f) + fl;
     double fp = __builtin_fma(sd.f, vdl+eps, vd);
@@ -289,7 +303,7 @@ double cr_exp(double x){
     }
     fh = fp;
   } else {
-    double eps = 1.6e-19, fp = fh + (fl + eps), fm = fh + (fl - eps);
+    double eps = 1.64e-19, fp = fh + (fl + eps), fm = fh + (fl - eps);
     double vh = fh + fl;
     if(__builtin_expect( fp != fm, 0)){
       fh = as_exp_accurate(x,t,th,tl,&fl);

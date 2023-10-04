@@ -28,6 +28,13 @@ SOFTWARE.
 #include <stdint.h>
 #include "dint.h"
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union { double f; uint64_t u; } d64u64;
 
 /* Add a + b, such that *hi + *lo approximates a + b.
@@ -598,7 +605,8 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
   /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
      11 bits. log2_h is an integer multiple of 2^-42, so that e*log2_h
      is exact. */
-  static double log2_h = 0x1.62e42fefa38p-1, log2_l = 0x1.ef35793c7673p-45;
+  static const double log2_h = 0x1.62e42fefa38p-1,
+    log2_l = 0x1.ef35793c7673p-45;
   /* |log(2) - (h+l)| < 2^-102.01 */
   /* let hh = e * log2_h: hh is an integer multiple of 2^-42,
      with |hh| <= 1074*log2_h
@@ -651,8 +659,8 @@ cr_log1p_accurate (double x)
 {
   dint64_t X, Y, C;
 
-#define EXCEPTIONS 34
-  static double T[EXCEPTIONS][3] = {
+#define EXCEPTIONS 38
+  static const double T[EXCEPTIONS][3] = {
     {-0x1.ee5c09701a8e8p-9, -0x1.ef4b4d559442ep-9, -0x1.51a199b84acd9p-110},
     {-0x1.ec50c1d0101dfp-9, -0x1.ed3e0b991b5dbp-9, 0x1.fffffffffffe6p-63},
     {-0x1.e81621738c297p-9, -0x1.e8ff5ad035c59p-9, -0x1.fc08a7d86de44p-112},
@@ -679,7 +687,11 @@ cr_log1p_accurate (double x)
     {-0x1.dffffffffffb5p-46, -0x1.e000000000025p-46, -0x1.fffffffffffffp-100},
     {-0x1.7ffffffffffdp-46, -0x1.8000000000018p-46, 0x1.2000000000056p-187},
     {-0x1.1ffffffffffe5p-46, -0x1.200000000000dp-46, -0x1.fffffffffffffp-100},
+    {-0x1.7ffffffffffe8p-47, -0x1.800000000000cp-47, 0x1.200000000002bp-191},
+    {-0x1.7fffffffffff4p-48, -0x1.8000000000006p-48, 0x1.2000000000016p-195},
+    {-0x1.7fffffffffffap-49, -0x1.8000000000003p-49, 0x1.2000000000008p-199},
     {-0x1.7fffffffffffdp-50, -0x1.8000000000001p-50, -0x1.fffffffffffffp-104},
+    {-0x1.6a09e667f3bccp-52, -0x1.6a09e667f3bcdp-52, -0x1.278c3417a93d7p-159},
     {0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104},
     {0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100},
     {0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100},
@@ -891,13 +903,6 @@ static inline void p_2(dint64_t *r, dint64_t *z) {
 }
 
 static void log_2(dint64_t *r, dint64_t *x) {
-#if DEBUG > 0
-  printf("Calcul du logarithme :\n");
-  printf("  x := ");
-  print_dint(x);
-  printf("\n");
-#endif
-
   int64_t E = x->ex;
 
   // Find the lookup index
@@ -910,48 +915,13 @@ static void log_2(dint64_t *r, dint64_t *x) {
 
   x->ex = x->ex - E;
 
-#if DEBUG > 0
-  printf("  E := %ld\n\n", E);
-#endif
-  
   dint64_t z;
   mul_dint(&z, x, &_INVERSE_2[i - 128]);
 
-#if DEBUG > 0
-  printf("  y := ");
-  print_dint(x);
-  printf("  i := %d\n", i);
-  printf("  r_i := ");
-  print_dint(&_INVERSE_2[i - 128]);
-  printf("  y·r_i := ");
-  print_dint(&z);
-  printf("\n");
-#endif
-
   add_dint(&z, &M_ONE, &z);
-
-#if DEBUG > 0
-  printf("  z := ");
-  print_dint(&z);
-  printf("\n");
-#endif
 
   // E·log(2)
   mul_dint_2(r, E, &LOG2);
-
-#if DEBUG > 0
-  printf("  E·log(2) := ");
-  print_dint(r);
-  printf("\n");
-#endif
-
-#if DEBUG > 0
-  printf("  -log(r_i) := ");
-  print_dint(&_LOG_INV_2[i - 128]);
-  printf("  E·log(2) - log(r_i) := ");
-  print_dint(r);
-  printf("\n");
-#endif
 
   dint64_t p;
 
@@ -959,19 +929,7 @@ static void log_2(dint64_t *r, dint64_t *x) {
 
   add_dint(&p, &_LOG_INV_2[i - 128], &p);
 
-#if DEBUG > 0
-  printf("  log(1 + z) := ");
-  print_dint(&p);
-  printf("\n");
-#endif
-
   add_dint(r, &p, r);
-
-#if DEBUG > 0
-  printf("  log(x) := ");
-  print_dint(r);
-  printf("\n");
-#endif
 }
 
 // Convert a dint64_t value to a double
