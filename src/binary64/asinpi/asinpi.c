@@ -24,6 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#define TRACE 0x1.896965c89acp-4
+
+#include <stdio.h>
+#include <stdint.h>
 #include <errno.h>
 #include <math.h>
 #include <fenv.h>
@@ -31,10 +35,10 @@ SOFTWARE.
 
 typedef unsigned __int128 u128;
 typedef __int128 i128;
-typedef unsigned long u64;
+typedef uint64_t u64;
 typedef long i64;
 typedef union {u128 a; u64 b[2];} u128_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+typedef union {double f; u64 u;} b64u64_u;
 
 inline static void shl(u128_u *a, int n){(*a).a <<= n;}
 inline static void shr(u128_u *a, int n){(*a).a >>= n;}
@@ -78,7 +82,13 @@ static u128 pasin(u128 x){
   return mUU(x, ch[0].a + mUU(x, ch[1].a + mUU(x, ch[2].a + mUU(x, t.a))));
 }
 
+#define INV_PI_H 0x517cc1b727220a94ul
+#define INV_PI_L 0xfe13abe8fa9a6ee0ul
+    /* INV_PI_H/2+INV_PI_L/2^64 is an approximation by default of 1/pi:
+       INV_PI_H/2+INV_PI_L/2^64 < 1/pi < INV_PI_H/2+(INV_PI_L+1)/2^64 */
+
 static double asinpi_acc(double x){
+  if (x == TRACE) printf ("fast path failed\n");
   static const u128_u s[] =
     {{.b = {0x4e29cf6e5fed0679, 0x648557de8d99f7e}},
      {.b = {0x76a17954b2b7c517, 0xc8fb2f886ec09f3}},{.b = {0xbeeeae8129a786b9, 0x12d52092ce19f5cc}},
@@ -190,6 +200,13 @@ static double asinpi_acc(double x){
     }
     se = 0x3fe;
   }
+
+  /* multiply by 1/pi */
+  u128 m1 = (u128) INV_PI_H * (u128) fi.b[0];
+  u128 m2 = (u128) INV_PI_L * (u128) fi.b[1];
+  fi.a = (u128) INV_PI_H * (u128) fi.b[1];
+  fi.a += m1 >> 64;
+  fi.a += m2 >> 64;
   int nz = __builtin_clzll(fi.b[1]);
   u64 rnd;
   if(__builtin_expect(rm==FE_TONEAREST, 1)){
@@ -203,6 +220,48 @@ static double asinpi_acc(double x){
   }
   t.u = (fi.b[1]>>(11-nz))+(((u64)se-nz)<<52|xsign|rnd);
   return t.f;
+}
+
+#define ONE_OVER_PIH 0x1.45f306dc9c883p-2
+#define ONE_OVER_PIL -0x1.6b01ec5417056p-56
+
+/* special routine near the underflow region */
+static double asinpi_tiny (double x)
+{
+  double h, l;
+  b64u64_u t = {.f = x};
+  uint64_t au = t.u & 0x7ffffffffffffffflu;
+
+  if (au <= 3) /* case +/-0, +/-2^-1074 */
+  {
+    if (au == 0)
+      return x;
+    return x * ONE_OVER_PIH;
+  }
+
+  /* deal with exceptional case +/-0x1.59af9a1194efep-xxx */
+  if ((au << 12) == 0x59af9a1194efe000lu)
+  {
+    int e = (t.u >> 52) & 0x7ff;
+    h = 0x1.b824198b94a89p-56;
+    l = 0x1.fffffffffffffp-110;
+    t.f = (x > 0) ? 1.0 : -1.0;
+    t.u -= (uint64_t) (0x3c9 - e) << 52;
+    return __builtin_fma (l, t.f, h * t.f);
+  }
+
+  /* exceptional case +/-0x1.5cba89af1f855p-1020 */
+  if (au == 0x35cba89af1f855lu)
+    return (x > 0)
+      ? __builtin_fma (0x1p-600, -0x1p-600, 0x1.bc03df34e902cp-1022)
+      : __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1022);
+
+  x = x * 0x1p53; /* scale x */
+  h = x * ONE_OVER_PIH;
+  l = __builtin_fma (x, ONE_OVER_PIH, -h);
+  l = __builtin_fma (x, ONE_OVER_PIL, l);
+  /* scale back */
+  return __builtin_fma (l, 0x1p-53, h * 0x1p-53);
 }
 
 double cr_asinpi(double x){
@@ -286,16 +345,15 @@ double cr_asinpi(double x){
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */
     if (__builtin_expect (e < -26,0)) /* |x| < 2^-26 */
       {
-        if (x == 0)
-          return x;
-#define ONE_OVER_PIH 0x1.45f306dc9c883p-2
-#define ONE_OVER_PIL -0x1.6b01ec5417056p-56
+        if (e < -53) /* |x| < 2^-53 */
+          return asinpi_tiny (x);
         double h, l;
         h = x * ONE_OVER_PIH;
         l = __builtin_fma (x, ONE_OVER_PIH, -h);
         l = __builtin_fma (x, ONE_OVER_PIL, l);
         return h + l;
       }
+
     /* now 2^-26 <= |x| < 2^-6 */
     /* We also have |x| = 2^e*sm/2^63, since e <= -7 we have e+1 <= -6,
        thus we write |x| = 2^(e+1)*y with y=sm/2^64 */
@@ -336,10 +394,6 @@ double cr_asinpi(double x){
     fi.b[0] = d<<ss;
     fi.b[1] = (d>>(64-ss)) + (sm>>1);
     /* fi.a/2^127 approximates y + 1/6*y^3 + 3/40*y^5 + ... + 63/2816*y^11 */
-#define INV_PI_H 0x517cc1b727220a94ul
-#define INV_PI_L 0xfe13abe8fa9a6ee0ul
-    /* INV_PI_H/2+INV_PI_L/2^64 is an approximation by default of 1/pi:
-       INV_PI_H/2+INV_PI_L/2^64 < 1/pi < INV_PI_H/2+(INV_PI_L+1)/2^64 */
     u128 m1 = (u128) INV_PI_H * (u128) fi.b[0];
     u128 m2 = (u128) INV_PI_L * (u128) fi.b[1];
     fi.a = (u128) INV_PI_H * (u128) fi.b[1];
@@ -550,4 +604,9 @@ double cr_asinpi(double x){
   }
   t.u = ((fi.b[1]>>(11-nz))+((u64)(e-nz)<<52|rnd))|xsign;
   return t.f;
+}
+
+/* just to compile since glibc does not have asinpi */
+double asinpi (double x){
+  return asin (x) / M_PI;
 }
