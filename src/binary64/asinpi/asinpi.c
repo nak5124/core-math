@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x1.896965c89acp-4
+#define TRACE 0x1.5cba89af1f855p-49
 
 #include <stdio.h>
 #include <stdint.h>
@@ -88,7 +88,6 @@ static u128 pasin(u128 x){
        INV_PI_H/2+INV_PI_L/2^64 < 1/pi < INV_PI_H/2+(INV_PI_L+1)/2^64 */
 
 static double asinpi_acc(double x){
-  if (x == TRACE) printf ("fast path failed\n");
   static const u128_u s[] =
     {{.b = {0x4e29cf6e5fed0679, 0x648557de8d99f7e}},
      {.b = {0x76a17954b2b7c517, 0xc8fb2f886ec09f3}},{.b = {0xbeeeae8129a786b9, 0x12d52092ce19f5cc}},
@@ -225,21 +224,17 @@ static double asinpi_acc(double x){
 #define ONE_OVER_PIH 0x1.45f306dc9c883p-2
 #define ONE_OVER_PIL -0x1.6b01ec5417056p-56
 
-/* special routine near the underflow region */
+/* special routine for |x| < 2^-53 */
 static double asinpi_tiny (double x)
 {
   double h, l;
   b64u64_u t = {.f = x};
   uint64_t au = t.u & 0x7ffffffffffffffflu;
 
-  if (au <= 3) /* case +/-0, +/-2^-1074 */
-  {
-    if (au == 0)
-      return x;
-    return x * ONE_OVER_PIH;
-  }
+  if (x == 0)
+    return x;
 
-  /* deal with exceptional case +/-0x1.59af9a1194efep-xxx */
+  /* deal with generic exceptional case +/-0x1.59af9a1194efep-xxx */
   if ((au << 12) == 0x59af9a1194efe000lu)
   {
     int e = (t.u >> 52) & 0x7ff;
@@ -256,12 +251,63 @@ static double asinpi_tiny (double x)
       ? __builtin_fma (0x1p-600, -0x1p-600, 0x1.bc03df34e902cp-1022)
       : __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1022);
 
-  x = x * 0x1p53; /* scale x */
+  /* exceptional case +/-0x1.5cba89af1f855p-1022 */
+  if (au == 0x15cba89af1f855lu)
+    return (x > 0)
+      ? __builtin_fma (-0x1p-600, 0x1p-600, 0x1.bc03df34e902cp-1024)
+      : __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1024);
+
+  /* exceptional case +/-0x1.68e6482549db1p-1022 */
+  if (au == 0x168e6482549db1lu)
+    return (x > 0)
+      ? __builtin_fma (0x1p-600, 0x1p-600, 0x1.cb82f5da3a6b4p-1024)
+      : __builtin_fma (-0x1p-600, 0x1p-600, -0x1.cb82f5da3a6b4p-1024);
+
+  /* exceptional case 0x1.5cba89af1f855p-1021 */
+  if (au == 0x25cba89af1f855lu)
+    return (x > 0)
+      ? __builtin_fma (-0x1p-600, 0x1p-600, 0x1.bc03df34e902cp-1023)
+      : __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1023);
+
+  /* we compute h before scaling, so that h is exactly representable */
   h = x * ONE_OVER_PIH;
-  l = __builtin_fma (x, ONE_OVER_PIH, -h);
+  x = x * 0x1p53; /* scale x */
+  l = __builtin_fma (x, ONE_OVER_PIH, -h * 0x1p53);
   l = __builtin_fma (x, ONE_OVER_PIL, l);
   /* scale back */
-  return __builtin_fma (l, 0x1p-53, h * 0x1p-53);
+  return __builtin_fma (l, 0x1p-53, h);
+}
+
+/* special routine for 2^-53 <= |x| < 2^-26 */
+static double asinpi_small (double x)
+{
+#define EXCEPTIONS 3
+  static const double exceptions[EXCEPTIONS][3] = {
+    {0x1.2d7f168888139p-38, 0x1.7fe08f5284726p-40, 0x1.77c696b55fc1dp-147},
+    {0x1.3b75472d45185p-36, 0x1.91a75c23a207fp-38, 0x1.e6032f672e328p-145},
+    {0x1.56a4aa740a5a7p-53, 0x1.b44453e2404e7p-55, 0x1.4e1f71472791ap-161},
+  };
+  for (int i = 0; i < EXCEPTIONS; i++)
+  {
+    if (x == exceptions[i][0])
+      return exceptions[i][1] + exceptions[i][2];
+    if (x == -exceptions[i][0])
+      return -exceptions[i][1] - exceptions[i][2];
+  }
+
+  /* We use the Sollya polynomial 0x1.45f306dc9c882a53f84eafa3ea4p-2 * x
+     + 0x1.b2995e7b7b606p-5 * x^3, with relative error bounded by 2^-106.965
+     on [2^-53, 2^-26] */
+  static double c1h = 0x1.45f306dc9c883p-2, c1l = -0x1.6b01ec5417057p-56;
+  static double c3 = 0x1.b2995e7b7b606p-5;
+  double h = c1h, l = __builtin_fma (c3, x * x, c1l);
+  /* multiply h+l by x */
+  double hh, ll;
+  hh = h * x;
+  ll = __builtin_fma (h, x, -hh);
+  /* hh+ll = h*x */
+  ll = __builtin_fma (l, x, ll);
+  return hh + ll;
 }
 
 double cr_asinpi(double x){
@@ -347,11 +393,7 @@ double cr_asinpi(double x){
       {
         if (e < -53) /* |x| < 2^-53 */
           return asinpi_tiny (x);
-        double h, l;
-        h = x * ONE_OVER_PIH;
-        l = __builtin_fma (x, ONE_OVER_PIH, -h);
-        l = __builtin_fma (x, ONE_OVER_PIL, l);
-        return h + l;
+        return asinpi_small (x);
       }
 
     /* now 2^-26 <= |x| < 2^-6 */
