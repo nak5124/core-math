@@ -24,9 +24,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x1.5cba89af1f855p-49
+/* This implementation is based on the CORE-MATH asin.c implementation
+   (commit 6af78a4), using the formula asinpi(x) = asin(x) / pi.
+   The parts that differ from asin(x) are between comments
+   "asinpi_begin" and "asinpi_end", or marked "asinpi_specific",
+   to ease maintaining that code if/when asin.c is fixed or improved.
+*/
 
-#include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <math.h>
@@ -82,10 +86,14 @@ static u128 pasin(u128 x){
   return mUU(x, ch[0].a + mUU(x, ch[1].a + mUU(x, ch[2].a + mUU(x, t.a))));
 }
 
+// asinpi_begin
 #define INV_PI_H 0x517cc1b727220a94ul
 #define INV_PI_L 0xfe13abe8fa9a6ee0ul
     /* INV_PI_H/2+INV_PI_L/2^64 is an approximation by default of 1/pi:
        INV_PI_H/2+INV_PI_L/2^64 < 1/pi < INV_PI_H/2+(INV_PI_L+1)/2^64 */
+#define ONE_OVER_PIH 0x1.45f306dc9c883p-2
+#define ONE_OVER_PIL -0x1.6b01ec5417056p-56
+// asinpi_end
 
 static double asinpi_acc(double x){
   static const u128_u s[] =
@@ -200,12 +208,15 @@ static double asinpi_acc(double x){
     se = 0x3fe;
   }
 
+  // asinpi_begin
   /* multiply by 1/pi */
   u128 m1 = (u128) INV_PI_H * (u128) fi.b[0];
   u128 m2 = (u128) INV_PI_L * (u128) fi.b[1];
   fi.a = (u128) INV_PI_H * (u128) fi.b[1];
   fi.a += m1 >> 64;
   fi.a += m2 >> 64;
+  // asinpi_end
+
   int nz = __builtin_clzll(fi.b[1]);
   u64 rnd;
   if(__builtin_expect(rm==FE_TONEAREST, 1)){
@@ -220,9 +231,6 @@ static double asinpi_acc(double x){
   t.u = (fi.b[1]>>(11-nz))+(((u64)se-nz)<<52|xsign|rnd);
   return t.f;
 }
-
-#define ONE_OVER_PIH 0x1.45f306dc9c883p-2
-#define ONE_OVER_PIL -0x1.6b01ec5417056p-56
 
 /* special routine for |x| < 2^-53 */
 static double asinpi_tiny (double x)
@@ -281,11 +289,26 @@ static double asinpi_tiny (double x)
 /* special routine for 2^-53 <= |x| < 2^-26 */
 static double asinpi_small (double x)
 {
-#define EXCEPTIONS 3
+#define EXCEPTIONS 18
   static const double exceptions[EXCEPTIONS][3] = {
     {0x1.2d7f168888139p-38, 0x1.7fe08f5284726p-40, 0x1.77c696b55fc1dp-147},
     {0x1.3b75472d45185p-36, 0x1.91a75c23a207fp-38, 0x1.e6032f672e328p-145},
     {0x1.56a4aa740a5a7p-53, 0x1.b44453e2404e7p-55, 0x1.4e1f71472791ap-161},
+    {0x1.6bf137c2d4708p-51, 0x1.cf62bb838ec59p-53, -0x1.fffffffffffffp-107},
+    {0x1.d57c381f54243p-43, 0x1.2ae2325f45589p-44, 0x1.fffffffffffffp-98},
+    {0x1.a9aee69418f0cp-30, 0x1.0eff9393e91dfp-31, 0x1.fffffffffffffp-85},
+    {0x1.7718543a5606ap-29, 0x1.dd95f913d2d23p-31, -0x1.fffffffffffffp-85},
+    {0x1.93ba773b31ea1p-45, 0x1.01057f17ceba6p-46, 0x1.1558b472bae84p-155},
+    {0x1.cc5dfa12664a3p-33, 0x1.25142c0254b86p-34, 0x1.47123997ff7e4p-142},
+    {0x1.f067f55743ea4p-43, 0x1.3c059d39f1d61p-44, 0x1.3b7145ed225e9p-154},
+    {0x1.bb2e2254ec57bp-28, 0x1.1a232520b30b8p-29, -0x1.8c0ab8fb3b592p-138},
+    {0x1.522191285fcf1p-32, 0x1.ae859c3537f4dp-34, 0x1.647ba0b3d335fp-140},
+    {0x1.ec65c2da06159p-44, 0x1.39785114bae2dp-45, 0x1.61ba6bc511061p-152},
+    {0x1.68e6482549db1p-51, 0x1.cb82f5da3a6b6p-53, 0x1.62dd725314f5bp-159},
+    {0x1.d75f3adfd53b6p-32, 0x1.2c15b0e2bece3p-33, 0x1.1275b80c55392p-141},
+    {0x1.8577cec54ab8p-49, 0x1.efe2d4aa2d14p-51, 0x1.dc301c4666ac8p-158},
+    {0x1.9a5e5a46ae2b1p-35, 0x1.053fad95a3298p-36, 0x1.3cb00f4298933p-144},
+    {0x1.6d0b888ccfa4ap-30, 0x1.d0ca30163b96fp-32, 0x1.d42b0847637dfp-138},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
   {
@@ -294,6 +317,7 @@ static double asinpi_small (double x)
     if (x == -exceptions[i][0])
       return -exceptions[i][1] - exceptions[i][2];
   }
+#undef EXCEPTIONS
 
   /* We use the Sollya polynomial 0x1.45f306dc9c882a53f84eafa3ea4p-2 * x
      + 0x1.b2995e7b7b606p-5 * x^3, with relative error bounded by 2^-106.965
@@ -383,7 +407,7 @@ double cr_asinpi(double x){
     if (e==0 && m==0) /* case x = 1 or -1: asinpi(1)=1/2, asin(-1)=-1/2 */
       /* h=0x1.921fb54442d18p+0 is pi/2 rounded to nearest,
          and 0x1.1a62633145c07p-54 is pi/2-h rounded to nearest */
-      return x * 0.5;
+      return x * 0.5; // asinpi_specific
     if (e==0x400 && m) return x; // nan
     errno = EDOM;
     feraiseexcept (FE_INVALID);
@@ -391,9 +415,11 @@ double cr_asinpi(double x){
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */
     if (__builtin_expect (e < -26,0)) /* |x| < 2^-26 */
       {
+        // asinpi_begin
         if (e < -53) /* |x| < 2^-53 */
           return asinpi_tiny (x);
         return asinpi_small (x);
+        // asinpi_end
       }
 
     /* now 2^-26 <= |x| < 2^-6 */
@@ -436,6 +462,8 @@ double cr_asinpi(double x){
     fi.b[0] = d<<ss;
     fi.b[1] = (d>>(64-ss)) + (sm>>1);
     /* fi.a/2^127 approximates y + 1/6*y^3 + 3/40*y^5 + ... + 63/2816*y^11 */
+
+    // asinpi_begin
     u128 m1 = (u128) INV_PI_H * (u128) fi.b[0];
     u128 m2 = (u128) INV_PI_L * (u128) fi.b[1];
     fi.a = (u128) INV_PI_H * (u128) fi.b[1];
@@ -446,11 +474,13 @@ double cr_asinpi(double x){
        which is multiplied by 1/pi
      * 1 from the error in the approximation of 1/pi which is multiplied
        by y + 1/6*y^3 + ... < 2 */
+    // asinpi_end
+
     int nz = __builtin_clzll (fi.b[1]) + (rm==FE_TONEAREST);
     /* the number of leading zeros in fi.b[1] is usually 1, but it can also
        be 0, for example for x=0x1.fffffffffffffp-7, thus nz is 0, 1 or 2 */
     u128_u u = fi;
-    u.a += 15l<<ss;
+    u.a += 15l<<ss; // asinpi_specific
     /* Here fi is the 'left' approximation, and u is the 'right' approximation.
        We check the last bit (or the round bit for FE_TONEAREST) does not
        change between fi and u. */
@@ -612,6 +642,7 @@ double cr_asinpi(double x){
     fi.a += V;
     /* now fi/2^127 approximates asin(|x|) */
 
+    // asinpi_begin
     u128 m1 = (u128) INV_PI_H * (u128) fi.b[0];
     u128 m2 = (u128) INV_PI_L * (u128) fi.b[1];
     fi.a = (u128) INV_PI_H * (u128) fi.b[1];
@@ -622,11 +653,12 @@ double cr_asinpi(double x){
        of asin(|x|) which is multiplied by 1/pi
      * 1 from the error in the approximation of 1/pi which is multiplied
        by asin(|x|) */
+    // asinpi_end
 
     int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
     u128_u u = fi, d = fi;
-    u.a += 124l<<55;
-    d.a -= 124l<<55;
+    u.a += 124l<<55; // asinpi_specific
+    d.a -= 124l<<55; // asinpi_specific
     if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
       return asinpi_acc(x);
     }
