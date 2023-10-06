@@ -1168,7 +1168,7 @@ main (int argc, char *argv[])
   check_tiny ();
 
   printf ("Checking random values\n");
-#define K 10000000UL /* total number of tests */
+#define K 1000000000UL /* total number of tests */
 #define BUF_SIZE 1000
 
   long seed = getpid ();
