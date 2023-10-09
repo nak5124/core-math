@@ -1066,4 +1066,3 @@ double acospi (double x)
 {
   return acos (x) / M_PI;
 }
-
