@@ -114,7 +114,7 @@ void
 doloop(void)
 {
   double *items;
-  int count, tests = 0, failures = 0, skipped = 0;
+  int count, tests = 0, failures = 0;
 
   readstdin(&items, &count);
 
@@ -129,9 +129,8 @@ doloop(void)
     double z1 = ref_function_under_test(x);
     double z2 = cr_function_under_test(x);
     tests ++;
-    if (z2 == 0) skipped ++;
     /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-    if (z2 != 0 && is_equal (z1, z2) == 0) {
+    if (is_equal (z1, z2) == 0) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
       fflush(stdout);
 #ifdef DO_NOT_ABORT
@@ -145,8 +144,7 @@ doloop(void)
     z1 = ref_function_under_test(x);
     z2 = cr_function_under_test(x);
     tests ++;
-    if (z2 == 0) skipped ++;
-    if (z2 != 0 && is_equal (z1, z2) == 0) {
+    if (is_equal (z1, z2) == 0) {
       printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
       fflush(stdout);
 #ifdef DO_NOT_ABORT
@@ -159,7 +157,7 @@ doloop(void)
   }
 
   free(items);
-  printf("%d tests passed, %d failure(s), %d skipped\n", tests, failures, skipped);
+  printf("%d tests passed, %d failure(s)\n", tests, failures);
 }
 
 int

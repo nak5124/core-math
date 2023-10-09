@@ -554,6 +554,241 @@ static const double T2[128][DEGREE+LARGE+2] = {
 
 typedef union { double x; uint32_t i[2]; } union_t;
 
+// begin_acospi
+// exceptional cases for |x| < 0.5
+#define EXCEPTIONS 113
+static const double exceptions[EXCEPTIONS][2] = {
+    {-0x1.ac26cc49b0264p-3, 0x1.22530cb92c8f1p-1},
+    {-0x1.f8374b05d52b2p-5, 0x1.0a09933a4589ap-1},
+    {-0x1.7b9482807fe3cp-5, 0x1.078de0c9ad10cp-1},
+    {-0x1.df5c9cfec76e3p-6, 0x1.04c4dbe40b566p-1},
+    {-0x1.d8a6b018a513dp-7, 0x1.0259d1a82f985p-1},
+    {-0x1.f0a606701a3e5p-9, 0x1.009e16a90fcbep-1},
+    {-0x1.f7b97997721efp-10, 0x1.00502b98793edp-1},
+    {-0x1.1c68c1ab0ea57p-10, 0x1.002d43e032ad6p-1},
+    {-0x1.59ec5d1d2e86p-11, 0x1.001b87178f037p-1},
+    {-0x1.2878e662f31bcp-12, 0x1.000bcbd77c281p-1},
+    {-0x1.83d790f27f3e5p-14, 0x1.0003dba1b6271p-1},
+    {-0x1.dd61dedc265f5p-15, 0x1.00025fd270a53p-1},
+    {-0x1.29320aa46f06ep-15, 0x1.00017a66a9fb7p-1},
+    {-0x1.99bc3ca2a27p-17, 0x1.0000826c3c68fp-1},
+    {-0x1.8ec2e3d383d64p-19, 0x1.00001fbb7f8eap-1},
+    {-0x1.7679a41f39c67p-19, 0x1.00001dccbecdcp-1},
+    {-0x1.427b32daed80dp-20, 0x1.00000cd4c4593p-1},
+    {-0x1.2a4da90d1ca6p-21, 0x1.000005ef3f1d5p-1},
+    {-0x1.c0149992fc291p-22, 0x1.00000475070d1p-1},
+    {-0x1.783beb73b1516p-23, 0x1.000001df093cep-1},
+    {-0x1.5b9604ff5f529p-23, 0x1.000001ba8f6d1p-1},
+    {-0x1.3a21ab6af61a5p-23, 0x1.0000018ff6f5p-1},
+    {-0x1.71732d4eb3deap-25, 0x1.00000075997cbp-1},
+    {-0x1.c68b45cd67cb4p-28, 0x1.0000001215f29p-1},
+    {-0x1.dbbf2a5ec6647p-29, 0x1.0000000976f55p-1},
+    {-0x1.d0e597b6ba3b6p-30, 0x1.000000049fd9ap-1},
+    {-0x1.10c87354e03c8p-31, 0x1.000000015b517p-1},
+    {-0x1.c277920f3fbadp-32, 0x1.000000011ec6bp-1},
+    {-0x1.74c46decf3374p-32, 0x1.00000000ed4fap-1},
+    {-0x1.65a1dd290660fp-36, 0x1.000000000e3adp-1},
+    {-0x1.635e3d74befcap-38, 0x1.000000000388fp-1},
+    {-0x1.635e3d74befcap-39, 0x1.0000000001c47p-1},
+    {-0x1.6c6cbc45dc8dep-40, 0x1.0000000000e8p-1},
+    {-0x1.5a4fbea3a16b6p-40, 0x1.0000000000dc7p-1},
+    {-0x1.6c6cbc45dc8dep-41, 0x1.000000000074p-1},
+    {-0x1.6c6cbc45dc8dep-42, 0x1.00000000003ap-1},
+    {-0x1.6c6cbc45dc8dep-43, 0x1.00000000001dp-1},
+    {-0x1.6c6cbc45dc8dep-44, 0x1.00000000000e8p-1},
+    {-0x1.6c6cbc45dc8dep-45, 0x1.0000000000074p-1},
+    {-0x1.6c6cbc45dc8dep-46, 0x1.000000000003ap-1},
+    {-0x1.6c6cbc45dc8dep-47, 0x1.000000000001dp-1},
+    {-0x1.921fb54442d18p-51, 0x1.0000000000002p-1},
+    {-0x1.2d97c7f3321d2p-51, 0x1.0000000000001p-1},
+    {-0x1.921fb54442d18p-52, 0x1.0000000000001p-1},
+    {0x0p+0, 0x1p-1},
+    {0x1.921fb54442d19p-54, 0x1.fffffffffffffp-2},
+    {0x1.3a28c59d5433bp-49, 0x1.ffffffffffff3p-2},
+    {0x1.6c6cbc45dc8dep-49, 0x1.ffffffffffff1p-2},
+    {0x1.3a28c59d5433bp-48, 0x1.fffffffffffe7p-2},
+    {0x1.6c6cbc45dc8dep-48, 0x1.fffffffffffe3p-2},
+    {0x1.6c6cbc45dc8dep-47, 0x1.fffffffffffc6p-2},
+    {0x1.6c6cbc45dc8dep-46, 0x1.fffffffffff8cp-2},
+    {0x1.21cfda23b228p-45, 0x1.fffffffffff47p-2},
+    {0x1.6c6cbc45dc8dep-45, 0x1.fffffffffff18p-2},
+    {0x1.6c6cbc45dc8dep-44, 0x1.ffffffffffe3p-2},
+    {0x1.6c6cbc45dc8dep-43, 0x1.ffffffffffc6p-2},
+    {0x1.b4e0b2cec917ep-43, 0x1.ffffffffffba7p-2},
+    {0x1.6c6cbc45dc8dep-42, 0x1.ffffffffff8cp-2},
+    {0x1.90a6b78a52d2ep-42, 0x1.ffffffffff807p-2},
+    {0x1.6c6cbc45dc8dep-41, 0x1.ffffffffff18p-2},
+    {0x1.6c6cbc45dc8dep-40, 0x1.fffffffffe3p-2},
+    {0x1.67e57cdd4dc54p-39, 0x1.fffffffffc6b8p-2},
+    {0x1.67e57cdd4dc54p-38, 0x1.fffffffff8d71p-2},
+    {0x1.0dec1da5fa53fp-37, 0x1.fffffffff5429p-2},
+    {0x1.93c05c9ed3cbcp-36, 0x1.ffffffffdfdedp-2},
+    {0x1.39c6fd67805a7p-35, 0x1.ffffffffce0f9p-2},
+    {0x1.a9adcc7f96cfp-35, 0x1.ffffffffbc405p-2},
+    {0x1.39c6fd67805a7p-34, 0x1.ffffffff9c1f2p-2},
+    {0x1.44bdb557e1dc1p-34, 0x1.ffffffff98a1bp-2},
+    {0x1.bf9b3c6059d24p-34, 0x1.ffffffff7185cp-2},
+    {0x1.ca91f450bb53ep-34, 0x1.ffffffff6e085p-2},
+    {0x1.57bfc3f20ac4fp-32, 0x1.fffffffe4a533p-2},
+    {0x1.74c46decf3374p-32, 0x1.fffffffe2560cp-2},
+    {0x1.10c87354e03c8p-31, 0x1.fffffffd495d2p-2},
+    {0x1.7ff87542efc93p-31, 0x1.fffffffc2e3a2p-2},
+    {0x1.b09687e430521p-29, 0x1.ffffffeec9b1dp-2},
+    {0x1.dbbf2a5ec6647p-29, 0x1.ffffffed12156p-2},
+    {0x1.cc4070a3023a7p-28, 0x1.ffffffdb5fd43p-2},
+    {0x1.8d69f36b1cce6p-27, 0x1.ffffffc0bfe6fp-2},
+    {0x1.bdbf63f170fep-27, 0x1.ffffffb90e9bbp-2},
+    {0x1.ac57910d7e867p-26, 0x1.ffffff77a78c9p-2},
+    {0x1.71732d4eb3deap-25, 0x1.ffffff14cd06ap-2},
+    {0x1.24e3786d7459ap-24, 0x1.fffffe8b152c5p-2},
+    {0x1.94ee8417af86ep-23, 0x1.fffffbf8d9921p-2},
+    {0x1.2a4da90d1ca6p-21, 0x1.fffff42181c56p-2},
+    {0x1.769cbdfa9e1d8p-21, 0x1.fffff1183b0ffp-2},
+    {0x1.427b32daed80dp-20, 0x1.ffffe656774dap-2},
+    {0x1.73e9e2254c98fp-20, 0x1.ffffe267702edp-2},
+    {0x1.8ec2e3d383d64p-19, 0x1.ffffc08900e2cp-2},
+    {0x1.2226500110692p-18, 0x1.ffffa3a47a927p-2},
+    {0x1.4c2c402a28e67p-18, 0x1.ffff96441ee89p-2},
+    {0x1.59abdcf048a9bp-17, 0x1.ffff23f0548e1p-2},
+    {0x1.5ef5605b74f7p-16, 0x1.fffe41255058bp-2},
+    {0x1.969df9fda1b9p-16, 0x1.fffdfa476ec5cp-2},
+    {0x1.29320aa46f06ep-15, 0x1.fffd0b32ac091p-2},
+    {0x1.6638f8a2185cbp-15, 0x1.fffc6fcb3553bp-2},
+    {0x1.dd61dedc265f5p-15, 0x1.fffb405b1eb59p-2},
+    {0x1.41c4a3005149fp-14, 0x1.fff9993f9b0cfp-2},
+    {0x1.17485bab7607bp-13, 0x1.fff4e34013127p-2},
+    {0x1.a0ea629bbf42p-13, 0x1.ffef69553769ep-2},
+    {0x1.2878e662f31bcp-12, 0x1.ffe8685107afep-2},
+    {0x1.cf88e9268bdcfp-12, 0x1.ffdb1cf235d97p-2},
+    {0x1.0d0c56d741955p-9, 0x1.ff54b7ee08148p-2},
+    {0x1.f0a606701a3e5p-9, 0x1.fec3d2ade0684p-2},
+    {0x1.730786d8eea35p-8, 0x1.fe27969253c05p-2},
+    {0x1.bfa7fc1b1e67cp-8, 0x1.fdc605a201b7bp-2},
+    {0x1.271adcddb2534p-7, 0x1.fd1082e4a2bcdp-2},
+    {0x1.1f6bbb1fac712p-6, 0x1.fa481a48acacep-2},
+    {0x1.20588554d6e24p-6, 0x1.fa43642302402p-2},
+    {0x1.5fa453f6bb40ep-6, 0x1.f900f7075f3f5p-2},
+    {0x1.69a68ac73eaa2p-4, 0x1.e32ee8bcc5f06p-2},
+    {0x1.da83e335e379ap-3, 0x1.b3c936985f665p-2},
+    {0x1.f608aa4e62781p-2, 0x1.58fc14707d797p-2},
+  };
+static const char exceptions_rnd[EXCEPTIONS] = {
+    1, /* -0x1.ac26cc49b0264p-3 */
+    -1, /* -0x1.f8374b05d52b2p-5 */
+    -1, /* -0x1.7b9482807fe3cp-5 */
+    -1, /* -0x1.df5c9cfec76e3p-6 */
+    -1, /* -0x1.d8a6b018a513dp-7 */
+    -1, /* -0x1.f0a606701a3e5p-9 */
+    1, /* -0x1.f7b97997721efp-10 */
+    -1, /* -0x1.1c68c1ab0ea57p-10 */
+    1, /* -0x1.59ec5d1d2e86p-11 */
+    1, /* -0x1.2878e662f31bcp-12 */
+    1, /* -0x1.83d790f27f3e5p-14 */
+    1, /* -0x1.dd61dedc265f5p-15 */
+    1, /* -0x1.29320aa46f06ep-15 */
+    -1, /* -0x1.99bc3ca2a27p-17 */
+    -1, /* -0x1.8ec2e3d383d64p-19 */
+    -1, /* -0x1.7679a41f39c67p-19 */
+    1, /* -0x1.427b32daed80dp-20 */
+    1, /* -0x1.2a4da90d1ca6p-21 */
+    -1, /* -0x1.c0149992fc291p-22 */
+    -1, /* -0x1.783beb73b1516p-23 */
+    -1, /* -0x1.5b9604ff5f529p-23 */
+    -1, /* -0x1.3a21ab6af61a5p-23 */
+    1, /* -0x1.71732d4eb3deap-25 */
+    -1, /* -0x1.c68b45cd67cb4p-28 */
+    1, /* -0x1.dbbf2a5ec6647p-29 */
+    -1, /* -0x1.d0e597b6ba3b6p-30 */
+    1, /* -0x1.10c87354e03c8p-31 */
+    1, /* -0x1.c277920f3fbadp-32 */
+    1, /* -0x1.74c46decf3374p-32 */
+    -1, /* -0x1.65a1dd290660fp-36 */
+    -1, /* -0x1.635e3d74befcap-38 */
+    1, /* -0x1.635e3d74befcap-39 */
+    1, /* -0x1.6c6cbc45dc8dep-40 */
+    1, /* -0x1.5a4fbea3a16b6p-40 */
+    1, /* -0x1.6c6cbc45dc8dep-41 */
+    1, /* -0x1.6c6cbc45dc8dep-42 */
+    1, /* -0x1.6c6cbc45dc8dep-43 */
+    1, /* -0x1.6c6cbc45dc8dep-44 */
+    1, /* -0x1.6c6cbc45dc8dep-45 */
+    1, /* -0x1.6c6cbc45dc8dep-46 */
+    1, /* -0x1.6c6cbc45dc8dep-47 */
+    -1, /* -0x1.921fb54442d18p-51 */
+    1, /* -0x1.2d97c7f3321d2p-51 */
+    -1, /* -0x1.921fb54442d18p-52 */
+    0, /* 0x0p+0 */
+    1, /* 0x1.921fb54442d19p-54 */
+    1, /* 0x1.3a28c59d5433bp-49 */
+    1, /* 0x1.6c6cbc45dc8dep-49 */
+    -1, /* 0x1.3a28c59d5433bp-48 */
+    -1, /* 0x1.6c6cbc45dc8dep-48 */
+    -1, /* 0x1.6c6cbc45dc8dep-47 */
+    -1, /* 0x1.6c6cbc45dc8dep-46 */
+    1, /* 0x1.21cfda23b228p-45 */
+    -1, /* 0x1.6c6cbc45dc8dep-45 */
+    -1, /* 0x1.6c6cbc45dc8dep-44 */
+    -1, /* 0x1.6c6cbc45dc8dep-43 */
+    1, /* 0x1.b4e0b2cec917ep-43 */
+    -1, /* 0x1.6c6cbc45dc8dep-42 */
+    1, /* 0x1.90a6b78a52d2ep-42 */
+    -1, /* 0x1.6c6cbc45dc8dep-41 */
+    -1, /* 0x1.6c6cbc45dc8dep-40 */
+    1, /* 0x1.67e57cdd4dc54p-39 */
+    -1, /* 0x1.67e57cdd4dc54p-38 */
+    1, /* 0x1.0dec1da5fa53fp-37 */
+    1, /* 0x1.93c05c9ed3cbcp-36 */
+    -1, /* 0x1.39c6fd67805a7p-35 */
+    -1, /* 0x1.a9adcc7f96cfp-35 */
+    -1, /* 0x1.39c6fd67805a7p-34 */
+    1, /* 0x1.44bdb557e1dc1p-34 */
+    -1, /* 0x1.bf9b3c6059d24p-34 */
+    1, /* 0x1.ca91f450bb53ep-34 */
+    1, /* 0x1.57bfc3f20ac4fp-32 */
+    -1, /* 0x1.74c46decf3374p-32 */
+    -1, /* 0x1.10c87354e03c8p-31 */
+    -1, /* 0x1.7ff87542efc93p-31 */
+    1, /* 0x1.b09687e430521p-29 */
+    -1, /* 0x1.dbbf2a5ec6647p-29 */
+    1, /* 0x1.cc4070a3023a7p-28 */
+    1, /* 0x1.8d69f36b1cce6p-27 */
+    -1, /* 0x1.bdbf63f170fep-27 */
+    -1, /* 0x1.ac57910d7e867p-26 */
+    -1, /* 0x1.71732d4eb3deap-25 */
+    1, /* 0x1.24e3786d7459ap-24 */
+    1, /* 0x1.94ee8417af86ep-23 */
+    -1, /* 0x1.2a4da90d1ca6p-21 */
+    -1, /* 0x1.769cbdfa9e1d8p-21 */
+    -1, /* 0x1.427b32daed80dp-20 */
+    -1, /* 0x1.73e9e2254c98fp-20 */
+    1, /* 0x1.8ec2e3d383d64p-19 */
+    -1, /* 0x1.2226500110692p-18 */
+    -1, /* 0x1.4c2c402a28e67p-18 */
+    1, /* 0x1.59abdcf048a9bp-17 */
+    1, /* 0x1.5ef5605b74f7p-16 */
+    -1, /* 0x1.969df9fda1b9p-16 */
+    1, /* 0x1.29320aa46f06ep-15 */
+    -1, /* 0x1.6638f8a2185cbp-15 */
+    1, /* 0x1.dd61dedc265f5p-15 */
+    1, /* 0x1.41c4a3005149fp-14 */
+    -1, /* 0x1.17485bab7607bp-13 */
+    -1, /* 0x1.a0ea629bbf42p-13 */
+    -1, /* 0x1.2878e662f31bcp-12 */
+    -1, /* 0x1.cf88e9268bdcfp-12 */
+    -1, /* 0x1.0d0c56d741955p-9 */
+    1, /* 0x1.f0a606701a3e5p-9 */
+    1, /* 0x1.730786d8eea35p-8 */
+    1, /* 0x1.bfa7fc1b1e67cp-8 */
+    1, /* 0x1.271adcddb2534p-7 */
+    -1, /* 0x1.1f6bbb1fac712p-6 */
+    -1, /* 0x1.20588554d6e24p-6 */
+    -1, /* 0x1.5fa453f6bb40ep-6 */
+    -1, /* 0x1.69a68ac73eaa2p-4 */
+    -1, /* 0x1.da83e335e379ap-3 */
+    1, /* 0x1.f608aa4e62781p-2 */
+  };
+// end_acospi
+
 /* slow path, assumes |x| < 1 */
 static double
 slow_path (double x)
@@ -567,6 +802,25 @@ slow_path (double x)
   int i = (w.x == 2.0) ? 127 : (w.i[1] >> 13) & 127;
   if (i < 64) /* |x| < 0.5 */
   {
+    // begin_acospi
+    // deal with exceptional cases
+    int a, b, c;
+    for (a = 0, b = EXCEPTIONS; a + 1 != b;)
+    {
+      c = (a + b) / 2;
+      if (exceptions[c][0] <= x)
+        a = c;
+      else
+        b = c;
+    }
+    if (x == exceptions[a][0])
+    {
+      double h = exceptions[a][1];
+      char l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
+      return h + h * 0x1p-54 * (double) l;
+    }
+    // end_acospi
+
     p = T2[i];
     y = absx - p[DEGREE+LARGE+1]; /* exact */
     h = p[DEGREE+LARGE];
@@ -595,56 +849,24 @@ slow_path (double x)
       h = -h, l = -l;
     fast_two_sum (&u, &v, pi_hi / 2, h);
     v += pi_lo / 2 + l;
-    static const double err = 0x1.01p-106;
-    double left = u + (v - err), right = u + (v + err);
-    if (left == right)
-      return left;
-    if (__builtin_fabs (x) <= 0x1.1a62633145c07p-54)
-    {
-      u = pi_hi / 2;
-      if (x == 0x1.1a62633145c07p-54)
-        /* in that case pi_lo / 2 - x is zero, thus we need to consider some
-           extra bits of pi/2 */
-        v = -0x1.f1976b7ed8fbcp-110;
-    /* For |x| <= 0x1.1a62633145c06p-54, acos(x) is between the two
-       binary64 numbers surrounding pi/2.
-       for x <= -0x1.cb3b399d747f3p-55, we get nextabove(pi_hi/2) for RNDN */
-      else if (x <= -0x1.cb3b399d747f3p-55)
-        v = 0x1.1p-53; /* 0x1.1p-53 is slightly larger than 1/2*ulp(pi_hi/2) */
-      else
-        v = 0x1p-100;
-    }
-    else if (x == 0x1.53ea6c7255e88p-4)
-      u = 0x1.7cdacb6bbe707p+0, v = 0x1.fffffffffffffp-54;
-    else if (x == 0x1.390e6939cd1a6p-5)
-      u = 0x1.8856a5d3296a4p+0, v = -0x1.d694b07476007p-110;
-    else if (x == 0x1.1cdcd1ea2ad3bp-9)
-      u = 0x1.919146d3f492fp+0, v = -0x1.ab8423060c0e9p-111;
-    else if (x == 0x1.fd737be914578p-11)
-      u = 0x1.91e006d41d8d9p+0, v = -0x1.b51c7c3f78631p-116;
-    else if (x == -0x1.efdc1acd5970dp-6)
-      u = 0x1.99df733b7b385p+0, v = -0x1.fffffffffffffp-54;
-    else if (x == -0x1.124411a0ec32ep-5)
-      u = 0x1.9ab23ecdd436bp+0, v = -0x1.fffffffffffffp-54;
-    else if (x == -0x1.52f06359672cdp-2)
-      u = 0x1.e87ccc94ba419p+0, v = -0x1.fffffffffffffp-54;
-    else if (x == 0x1.0c953e71a6263p-26)
-      u = 0x1.921fb5011d81fp+0, v = -0x1.fffffffffffffp-54;
-    else if (x == 0x1.0c953e91a6263p-26)
-      u = 0x1.921fb5011d81ep+0, v = -0x1.4e183a0a0b796p-110;
-    else if (x == 0x1.04239f1c69896p-24)
-      u = 0x1.921fb4401f327p+0, v = -0x1.fffffffffffffp-54;
-    else if (x == 0x1.7151512be14bep-19)
-      u = 0x1.921f871a18ac1p+0, v = -0x1.fffffffffffffp-54;
-    else if (x == 0x1.faf8ee125cf02p-18)
-      u = 0x1.921f3686074cfp+0, v = -0x1.fffffffffffffp-54;
-    else if (x == 0x1.2c759e3848cc8p-13)
-      u = 0x1.9216519750855p+0, v = -0x1.fffffffffffffp-54;
+
+    // acospi_begin
+    // multiply by 1/pi
+    d_mul (&u, &v, u, v, ONE_OVER_PIH, ONE_OVER_PIL);
+    // acospi_end
+
     return u + v;
   }
   else /* 0.5 <= |x| < 1 */
   {
     double h1, l1;
+
+    // exceptional cases
+    if (x == 0x1.b32b7ac93ddefp-1)
+      return 0x1.69c0e1dfbf177p-3 - 0x1.16beadd718bafp-108;
+    if (x == 0x1.e55a7fa9a24c4p-1)
+      return 0x1.a67c4d04a9236p-4 - 0x1.edc5fcb35e5e3p-110;
+
     h1 = 1.0 - absx; /* exact since |x| >= 0.5 */
     h1 = sqrt_dbl_dbl (h1, &l1);
     p = T2[i];
@@ -672,16 +894,12 @@ slow_path (double x)
       fast_two_sum (&u, &l, pi_hi, -u);
       v = l + pi_lo - v;
     }
-    static const double err = 0x1p-104;
-    double left = u + (v - err), right = u + (v + err);
-    if (left == right)
-      return left;
-    if (x == 0x1.11b3c109f983bp-1)
-      u = 0x1.01bd20609b7b3p+0, v = -0x1.fffffffffffffp-54;
-    else if (x == 0x1.78daf01036d0dp-1)
-      u = 0x1.7cb7648526f99p-1, v = -0x1.3198d5f8c3cf4p-106;
-    else if (x == -0x1.f7dd87f7cd608p-1)
-      u = 0x1.7b46c8ef81685p1, v = 0x1.95019608680bep-105;
+
+    // acospi_begin
+    // multiply by 1/pi
+    d_mul (&u, &v, u, v, ONE_OVER_PIH, ONE_OVER_PIL);
+    // acospi_end
+
     return u + v;
   }
 }

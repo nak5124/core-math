@@ -69,3 +69,27 @@ def statall(f):
             l2.append(((t0,e),(t1,e)))
    l = l2
    return l
+
+# from a list l of exceptional cases, print two tables:
+# one with (x,h) where h is the rounding to nearest of f(x)
+# one with a char l (-1,0,1) giving the direction of rounding
+def format_exceptions(l):
+   print ("static const double exceptions[EXCEPTIONS][2] = {")
+   for x in l:
+      X = x.exact_rational()
+      h = RR(n(acospi(X),200))
+      print ("    {" + get_hex(x) + ", " + get_hex(h) + "},")
+   print ("  };")
+   print ("static const char exceptions_rnd[EXCEPTIONS] = {")
+   for x in l:
+      X = x.exact_rational()
+      h = RR(n(acospi(X),200))
+      l = RR(n(acospi(X)-h.exact_rational(),200))
+      if l==0:
+         l=0
+      elif l>0:
+         l=1
+      else:
+         l=-1
+      print ("    " + str(l) + ", /* " + get_hex(x) + " */")
+   print ("  };")
