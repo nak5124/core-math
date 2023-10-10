@@ -185490,3 +185490,5 @@
 0x1.ffd2e369c9eb9p-1
 0x1.ffd766ba870a9p-1
 0x1.fffffffffff7p-1
+# non-regression test (reported by Andreas Jung)
+0x1.7ffffffffffffp-1
