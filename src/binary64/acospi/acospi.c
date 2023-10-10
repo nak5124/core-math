@@ -917,10 +917,11 @@ cr_acospi (double x)
     /* approximate acos(x) by pi/2 +/- p(x-xmid), where [0,0.75) is split
        into 192 sub-intervals */
     v.x = 1.0 + absx; /* 1 <= v.x < 2 */
-    k = v.i[1];
-    /* k contains 20 significant bits in its low bits, we shift by 12 to get
-       the upper 8 (ignoring the implicit leading bit) */
-    int i = (k >> 12) & 255;
+    /* v.i[1] contains 20 significant bits in its low bits, we shift by 12
+       to get the upper 8 (ignoring the implicit leading bit) */
+    int i = (v.i[1] >> 12) & 255;
+    if (__builtin_expect (i == 192, 0))
+      i = 191;
     const double *p = T[i];
     double y = absx - p[7]; /* p[7] = xmid */
     double zh, zl;
