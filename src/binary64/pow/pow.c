@@ -1275,17 +1275,27 @@ double cr_pow (double x, double y) {
   if (__builtin_expect((_x.u >= 0x7ff0000000000000 || _y.u >= 0x7ff0000000000000), 0)) {
 
     if (__builtin_isnan(x)) {
+      // IEEE 754-2019: pow(x,+/-0) = 1 if x is not a signaling NaN
       if (y == 0.0 && !issignaling(x))
         return 1.0;
 
-      return x;
+      /* pow(sNaN, y) = qNaN. This is implicit in IEEE 754-2019,
+         Section 7.2: "the default result of an operation that signals the
+         invalid operation exception shall be a quiet NaN" and "These
+         operations are: a) any general-computational operation on a signaling
+         NaN" */
+      f64_u u = {.u = 0x7ff8000000000000}; // qNaN
+      return u.f;
     }
 
     if (__builtin_isnan(y)) {
-      if (x == 1.0)
+      // IEEE 754-2019: pow(1,y) = 1 for any y (even a quiet NaN)
+      if (x == 1.0 && !issignaling(y))
         return 1.0;
 
-      return y;
+      // pow(x, sNaN) = qNaN (see above)
+      f64_u u = {.u = 0x7ff8000000000000}; // qNaN
+      return u.f;
     }
 
     switch (_x.u) {
