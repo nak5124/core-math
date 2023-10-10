@@ -185492,3 +185492,10 @@
 0x1.fffffffffff7p-1
 # non-regression test (reported by Andreas Jung)
 0x1.7ffffffffffffp-1
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
