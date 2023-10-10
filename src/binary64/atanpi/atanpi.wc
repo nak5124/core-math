@@ -1,0 +1,7 @@
+# special cases
++nan
+-nan
++inf
+-inf
++0
+-0
