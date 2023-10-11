@@ -1,6 +1,6 @@
-/* Correctly-rounded arc cosine of binary64 value.
+/* Correctly-rounded acospi of binary64 value.
 
-Copyright (c) 2021-2022 Paul Zimmermann and Tom Hubrecht
+Copyright (c) 2021-2023 Paul Zimmermann and Tom Hubrecht
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
