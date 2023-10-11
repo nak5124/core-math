@@ -1294,6 +1294,8 @@ double cr_pow (double x, double y) {
          input NaNs will provide the payload." */
       f64_u u = {.f = x};
       u.u |= 0x0008000000000000; // quiet the NaN
+      if (issignaling (x))
+        feraiseexcept(FE_INVALID);
       return u.f;
     }
 
@@ -1305,6 +1307,8 @@ double cr_pow (double x, double y) {
       // pow(x, sNaN) = qNaN (see above)
       f64_u u = {.f = y};
       u.u |= 0x0008000000000000; // quiet the NaN
+      if (issignaling (y))
+        feraiseexcept(FE_INVALID);
       return u.f;
     }
 
