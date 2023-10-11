@@ -22,8 +22,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
 */
+
+#define TRACE 0x1.85078245b55aap-33
 
 /* This implementation is based on the CORE-MATH atan.c implementation
    (commit b9d8cae), using the formula atanpi(x) = atan(x) / pi.
@@ -167,6 +168,7 @@ static const uint16_t c[31][3] = {
 };
 
 static double __attribute__((noinline)) as_atan_refine2(double x, double a){
+  return 0;
   static const double ch[][2] = {
     {-0x1.5555555555555p-2, -0x1.5555555555555p-56}, {0x1.999999999999ap-3, -0x1.999999999bcb8p-57},
     {-0x1.2492492492492p-3, -0x1.249242093c016p-57}};
@@ -234,6 +236,25 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
   return v1 + v0;
 }
 
+// deal with |x| < 2^-1022 (including 0)
+static double
+atanpi_subnormal (double x)
+{
+  if (x == 0)
+    return x;
+  if (x == 0x1.5cba89af1f855p-1022)
+    return __builtin_fma (-0x1p-600, 0x1p-600, 0x1.bc03df34e902cp-1024);
+  if (x == -0x1.5cba89af1f855p-1022)
+    return __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1024);
+  double h = x * ONE_OVER_PIH;
+  /* Assuming h = x*ONE_OVER_PIH - e, the correction term is
+     e + x * ONE_OVER_PIL, but we need to scale values to avoid underflow. */
+  double corr = __builtin_fma (x * 0x1p55, ONE_OVER_PIH, -h * 0x1p55);
+  corr = __builtin_fma (x * 0x1p55, ONE_OVER_PIL, corr);
+  // now return h + corr * 2^-55
+  return __builtin_fma (corr, 0x1p-55, h);
+}
+
 double cr_atanpi (double x){
   static const double ch[] = {0x1p+0, -0x1.555555555552bp-2, 0x1.9999999069c2p-3, -0x1.248d2c8444ac6p-3};
   b64u64_u t = {.f = x};
@@ -241,25 +262,28 @@ double cr_atanpi (double x){
   long i = (at>>51) - 2030l;
   if (__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
     // |x| < 0x1.b21c475e6362ap-8
-    if (x == 0) return x;
+    if (at < 0x30000000000000) // |x| < 2^-1022
+      return atanpi_subnormal (x);
+    if (__builtin_expect (x == 0, 0)) return x;
     static const double ch[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
     double x2 = x*x, x3 = x*x2, x4 = x2*x2;
     double f = x3*((ch[0] + x2*ch[1]) + x4*(ch[2] + x2*ch[3]));
     // begin_atanpi
-    /* Here f approximates atan(x)-x, with absolute error bounded by
+    /* Here x+f approximates atan(x), with absolute error bounded by
        0x4.8p-52*f (see atan.c). After multiplying by 1/pi this error
-       will be bounded by 0x1.6fp-52*f. */
+       will be bounded by 0x1.6fp-52*f. For |x| < 0x1.b21c475e6362ap-8
+       we have |f| < 2^-16*|x|, thus the error is bounded by
+       0x1.6fp-52*2^-16*|x| < 0x1.6fp-68. */
     // multiply x + f by 1/pi
     double h, l;
     h = muldd (x, f, ONE_OVER_PIH, ONE_OVER_PIL, &l);
     /* The rounding error in muldd and the approximation error between
        1/pi and ONE_OVER_PIH + ONE_OVER_PIL are covered by the difference
        between 0x4.8p-52*pi and 0x1.6fp-52, which is > 2^-61.8. */
-    double ub = h + __builtin_fma (0x1.6fp-52, f, l);
-    double lb = h + __builtin_fma (-0x1.6fp-52, f, l);
-    if(__builtin_expect(ub == lb, 1)) return ub;
-    if (__builtin_expect (x == 0, 0)) return x;
+    double ub = h + __builtin_fma (0x1.6fp-68, x, l);
+    double lb = h + __builtin_fma (-0x1.6fp-68, x, l);
+    if (__builtin_expect (ub == lb, 1)) return ub;
     // end_atanpi
     return as_atan_refine2(x, ub);
   }
