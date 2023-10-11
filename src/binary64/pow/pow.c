@@ -1284,6 +1284,7 @@ double cr_pow (double x, double y) {
          invalid operation exception shall be a quiet NaN" and "These
          operations are: a) any general-computational operation on a signaling
          NaN".
+
          Moreover, in 6.2.3:
          "An operation that propagates a NaN operand to its result and has a
          single NaN as an input should produce a NaN with the payload of the
@@ -1291,12 +1292,11 @@ double cr_pow (double x, double y) {
          inputs are NaN, then the payload of the resulting NaN should be
          identical to the payload of one of the input NaNs if representable in
          the destination format. This standard does not specify which of the
-         input NaNs will provide the payload." */
-      f64_u u = {.f = x};
-      u.u |= 0x0008000000000000; // quiet the NaN
-      if (issignaling (x))
-        feraiseexcept(FE_INVALID);
-      return u.f;
+         input NaNs will provide the payload."
+
+         Returning x+x has the double effect to quiet the signaling bit
+         and to raise the invalid exception if x=sNaN. */
+      return x + x;
     }
 
     if (__builtin_isnan(y)) {
@@ -1305,11 +1305,7 @@ double cr_pow (double x, double y) {
         return 1.0;
 
       // pow(x, sNaN) = qNaN (see above)
-      f64_u u = {.f = y};
-      u.u |= 0x0008000000000000; // quiet the NaN
-      if (issignaling (y))
-        feraiseexcept(FE_INVALID);
-      return u.f;
+      return y + y;
     }
 
     switch (_x.u) {
