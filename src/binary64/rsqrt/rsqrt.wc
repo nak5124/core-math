@@ -9920,4 +9920,7 @@
 +inf
 -inf
 +0
--0
+# we comment out -0, since mpfr_rsqrt differs from IEEE 754-2019 and this
+# would give a false failure: IEEE 754-2019 says that rsqrt(-0) should give
+# -Inf, whereas mpfr_rsqrt(-0) gives +Inf
+# -0
