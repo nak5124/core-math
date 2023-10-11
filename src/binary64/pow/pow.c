@@ -1283,8 +1283,17 @@ double cr_pow (double x, double y) {
          Section 7.2: "the default result of an operation that signals the
          invalid operation exception shall be a quiet NaN" and "These
          operations are: a) any general-computational operation on a signaling
-         NaN" */
-      f64_u u = {.u = 0x7ff8000000000000}; // qNaN
+         NaN".
+         Moreover, in 6.2.3:
+         "An operation that propagates a NaN operand to its result and has a
+         single NaN as an input should produce a NaN with the payload of the
+         input NaN if representable in the destination format. If two or more
+         inputs are NaN, then the payload of the resulting NaN should be
+         identical to the payload of one of the input NaNs if representable in
+         the destination format. This standard does not specify which of the
+         input NaNs will provide the payload." */
+      f64_u u = {.f = x};
+      u.u |= 0x0008000000000000; // quiet the NaN
       return u.f;
     }
 
@@ -1294,7 +1303,8 @@ double cr_pow (double x, double y) {
         return 1.0;
 
       // pow(x, sNaN) = qNaN (see above)
-      f64_u u = {.u = 0x7ff8000000000000}; // qNaN
+      f64_u u = {.f = y};
+      u.u |= 0x0008000000000000; // quiet the NaN
       return u.f;
     }
 
