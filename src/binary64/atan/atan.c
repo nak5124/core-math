@@ -222,6 +222,7 @@ double cr_atan(double x){
   u64 at = t.u&(~0ul>>1);
   long i = (at>>51) - 2030l;
   if(__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
+    if(__builtin_expect(at == 0, 0)) return x;
     static const double ch[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
     if(at<0x3e40000000000000ul) return __builtin_fma(-0x1p-54, x, x);
