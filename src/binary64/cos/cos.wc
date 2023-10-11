@@ -38501,5 +38501,12 @@
 0x1.58129567fd0d2p+10
 0x1.582d779b53224p+10
 0x1.58a02f46988d6p+10
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
 # non-regression tests
 0x1.3f06778c3c6a1p+104

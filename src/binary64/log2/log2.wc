@@ -31365,3 +31365,10 @@
 0x1.ff6f0e784fca1p-1
 0x1.ffa10e29bccc2p-1
 0x1.ffdcbdb4d06bfp-1
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0

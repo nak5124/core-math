@@ -27091,11 +27091,16 @@
 0x1.fd338f7b584dcp-1
 0x1.fd86297b1aad7p-1
 0x1.fdfc242e11011p-1
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
 # some corner cases:
 0x1p-1074
 0x1.fffffffffffffp+1023
-+inf
-nan
 # non-regression tests
 0x1.d1782b8p-27
 0x1.f3c2798p-27

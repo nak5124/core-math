@@ -31282,9 +31282,12 @@
 0x1.abb8ca091fde6p-22
 0x1.c8b35f949d124p-22
 # special cases
-nan
++nan
+-nan
 +inf
+-inf
 +0
+-0
 0x1p-1074
 0x1.fffffffffffffp+1023
 # the following is the largest value such that tanh(x) does not round to 1
