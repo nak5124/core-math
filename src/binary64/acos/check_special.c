@@ -30,6 +30,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
+#include <float.h> // for DBL_MAX
 #include <sys/types.h>
 #include <unistd.h>
 #include <omp.h>
@@ -67,6 +68,20 @@ check (double x)
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
     exit (1);
+  }
+}
+
+/* check 10^6 values to the left and right of x */
+static void
+check_near (double x)
+{
+  double x_left = x, x_right = x;
+  for (int i = 0; i < 1000000; i++)
+  {
+    check (x_left);
+    check (x_right);
+    x_left = nextafter (x_left, -DBL_MAX);
+    x_right = nextafter (x_right, DBL_MAX);
   }
 }
 
@@ -114,9 +129,16 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
+  printf ("Checking near code thresholds\n");
+  check_near (0.75);
+  check_near (-0.75);
+  check_near (1.0);
+  check_near (-1.0);
+
 #define K 1000000000UL /* total number of tests */
 #define BUF_SIZE 1000
 
+  printf ("Checking random values\n");
   long seed = getpid ();
   srand48 (seed);
   

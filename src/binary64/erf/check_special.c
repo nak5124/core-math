@@ -143,8 +143,7 @@ main (int argc, char *argv[])
   {
     ref_init ();
     ref_fesetround (rnd);
-    double x;
-    do x = get_random (); while (fabs (x) > 6);
+    double x = get_random ();
     check (x);
   }
 

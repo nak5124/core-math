@@ -65942,3 +65942,13 @@
 0x1.fe9c92eefcb36p-1023
 0x1.fe8daa2988b6ep-1023
 0x1.fe91645ae5b6p-1023
+# non-regression tests (reported by Andreas Jung)
+0x1.0ep+1017
+0x1.0dfffffffffffp+1017
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0

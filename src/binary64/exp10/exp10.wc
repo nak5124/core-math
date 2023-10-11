@@ -66785,7 +66785,8 @@
 -0x1.435ba2ee3ba4dp+8
 -0x1.33a716d246992p+8
 # special values or values near thresholds in the code
-nan
++nan
+-nan
 +inf
 -inf
 +0

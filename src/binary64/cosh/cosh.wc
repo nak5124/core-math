@@ -36423,3 +36423,10 @@
 0x1.feac6f65d8666p-17
 0x1.feefa790e8302p-17
 0x1.febc29963a40fp-17
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0

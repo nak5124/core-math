@@ -40808,7 +40808,8 @@
 0x1.921fb54442d17p+0
 0x1.921fb54442d18p+0
 # special cases
-nan
++nan
+-nan
 +inf
 -inf
 +0

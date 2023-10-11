@@ -56700,3 +56700,10 @@
 -0x1p+1023
 # non-regression tests
 0x1.b880844f10722p+7
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
