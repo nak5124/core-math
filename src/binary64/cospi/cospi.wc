@@ -37963,3 +37963,10 @@
 0x1.fd49991ac5fabp+8
 0x1.fe49991ac5fabp+8
 0x1.ff49991ac5fabp+8
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0

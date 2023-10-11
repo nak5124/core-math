@@ -26,7 +26,13 @@ SOFTWARE. */
 
 #include <stdint.h>
 #include <errno.h>
-#include <stdio.h>
+
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
 
 typedef uint64_t u64;
 typedef union {double f; u64 u;} b64u64_u;

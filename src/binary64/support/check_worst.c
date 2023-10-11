@@ -47,6 +47,29 @@ int rnd;
 
 typedef double double2[2];
 
+typedef union { double f; uint64_t i; } d64u64;
+
+/* scanf %la from buf, allowing snan, +snan and -snan */
+static int
+sscanf_snan (char *buf, double *x)
+{
+  if (sscanf(buf, "%la", x) == 1)
+    return 1;
+  else if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
+  {
+    d64u64 u = {.i = 0x7ff4000000000000};
+    *x = u.f;
+    return 1;
+  }
+  else if (strncmp (buf, "-snan", 5) == 0)
+  {
+    d64u64 u = {.i = 0xfff4000000000000};
+    *x = u.f;
+    return 1;
+  }
+  return 0;
+}
+
 static void
 readstdin(double2 **result, int *count)
 {
@@ -74,8 +97,14 @@ readstdin(double2 **result, int *count)
       *result = newresult;
     }
     double2 *item = *result + *count;
-    if (sscanf(buf, "%la,%la", &(*item)[0], &(*item)[1]) == 2) {
+    if (sscanf(buf, "%la,%la", &(*item)[0], &(*item)[1]) == 2)
       (*count)++;
+    else if (sscanf_snan (buf, &(*item)[0]) == 1)
+    {
+      while (*buf++ != ',');
+      if (sscanf_snan (buf, &(*item)[1]) == 1)
+        (*count)++;
+      printf ("x=%la y=%la\n", (*item)[0], (*item)[1]);
     }
   }
 }

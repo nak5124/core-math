@@ -27,11 +27,18 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 
-typedef union {float f; unsigned u;} b32u32_u;
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
+typedef union {float f; uint32_t u;} b32u32_u;
 
 static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};
-  unsigned ax = t.u<<1;
+  uint32_t ax = t.u<<1;
   if(ax>(0xffu<<24)) return x; // nan
   errno = EDOM;
   return 0.0f/0.0f; // to raise FE_INVALID
@@ -56,7 +63,7 @@ float cr_asinf(float x){
   const double pi2 = 0x1.921fb54442d18p+0;
   double xs = x, r;
   b32u32_u t = {.f = x};
-  unsigned ax = t.u<<1;
+  uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>0x7f<<24, 0)) return as_special(x);
   if(__builtin_expect(ax<0x7ec29000u, 1)){
     if (__builtin_expect(ax<115<<24, 0)) return __builtin_fmaf(x, 0x1p-25, x);

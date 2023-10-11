@@ -29,6 +29,13 @@ SOFTWARE.
 #include <errno.h>
 #include <fenv.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {float f; uint32_t u;} b32u32_u;
 
 float cr_tanpif(float x){
@@ -90,6 +97,9 @@ float cr_tanpif(float x){
   return r;
 }
 
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float tanpif(float x){
   return cr_tanpif(x);
 }
+#endif

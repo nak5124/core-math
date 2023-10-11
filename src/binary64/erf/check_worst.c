@@ -122,8 +122,34 @@ int main(int argc, char *argv[]){
   exit(EXIT_SUCCESS);
 }
 
-int is_equal (b64u64_u a, b64u64_u b){
-  return a.u == b.u;
+static inline uint64_t
+asuint64 (double f)
+{
+  union
+  {
+    double f;
+    uint64_t i;
+  } u = {f};
+  return u.i;
+}
+
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
+static inline int
+is_equal (double x, double y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint64 (x) == asuint64 (y);
 }
 
 void test(int maxfailures){
@@ -136,18 +162,12 @@ void test(int maxfailures){
     b64u64_u zr, zt;
     zr.f = ref_function_under_test(x);
     zt.f = cr_function_under_test(x);
-    if (!is_equal (zr, zt)) {
+    if (!is_equal (zr.f, zt.f)) {
       if(++failures<maxfailures){
-	b64u64_u ix = {.f = x};
-	if(ix.u<<1>0x7fful<<53){
-	  printf("FYI for NaN argument the bit structure of result is different: x=0x%016lx ref=0x%016lx z=0x%016lx\n", ix.u, zr.u, zt.u);
-	} else
-        {
-	  printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
+        printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
 #ifndef DO_NOT_ABORT
           exit (1);
 #endif
-        }
       }
     }
     ++count;

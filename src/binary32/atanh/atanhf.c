@@ -27,6 +27,13 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -89,7 +96,7 @@ float cr_atanhf(float x){
   static const double s[] = {1,-1};
 
   b32u32_u t = {.f = x};
-  unsigned ux = t.u, ax = ux<<1;
+  uint32_t ux = t.u, ax = ux<<1;
   if(__builtin_expect(ax<0x7a300000u || ax >= 0x7f000000u, 0)){
     if(__builtin_expect(ax >= 0x7f000000u, 0)) return as_special(x);
     if(__builtin_expect(ax < 0x73713744u, 0)) {

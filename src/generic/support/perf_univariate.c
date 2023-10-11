@@ -39,6 +39,9 @@ SOFTWARE.
 #ifdef __x86_64__
 #include <x86intrin.h>
 #endif
+#ifdef __INTEL_CLANG_COMPILER
+#include <mathimf.h>
+#endif
 
 #include "random_under_test.h"
 

@@ -28,6 +28,13 @@ SOFTWARE.
 #include <errno.h>
 #include <x86intrin.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef uint64_t u64;
 typedef int64_t i64;
 typedef unsigned __int128 u128;

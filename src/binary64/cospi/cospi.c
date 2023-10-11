@@ -30,6 +30,13 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h> // needed to provide cospi() since glibc does not have it
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 __float128 as_cos(__float128);
 
 typedef union {double f; uint64_t u;} b64u64_u;
@@ -84,7 +91,6 @@ static double as_cospi_zero(double x){
   fh = muldd(x2, dx2, fh, fl, &fl);
   double y2, y1, y0 = fasttwosum(1, fh, &y1);
   y1 = fasttwosum(y1, fl, &y2);
-  //  printf("%a %a %a %a\n",x,y0,y1,y2);
   b64u64_u t = {.f = y1};
   if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
     b64u64_u w = {.f = y2};
@@ -350,7 +356,9 @@ void sincosn2(int s, double *sh, double *sl, double *ch, double *cl){
   *sl = __builtin_copysign(1.0, sgn[ss])*tsl;
 }
 
-/* just to compile since glibc does not have it*/
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 double cospi(double x){
   return cos(M_PI*x);
 }
+#endif

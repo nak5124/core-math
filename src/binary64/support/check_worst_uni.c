@@ -47,6 +47,8 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 
+typedef union { double f; uint64_t i; } d64u64;
+
 static void
 readstdin(double **result, int *count)
 {
@@ -74,20 +76,30 @@ readstdin(double **result, int *count)
       *result = newresult;
     }
     double *item = *result + *count;
-    if (sscanf(buf, "%la", item) == 1) {
+    // special code for snan, since glibc does not read them
+    if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
+    {
+      /* According to IEEE 754-2019, qNaN's have 1 as upper bit of their
+         52-bit significand, and sNaN's have 0 */
+      d64u64 u = {.i = 0x7ff4000000000000};
+      *item = u.f;
       (*count)++;
     }
+    else if (strncmp (buf, "-snan", 5) == 0)
+    {
+      d64u64 u = {.i = 0xfff4000000000000};
+      *item = u.f;
+      (*count)++;
+    }
+    else if (sscanf(buf, "%la", item) == 1)
+      (*count)++;
   }
 }
 
 static inline uint64_t
 asuint64 (double f)
 {
-  union
-  {
-    double f;
-    uint64_t i;
-  } u = {f};
+  d64u64 u = {.f = f};
   return u.i;
 }
 

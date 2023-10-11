@@ -68919,3 +68919,10 @@
 0x1.ef2b8dfe4ba39p-21
 # check sign of 0
 -0x1p1023
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0

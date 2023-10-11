@@ -29,6 +29,13 @@ SOFTWARE.
 #include <errno.h>
 #include <fenv.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {float f; uint32_t u;} b32u32_u;
 
 float cr_acospif(float x){
@@ -106,7 +113,9 @@ float cr_acospif(float x){
   }
 }
 
-/* just to compile since glibc does not contain this function*/
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float acospif(float x){
   return cr_acospif(x);
 }
+#endif

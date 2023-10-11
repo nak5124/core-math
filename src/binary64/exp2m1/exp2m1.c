@@ -24,9 +24,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <math.h> // needed to define exp2m1() since glibc does not have it yet
+
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
 
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
@@ -304,10 +310,8 @@ typedef union {
 */
 
 static inline void exp_1 (double *hi, double *lo, double xh, double xl) {
-  int bug = xh == 0x1.62e42d29db3f1p+9;
 #define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
   double k = __builtin_roundeven (xh * INVLOG2);
-  if (bug) printf ("k=%la\n", k);
 
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13

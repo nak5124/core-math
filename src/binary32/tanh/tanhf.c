@@ -24,12 +24,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-typedef union {float f; unsigned u;} b32u32_u;
+#include <stdint.h>
+
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
+typedef union {float f; uint32_t u;} b32u32_u;
 
 float cr_tanhf(float x){
   double z = x;
   b32u32_u t = {.f = x};
-  unsigned ux = t.u;
+  uint32_t ux = t.u;
   int e = (ux>>23)&0xff;
   if (__builtin_expect(e==0xff, 0)){
     if(ux<<9) return x; // nan

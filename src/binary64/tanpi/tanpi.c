@@ -30,6 +30,13 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h> // needed to provide tanpi() since glibc does not have it
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static inline double fasttwosum(double x, double y, double *e){
@@ -356,7 +363,9 @@ double cr_tanpi(double x){
   return res;
 }
 
-/* just to compile */
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not provide this function */
 double tanpi(double x){
   return tan(M_PI*x);
 }
+#endif

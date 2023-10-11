@@ -26,6 +26,13 @@ SOFTWARE.
 
 #include <stdint.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -135,7 +142,7 @@ float cr_exp10m1f(float x){
   }
 }
 
-/* just to compile since glibc does not contain this function*/
+/* just to compile since glibc does not contain this function */
 float exp10m1f(float x){
   return cr_exp10m1f(x);
 }

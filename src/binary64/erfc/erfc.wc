@@ -118322,10 +118322,14 @@
 0x1.f7d0ef44b78edp+3
 # non-regression tests
 0x1.a8b13468353bfp+4
-# corner values used in the code
-nan
+# special values
++nan
+-nan
++inf
 -inf
-inf
++0
+-0
+# corner values used in the code
 -0x1.7744f8f74e94cp2
 -0x1.7744f8f74e94bp2
 -0x1.7744f8f74e94ap+2

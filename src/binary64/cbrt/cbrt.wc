@@ -105539,6 +105539,10 @@
 0x1.fff6deec3abc3p+1
 0x1.fffaa681aa825p+1
 0x1.fffe6e1bdd63fp+1
-# check sign of 0
-0x0
--0x0
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0

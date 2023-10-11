@@ -22,12 +22,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
 */
 
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
+
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
 
 typedef union {float f; uint32_t u;} b32u32_u;
 
@@ -98,6 +104,9 @@ float cr_sinpif(float x){
   return r;
 }
 
+#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+/* just to compile since glibc does not contain this function */
 float sinpif(float x){
   return cr_sinpif(x);
 }
+#endif

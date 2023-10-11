@@ -28,6 +28,13 @@ SOFTWARE.
 #include <fenv.h>
 #include <x86intrin.h>
 
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
+
 typedef unsigned __int128 u128;
 typedef unsigned long u64;
 typedef long i64;

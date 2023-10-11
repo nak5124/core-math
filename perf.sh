@@ -135,8 +135,15 @@ fi
 # for clang we might want to add -ffp-contract=on to enable FMA
 if [ "$CFLAGS" == "" ]; then
    CFLAGS="-O3 -march=native"
+   ROUNDING_MATH="-frounding-math"
+   if [ "$CC" == "icx" ]; then
+      # for icx we need to add -fp-model=strict for full IEEE 754 support
+      # and we don't need -frounding-math (which does slow down acoshf for example)
+      CFLAGS="-O3 -fp-model=strict"
+      ROUNDING_MATH=
+   fi
 fi
-export CFLAGS
+export CFLAGS ROUNDING_MATH
 
 if [ -n "$LIBM" ]; then
     BACKUP_LIBM="$LIBM"
