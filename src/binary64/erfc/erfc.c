@@ -1183,7 +1183,7 @@ cr_erfc (double x)
   b64u64_u t = {.f = x};
   uint64_t at = t.u & 0x7fffffffffffffff;
 
-  if (t.u >= 0x8000000000000000) // x = NaN or x <= 0
+  if (t.u >= 0x8000000000000000) // x = -NaN or x <= 0 (excluding +0)
   {
     // for x <= -0x1.7744f8f74e94bp2, erfc(x) rounds to 2 (to nearest)
     if (t.u >= 0xc017744f8f74e94b) // x = NaN or x <= -0x1.7744f8f74e94bp2
@@ -1197,10 +1197,10 @@ cr_erfc (double x)
 
     // for -0x1.c5bf891b4ef6ap-54 <= x <= 0, erfc(x) rounds to 1 (to nearest)
     if (-0x1.c5bf891b4ef6ap-54 <= x)
-      return 1.0 + 0x1p-53;
+      return __builtin_fma (-x, 0x1p-54, 1.0);
   }
 
-  if (t.u < 0x8000000000000000) // x = NaN or x >= 0
+  else // x = +NaN or x >= 0 (excluding -0)
   {
     // for x >= 0x1.b39dc41e48bfdp+4, erfc(x) < 2^-1075: rounds to 0 or 2^-1074
     if (at >= 0x403b39dc41e48bfd) // x = NaN or x >= 0x1.b39dc41e48bfdp+4
@@ -1214,7 +1214,7 @@ cr_erfc (double x)
 
     // for 0 <= x <= 0x1.c5bf891b4ef6ap-55, erfc(x) rounds to 1 (to nearest)
     if (x <= 0x1.c5bf891b4ef6ap-55)
-      return 1.0 - 0x1p-54;
+      return __builtin_fma (-x, 0x1p-54, 1.0);
   }
 
   /* now -0x1.7744f8f74e94bp2 < x < -0x1.c5bf891b4ef6ap-54
