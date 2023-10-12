@@ -25,16 +25,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdint.h>
-#include <math.h> // for log2
-#include "dint.h"
-
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #endif
 
 #pragma STDC FENV_ACCESS ON
+
+#include <stdint.h>
+#include <math.h> // for log2
+#include "dint_log2p1.h"
 
 /*
   Approximation tables
