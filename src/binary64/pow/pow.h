@@ -181,7 +181,7 @@ static inline void d_square(double *hi, double *lo, double ah, double al) {
   *lo = __builtin_fma(ah, b, s);
 }
 
-static inline long dtoi(double x) { return (long)x; };
+static inline long dtoi(double x) { return (long)x; }
 
 // Returns 1 if x is an integer
 static inline char is_int(double x) { return x == __builtin_roundeven (x); }

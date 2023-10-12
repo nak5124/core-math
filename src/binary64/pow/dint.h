@@ -478,7 +478,7 @@ mul_dint_int64 (dint64_t *r, const dint64_t *a, int64_t b) {
      case "r->r < l", since before the right shift, the error was at most
      1 ulp, thus 1/2 ulp after the shift, and the ignored least significant
      bit of r->r which is discarded counts also as 1/2 ulp. */
-};
+}
 
 /*
   Approximation tables
