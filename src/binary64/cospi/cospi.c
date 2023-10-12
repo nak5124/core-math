@@ -146,7 +146,7 @@ double cr_cospi(double x){
   static const double cn[] = {-0x1.3bd3cc9be45dbp-148, 0x1.03c1f00186416p-298};
   b64u64_u ix = {.f = x};
   uint64_t ax = ix.u&(~0ul>>1);
-  if(__builtin_expect(ax==0, 0)) return x;
+  if(__builtin_expect(ax==0, 0)) return 1.0;
   int32_t e = ax>>52;
   // e is the unbiased exponent, we have 2^(e-1023) <= |x| < 2^(e-1022)
   int64_t m = (ix.u&(~0ul>>12))|(1ul<<52);
