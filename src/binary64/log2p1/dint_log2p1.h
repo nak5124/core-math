@@ -255,7 +255,7 @@ static inline void mul_dint_2(dint64_t *r, int64_t b, const dint64_t *a) {
   r->hi = t.h;
   r->lo = t.l;
   r->ex = a->ex + 64 - m;
-};
+}
 
 typedef union {
   double f;
