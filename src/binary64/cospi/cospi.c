@@ -148,9 +148,10 @@ double cr_cospi(double x){
   uint64_t ax = ix.u&(~0ul>>1);
   if(__builtin_expect(ax==0, 0)) return x;
   int32_t e = ax>>52;
+  // e is the unbiased exponent, we have 2^(e-1023) <= |x| < 2^(e-1022)
   int64_t m = (ix.u&(~0ul>>12))|(1ul<<52);
-  int32_t s = 1063 - e;
-  if(__builtin_expect(s<0, 0)){
+  int32_t s = 1063 - e; // 2^(40-s) <= |x| < 2^(41-s)
+  if(__builtin_expect(s<0, 0)){ // |x| >= 2^41
     if(__builtin_expect(e == 0x7ff, 0)){
       if(!(ix.u << 12)){
 	errno = EDOM;
@@ -159,8 +160,12 @@ double cr_cospi(double x){
       }
       return x;
     }
-    s = -s - 1;
-    if(s>10) return 1.0;
+    s = -s - 1; // now 2^(41+s) <= |x| < 2^(42+s)
+    if(s>10) // |x| >= 2^52 thus x is an integer
+    {
+      if (s > 11) return 1.0; // |x| >= 2^53 thus x is even
+      return (ax & 1) ? -1.0 : 1.0; // case 2^52 <= |x| < 2^53
+    }
     uint64_t iq = (m<<s) + 1024;
     if(!(iq&2047)) return 0.0;
     double sh, sl, ch, cl; sincosn(iq, &sh, &sl, &ch, &cl);
