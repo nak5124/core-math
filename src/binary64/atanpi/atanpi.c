@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x1.85078245b55aap-33
+#define TRACE 0x1.45f306dc9c882p+53
 
 /* This implementation is based on the CORE-MATH atan.c implementation
    (commit b9d8cae), using the formula atanpi(x) = atan(x) / pi.
@@ -168,7 +168,7 @@ static const uint16_t c[31][3] = {
 };
 
 static double __attribute__((noinline)) as_atan_refine2(double x, double a){
-  return 0;
+  if (x == TRACE) printf ("enter as_atan_refine2\n");
   static const double ch[][2] = {
     {-0x1.5555555555555p-2, -0x1.5555555555555p-56}, {0x1.999999999999ap-3, -0x1.999999999bcb8p-57},
     {-0x1.2492492492492p-3, -0x1.249242093c016p-57}};
@@ -207,6 +207,11 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
     al = adddd(al, at, f, fl, &at);
   }
   double v2, v0 = fasttwosum(ah, al, &v2), v1 = fasttwosum(v2, at, &v2);
+  if (x == TRACE) printf ("v0=%la v1=%la\n", v0, v1);
+  // now v0 + v1 approximates atan(x)
+  // atanpi_begin
+  v0 = muldd (v0, v1, ONE_OVER_PIH, ONE_OVER_PIL, &v1);
+  // atanpi_end
   double ax = __builtin_fabs(x);
   b64u64_u t0 = {.f = v0}, t1 = {.f = v1};
   if(__builtin_expect(((t1.u+1)&(~0ul>>12))<=2 || ((t0.u>>52)&0x7ff)-((t1.u>>52)&0x7ff)>104, 0)){
@@ -285,8 +290,10 @@ double cr_atanpi (double x){
     double lb = h + __builtin_fma (-0x1.6fp-68, x, l);
     if (__builtin_expect (ub == lb, 1)) return ub;
     // end_atanpi
+    ub = (f + f*0x4.8p-52) + x; // atanpi_specific, original value in atan.c
     return as_atan_refine2(x, ub);
   }
+  // now |x| >= 0x1.b21c475e6362ap-8
   double h, ah, al;
   if(__builtin_expect(at>0x4062ded8e34a9035, 0)) {
     // |x| > 0x1.2ded8e34a9035p+7, atanpi|x| > 0.49789
@@ -297,9 +304,10 @@ double cr_atanpi (double x){
       return x; // NaN
     }
     h = -1.0/x;
-    ah = __builtin_copysign(0.5, x);
-    al = 0;
+    ah = __builtin_copysign(0x1.921fb54442d18p+0, x);
+    al = __builtin_copysign(0x1.1a62633145c07p-54, x);
   } else {
+    return 0;
     u64 u = t.u & (~0ul>>13);
     u64 ut = u>>(51-16), ut2 = ut*ut>>16;
     i = (((u64)c[i][0]<<16) + ut*c[i][1] - ut2*c[i][2])>>(16+9);
@@ -311,10 +319,23 @@ double cr_atanpi (double x){
   double h2 = h*h, h4 = h2*h2;
   double f = (ch[0] + h2*ch[1]) + h4*(ch[2] + h2*ch[3]);
   al = __builtin_fma(h, f, al);
-  double e = h*0x3.fp-52;
+  // begin_atanpi
+  /* Now ah + al approximates atan(x) with error bounded by 0x3.fp-52*h
+     (see atan.c), thus by 0x1.41p-52*h after multiplication by 1/pi.
+     We normalize ah+al so that the rounding error in muldd is negligible
+     below. */
+  double e0 = h*0x3.fp-52;    // original value in atan.c
+  double ub0 = (al + e0) + ah; // original value in atan.c
+  ah = fasttwosum (ah, al, &al);
+  ah = muldd (ah, al, ONE_OVER_PIH, ONE_OVER_PIL, &al);
+  /* The rounding error in muldd() and the approximation error between 1/pi
+     and ONE_OVER_PIH+ONE_OVER_PIL are absorbed when rounding up 0x3.fp-52*pi
+     to 0x1.41p-52. */
+  double e = h * 0x1.41p-52; // atanpi_specific
+  // end_atanpi
   double ub = (al + e) + ah, lb = (al - e) + ah;
   if(__builtin_expect(ub == lb, 1)) return ub;
-  return as_atan_refine2(x, ub);
+  return as_atan_refine2(x, ub0);
 }
 
 /* just to compile since glibc does not have atanpi */
