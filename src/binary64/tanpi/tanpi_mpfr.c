@@ -26,8 +26,11 @@ SOFTWARE.
 
 #include <mpfr.h>
 #include "fenv_mpfr.h"
+#include <math.h>
 
 double ref_tanpi(double x){
+  if(isnan(x)) return x;
+  if(isinf(x)) return -__builtin_nan("");
   mpfr_t y;
   mpfr_init2(y, 53);
   mpfr_set_d(y, x, MPFR_RNDN);

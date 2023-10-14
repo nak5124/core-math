@@ -146,16 +146,16 @@ void test(int maxfailures){
 
 int transform(double x, double *out){
   static int first = 1;
-  static double px = __builtin_nan("");
+  static b64u64_u px = {.u = 0x7ff8000000054312ul};
   static long k;
   b64u64_u s = {.f = x};
-  if (first || px != x) {
+  if (first || px.u != s.u) {
     first = 0;
-    px = x;
+    px.f = x;
     k = -1;
   }
   if(++k<2){
-    s.u |= k<<63;
+    s.u ^= k<<63;
     *out = s.f;
     return 1;
   } else {

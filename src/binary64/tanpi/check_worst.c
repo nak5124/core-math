@@ -143,17 +143,19 @@ void test(){
 
 int transform(double x, double *out){
   static int first = 1;
-  static double px = __builtin_nan("");
+  static b64u64_u px = {.u = 0x7ff8000000054312ul};
   static long k, kmax;
   b64u64_u s = {.f = x};
-  if (first || px != x) {
+  if (first || px.u != s.u) {
     first = 0;
-    px = x;
+    px.f = x;
     k = -1;
     kmax = 2;
-    long j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
-    if(j > 0) kmax <<= j+1;
-    if(kmax>(1l<<15)) kmax = 1l<<15;
+    if(isnormal(x)){
+      long j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
+      if(j > 0) kmax <<= j+1;
+      if(kmax>(1l<<15)) kmax = 1l<<15;
+    }
   }
   if(0x1p-55 <=x && x < 0x1p-54){
     if(++k<969*2){
@@ -169,7 +171,7 @@ int transform(double x, double *out){
       long i = (k>>1)+1;
       s.u |= ~i<<63;
       s.f = (i>>1) + s.f;
-      s.u |= k<<63;
+      s.u ^= k<<63;
       *out = s.f;
       return 1;
     } else {

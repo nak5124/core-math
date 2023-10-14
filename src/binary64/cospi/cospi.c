@@ -82,7 +82,6 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
 static double as_cospi_zero(double x){
   __float128 X2 = x; X2 *= X2;
   double x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
-  //  ./remez -n 5 -a 0 -b 7.66990393942820614859043794745972383837200e-4^2:2.44140625e-4^2 -t cos -p 5 -F dd
   static const double ch[][2] = {
     {-0x1.3bd3cc9be45dep+2, -0x1.692b71366cc04p-52}, {0x1.03c1f081b5ac4p+2, -0x1.32b33fda9113cp-52}};
   static const double cl[3] = {-0x1.55d3c7e3cbff9p+0, 0x1.e1f50604fa0ffp-3};
@@ -161,11 +160,7 @@ double cr_cospi(double x){
       return x;
     }
     s = -s - 1; // now 2^(41+s) <= |x| < 2^(42+s)
-    if(s>10) // |x| >= 2^52 thus x is an integer
-    {
-      if (s > 11) return 1.0; // |x| >= 2^53 thus x is even
-      return (ax & 1) ? -1.0 : 1.0; // case 2^52 <= |x| < 2^53
-    }
+    if(s>11) return 1.0;
     uint64_t iq = (m<<s) + 1024;
     if(!(iq&2047)) return 0.0;
     double sh, sl, ch, cl; sincosn(iq, &sh, &sl, &ch, &cl);
