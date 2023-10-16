@@ -50,6 +50,13 @@ static inline double adddd(double xh, double xl, double ch, double cl, double *l
   return s;
 }
 
+/* This function implements Algorithm 6 (DWTimesDW1) from
+   "Formalization of double-word arithmetic, and comments on 'Tight and
+   rigorous error bounds for basic building blocks of double-word arithmetic'"
+   by Jean-Michel Muller and Laurence Rideau,
+   https://inria.hal.science/hal-02972245.
+   Its relative error (for rounding to nearest) is bounded by 7u^2 (Theorem
+   2.3), where u = 2^-53 for double precision. */
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
