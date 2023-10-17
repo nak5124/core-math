@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <assert.h>
+
 typedef unsigned __int128 u128;
 
 // the following represent (-1)^sgn*(h/2^64+m/2^128+l/2^192)*2^ex
@@ -43,11 +45,11 @@ typedef union {
 } tint_t;
 
 // ZERO is a tint_t representation of 0
-static const tint_t ZERO = {.h = 0, .m = 0, .l = 0, .ex = -1076, .sgn = 0};
+static const tint_t ZERO = {.h = 0, .m = 0, .ll = 0, .ex = -1076, .sgn = 0};
 
 // ONE is a tint_t representation of 1
 static const tint_t ONE = {
-    .h = 0x8000000000000000, .m = 0, .l = 0, .ex = 1, .sgn = 0};
+    .h = 0x8000000000000000, .m = 0, .ll = 0, .ex = 1, .sgn = 0};
 
 // Print a tint_t value for debugging purposes
 static inline void print_tint (const tint_t *a) {
@@ -62,11 +64,24 @@ static inline void cp_tint(tint_t *r, const tint_t *a) {
   r->_sgn = a->_sgn;
 }
 
+static inline int
+is_normalized (const tint_t *a)
+{
+  if (a->_unused != 0)
+    return 0;
+  if (a->h == 0 && a->m == 0 && a->l == 0)
+    return 1;
+  return a->h >> 63;
+}
+
 // Multiply two tint_t numbers, with error < 10 ulps
 // Overlap between r and a or b is allowed
 static inline void
 mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
 {
+  // printf ("enter mul_tint, a="); print_tint (a); printf ("b="); print_tint (b);
+  assert (is_normalized (a));
+  assert (is_normalized (b));
   u128 ah = a->h, am = a->m, al = a->l;
   u128 bh = b->h, bm = b->m, bl = b->l;
   // printf ("enter mul_tint: ah=%lx bh=%lx\n", (uint64_t) ah, (uint64_t) bh);
@@ -109,6 +124,9 @@ mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
     r->ex --;
   }
 
+  // printf ("exit mul_tint, r="); print_tint (r);
+  assert (is_normalized (r));
+
   /* We ignored the following terms, denoting B=2^64, related to r->l:
      am*bl + al*bm <= 2*(B-1)^2/B^2 = 2 - 4/B + 2/B^2
      al*bl <= (B-1)^2/B^3 = 1/B - 2/B^2 + 1/B^3
@@ -147,23 +165,26 @@ cmp_tint_abs (const tint_t *a, const tint_t *b) {
   c = cmpu128 (a->hh, b->hh);
   if (c)
     return c;
-  return cmpu128 (a->ll, b->ll);
+  return cmpu64 (a->l, b->l);
 }
 
 // Add two tint_t values
 static inline void
 add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 {
+  printf ("enter add_tint, a="); print_tint (a); printf ("b="); print_tint (b);
+  assert (is_normalized (a));
+  assert (is_normalized (b));
   switch (cmp_tint_abs (a, b))
   {
   case 0: // |a| = |b|
     if (a->sgn ^ b->sgn) {
       cp_tint (r, &ZERO);
-      return;
+      goto end;
     }
     cp_tint (r, a);
     r->ex++;
-    return;
+    goto end;
 
   case -1: // |a| < |b|
     {
@@ -215,7 +236,7 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
     else { // necessarily ex < 192 since |a| > |b|
       ex -= 128;
       r->hh = (ex == 128) ? rl : rl << ex;
-      r->l = 0;
+      r->ll = 0;
     }
   }
   else { // same signs, it's an addition
@@ -237,6 +258,9 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
     }
   }
   r->sgn = a->sgn;
+ end:
+  printf ("exit add_tint, r="); print_tint (r);
+  assert (is_normalized (r));
 }
 
 // a <- x, assuming x is not NaN, Inf or 0
@@ -257,7 +281,7 @@ static inline void tint_fromd (tint_t *a, double x)
     a->ex = -0x3f2 - e;
     a->h = ax << e;
   }
-  a->m = a->l = 0;
+  a->m = a->ll = 0;
 }
 
 static inline double tint_tod (tint_t *a)
@@ -291,6 +315,7 @@ static inline double tint_tod (tint_t *a)
 // assume A = tint_fromd (a)
 static inline void inv_tint (tint_t *r, const tint_t *A, double a)
 {
+  printf ("enter inv_tint a=%la A=", a); print_tint (A);
   tint_t q[1];
   tint_fromd (r, 1.0 / a); // accurate to about 53 bits
   // we use Newton's iteration: r -> r + r*(1-a*r)
@@ -299,6 +324,7 @@ static inline void inv_tint (tint_t *r, const tint_t *A, double a)
   add_tint (q, &ONE, q);   // 1-a*r
   mul_tint (q, r, q);      // r*(1-a*r)
   add_tint (r, r, q);
+  printf ("#### exit inv_tint r="); print_tint (r);
 }
 
 // put in r an approximation of b/a, assuming a is not zero

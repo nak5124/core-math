@@ -93,16 +93,23 @@ static double
 atan2_accurate_small (double y, double x)
 {
   tint_t z[1], z2[1], p[1];
+  printf ("y=%la z=%la\n", y, x);
   div_tint (z, y, x);
+  printf ("z="); print_tint (z);
   mul_tint (z2, z, z);
+  printf ("z2="); print_tint (z2);
   cp_tint (p, Psmall+7); // degree 15
+  printf ("102: p="); print_tint (p);
   for (int i = 6; i >= 0; i--)
   {
     mul_tint (p, p, z2);
+    printf ("106: p="); print_tint (p);
     add_tint (p, p, Psmall+i);
+    printf ("108: p="); print_tint (p);
   }
   // multiply by z
   mul_tint (p, p, z);
+  // printf ("p="); print_tint (p);
   return tint_tod (p);
 }
 
