@@ -138,6 +138,34 @@ float cr_powf(float x0, float y0){
     {0x1.78p-5, -0x1.8d66c5313a71dp-14}, {0x1.74p-6, 0x1.f7430ee200ep-17}, {0x0p+0, 0x0p+0}
   };
 
+  if(__builtin_expect(x0 < 0.0f, 0)){
+    b32u32_u wy = {.f = y0};
+    int ey = (wy.u>>23) & 0xff, s = ey-127;
+    if(s<0) return __builtin_nanf("");
+    if(9+s<32 && (wy.u<<(9+s))) return __builtin_nanf("");
+  }
+  if(x0 == 0.0f){
+    b32u32_u wy = {.f = y0};
+    int ey = (wy.u>>23) & 0xff, s = ey - 127;
+    int isodd = 0;
+    if(9+s<32){
+      int isint = !(s<0) && (wy.u<<(9+s))==0;
+      if(isint){
+	isodd = (wy.u>>(23-s))&1;
+      }
+    }
+    if(y0<0.0f){
+      if(isodd)
+	return 1.0f/__builtin_copysignf(0.0f,x0);
+      else
+	return 1.0f/0.0f;
+    } else {
+      if(isodd)
+	return __builtin_copysignf(1.0f,x0)*0.0f;
+      else
+	return 0.0f;
+    }
+  }
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
   uint64_t m = tx.u & ~0ul>>12;
@@ -161,8 +189,8 @@ float cr_powf(float x0, float y0){
   y *= 16;
   double zt = (e - lix[j][0])*y;
   z = l*y + zt;
-  if(__builtin_expect(z>2048,0)) return 0x1p127f*0x1p127f;
-  if(__builtin_expect(z<-2400,0)) return 0x1p-126f*0x1p-126f;
+  if(__builtin_expect(z>2048, 0)) return __builtin_copysignf(0x1p127f, x0)*0x1p127f;
+  if(__builtin_expect(z<-2400, 0)) return __builtin_copysignf(0x1p-126f, x0)*0x1p-126f;
   double ia = __builtin_floor(z), h = __builtin_fma(l, y, zt - ia);
   static const double ce[] =
     {0x1.62e42fefa398bp-5, 0x1.ebfbdff84555ap-11, 0x1.c6b08d4ad86d3p-17,
