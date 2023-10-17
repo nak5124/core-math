@@ -332,7 +332,7 @@ static const double tab_i[255][2] = {
 { 0x1.fd3c22b8f71f1p+0, 0x1.2eb74966579e7p-57 }, /* 127 */
 };
 
-static const double xmax = 0x1p1023;
+static const double xmax = 0x1.fffffffffffffp+1023; // DBL_MAX
 
 #define MAYBE_UNUSED __attribute__ ((unused))
 
@@ -664,13 +664,13 @@ cr_exp2 (double x)
       return x + x; /* always return qNaN, even for sNaN input */
 
     if (x >= 1024.) /* 2^x > 2^1024*(1-2^-54) */
-      return xmax + xmax;
+      return x * 0x1p1023; // return +Inf for x=+Inf
     else if (x < -1074.) /* 2^x < 2^-1074 */
     {
       static const double xmin = 0x1p-1074;
-      if(x < -1075.) /* 2^x < 2^-1075 */
-	return xmin/2;
-      return xmin*(1.0 + 0.5*(x+1074));
+      if (x < -1075.) /* 2^x < 2^-1075 */
+	return (x < -xmax) ? +0 : xmin / 2; // return +0 for x=-Inf
+      return xmin * (1.0 + 0.5 * (x + 1074));
     }
     /* otherwise go through the main path */
   }

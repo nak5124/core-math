@@ -915,7 +915,8 @@ static void log_3 (qint64_t *r, qint64_t *x) {
 
    See Lemma 7 from reference [5].
 
-   The result eh+el is multiplied by s (which is +1 or -1).
+   The result eh+el is multiplied by s (which is +1 or -1),
+   where s=-1 can only happen when x < 0 and y is an integer.
 */
 static inline void
 exp_1 (double *eh, double *el, double rh, double rl, double s) {
@@ -938,14 +939,15 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
   if (__builtin_expect(rh < RHO1, 0)) {
     if (rh < RHO0 && s > 0)
     {
-      *eh = 0x1p-1074;
-      *el = -0x1p-1074;
-      /* For s=1, we have eh=el=2^-1074, thus res_h=res_l=2^-1074 in the main
-         code, and in the rounding test fma(err,+/-res_h,rel_l) rounds to
-         2^-1074 for rounding to nearest, thus res_min=res_max=+0, which is
-         the expected result (underflow case).
-         For directed roundings res_min and res_max round to different
-         multiples of 2^-1074, and the rounding test fails. */
+      *eh = +0;
+      *el = 0x1p-1074 / 2.0 * s;
+      /* For s=1, we have eh=el=+0 except for rounding up,
+         thus res_min=+0 or -1, res_max=+0 in the main code,
+         the rounding test succeeds, and we return res_max which is the
+         expected result in the underflow case.
+         For s=1 and rounding up, we have eh=0, el=2^-1074,
+         thus res_min = res_max = 2^-1074, which is the expected result too.
+      */
     }
     else /* RHO0 <= rh < RHO1 or s < 0: we defer to the 2nd phase */
       *eh = *el = NAN;
@@ -1283,9 +1285,20 @@ double cr_pow (double x, double y) {
          Section 7.2: "the default result of an operation that signals the
          invalid operation exception shall be a quiet NaN" and "These
          operations are: a) any general-computational operation on a signaling
-         NaN" */
-      f64_u u = {.u = 0x7ff8000000000000}; // qNaN
-      return u.f;
+         NaN".
+
+         Moreover, in 6.2.3:
+         "An operation that propagates a NaN operand to its result and has a
+         single NaN as an input should produce a NaN with the payload of the
+         input NaN if representable in the destination format. If two or more
+         inputs are NaN, then the payload of the resulting NaN should be
+         identical to the payload of one of the input NaNs if representable in
+         the destination format. This standard does not specify which of the
+         input NaNs will provide the payload."
+
+         Returning x+x has the double effect to quiet the signaling bit
+         and to raise the invalid exception if x=sNaN. */
+      return x + x;
     }
 
     if (__builtin_isnan(y)) {
@@ -1294,8 +1307,7 @@ double cr_pow (double x, double y) {
         return 1.0;
 
       // pow(x, sNaN) = qNaN (see above)
-      f64_u u = {.u = 0x7ff8000000000000}; // qNaN
-      return u.f;
+      return y + y;
     }
 
     switch (_x.u) {
@@ -1489,7 +1501,9 @@ double cr_pow (double x, double y) {
   if (res_min == res_max)
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
        to avoid double-rounding issues */
-    return res_min;
+    return res_max;
+  /* the idea of returning res_max instead of res_min is due to Laurent
+     Théry: it is better in case of underflow since res_max = +0 always. */
 #else
   /* From Theorem 2.1 of [6], if the rounding is to nearest-even, we can
      replace the rounding test by yh = RN(yh + RN(yl*e)) ==> yh = RN(y),

@@ -183,7 +183,10 @@ double cr_asinh(double x){
     if(__builtin_expect(u<0x3f93000000000000, 0)){
       if(__builtin_expect(u<0x3f30000000000000, 0)){
 	if(__builtin_expect(u<0x3e5a000000000000, 0)){
-	  if(__builtin_expect(u<0x3e57137449123ef7, 0)) return __builtin_fma(-0x1p-60,x,x);
+	  if(__builtin_expect(u<0x3e57137449123ef7, 0)){
+	    if(__builtin_expect(!u, 0)) return x;
+	    return __builtin_fma(-0x1p-60,x,x);
+	  }
 	  static const double c[] = {-0x1.5555555555555p-3};
 	  sl = x3h*c[0];
 	} else {

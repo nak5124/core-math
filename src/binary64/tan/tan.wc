@@ -32104,3 +32104,10 @@
 0x1.320e91df0cac4p+819
 0x1.f76caea07b5acp+947
 0x1.e513b73c968ffp+562
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0

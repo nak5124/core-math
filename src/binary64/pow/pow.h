@@ -34,6 +34,25 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h>
 
+/*
+  Type definition
+*/
+
+typedef union {
+  double f;
+  uint64_t u;
+} f64_u;
+
+// Extract both the mantissa and exponent of a double
+static inline void fast_extract (int64_t *e, uint64_t *m, double x) {
+  f64_u _x = {.f = x};
+
+  *e = (_x.u >> 52) & 0x7ff;
+  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
+  *e = *e - 0x3ff;
+}
+
+#define CORE_MATH_POW
 #include "dint.h"
 #include "qint.h"
 
@@ -80,15 +99,6 @@ __builtin_roundeven (double x)
 #endif
 
 /*
-  Type definition
-*/
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
-
-/*
   Utility functions
 */
 
@@ -97,15 +107,6 @@ inline int issignaling(double x) {
   f64_u _x = {.f = x};
 
   return !(_x.u & (1ul << 51));
-}
-
-// Extract both the mantissa and exponent of a double
-static inline void fast_extract (int64_t *e, uint64_t *m, double x) {
-  f64_u _x = {.f = x};
-
-  *e = (_x.u >> 52) & 0x7ff;
-  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
-  *e = *e - 0x3ff;
 }
 
 /* Add a + b, such that *hi + *lo approximates a + b.
@@ -181,7 +182,7 @@ static inline void d_square(double *hi, double *lo, double ah, double al) {
   *lo = __builtin_fma(ah, b, s);
 }
 
-static inline long dtoi(double x) { return (long)x; };
+static inline long dtoi(double x) { return (long)x; }
 
 // Returns 1 if x is an integer
 static inline char is_int(double x) { return x == __builtin_roundeven (x); }
@@ -211,25 +212,6 @@ static inline void pow2(double *x, int64_t e) {
 
   f64_u e2 = {.u = ((uint64_t)((e >> 1) + 0x3ff) & 0x7ff) << 52};
   *x = (*x * e2.f) * e2.f;
-}
-
-/*
-  dint64_t conversions
-*/
-
-// Convert a non-zero double to the corresponding dint64_t value
-static inline void dint_fromd (dint64_t *a, double b) {
-  fast_extract (&a->ex, &a->hi, b);
-
-  /* |b| = 2^(ex-52)*hi */
-
-  uint32_t t = __builtin_clzl (a->hi);
-
-  a->sgn = b < 0.0;
-  a->hi = a->hi << t;
-  a->ex = a->ex - (t > 11 ? t - 12 : 0);
-  /* b = 2^ex*hi/2^63 where 1 <= hi/2^63 < 2 */
-  a->lo = 0;
 }
 
 // Convert a dint64_t value to an integer, rounding towards zero

@@ -9914,3 +9914,13 @@
 0x1.ff92b3c01855ap+0
 0x1.ff836606e86b5p+0
 0x1.fcbd5f9640a0fp+0
+# special values
++nan
+-nan
++inf
+-inf
++0
+# we comment out -0, since mpfr_rsqrt differs from IEEE 754-2019 and this
+# would give a false failure: IEEE 754-2019 says that rsqrt(-0) should give
+# -Inf, whereas mpfr_rsqrt(-0) gives +Inf
+# -0

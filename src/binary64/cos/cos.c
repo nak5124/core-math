@@ -2018,9 +2018,9 @@ cr_cos (double x)
      For e=-26, (1) rewrites c^2*2 < 1 which yields c <= 0x1.6a09e667f3bccp-1.
   */
   t.u &= 0x7fffffffffffffff;
-  // 0x3e46a09e667f3bcc = 0x1.6a09e667f3bccp-27
-  if (t.u <= 0x3e46a09e667f3bcc)
-    return __builtin_fma (0x1p-27, -0x1p-27, 1.0);
+  if (__builtin_expect (t.u <= 0x3e46a09e667f3bcc, 0))
+    // |x| <= 0x1.6a09e667f3bccp-27
+    return __builtin_fma (t.f, -0x1p-28, 1.0);
 
   double h, l, err;
   err = cos_fast (&h, &l, t.f);

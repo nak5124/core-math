@@ -82,7 +82,6 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
 static double as_cospi_zero(double x){
   __float128 X2 = x; X2 *= X2;
   double x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
-  //  ./remez -n 5 -a 0 -b 7.66990393942820614859043794745972383837200e-4^2:2.44140625e-4^2 -t cos -p 5 -F dd
   static const double ch[][2] = {
     {-0x1.3bd3cc9be45dep+2, -0x1.692b71366cc04p-52}, {0x1.03c1f081b5ac4p+2, -0x1.32b33fda9113cp-52}};
   static const double cl[3] = {-0x1.55d3c7e3cbff9p+0, 0x1.e1f50604fa0ffp-3};
@@ -146,11 +145,12 @@ double cr_cospi(double x){
   static const double cn[] = {-0x1.3bd3cc9be45dbp-148, 0x1.03c1f00186416p-298};
   b64u64_u ix = {.f = x};
   uint64_t ax = ix.u&(~0ul>>1);
-  if(__builtin_expect(ax==0, 0)) return x;
+  if(__builtin_expect(ax==0, 0)) return 1.0;
   int32_t e = ax>>52;
+  // e is the unbiased exponent, we have 2^(e-1023) <= |x| < 2^(e-1022)
   int64_t m = (ix.u&(~0ul>>12))|(1ul<<52);
-  int32_t s = 1063 - e;
-  if(__builtin_expect(s<0, 0)){
+  int32_t s = 1063 - e; // 2^(40-s) <= |x| < 2^(41-s)
+  if(__builtin_expect(s<0, 0)){ // |x| >= 2^41
     if(__builtin_expect(e == 0x7ff, 0)){
       if(!(ix.u << 12)){
 	errno = EDOM;
@@ -159,8 +159,8 @@ double cr_cospi(double x){
       }
       return x;
     }
-    s = -s - 1;
-    if(s>10) return 1.0;
+    s = -s - 1; // now 2^(41+s) <= |x| < 2^(42+s)
+    if(s>11) return 1.0;
     uint64_t iq = (m<<s) + 1024;
     if(!(iq&2047)) return 0.0;
     double sh, sl, ch, cl; sincosn(iq, &sh, &sl, &ch, &cl);

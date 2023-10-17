@@ -268,6 +268,12 @@ double cr_exp(double x){
   u64 aix = ix.u & (~0ul>>1);
   if(__builtin_expect(aix>=0x40862e42fefa39f0ul, 0)){
     if(aix>0x7ff0000000000000ul) return x;
+    if(aix==0x7ff0000000000000ul){
+      if(ix.u>>63)
+	return 0.0;
+      else
+	return x;
+    }
     if(!(ix.u>>63)) return 0x1p1023*2.0;
     if(aix>=0x40874910d52d3052ul) return 0x1.5p-1022*0x1p-55;
     if(aix>0x40874385446d71c3ul) return 0x1.5p-1022*0x1p-53;

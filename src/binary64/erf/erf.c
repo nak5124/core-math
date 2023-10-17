@@ -603,7 +603,10 @@ cr_erf_accurate (double *h, double *l, double z)
        the interval, namely i/8+1/16
   */
   if (z < 0.125) /* z < 1/8 */
-    return cr_erf_accurate_tiny (h, l, z);
+  {
+    cr_erf_accurate_tiny (h, l, z);
+    return;
+  }
   double v = __builtin_floor (8.0 * z);
   uint32_t i = 8.0 * z;
   z = (z - 0.0625) - 0.125 * v;

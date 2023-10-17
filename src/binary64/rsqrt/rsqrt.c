@@ -99,7 +99,7 @@ double cr_rsqrt(double x){
       return __builtin_inf();
     }
   } else if(__builtin_expect(ix.u >= 0x7fful<<52, 0)){
-    if(!(ix.u<<1)) return -__builtin_inf();
+    if(!(ix.u<<1)) return -__builtin_inf(); // x=-0
     if(ix.u > 0xfff0000000000000ul) return x;
     if(ix.u >> 63){
       errno = EDOM;

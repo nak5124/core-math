@@ -260,6 +260,7 @@ double cr_cosh(double x){
     if(__builtin_expect(aix>0x40425e4f7b2737faul, 0)){ // |x| >~ 36.736801
       if(__builtin_expect(aix>0x408633ce8fb9f87dul, 0)){ // |x| >~ 710.47586
 	if(aix>0x7ff0000000000000ul) return x;
+	if(aix==0x7ff0000000000000ul) return __builtin_fabs(x);
 	return 0x1p1023*2.0;
       }
       sp.u = (1021 + ie)<<52;
