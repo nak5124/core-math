@@ -189,8 +189,33 @@ float cr_powf(float x0, float y0){
   y *= 16;
   double zt = (e - lix[j][0])*y;
   z = l*y + zt;
-  if(__builtin_expect(z>2048, 0)) return __builtin_copysignf(0x1p127f, x0)*0x1p127f;
-  if(__builtin_expect(z<-2400, 0)) return __builtin_copysignf(0x1p-126f, x0)*0x1p-126f;
+  //  printf("%a %a %a\n",x0,y0,z);
+  if(__builtin_expect(z>2048, 0)){
+    b32u32_u wy = {.f = y0};
+    int ey = (wy.u>>23) & 0xff, s = ey - 127;
+    int isodd = 0;
+    if(9+s<32){
+      int isint = !(s<0) && (wy.u<<(9+s))==0;
+      if(isint) isodd = (wy.u>>(23-s))&1;
+    }
+    if(isodd)
+      return __builtin_copysignf(0x1p127f, x0)*0x1p127f;
+    else
+      return 0x1p127f*0x1p127f;
+  }
+  if(__builtin_expect(z<-2400, 0)){
+    b32u32_u wy = {.f = y0};
+    int ey = (wy.u>>23) & 0xff, s = ey - 127;
+    int isodd = 0;
+    if(9+s<32){
+      int isint = !(s<0) && (wy.u<<(9+s))==0;
+      if(isint) isodd = (wy.u>>(23-s))&1;
+    }
+    if(isodd)
+      return __builtin_copysignf(0x1p-126f, x0)*0x1p-126f;
+    else
+      return 0x1p-126f*0x1p-126f;
+  }
   double ia = __builtin_floor(z), h = __builtin_fma(l, y, zt - ia);
   static const double ce[] =
     {0x1.62e42fefa398bp-5, 0x1.ebfbdff84555ap-11, 0x1.c6b08d4ad86d3p-17,
