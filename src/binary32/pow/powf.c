@@ -161,6 +161,8 @@ float cr_powf(float x0, float y0){
   y *= 16;
   double zt = (e - lix[j][0])*y;
   z = l*y + zt;
+  if(__builtin_expect(z>2048,0)) return 0x1p127f*0x1p127f;
+  if(__builtin_expect(z<-2400,0)) return 0x1p-126f*0x1p-126f;
   double ia = __builtin_floor(z), h = __builtin_fma(l, y, zt - ia);
   static const double ce[] =
     {0x1.62e42fefa398bp-5, 0x1.ebfbdff84555ap-11, 0x1.c6b08d4ad86d3p-17,
