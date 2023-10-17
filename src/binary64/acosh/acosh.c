@@ -24,6 +24,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. */
 
+/* References:
+   [1] Tight and rigourous error bounds for basic building blocks of
+       double-word arithmetic, by Mioara Joldeş, Jean-Michel Muller,
+       and Valentina Popescu, ACM Transactions on Mathematical Software,
+       44(2), 2017.
+   [2] Formalization of double-word arithmetic, and comments on ”Tight and
+       rigorous error bounds for basic building blocks of double-word
+       arithmetic”, Jean-Michel Muller, Laurence Rideau,
+       https://hal.science/hal-02972245v2, 2021.
+*/
+
 #include <stdint.h>
 #include <errno.h>
 
@@ -50,13 +61,9 @@ static inline double adddd(double xh, double xl, double ch, double cl, double *l
   return s;
 }
 
-/* This function implements Algorithm 6 (DWTimesDW1) from
-   "Formalization of double-word arithmetic, and comments on 'Tight and
-   rigorous error bounds for basic building blocks of double-word arithmetic'"
-   by Jean-Michel Muller and Laurence Rideau,
-   https://inria.hal.science/hal-02972245.
+/* This function implements Algorithm 10 (DWTimesDW1) from [1]
    Its relative error (for round-to-nearest ties-to-even) is bounded by 5u^2
-   (Theorem 2.6), where u = 2^-53 for double precision,
+   (Theorem 2.6 of [2]), where u = 2^-53 for double precision,
    assuming xh = RN(xh + xl), which implies |xl| <= 1/2 ulp(xh),
    and similarly for ch, cl. */
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
