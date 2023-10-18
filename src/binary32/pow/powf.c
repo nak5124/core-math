@@ -146,13 +146,10 @@ float cr_powf(float x0, float y0){
   }
   if(x0 == 0.0f){
     b32u32_u wy = {.f = y0};
-    int ey = (wy.u>>23) & 0xff, s = ey - 127;
-    int isodd = 0;
-    if(9+s<32){
-      int isint = !(s<0) && (wy.u<<(9+s))==0;
-      if(isint){
-	isodd = (wy.u>>(23-s))&1;
-      }
+    int ey = ((wy.u>>23) & 0xff) - 127, s = ey + 9, isodd = 0;
+    if(ey>=0){
+      if(s<32 && !(wy.u<<s)) isodd = (wy.u>>(32-s))&1;
+      if(s==32) isodd = wy.u&1;
     }
     if(y0<0.0f){
       if(isodd)
