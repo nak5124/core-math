@@ -70,6 +70,7 @@ static double polydd(double xh, double xl, int n, const double c[][2], double *l
   return ch;
 }
 
+// this table contains 129 entries
 static const double A[][2] = {
   {0x0p+0, 0x0p+0}, {0x1.9224e047e368ep-7, 0x1.a3ca6c727c59dp-62},
   {0x1.92346247a91fp-6, 0x1.138b0ef96a186p-64}, {0x1.2dbaae9a05dbp-5, 0x1.36e7f8a3f5e42p-59},
@@ -148,6 +149,9 @@ static const uint16_t c[31][3] = {
   {64923, 278, 62}, {65141, 303, 88}, {65358, 139, 31}, {65467, 151, 44}
 };
 
+// this routine might be called for 0x1p-27 <= |x|
+// a is the approximation of atan(x) from the fast path
+// thus 0x1p-27 <= |a| <= pi/2
 static double __attribute__((noinline)) as_atan_refine2(double x, double a){
   static const double ch[][2] = {
     {-0x1.5555555555555p-2, -0x1.5555555555555p-56}, {0x1.999999999999ap-3, -0x1.999999999bcb8p-57},
@@ -155,7 +159,8 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
   static const double cl[] = {
     0x1.c71c71c71c71cp-4, -0x1.745d1745d1265p-4, 0x1.3b13b115bcbc4p-4, -0x1.1107c41ad3253p-4};
   b64u64_u phi = {.f = __builtin_fabs(a)*0x1.45f306dc9c883p6 + 256.5};
-  long i = (phi.u>>(52-8))&0xff;
+  // 256.5 < phi < 384.5
+  long i = (phi.u>>(52-8))&0xff; // 0 <= i <= 128
   double h,hl;
   if(i==128) {
     h = -1.0/x;
@@ -219,13 +224,15 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
 double cr_atan(double x){
   static const double ch[] = {0x1p+0, -0x1.555555555552bp-2, 0x1.9999999069c2p-3, -0x1.248d2c8444ac6p-3};
   b64u64_u t = {.f = x};
-  u64 at = t.u&(~0ul>>1);
-  long i = (at>>51) - 2030l;
-  if(__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
-    if(__builtin_expect(at == 0, 0)) return x;
+  u64 at = t.u&(~0ul>>1); // at encodes |x|
+  long i = (at>>51) - 2030l; // -2030 <= i <= 2065
+  if (__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
+    // |x| < 0x1.b21c475e6362ap-8
+    if(__builtin_expect(at == 0, 0)) return x; // atan(+/-0) = +/-0
     static const double ch[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
-    if(at<0x3e40000000000000ul) return __builtin_fma(-0x1p-54, x, x);
+    if (at<0x3e40000000000000ul) // |x| < 0x1p-27
+      return __builtin_fma (-0x1p-54, x, x);
     double x2 = x*x, x3 = x*x2, x4 = x2*x2;
     double f = x3*((ch[0] + x2*ch[1]) + x4*(ch[2] + x2*ch[3]));
     double ub = (f + f*0x4.8p-52) + x, lb = (f - f*0x2.8p-52) + x;
@@ -233,16 +240,18 @@ double cr_atan(double x){
     return as_atan_refine2(x, ub);
   }
   double h, ah, al;
-  if(__builtin_expect(at>0x4062ded8e34a9035, 0)) {
-    if(__builtin_expect(at >= (0x7fful<<52), 0)){
-      if(at == (0x7fful<<52))
+  if(__builtin_expect(at>0x4062ded8e34a9035ul, 0)) {
+    // |x| > 0x1.2ded8e34a9035p+7
+    if (__builtin_expect(at >= (0x7fful<<52), 0)) { // NaN or Inf
+      if (at == (0x7fful<<52)) // +/-Inf
 	return __builtin_copysign(0x1.921fb54442d18p+0, x) + __builtin_copysign(0x1p-54, x);
-      return x;
+      return x; // NaN
     }
     h = -1.0/x;
     ah = __builtin_copysign(0x1.921fb54442d18p+0, x);
     al = __builtin_copysign(0x1.1a62633145c07p-54, x);
   } else {
+    // now 0x1.b21c475e6362ap-8 <= |x| <= 0x1.2ded8e34a9035p+7 thus 1<=i<=30
     u64 u = t.u & (~0ul>>13);
     u64 ut = u>>(51-16), ut2 = ut*ut>>16;
     i = (((u64)c[i][0]<<16) + ut*c[i][1] - ut2*c[i][2])>>(16+9);
