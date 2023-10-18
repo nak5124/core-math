@@ -89,27 +89,64 @@ static const tint_t Psmall[] = {
   {.h=0x8888881d07710bc7, .m=0x0, .l=0x0, .ex=-3, .sgn=1},
 };
 
+// case |y/x| < 2^-11.2
 static double
 atan2_accurate_small (double y, double x)
 {
+  /* first check when t=y/x is small and exact, since for
+     |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest) */
+  double t = y / x;
+  double corr = __builtin_fma (t, x, -y);
+  if (corr == 0) // t is exact
+    if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
+      return __builtin_fma (t, -0x1p-54, t);
+
   tint_t z[1], z2[1], p[1];
-  printf ("y=%la z=%la\n", y, x);
+  // printf ("y=%la z=%la\n", y, x);
   div_tint (z, y, x);
-  printf ("z="); print_tint (z);
+  // printf ("z="); print_tint (z);
   mul_tint (z2, z, z);
-  printf ("z2="); print_tint (z2);
+  // printf ("z2="); print_tint (z2);
   cp_tint (p, Psmall+7); // degree 15
-  printf ("102: p="); print_tint (p);
+  // printf ("102: p="); print_tint (p);
   for (int i = 6; i >= 0; i--)
   {
     mul_tint (p, p, z2);
-    printf ("106: p="); print_tint (p);
     add_tint (p, p, Psmall+i);
-    printf ("108: p="); print_tint (p);
   }
   // multiply by z
   mul_tint (p, p, z);
   // printf ("p="); print_tint (p);
+  return tint_tod (p);
+}
+
+/* Case |y/x| > 2^10.91. If z=y/z, we use atan(z) = +/-pi/2 - atan(1/z),
+   where for atan(1/z) we use the same polynomial Psmall than for
+   atan2_accurate_small, which has maximal *absolute* error 2^-192.134
+   for |1/z| < 2^-10.91, which corresponds to a maximal relative error
+   of 2^-192.785 relatively to +/-pi/2 - atan(1/z). */
+static double
+atan2_accurate_large (double y, double x)
+{
+  tint_t z[1], z2[1], p[1];
+  div_tint (z, x, y);
+  mul_tint (z2, z, z);
+  cp_tint (p, Psmall+7);
+  for (int i = 6; i >= 0; i--)
+  {
+    mul_tint (p, p, z2);
+    add_tint (p, p, Psmall+i);
+  }
+  mul_tint (p, p, z);
+  // add pi/2 for z > 0, -pi/2 for z < 0
+  if (z->sgn == 0) { // z > 0
+    p->sgn = 1 - p->sgn;
+    add_tint (p, &PI2, p);
+  }
+  else {
+    add_tint (p, &PI2, p);
+    p->sgn = 1 - p->sgn;
+  }
   return tint_tod (p);
 }
 
@@ -118,8 +155,15 @@ static double
 atan2_accurate (double y, double x)
 {
   double z = y / x;
+
   if (__builtin_fabs (z) <= 0x1.bdb8cdadbe12p-12) // |z| < 2^-11.2
     return atan2_accurate_small (y, x);
+
+  /* For z large, atan(z) = pi/2 - atan(1/z) for z > 0,
+     and atan(z) = -pi/2 - atan(1/z) for z < 0. */
+  if (__builtin_fabs (z) >= 0x1.e109203371c3p+10) // |1/z| < 2^-10.91
+    return atan2_accurate_large (y, x);
+
   return 0;
 }
 

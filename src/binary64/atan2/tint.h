@@ -33,23 +33,29 @@ typedef unsigned __int128 u128;
 // or the most significant bit of h is 1
 typedef union {
   struct {
-    uint64_t h, m, l, _unused;
+    uint64_t m, h, l; // put m before h on little-endian processor
     int64_t ex;
     uint64_t sgn;
   };
   struct {
-    u128 hh, ll;
+    u128 _h;
+    uint64_t _l;
     int64_t _ex;
     uint64_t _sgn;
   };
 } tint_t;
 
 // ZERO is a tint_t representation of 0
-static const tint_t ZERO = {.h = 0, .m = 0, .ll = 0, .ex = -1076, .sgn = 0};
+static const tint_t ZERO = {.h = 0, .m = 0, .l = 0, .ex = -1076, .sgn = 0};
 
 // ONE is a tint_t representation of 1
 static const tint_t ONE = {
-    .h = 0x8000000000000000, .m = 0, .ll = 0, .ex = 1, .sgn = 0};
+  .h = 0x8000000000000000, .m = 0, .l = 0, .ex = 1, .sgn = 0};
+
+// PI2 is a tint_t representation of pi/2
+static const tint_t PI2 = {
+  .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
+  .ex = 1, .sgn = 0};
 
 // Print a tint_t value for debugging purposes
 static inline void print_tint (const tint_t *a) {
@@ -58,8 +64,8 @@ static inline void print_tint (const tint_t *a) {
 }
 // Copy a tint_t value
 static inline void cp_tint(tint_t *r, const tint_t *a) {
-  r->hh = a->hh;
-  r->ll = a->ll;
+  r->_h = a->_h;
+  r->_l = a->_l;
   r->_ex = a->_ex;
   r->_sgn = a->_sgn;
 }
@@ -67,8 +73,6 @@ static inline void cp_tint(tint_t *r, const tint_t *a) {
 static inline int
 is_normalized (const tint_t *a)
 {
-  if (a->_unused != 0)
-    return 0;
   if (a->h == 0 && a->m == 0 && a->l == 0)
     return 1;
   return a->h >> 63;
@@ -162,17 +166,84 @@ cmp_tint_abs (const tint_t *a, const tint_t *b) {
   if (c)
     return c;
   // now a->ex = b->ex
-  c = cmpu128 (a->hh, b->hh);
+  c = cmpu128 (a->_h, b->_h);
   if (c)
     return c;
-  return cmpu64 (a->l, b->l);
+  return cmpu64 (a->_l, b->_l);
+}
+
+// shift right by k bits (only deal with the significand)
+static inline void
+rshift (tint_t *a, const tint_t *b, int k)
+{
+  if (k == 0)
+  {
+    a->_h = b->_h;
+    a->_l = b->_l;
+  }
+  else if (k < 64)
+  {
+    a->_h = b->_h >> k;
+    a->_l = (b->_h << (64 - k)) | (b->_l >> k);
+  }
+  else if (k == 64)
+  {
+    a->_h = b->_h >> k;
+    a->_l = b->_h;
+  }
+  else if (k < 128)
+  {
+    a->_h = b->_h >> k;
+    a->_l = b->_h >> (k - 64);
+  }
+  else if (k < 192)
+  {
+    a->_h = 0;
+    a->_l = b->_h >> (k - 128);
+  }
+  else
+    a->_h = a->_l = 0;
+  // printf ("exit rshift a="); print_tint (a);
+}
+
+// shift left by k bits (only deal with the significand)
+static inline void
+lshift (tint_t *a, const tint_t *b, int k)
+{
+  if (k == 0)
+  {
+    a->_h = b->_h;
+    a->_l = b->_l;
+  }
+  else if (k < 64)
+  {
+    a->_h = (b->_h << k) | (b->_l >> (64 - k));
+    a->_l = b->_l << k;
+  }
+  else if (k == 64)
+  {
+    a->_h = (b->_h << k) | (u128) b->_l;
+    a->_l = 0;
+  }
+  else if (k < 128)
+  {
+    a->_h = b->_h << k | ((u128) b->_l << (k - 64));
+    a->_l = 0;
+  }
+  else if (k < 192)
+  {
+    a->_h = (u128) b->_l << (k - 64);
+    a->_l = 0;
+  }
+  else
+    a->_h = a->_l = 0;
 }
 
 // Add two tint_t values
 static inline void
 add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 {
-  printf ("enter add_tint, a="); print_tint (a); printf ("b="); print_tint (b);
+  // printf ("enter add_tint, a="); print_tint (a); printf ("b="); print_tint (b);
   assert (is_normalized (a));
   assert (is_normalized (b));
   switch (cmp_tint_abs (a, b))
@@ -195,71 +266,37 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
   }
 
   // From now on, |a| > |b| thus a->ex >= b->ex
-  uint64_t k = a->ex - b->ex;
+  tint_t t[1];
+  rshift (t, b, a->ex - b->ex);
 
-  u128 bh, bl;
-  if (k == 0)
-  {
-    bh = b->hh;
-    bl = b->ll;
-  }
-  else if (k < 128)
-  {
-    bh = b->hh >> k;
-    bl = (b->hh << (128 - k)) | (b->ll >> k);
-  }
-  else if (k < 256)
-  {
-    bh = 0;
-    bl = (k == 128) ? b->hh : b->hh >> (k - 128);
-  }
-  else
-    bh = bl = 0;
-
-  u128 cy, ch, rh, rl;
   if (a->sgn ^ b->sgn) { // opposite signs, it's a subtraction
-    rl = a->ll - bl;
-    rh = a->hh - bh - (rl > a->ll);
-    uint64_t rhh = rh >> 64, rlh = rl >> 64;
+    t->_l = a->_l - t->_l;
+    t->_h = a->_h - t->_h - (t->_l > a->_l);
+    uint64_t th = t->_h >> 64;
     uint64_t ex =
-      rhh ? __builtin_clzl (rhh)
-      : 64 + (rh ? __builtin_clzl(rh)
-              : 64 + (rlh ? __builtin_clzl(rlh)
-                      : 64 + __builtin_clzl(rl)));
+      th ? __builtin_clzl (th)
+      : (t->_h ? 64 + __builtin_clzl (t->_h) : 128 + __builtin_clzl (t->_l));
     r->ex = a->ex - ex;
-    if (ex == 0) { // nothing to do
-    }
-    else if (ex < 128) {
-      r->hh = (rh << ex) || (rl >> (128 - ex));
-      r->ll = rl << ex;
-    }
-    else { // necessarily ex < 192 since |a| > |b|
-      ex -= 128;
-      r->hh = (ex == 128) ? rl : rl << ex;
-      r->ll = 0;
-    }
+    lshift (r, t, ex);
   }
   else { // same signs, it's an addition
-    rl = a->ll + bl;
-    ch = rl < a->ll; // carry at rh
-    rh = a->hh + bh;
-    cy = rh < a->hh; // final carry
-    rh += ch;
-    cy += rh < ch;
-    if (cy) { // can be at most 1
+    r->_l = a->_l + t->_l;
+    uint64_t cl = t->_l < a->_l;
+    r->_h = a->_h + t->_h;
+    uint64_t ch = r->_h < a->_h;
+    r->_h += cl;
+    ch += r->_h < cl;
+    if (ch) { // can be at most 1
       r->ex = a->ex + 1;
-      r->hh = (cy << 127) | (rh >> 1);
-      r->ll = (rh << 127) | (rl >> 1);
+      r->_l = (r->_h << 127) | (r->_l >> 1);
+      r->_h = ((u128) ch << 127) | (r->_h >> 1);
     }
-    else {
+    else
       r->ex = a->ex;
-      r->hh = rh;
-      r->ll = rl;
-    }
   }
   r->sgn = a->sgn;
  end:
-  printf ("exit add_tint, r="); print_tint (r);
+  // printf ("exit add_tint, r="); print_tint (r);
   assert (is_normalized (r));
 }
 
@@ -281,7 +318,7 @@ static inline void tint_fromd (tint_t *a, double x)
     a->ex = -0x3f2 - e;
     a->h = ax << e;
   }
-  a->m = a->ll = 0;
+  a->m = a->l = 0;
 }
 
 static inline double tint_tod (tint_t *a)
@@ -297,25 +334,26 @@ static inline double tint_tod (tint_t *a)
     // if mid, |a| = 2^-1075
     return (a->sgn ? -0x1p-1074 : 0x1p-1074) * (mid ? 0.5 : 0.75);
   }
+#define MASK53 0x1ffffffffffffful
   double r[4];
   r[3] = a->h >> 11; // 53 bits from a->h
-  r[2] = (a->h << 53) | (a->m >> 22); // 11 bits from a->h, 42 from a->m
-  r[1] = (a->m << 42) | (a->l >> 33); // 22 bits from a->m, 31 from a->l
-  r[0] = a->l << 31; // 33 bits from a->l
-  r[1] = __builtin_fma (r[0], 0x1p-53, r[1]);
-  r[2] = __builtin_fma (r[1], 0x1p-53, r[2]);
-  r[3] = __builtin_fma (r[2], 0x1p-53, r[3]);
+  r[2] = ((a->h << 42) & MASK53) | (a->m >> 22); // a->h:11 bits, a->m:42 bits
+  r[1] = ((a->m << 31) & MASK53) | (a->l >> 33); // a->m:22 bits, a->l:31 bits
+  r[0] = (a->l << 20) & MASK53; // 33 bits from a->l
+  static const double S[2] = {1.0, -1.0};
+  double s = S[a->sgn];
+  r[1] = __builtin_fma (s * r[0], 0x1p-53, s * r[1]);
+  r[2] = __builtin_fma (r[1], 0x1p-53, s * r[2]);
+  r[3] = __builtin_fma (r[2], 0x1p-53, s * r[3]);
   r[3] *= 0x1p-53;
-  d64u64 u = {.f = 1.0};
-  u.u += (a->ex - 0x3ff) << 52;
-  return r[3] * u.f;
+  return r[3] * __builtin_ldexp (1.0, a->ex);
 }
 
 // put in r a 106-bit approximation of 1/a, assuming a is not zero
 // assume A = tint_fromd (a)
 static inline void inv_tint (tint_t *r, const tint_t *A, double a)
 {
-  printf ("enter inv_tint a=%la A=", a); print_tint (A);
+  // printf ("enter inv_tint a=%la A=", a); print_tint (A);
   tint_t q[1];
   tint_fromd (r, 1.0 / a); // accurate to about 53 bits
   // we use Newton's iteration: r -> r + r*(1-a*r)
@@ -324,7 +362,7 @@ static inline void inv_tint (tint_t *r, const tint_t *A, double a)
   add_tint (q, &ONE, q);   // 1-a*r
   mul_tint (q, r, q);      // r*(1-a*r)
   add_tint (r, r, q);
-  printf ("#### exit inv_tint r="); print_tint (r);
+  // printf ("#### exit inv_tint r="); print_tint (r);
 }
 
 // put in r an approximation of b/a, assuming a is not zero
