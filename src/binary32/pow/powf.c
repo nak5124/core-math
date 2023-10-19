@@ -140,9 +140,9 @@ float cr_powf(float x0, float y0){
 
   if(__builtin_expect(x0 < 0.0f, 0)){
     b32u32_u wy = {.f = y0};
-    int ey = (wy.u>>23) & 0xff, s = ey-127;
-    if(s<0) return __builtin_nanf("");
-    if(9+s<32 && (wy.u<<(9+s))) return __builtin_nanf("");
+    int ey = ((wy.u>>23) & 0xff) - 127, s = ey + 9;
+    if(ey<0) return __builtin_nanf("");
+    if(s<32 && (wy.u<<s)) return __builtin_nanf("");
   }
   if(x0 == 0.0f){
     b32u32_u wy = {.f = y0};
@@ -186,14 +186,12 @@ float cr_powf(float x0, float y0){
   y *= 16;
   double zt = (e - lix[j][0])*y;
   z = l*y + zt;
-  //  printf("%a %a %a\n",x0,y0,z);
   if(__builtin_expect(z>2048, 0)){
     b32u32_u wy = {.f = y0};
-    int ey = (wy.u>>23) & 0xff, s = ey - 127;
-    int isodd = 0;
-    if(9+s<32){
-      int isint = !(s<0) && (wy.u<<(9+s))==0;
-      if(isint) isodd = (wy.u>>(23-s))&1;
+    int ey = ((wy.u>>23) & 0xff) - 127, s = ey + 9, isodd = 0;
+    if(ey>=0){
+      if(s<32 && !(wy.u<<s)) isodd = (wy.u>>(32-s))&1;
+      if(s==32) isodd = wy.u&1;
     }
     if(isodd)
       return __builtin_copysignf(0x1p127f, x0)*0x1p127f;
@@ -202,11 +200,10 @@ float cr_powf(float x0, float y0){
   }
   if(__builtin_expect(z<-2400, 0)){
     b32u32_u wy = {.f = y0};
-    int ey = (wy.u>>23) & 0xff, s = ey - 127;
-    int isodd = 0;
-    if(9+s<32){
-      int isint = !(s<0) && (wy.u<<(9+s))==0;
-      if(isint) isodd = (wy.u>>(23-s))&1;
+    int ey = ((wy.u>>23) & 0xff) - 127, s = ey + 9, isodd = 0;
+    if(ey>=0){
+      if(s<32 && !(wy.u<<s)) isodd = (wy.u>>(32-s))&1;
+      if(s==32) isodd = wy.u&1;
     }
     if(isodd)
       return __builtin_copysignf(0x1p-126f, x0)*0x1p-126f;
