@@ -24,8 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEY 0x1p-12
-#define TRACEX -0x1p+0
+#define TRACEY -0x1.49343d4e26bb6p+53
+#define TRACEX 0x1.d786165a1b544p+51
 
 #include <stdio.h>
 #include <stdint.h>
@@ -97,15 +97,15 @@ static double
 atan2_accurate_small_or_large (double y, double x)
 {
   if (y == TRACEY && x == TRACEX) printf ("atan2_accurate_small_or_large: y=%la x=%la\n", y, x);
-  /* first check when t=y/x is small and exact, since for
+  /* first check when t=y/x is small and exact and x > 0, since for
      |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest) */
   double t = y / x;
   double corr = __builtin_fma (t, x, -y);
-  if (corr == 0) // t is exact
+  if (corr == 0 && x > 0) // t is exact
     if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
       return __builtin_fma (t, -0x1p-54, t);
 
-  int inv = __builtin_abs (t) > 1;
+  int inv = __builtin_fabs (t) > 1;
 
   tint_t z[1], z2[1], p[1];
   if (inv == 0)
@@ -132,36 +132,15 @@ atan2_accurate_small_or_large (double y, double x)
       p->sgn = 1 - p->sgn;
     }
   }
-  return tint_tod (p);
-}
-
-/* Case |y/x| > 2^10.91. If z=y/z, we use atan(z) = +/-pi/2 - atan(1/z),
-   where for atan(1/z) we use the same polynomial Psmall than for
-   atan2_accurate_small, which has maximal *absolute* error 2^-192.134
-   for |1/z| < 2^-10.91, which corresponds to a maximal relative error
-   of 2^-192.785 relatively to +/-pi/2 - atan(1/z). */
-static double
-atan2_accurate_large (double y, double x)
-{
-  if (y == TRACEY && x == TRACEX) printf ("atan2_accurate_large: y=%la x=%la\n", y, x);
-  tint_t z[1], z2[1], p[1];
-  div_tint_d (z, x, y);
-  mul_tint (z2, z, z);
-  cp_tint (p, Psmall+7);
-  for (int i = 6; i >= 0; i--)
-  {
-    mul_tint (p, p, z2);
-    add_tint (p, p, Psmall+i);
-  }
-  mul_tint (p, p, z);
-  // add pi/2 for z > 0, -pi/2 for z < 0
-  if (z->sgn == 0) { // z > 0
-    p->sgn = 1 - p->sgn;
-    add_tint (p, &PI2, p);
-  }
-  else {
-    add_tint (p, &PI2, p);
-    p->sgn = 1 - p->sgn;
+  // if x is negative we go to the opposite quadrant
+  if (x < 0) {
+    if (p->sgn == 0) { // 1st quadrant -> 3rd quadrant (subtract pi)
+      p->sgn = 1;
+      add_tint (p, &PI, p);
+      p->sgn = 1;
+    }
+    else // 4th quadrant -> 2nd quadrant (add pi)
+      add_tint (p, &PI, p);
   }
   return tint_tod (p);
 }
@@ -307,14 +286,17 @@ static const tint_t Q[30] = {
 static double
 atan2_accurate_rminimax (double y, double x)
 {
-  if (y == TRACEY && x == TRACEX) printf ("atan2_accurate_rminimax: y=%la x=%la\n", y, x);
+  //if (y == TRACEY && x == TRACEX) printf ("atan2_accurate_rminimax: y=%la x=%la\n", y, x);
   int inv = __builtin_fabs (y) > __builtin_fabs (x);
   tint_t z[1], p[1], q[1];
   if (inv)
     div_tint_d (z, x, y);
   else
     div_tint_d (z, y, x);
-  //if (y == TRACEY && x == TRACEX) { printf ("z="); print_tint (z); }
+  // the rational approximation is only for z > 0, it is not antisymmetric
+  int sz = z->sgn;
+  z->sgn = 0;
+  // if (y == TRACEY && x == TRACEX) { printf ("z="); print_tint (z); }
   cp_tint (p, P + 29);
   cp_tint (q, Q + 29);
   //if (y == TRACEY && x == TRACEX) { printf ("p29="); print_tint (p); }
@@ -328,11 +310,12 @@ atan2_accurate_rminimax (double y, double x)
     add_tint (q, q, Q + i);
     //if (i==0 && y == TRACEY && x == TRACEX) { printf ("p%d=", i); print_tint (p); }
   }
-  //if (y == TRACEY && x == TRACEX) { printf ("p="); print_tint (p); }
-  //if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
+  // if (y == TRACEY && x == TRACEX) { printf ("p="); print_tint (p); }
+  // if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
   // divide p by q
   div_tint (z, p, q);
-  //if (y == TRACEY && x == TRACEX) { printf ("p/q="); print_tint (z); }
+  z->sgn = sz; // restore sign
+  // if (y == TRACEY && x == TRACEX) { printf ("z1="); print_tint (z); }
   /* Now z approximates atan(y/x) for inv=0, and atan(x/y) for inv=1,
      with -pi/4 < z < pi/4.
   */
@@ -352,6 +335,7 @@ atan2_accurate_rminimax (double y, double x)
       z->sgn = 1;
       // now -pi/2 < z < -pi/4
     }
+    // if (y == TRACEY && x == TRACEX) { printf ("z2="); print_tint (z); }
   }
   // if x is negative we go to the opposite quadrant
   if (x < 0) {
@@ -377,13 +361,6 @@ atan2_accurate (double y, double x)
   if (__builtin_fabs (z) <= Z0 || Z1 <= __builtin_fabs (z))
     // |z| < 2^-11.2 or 2^11.2 < |z|
     return atan2_accurate_small_or_large (y, x);
-
-#if 0
-  /* For z large, atan(z) = pi/2 - atan(1/z) for z > 0,
-     and atan(z) = -pi/2 - atan(1/z) for z < 0. */
-  if (__builtin_fabs (z) >= 0x1.e109203371c3p+10) // |1/z| < 2^-10.91
-    return atan2_accurate_large (y, x);
-#endif
 
   return atan2_accurate_rminimax (y, x);
 }

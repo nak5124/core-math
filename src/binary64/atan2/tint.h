@@ -345,6 +345,7 @@ static inline void tint_fromd (tint_t *a, double x)
 
 static inline double tint_tod (const tint_t *a)
 {
+  // int bug = 0;
   if (a->ex >= 1025) // overflow: |a| >= 2^1024
     return a->sgn ? -0x1p1023 - 0x1p1023 : 0x1p1023 + 0x1p1023;
   if (a->ex <= -1074) // underflow: |a| < 2^-1074
@@ -371,6 +372,7 @@ static inline double tint_tod (const tint_t *a)
     else
       l = 0.75; // round away
   }
+  // if (bug) printf ("h=%la l=%f\n", h, l);
   static const double S[2] = {1.0, -1.0};
   double s = S[a->sgn];
   h = __builtin_fma (l, s, s * h);
