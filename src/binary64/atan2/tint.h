@@ -53,6 +53,11 @@ static const tint_t ZERO = {.h = 0, .m = 0, .l = 0, .ex = -1076, .sgn = 0};
 static const tint_t ONE = {
   .h = 0x8000000000000000, .m = 0, .l = 0, .ex = 1, .sgn = 0};
 
+// PI is a tint_t representation of pi
+static const tint_t PI = {
+  .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
+  .ex = 2, .sgn = 0};
+
 // PI2 is a tint_t representation of pi/2
 static const tint_t PI2 = {
   .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
@@ -84,9 +89,14 @@ is_normalized (const tint_t *a)
 static inline void
 mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
 {
-  // printf ("enter mul_tint, a="); print_tint (a); printf ("b="); print_tint (b);
+  int bug = 0;
+  if (bug) {printf ("enter mul_tint, a="); print_tint (a); printf ("b="); print_tint (b);}
   assert (is_normalized (a));
   assert (is_normalized (b));
+
+  r->ex = a->ex + b->ex;
+  r->sgn = a->sgn ^ b->sgn;
+
   u128 ah = a->h, am = a->m, al = a->l;
   u128 bh = b->h, bm = b->m, bl = b->l;
   // printf ("enter mul_tint: ah=%lx bh=%lx\n", (uint64_t) ah, (uint64_t) bh);
@@ -94,42 +104,44 @@ mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
   u128 rl1 = ah * bl, rl2 = am * bm, rl3 = al * bh;
   uint64_t h, l, cm;
   r->h = rh >> 64;
-  r->m = rh; // cast to low 64 bits 
+  r->m = rh; // cast to low 64 bits
+  r->l = 0;
   // accumulate rm1
   r->l = rm1; // cast to low 64 bits
   h = rm1 >> 64;
   r->m += h;
-  rh += r->m < h;
+  r->h += r->m < h; // no overflow possible
   // accumulate rm2
   l = rm2; // cast to low 64 bits
-  r->l += l;
-  cm = r->l < l;
   h = rm2 >> 64;
+  r->l += l;
+  cm = r->l < l; // carry at r->m
+  if (bug) printf ("114: cm=%lu\n", cm);
   r->m += h;
-  rh += r->m < h;
+  r->h += r->m < h; // no overflow possible
   // accumulate rl1+rl2+rl3
   rl1 = (rl1 >> 64) + (rl2 >> 64) + (rl3 >> 64);
   l = rl1; // cast to low 64 bits
+  cm += rl1 >> 64;
   r->l += l;
-  cm += r->l < l;
+  cm += r->l < l; // carry at r->m
+  if (bug) printf ("122: cm=%lu\n", cm);
   // accumulate cm
   r->m += cm;
   r->h += r->m < cm;
-
-  r->ex = a->ex + b->ex;
-  r->sgn = a->sgn ^ b->sgn;
 
   /* Note: if one of the operands was zero, then r->h = r->m = r->l = 0,
      and the normalization keeps r=0. */
   if (!(r->h >> 63)) // normalize
   {
+    if (bug) printf ("normalize\n");
     r->h = (r->h << 1) | (r->m >> 63);
     r->m = (r->m << 1) | (r->l >> 63);
     r->l = r->l << 1;
     r->ex --;
   }
 
-  // printf ("exit mul_tint, r="); print_tint (r);
+  if (bug) {printf ("exit mul_tint, r="); print_tint (r);}
   assert (is_normalized (r));
 
   /* We ignored the following terms, denoting B=2^64, related to r->l:
@@ -200,7 +212,7 @@ rshift (tint_t *a, const tint_t *b, int k)
   else if (k < 192)
   {
     a->_h = 0;
-    a->_l = b->_h >> (k - 128);
+    a->_l = b->_h >> (k - 64);
   }
   else
     a->_h = a->_l = 0;
@@ -244,7 +256,8 @@ lshift (tint_t *a, const tint_t *b, int k)
 static inline void
 add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 {
-  // printf ("enter add_tint, a="); print_tint (a); printf ("b="); print_tint (b);
+  int bug = 0;
+  if (bug) { printf ("enter add_tint, a="); print_tint (a); printf ("b="); print_tint (b);}
   assert (is_normalized (a));
   assert (is_normalized (b));
   switch (cmp_tint_abs (a, b))
@@ -268,7 +281,9 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 
   // From now on, |a| > |b| thus a->ex >= b->ex
   tint_t t[1];
+  if (bug) printf ("shift: %ld\n", a->ex - b->ex);
   rshift (t, b, a->ex - b->ex);
+  if (bug) { printf ("t="); print_tint (t); }
 
   if (a->sgn ^ b->sgn) { // opposite signs, it's a subtraction
     t->_l = a->_l - t->_l;
@@ -285,14 +300,16 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
     u128 ah = a->_h;
     uint64_t al = a->_l;
     r->_l = al + t->_l;
-    uint64_t cl = t->_l < al;
+    uint64_t cl = r->_l < al;
     r->_h = ah + t->_h;
     uint64_t ch = r->_h < ah;
     r->_h += cl;
     ch += r->_h < cl;
+    if (bug) printf ("ch=%lu\n", ch);
+    if (bug) { printf ("r1="); print_tint (r); }
     if (ch) { // can be at most 1
       r->ex = a->ex + 1;
-      r->_l = (r->_h << 127) | (r->_l >> 1);
+      r->_l = (r->_h << 63) | (r->_l >> 1);
       r->_h = ((u128) ch << 127) | (r->_h >> 1);
     }
     else
@@ -300,8 +317,9 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
   }
   r->sgn = a->sgn;
  end:
-  // printf ("exit add_tint, r="); print_tint (r);
+  if (bug) {printf ("exit add_tint, r="); print_tint (r);}
   assert (is_normalized (r));
+  if (bug) exit (1);
 }
 
 // a <- x, assuming x is not NaN, Inf or 0
@@ -339,31 +357,25 @@ static inline double tint_tod (const tint_t *a)
     return (a->sgn ? -0x1p-1074 : 0x1p-1074) * (mid ? 0.5 : 0.75);
   }
 #define MASK53 0x1ffffffffffffful
-  double r[4];
-  r[3] = a->h >> 11; // 53 bits from a->h
+  double h = a->h >> 11, l; // 53 bits from a->h
   /* 2^52 <= r[3] < 2^53 thus ulp(r[3]) = 1 */
-  r[2] = ((a->h << 42) & MASK53) | (a->m >> 22); // a->h:11 bits, a->m:42 bits
-  r[1] = ((a->m << 31) & MASK53) | (a->l >> 33); // a->m:22 bits, a->l:31 bits
-  r[0] = (a->l << 20) & MASK53; // 33 bits from a->l
+  uint64_t low = a->h & 0x7ff; // low 11 bits from a->h
+  if (low < 0x400)
+    l = 0.25; // round to zero
+  else if (low > 0x400)
+    l = 0.75; // round away
+  else // low = 0x400
+  {
+    if (a->m == 0 && a->l == 0)
+      l = 0.5; // middle case
+    else
+      l = 0.75; // round away
+  }
   static const double S[2] = {1.0, -1.0};
   double s = S[a->sgn];
-  /* We multiply by s so that for rounding up/down, the rounding is in the
-     right direction. */
-  r[1] = __builtin_fma (s * r[0], 0x1p-53, s * r[1]);
-  r[2] = __builtin_fma (r[1], 0x1p-53, s * r[2]);
-  if (__builtin_expect (r[2] == 0.5 || r[2] == -0.5, 0)) {
-    printf ("Potential double-rounding issue\n");
-    exit (1);
-  }
-  r[3] = __builtin_fma (r[2], 0x1p-53, s * r[3]);
-  r[3] *= 0x1p-53;
-  /* For directed rounding, r[3] is the correct rounding (up to scaling),
-     since we have |r[i]| < ulp(r[i+1]), and there is no double rounding issue,
-     even when converting to the subnormal range.
-     For rounding to nearest, we might have a double-rounding issue in the
-     normal range for example when |r[2]| = 1/2 ulp(r[3]).
-  */
-  return r[3] * __builtin_ldexp (1.0, a->ex);
+  h = __builtin_fma (l, s, s * h);
+  h *= 0x1p-53;
+  return h * __builtin_ldexp (1.0, a->ex);
 }
 
 // put in r a 106-bit approximation of 1/A, assuming A is not zero
@@ -385,13 +397,21 @@ static inline void div_tint (tint_t *r, tint_t *b, tint_t *a)
 {
   tint_t Y[1], Z[1];
   inv_tint (Y, a); // Y = 1/a to about 106 bits
+  // printf ("Y1="); print_tint (Y);
+  // printf ("b="); print_tint (b);
   mul_tint (r, Y, b); // r = b/a to about 106 bits
+  // printf ("r="); print_tint (r);
   // we use Karp-Markstein's trick: r' = r + y*(b-a*r)
   mul_tint (Z, a, r);  // a*r
+  // printf ("Z="); print_tint (Z);
   Z->sgn = 1 - Z->sgn; // -a*r
   add_tint (Z, b, Z);  // b-a*r
+  // printf ("Z1="); print_tint (Z);
   mul_tint (Z, Y, Z);  // y*(b-a*r)
+  // printf ("r="); print_tint (r);
+  // printf ("Z2="); print_tint (Z);
   add_tint (r, r, Z);
+  // printf ("r1="); print_tint (r);
 }
 
 // same as div_tint, but takes doubles as input
@@ -399,6 +419,8 @@ static inline void div_tint_d (tint_t *r, double b, double a)
 {
   tint_t A[1], B[1];
   tint_fromd (A, a);
+  //if (b == TRACEX && a == TRACEY) { printf ("A="); print_tint (A); }
   tint_fromd (B, b);
+  //if (b == TRACEX && a == TRACEY) { printf ("B="); print_tint (B); }
   div_tint (r, B, A);
 }

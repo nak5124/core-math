@@ -2,3 +2,8 @@
 #define ref_function_under_test ref_atan2
 
 #define EXCHANGE_X_Y
+
+#define WORST_SYMMETRIC_X // test x and -x
+#define WORST_SYMMETRIC_Y // test y and -y
+#define WORST_SWAP        // test x,y and y,x
+

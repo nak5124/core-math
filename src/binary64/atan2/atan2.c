@@ -24,8 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEY 0x1p+0
-#define TRACEX 0x1p-1
+#define TRACEY 0x1p-12
+#define TRACEX -0x1p+0
 
 #include <stdio.h>
 #include <stdint.h>
@@ -92,10 +92,11 @@ static const tint_t Psmall[] = {
   {.h=0x8888881d07710bc7, .m=0x0, .l=0x0, .ex=-3, .sgn=1},
 };
 
-// case |y/x| < 2^-11.2
+// case |y/x| < 2^-11.2 or 2^11.2 < |y/x|
 static double
-atan2_accurate_small (double y, double x)
+atan2_accurate_small_or_large (double y, double x)
 {
+  if (y == TRACEY && x == TRACEX) printf ("atan2_accurate_small_or_large: y=%la x=%la\n", y, x);
   /* first check when t=y/x is small and exact, since for
      |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest) */
   double t = y / x;
@@ -104,14 +105,15 @@ atan2_accurate_small (double y, double x)
     if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
       return __builtin_fma (t, -0x1p-54, t);
 
+  int inv = __builtin_abs (t) > 1;
+
   tint_t z[1], z2[1], p[1];
-  // printf ("y=%la z=%la\n", y, x);
-  div_tint_d (z, y, x);
-  // printf ("z="); print_tint (z);
+  if (inv == 0)
+    div_tint_d (z, y, x);
+  else
+    div_tint_d (z, x, y);
   mul_tint (z2, z, z);
-  // printf ("z2="); print_tint (z2);
   cp_tint (p, Psmall+7); // degree 15
-  // printf ("102: p="); print_tint (p);
   for (int i = 6; i >= 0; i--)
   {
     mul_tint (p, p, z2);
@@ -119,7 +121,17 @@ atan2_accurate_small (double y, double x)
   }
   // multiply by z
   mul_tint (p, p, z);
-  // printf ("p="); print_tint (p);
+  if (inv)
+  {
+    if (z->sgn == 0) { // z > 0
+      p->sgn = 1 - p->sgn;
+      add_tint (p, &PI2, p);
+    }
+    else {
+      add_tint (p, &PI2, p);
+      p->sgn = 1 - p->sgn;
+    }
+  }
   return tint_tod (p);
 }
 
@@ -131,6 +143,7 @@ atan2_accurate_small (double y, double x)
 static double
 atan2_accurate_large (double y, double x)
 {
+  if (y == TRACEY && x == TRACEX) printf ("atan2_accurate_large: y=%la x=%la\n", y, x);
   tint_t z[1], z2[1], p[1];
   div_tint_d (z, x, y);
   mul_tint (z2, z, z);
@@ -301,24 +314,54 @@ atan2_accurate_rminimax (double y, double x)
     div_tint_d (z, x, y);
   else
     div_tint_d (z, y, x);
-  if (y == TRACEY && x == TRACEX) { printf ("z="); print_tint (z); }
+  //if (y == TRACEY && x == TRACEX) { printf ("z="); print_tint (z); }
   cp_tint (p, P + 29);
   cp_tint (q, Q + 29);
-  if (y == TRACEY && x == TRACEX) { printf ("p="); print_tint (p); }
-  if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
+  //if (y == TRACEY && x == TRACEX) { printf ("p29="); print_tint (p); }
+  //if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
   for (int i = 28; i >= 0; i--)
   {
     mul_tint (p, p, z);
     mul_tint (q, q, z);
+    //if (i==0 && y == TRACEY && x == TRACEX) { printf ("p%d=", i); print_tint (p); }
     add_tint (p, p, P + i);
     add_tint (q, q, Q + i);
+    //if (i==0 && y == TRACEY && x == TRACEX) { printf ("p%d=", i); print_tint (p); }
   }
+  //if (y == TRACEY && x == TRACEX) { printf ("p="); print_tint (p); }
+  //if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
   // divide p by q
   div_tint (z, p, q);
-  if (inv) // pi/2 - z
+  //if (y == TRACEY && x == TRACEX) { printf ("p/q="); print_tint (z); }
+  /* Now z approximates atan(y/x) for inv=0, and atan(x/y) for inv=1,
+     with -pi/4 < z < pi/4.
+  */
+  if (inv)
   {
-    z->sgn = 1 - z->sgn;
-    add_tint (z, &PI2, z);
+    // if (y == TRACEY && x == TRACEX) printf ("+/-pi/2-atan(x/y)\n");
+    // if x/y > 0 thus atan(x/y) > 0 we apply pi/2 - atan(x/y)
+    // if x/y < 0 thus atan(x/y) < 0 we apply -pi/2 - atan(x/y)
+    if (z->sgn == 0) { // 0 < atan(x/y) < pi/4
+      z->sgn = 1;
+      add_tint (z, &PI2, z);
+      // now pi/4 < z < pi/2
+    }
+    else // -pi/4 < atan(x/y) < 0
+    {
+      add_tint (z, &PI2, z);
+      z->sgn = 1;
+      // now -pi/2 < z < -pi/4
+    }
+  }
+  // if x is negative we go to the opposite quadrant
+  if (x < 0) {
+    if (z->sgn == 0) { // 1st quadrant -> 3rd quadrant (subtract pi)
+      z->sgn = 1;
+      add_tint (z, &PI, z);
+      z->sgn = 1;
+    }
+    else // 4th quadrant -> 2nd quadrant (add pi)
+      add_tint (z, &PI, z);
   }
   return tint_tod (z);
 }
@@ -329,13 +372,18 @@ atan2_accurate (double y, double x)
 {
   double z = y / x;
 
-  if (__builtin_fabs (z) <= 0x1.bdb8cdadbe12p-12) // |z| < 2^-11.2
-    return atan2_accurate_small (y, x);
+#define Z0 0x1.bdb8cdadbe12p-12
+#define Z1 0x1.2611186bae675p+11
+  if (__builtin_fabs (z) <= Z0 || Z1 <= __builtin_fabs (z))
+    // |z| < 2^-11.2 or 2^11.2 < |z|
+    return atan2_accurate_small_or_large (y, x);
 
+#if 0
   /* For z large, atan(z) = pi/2 - atan(1/z) for z > 0,
      and atan(z) = -pi/2 - atan(1/z) for z < 0. */
   if (__builtin_fabs (z) >= 0x1.e109203371c3p+10) // |1/z| < 2^-10.91
     return atan2_accurate_large (y, x);
+#endif
 
   return atan2_accurate_rminimax (y, x);
 }
