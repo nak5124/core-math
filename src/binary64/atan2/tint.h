@@ -24,6 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <stdlib.h>
 #include <assert.h>
 
 typedef unsigned __int128 u128;
@@ -280,10 +281,13 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
     lshift (r, t, ex);
   }
   else { // same signs, it's an addition
-    r->_l = a->_l + t->_l;
-    uint64_t cl = t->_l < a->_l;
-    r->_h = a->_h + t->_h;
-    uint64_t ch = r->_h < a->_h;
+    // save values of ah, al in case r=a
+    u128 ah = a->_h;
+    uint64_t al = a->_l;
+    r->_l = al + t->_l;
+    uint64_t cl = t->_l < al;
+    r->_h = ah + t->_h;
+    uint64_t ch = r->_h < ah;
     r->_h += cl;
     ch += r->_h < cl;
     if (ch) { // can be at most 1
@@ -321,7 +325,7 @@ static inline void tint_fromd (tint_t *a, double x)
   a->m = a->l = 0;
 }
 
-static inline double tint_tod (tint_t *a)
+static inline double tint_tod (const tint_t *a)
 {
   if (a->ex >= 1025) // overflow: |a| >= 2^1024
     return a->sgn ? -0x1p1023 - 0x1p1023 : 0x1p1023 + 0x1p1023;
@@ -337,24 +341,36 @@ static inline double tint_tod (tint_t *a)
 #define MASK53 0x1ffffffffffffful
   double r[4];
   r[3] = a->h >> 11; // 53 bits from a->h
+  /* 2^52 <= r[3] < 2^53 thus ulp(r[3]) = 1 */
   r[2] = ((a->h << 42) & MASK53) | (a->m >> 22); // a->h:11 bits, a->m:42 bits
   r[1] = ((a->m << 31) & MASK53) | (a->l >> 33); // a->m:22 bits, a->l:31 bits
   r[0] = (a->l << 20) & MASK53; // 33 bits from a->l
   static const double S[2] = {1.0, -1.0};
   double s = S[a->sgn];
+  /* We multiply by s so that for rounding up/down, the rounding is in the
+     right direction. */
   r[1] = __builtin_fma (s * r[0], 0x1p-53, s * r[1]);
   r[2] = __builtin_fma (r[1], 0x1p-53, s * r[2]);
+  if (__builtin_expect (r[2] == 0.5 || r[2] == -0.5, 0)) {
+    printf ("Potential double-rounding issue\n");
+    exit (1);
+  }
   r[3] = __builtin_fma (r[2], 0x1p-53, s * r[3]);
   r[3] *= 0x1p-53;
+  /* For directed rounding, r[3] is the correct rounding (up to scaling),
+     since we have |r[i]| < ulp(r[i+1]), and there is no double rounding issue,
+     even when converting to the subnormal range.
+     For rounding to nearest, we might have a double-rounding issue in the
+     normal range for example when |r[2]| = 1/2 ulp(r[3]).
+  */
   return r[3] * __builtin_ldexp (1.0, a->ex);
 }
 
-// put in r a 106-bit approximation of 1/a, assuming a is not zero
-// assume A = tint_fromd (a)
-static inline void inv_tint (tint_t *r, const tint_t *A, double a)
+// put in r a 106-bit approximation of 1/A, assuming A is not zero
+static inline void inv_tint (tint_t *r, const tint_t *A)
 {
-  // printf ("enter inv_tint a=%la A=", a); print_tint (A);
   tint_t q[1];
+  double a = tint_tod (A);
   tint_fromd (r, 1.0 / a); // accurate to about 53 bits
   // we use Newton's iteration: r -> r + r*(1-a*r)
   mul_tint (q, A, r);      // a*r
@@ -362,23 +378,27 @@ static inline void inv_tint (tint_t *r, const tint_t *A, double a)
   add_tint (q, &ONE, q);   // 1-a*r
   mul_tint (q, r, q);      // r*(1-a*r)
   add_tint (r, r, q);
-  // printf ("#### exit inv_tint r="); print_tint (r);
 }
 
 // put in r an approximation of b/a, assuming a is not zero
-static inline void div_tint (tint_t *r, double b, double a)
+static inline void div_tint (tint_t *r, tint_t *b, tint_t *a)
 {
-  tint_t A[1], B[1], Y[1], Z[1];
-  tint_fromd (A, a);
-  tint_fromd (B, b);
-  inv_tint (Y, A, a); // Y = 1/a to about 106 bits
-  mul_tint (r, Y, B); // r = b/a to about 106 bits
+  tint_t Y[1], Z[1];
+  inv_tint (Y, a); // Y = 1/a to about 106 bits
+  mul_tint (r, Y, b); // r = b/a to about 106 bits
   // we use Karp-Markstein's trick: r' = r + y*(b-a*r)
-  mul_tint (Z, A, r);  // a*r
+  mul_tint (Z, a, r);  // a*r
   Z->sgn = 1 - Z->sgn; // -a*r
-  add_tint (Z, B, Z);  // b-a*r
+  add_tint (Z, b, Z);  // b-a*r
   mul_tint (Z, Y, Z);  // y*(b-a*r)
   add_tint (r, r, Z);
 }
 
-
+// same as div_tint, but takes doubles as input
+static inline void div_tint_d (tint_t *r, double b, double a)
+{
+  tint_t A[1], B[1];
+  tint_fromd (A, a);
+  tint_fromd (B, b);
+  div_tint (r, B, A);
+}
