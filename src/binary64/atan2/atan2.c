@@ -96,7 +96,6 @@ static const tint_t Psmall[] = {
 static double
 atan2_accurate_small_or_large (double y, double x)
 {
-  if (y == TRACEY && x == TRACEX) printf ("atan2_accurate_small_or_large: y=%la x=%la\n", y, x);
   /* first check when t=y/x is small and exact and x > 0, since for
      |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest) */
   double t = y / x;

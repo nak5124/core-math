@@ -89,11 +89,6 @@ is_normalized (const tint_t *a)
 static inline void
 mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
 {
-  int bug = 0;
-  if (bug) {printf ("enter mul_tint, a="); print_tint (a); printf ("b="); print_tint (b);}
-  assert (is_normalized (a));
-  assert (is_normalized (b));
-
   r->ex = a->ex + b->ex;
   r->sgn = a->sgn ^ b->sgn;
 
@@ -116,7 +111,6 @@ mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
   h = rm2 >> 64;
   r->l += l;
   cm = r->l < l; // carry at r->m
-  if (bug) printf ("114: cm=%lu\n", cm);
   r->m += h;
   r->h += r->m < h; // no overflow possible
   // accumulate rl1+rl2+rl3
@@ -125,7 +119,6 @@ mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
   cm += rl1 >> 64;
   r->l += l;
   cm += r->l < l; // carry at r->m
-  if (bug) printf ("122: cm=%lu\n", cm);
   // accumulate cm
   r->m += cm;
   r->h += r->m < cm;
@@ -134,15 +127,11 @@ mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
      and the normalization keeps r=0. */
   if (!(r->h >> 63)) // normalize
   {
-    if (bug) printf ("normalize\n");
     r->h = (r->h << 1) | (r->m >> 63);
     r->m = (r->m << 1) | (r->l >> 63);
     r->l = r->l << 1;
     r->ex --;
   }
-
-  if (bug) {printf ("exit mul_tint, r="); print_tint (r);}
-  assert (is_normalized (r));
 
   /* We ignored the following terms, denoting B=2^64, related to r->l:
      am*bl + al*bm <= 2*(B-1)^2/B^2 = 2 - 4/B + 2/B^2
@@ -252,24 +241,20 @@ lshift (tint_t *a, const tint_t *b, int k)
     a->_h = a->_l = 0;
 }
 
-// Add two tint_t values
+// Add two tint_t values, with error bounded by 2 ulps
 static inline void
 add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 {
-  int bug = 0;
-  if (bug) { printf ("enter add_tint, a="); print_tint (a); printf ("b="); print_tint (b);}
-  assert (is_normalized (a));
-  assert (is_normalized (b));
   switch (cmp_tint_abs (a, b))
   {
-  case 0: // |a| = |b|
+  case 0: // |a| = |b|, return 0 or 2*a (exact)
     if (a->sgn ^ b->sgn) {
       cp_tint (r, &ZERO);
-      goto end;
+      return;
     }
     cp_tint (r, a);
     r->ex++;
-    goto end;
+    return;
 
   case -1: // |a| < |b|
     {
@@ -281,9 +266,8 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 
   // From now on, |a| > |b| thus a->ex >= b->ex
   tint_t t[1];
-  if (bug) printf ("shift: %ld\n", a->ex - b->ex);
-  rshift (t, b, a->ex - b->ex);
-  if (bug) { printf ("t="); print_tint (t); }
+  uint64_t sh = a->ex - b->ex;
+  rshift (t, b, sh);
 
   if (a->sgn ^ b->sgn) { // opposite signs, it's a subtraction
     t->_l = a->_l - t->_l;
@@ -292,8 +276,33 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
     uint64_t ex =
       th ? __builtin_clzl (th)
       : (t->_h ? 64 + __builtin_clzl (t->_h) : 128 + __builtin_clzl (t->_l));
-    r->ex = a->ex - ex;
-    lshift (r, t, ex);
+    if (ex <= 1 || sh == 0) {
+      /* The maximal error of 1 ulp for the neglected low part of b is shifted
+         by ex bits, thus contributes to < 2 ulps. And for sh=0, there is no
+         neglected low part of b, thus the subtraction is exact. */
+      lshift (r, t, ex);
+      r->ex = a->ex - ex;
+    }
+    else { // ex >= 2 and sh >= 1
+      /* Since we had a cancellation of ex bits with the neglected low part
+         of b, we'll have a cancellation of at least ex bits if we don't
+         neglect the low part of b, thus we can shift left a and b/2^sh by
+         ex bits, and subtract. This case (ex >= 2) can only occur when sh=1,
+         since for sh>=2 we have (up to the exponent) a >= 1 and b < 0.5,
+         thus a-b >= 0.5, and the exponent decrease ex is at most 1. */
+      lshift (t, b, ex - sh);
+      lshift (r, a, ex);
+      t->_l = r->_l - t->_l;
+      t->_h = r->_h - t->_h - (t->_l > r->_l);
+      th = t->_h >> 64;
+      uint64_t ex1 =
+        th ? __builtin_clzl (th)
+        : (t->_h ? 64 + __builtin_clzl (t->_h) : 128 + __builtin_clzl (t->_l));
+      lshift (r, t, ex1);
+      r->ex = a->ex - (ex + ex1);
+      /* Since we shifted b left in this case, there is no neglected bit of b,
+         and the subtraction is exact. */
+    }      
   }
   else { // same signs, it's an addition
     // save values of ah, al in case r=a
@@ -305,24 +314,24 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
     uint64_t ch = r->_h < ah;
     r->_h += cl;
     ch += r->_h < cl;
-    if (bug) printf ("ch=%lu\n", ch);
-    if (bug) { printf ("r1="); print_tint (r); }
+    // up to here, the maximal error is < ulp(r) [shifted part of b]
     if (ch) { // can be at most 1
       r->ex = a->ex + 1;
       r->_l = (r->_h << 63) | (r->_l >> 1);
       r->_h = ((u128) ch << 127) | (r->_h >> 1);
+      /* the maximal error from the shifted part of b is now < 1/2 ulp(r),
+         and in addition the low bit of r->_l that disappeared might give
+         1/2 ulp(r), thus the total error is still < ulp(r) */
     }
     else
       r->ex = a->ex;
+    // in the addition case, the error is bounded by ulp(r)
   }
   r->sgn = a->sgn;
- end:
-  if (bug) {printf ("exit add_tint, r="); print_tint (r);}
-  assert (is_normalized (r));
-  if (bug) exit (1);
 }
 
 // a <- x, assuming x is not NaN, Inf or 0
+// This operation is exact
 static inline void tint_fromd (tint_t *a, double x)
 {
   d64u64 u = {.f = x};
@@ -343,9 +352,9 @@ static inline void tint_fromd (tint_t *a, double x)
   a->m = a->l = 0;
 }
 
+// convert a to a double with correct rouding
 static inline double tint_tod (const tint_t *a)
 {
-  // int bug = 0;
   if (a->ex >= 1025) // overflow: |a| >= 2^1024
     return a->sgn ? -0x1p1023 - 0x1p1023 : 0x1p1023 + 0x1p1023;
   if (a->ex <= -1074) // underflow: |a| < 2^-1074
@@ -372,7 +381,6 @@ static inline double tint_tod (const tint_t *a)
     else
       l = 0.75; // round away
   }
-  // if (bug) printf ("h=%la l=%f\n", h, l);
   static const double S[2] = {1.0, -1.0};
   double s = S[a->sgn];
   h = __builtin_fma (l, s, s * h);
@@ -380,40 +388,84 @@ static inline double tint_tod (const tint_t *a)
   return h * __builtin_ldexp (1.0, a->ex);
 }
 
-// put in r a 106-bit approximation of 1/A, assuming A is not zero
+/* Put in r an approximation of 1/A, assuming A is not zero.
+   Assuming 1 <= r <= 2, the absolute error is bounded by 2^-103.9.
+   In terms of ulp, it is bounded by 2^87.1 * ulp(r). */
 static inline void inv_tint (tint_t *r, const tint_t *A)
 {
   tint_t q[1];
-  double a = tint_tod (A);
+  double a = tint_tod (A); // exact
+  // To simplify the error analysis, we assume 0.5 <= a < 1
   tint_fromd (r, 1.0 / a); // accurate to about 53 bits
-  // we use Newton's iteration: r -> r + r*(1-a*r)
-  mul_tint (q, A, r);      // a*r
+  /* We have 1 <= r <= 2, with |r - 1/a| < ulp(r) = 2^-52. */
+  /* We use Newton's iteration: r1 = r0 + r0*(1-a*r0).
+     Let e0 = 1-a*r0 and e1 = 1-a*r1 then we have e1 = e0^2.
+     Since a < 1 and |r - 1/a| < 2^-52 we have e0 < 2^-52 thus e1 < 2^-104.
+  */
+  mul_tint (q, A, r);      // approximates a*r
+  /* The rounding error in mul_tint is bounded by 10 ulps (on 192 bits),
+     and a*r < 2, thus we have |q - ar| < 10*2^-191 < 2^-187.
+     This error is multiplied by r below, thus contributes to < 2^-186. */
   q->sgn = 1 - q->sgn;     // -a*r
-  add_tint (q, &ONE, q);   // 1-a*r
-  mul_tint (q, r, q);      // r*(1-a*r)
+  add_tint (q, &ONE, q);   // approximates 1-a*r
+  /* The rounding error in add_tint is bounded by 2 ulps (on 192 bits),
+     and we have |round(1-a*r)| < 2^-51 thus this is bounded by 2*2^-243
+     = 2^-242. This error is multiplied by r below, thus contributes to
+     < 2^-241. */
+  mul_tint (q, r, q);      // approximates r*(1-a*r)
+  /* Since |q_in| < 2^-51 and r <= 2, we have |q| < 2^-50, and the rounding
+     error on mul_tint is bounded by 10 ulps (on 192 bits), it is bounded
+     by 10*2^-242 < 2^-238. */
   add_tint (r, r, q);
+  /* The rounding error in add_tint is bounded by 2 ulps (on 192 bits),
+     and we have |r| <= 2, thus it is bounded by 2*2^-191 = 2^-190. */
+
+  /* The total error on r is bounded by:
+   * 2^-104 for the mathematical error
+   * 2^-186 + 2^-241 + 2^-238 + 2^-190 < 2^-185 for the rounding errors,
+   thus by 2^-103.9.
+   Since 1 <= r <= 2, this is bounded by 2^87.1 * ulp(r). */
 }
 
-// put in r an approximation of b/a, assuming a is not zero
+/* Put in r an approximation of b/a, assuming a is not zero,
+   with error bounded by 45 ulps. */
 static inline void div_tint (tint_t *r, tint_t *b, tint_t *a)
 {
   tint_t Y[1], Z[1];
-  inv_tint (Y, a); // Y = 1/a to about 106 bits
-  // printf ("Y1="); print_tint (Y);
-  // printf ("b="); print_tint (b);
-  mul_tint (r, Y, b); // r = b/a to about 106 bits
-  // printf ("r="); print_tint (r);
-  // we use Karp-Markstein's trick: r' = r + y*(b-a*r)
-  mul_tint (Z, a, r);  // a*r
-  // printf ("Z="); print_tint (Z);
+  // to simplify the error analysis, we assume 0.5 <= a, b < 1
+  inv_tint (Y, a); // |Y - 1/a| < 2^-103.9, with Y <= 2
+  mul_tint (r, Y, b); // r approximates b/a
+  /* The rounding error of mul_tint is at most 10 ulps, thus since r <= 2
+     this corresponds to < 2^187: |r - Y*b| < 2^187. Now |Y - 1/a|,
+     thus |r - b/a| <= |r - Y*b| + b*|Y-1/a| < 2^187 + 2^-103.9 < 2^-103.89. */
+  /* We use Karp-Markstein's trick: r1 = r0 + y*(b-a*r0).
+     Let e0 = b-a*r0 and e1 = b-a*r1, we have e1 = e0*(1-a*y).
+     Since |Y - 1/a| < 2^-103.9 and a < 1 we have |1-a*y| < 2^-103.9.
+     Since |r - b/a| < 2^-103.89 and a < 1 we have |e0| < 2^-103.89.
+     This gives |e1| < 2^-103.89 * 2^-103.9 < 2^-207. */
+  mul_tint (Z, a, r);  // approximates a*r
+  /* We have |z| <= 2 and the rounding error is bounded by 10 ulps,
+     thus < 2^-187.67. This error is multiplied by Y <= 2 below,
+     thus contributes to < 2^-186.67. */
   Z->sgn = 1 - Z->sgn; // -a*r
-  add_tint (Z, b, Z);  // b-a*r
-  // printf ("Z1="); print_tint (Z);
-  mul_tint (Z, Y, Z);  // y*(b-a*r)
-  // printf ("r="); print_tint (r);
-  // printf ("Z2="); print_tint (Z);
+  add_tint (Z, b, Z);  // approximates b-a*r
+  /* Since |b-a*r| < 2^-103.89, and |Zin-ar| < 2^-186.67, we have
+     |b-Zin| < 2^-103.89 + 2^-186.67 < 2^-103.88, thus since the
+     rounding error is at most 2 ulps, it is < 2*2^-295 = 2^-294.
+     This error is multiplied by Y <= 2 below, thus contributes to < 2^-293. */
+  mul_tint (Z, Y, Z);  // approximates y*(b-a*r)
+  /* Since Y <= 2 and |Zin| < 2^-103.88, we have |Z| < 2^-102.88.
+     The rounding error of mul_tint is thus bounded by 10*ulp(2^-102.88)
+     = 10 * 2^-294 < 2^-290.67. */
   add_tint (r, r, Z);
-  // printf ("r1="); print_tint (r);
+  /* Since r <= 2, and the rounding error is bounded by 2 ulps,
+     it is bounded by 2 * ulp(1.5) = 2 * 2^-191 = 2^-190. */
+
+  /* The total error is bounded by:
+   * 2^-207 for the mathematical error e1
+   * 2^-186.67 + 2^-293 + 2^-290.67 + 2^-190
+   This gives a bound of 2^-186.53 for 1/2 <= r <= 2,
+   thus less than 45 ulps. */
 }
 
 // same as div_tint, but takes doubles as input
