@@ -7,7 +7,7 @@ export LC_ALL=C.UTF-8
 
 S=20 # trial
 N=100000 # count
-M=500 # repeat
+M=${PERF_REPEAT:-500} # repeat
 
 if [ -z "$CORE_MATH_QUIET" ]; then
 { read -r -d '' prog_end || true; } <<EOF
