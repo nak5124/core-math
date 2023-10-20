@@ -58,7 +58,7 @@ static const tint_t PI = {
   .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
   .ex = 2, .sgn = 0};
 
-// PI2 is a tint_t representation of pi/2
+// PI2 is a tint_t representation of pi/2, with error < 2^-197.96
 static const tint_t PI2 = {
   .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
   .ex = 1, .sgn = 0};
@@ -84,7 +84,7 @@ is_normalized (const tint_t *a)
   return a->h >> 63;
 }
 
-// Multiply two tint_t numbers, with error < 10 ulps
+// Multiply two tint_t numbers, with error < 10 ulps or 2^-187.67 * |r|
 // Overlap between r and a or b is allowed
 static inline void
 mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
@@ -94,7 +94,6 @@ mul_tint (tint_t *r, const tint_t *a, const tint_t *b)
 
   u128 ah = a->h, am = a->m, al = a->l;
   u128 bh = b->h, bm = b->m, bl = b->l;
-  // printf ("enter mul_tint: ah=%lx bh=%lx\n", (uint64_t) ah, (uint64_t) bh);
   u128 rh = ah * bh, rm1 = ah * bm, rm2 = am * bh;
   u128 rl1 = ah * bl, rl2 = am * bm, rl3 = al * bh;
   uint64_t h, l, cm;
@@ -353,7 +352,9 @@ static inline void tint_fromd (tint_t *a, double x)
 }
 
 // convert a to a double with correct rouding
-static inline double tint_tod (const tint_t *a)
+// err is a bound in ulps on the maximal error on a->l
+static inline double
+tint_tod (const tint_t *a, uint64_t err, double y, double x)
 {
   if (a->ex >= 1025) // overflow: |a| >= 2^1024
     return a->sgn ? -0x1p1023 - 0x1p1023 : 0x1p1023 + 0x1p1023;
@@ -367,9 +368,22 @@ static inline double tint_tod (const tint_t *a)
     return (a->sgn ? -0x1p-1074 : 0x1p-1074) * (mid ? 0.5 : 0.75);
   }
 #define MASK53 0x1ffffffffffffful
+  uint64_t low = a->h & 0x7ff; // low 11 bits from a->h
+  /* We can't determine the correct rounding when:
+     (a) a->m = 0 and the low 10 bits of a->h are zero and a->l < err
+     (b) a->m = 111...111 and the low 10 bits of a->h are 1 and
+         a->l > 2^64 - err */
+  if (__builtin_expect (a->m == 0 || ~a->m == 0, 0))
+    if ((a->m == 0 && (low == 0 || low == 0x400) && a->l < err) ||
+        (~a->m == 0 && (low == 0x3ff || low == 0x7ff) && ~a->l < err))
+    {
+      printf ("Unexpected worst-case found.\n");
+      printf ("Please report to core-math@inria.fr:\n");
+      printf ("Worst-case of atan2 found: y,x=%la,%la\n", y, x);
+      exit (1);
+    }
   double h = a->h >> 11, l; // 53 bits from a->h
   /* 2^52 <= r[3] < 2^53 thus ulp(r[3]) = 1 */
-  uint64_t low = a->h & 0x7ff; // low 11 bits from a->h
   if (low < 0x400)
     l = 0.25; // round to zero
   else if (low > 0x400)
@@ -394,7 +408,7 @@ static inline double tint_tod (const tint_t *a)
 static inline void inv_tint (tint_t *r, const tint_t *A)
 {
   tint_t q[1];
-  double a = tint_tod (A); // exact
+  double a = tint_tod (A, 0, 0, 0); // exact
   // To simplify the error analysis, we assume 0.5 <= a < 1
   tint_fromd (r, 1.0 / a); // accurate to about 53 bits
   /* We have 1 <= r <= 2, with |r - 1/a| < ulp(r) = 2^-52. */
@@ -428,7 +442,7 @@ static inline void inv_tint (tint_t *r, const tint_t *A)
 }
 
 /* Put in r an approximation of b/a, assuming a is not zero,
-   with error bounded by 45 ulps. */
+   with relative error bounded by 2^-185.53. */
 static inline void div_tint (tint_t *r, tint_t *b, tint_t *a)
 {
   tint_t Y[1], Z[1];
@@ -465,16 +479,15 @@ static inline void div_tint (tint_t *r, tint_t *b, tint_t *a)
    * 2^-207 for the mathematical error e1
    * 2^-186.67 + 2^-293 + 2^-290.67 + 2^-190
    This gives a bound of 2^-186.53 for 1/2 <= r <= 2,
-   thus less than 45 ulps. */
+   thus a relative error < 2^185.53. */
 }
 
-// same as div_tint, but takes doubles as input
+// same as div_tint, taking doubles, same relative error bound of 2^185.53
 static inline void div_tint_d (tint_t *r, double b, double a)
 {
   tint_t A[1], B[1];
+
   tint_fromd (A, a);
-  //if (b == TRACEX && a == TRACEY) { printf ("A="); print_tint (A); }
   tint_fromd (B, b);
-  //if (b == TRACEX && a == TRACEY) { printf ("B="); print_tint (B); }
   div_tint (r, B, A);
 }

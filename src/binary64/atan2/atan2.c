@@ -24,8 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEY -0x1.49343d4e26bb6p+53
-#define TRACEX 0x1.d786165a1b544p+51
+#define TRACEY 0x1.137050b853c68p+58
+#define TRACEX 0x1.1d12724fbe041p+52
 
 #include <stdio.h>
 #include <stdint.h>
@@ -111,6 +111,8 @@ atan2_accurate_small_or_large (double y, double x)
     div_tint_d (z, y, x);
   else
     div_tint_d (z, x, y);
+  // below when we write y/x it should be read x/y when |x/y| < 1
+  // |z - y/x| < 2^-185.53 * |z|
   mul_tint (z2, z, z);
   cp_tint (p, Psmall+7); // degree 15
   for (int i = 6; i >= 0; i--)
@@ -120,28 +122,55 @@ atan2_accurate_small_or_large (double y, double x)
   }
   // multiply by z
   mul_tint (p, p, z);
+  /* By running the routine errPsmall(e) in atan2.sage for -1074 <= e <= -11,
+     we get that the relative error is bounded by 2^-169.88:
+     |p - atan(z)| < 2^-169.88 * |p|.
+     It follows:
+     |p - atan(y/x)| < 2^-169.88 * |p| + |atan(y/x) - atan(z)|
+                     <= 2^-169.88 * |p| + |z - y/x|
+                     < 2^-169.88 * |p| + 2^-185.53 * |z|
+     For 0 < z < 2^-11.2 we have atan(z) > z/2 thus:
+     |p - atan(y/x)| < (2^-169.88 + 2^-184.53) * |p|
+                     < 2^-169.87 * |p|
+     with -pi/4 < p < pi/4.
+  */
   if (inv)
   {
-    if (z->sgn == 0) { // z > 0
+    if (z->sgn == 0) { // z > 0: pi/2 - p
       p->sgn = 1 - p->sgn;
       add_tint (p, &PI2, p);
+      /* |PI2 - pi/2| < 2^-197.96, |p_in - atan(x/y)| < 2^-169.87 * |p|
+         < 2^-169.87 * pi/4 < 2^-170.21, we have pi/4 < |p| < pi/2, the
+         rounding error on add_tint is bounded by 2 ulps = 2^-190,
+         thus the total error is < 2^-197.96 + 2^-170.21 + 2^-190 < 2^-170.20,
+         and since |p| > pi/4 this yields a relative error < 2^-169.85. */
     }
     else {
-      add_tint (p, &PI2, p);
+      add_tint (p, &PI2, p); // z < 0: -pi/2 - p
       p->sgn = 1 - p->sgn;
+      // same error analysis and bound as above
     }
   }
+  // here p approximates atan(y/x) with relative error < 2^-169.85, |p| < pi/2
   // if x is negative we go to the opposite quadrant
   if (x < 0) {
     if (p->sgn == 0) { // 1st quadrant -> 3rd quadrant (subtract pi)
       p->sgn = 1;
-      add_tint (p, &PI, p);
+      add_tint (p, &PI, p); // p - pi
       p->sgn = 1;
+      /* |PI - pi| < 2^-196.96, |p_in - atan(y/x)| < 2^-169.85 * |p|
+         < 2^-169.85 * pi/2 < 2^-169.19, we have pi/2 < |p| < pi, the
+         rounding error on add_tint is bounded by 2 ulps = 2^-189,
+         thus the total error is < 2^-196.96 + 2^-169.19 + 2^-189 < 2^-169.18,
+         and since |p| > pi/2 this yields a relative error < 2^-169.83. */
     }
     else // 4th quadrant -> 2nd quadrant (add pi)
       add_tint (p, &PI, p);
+    // same error analysis and bound as above
   }
-  return tint_tod (p);
+  /* We now have |p - atan2(y,x)| < 2^-169.83 * |p|, this corresponds to an
+     error bounded by 4718838 ulps. */
+  return tint_tod (p, 4718838, y, x);
 }
 
 /* The following polynomials P[] and Q[] are a rational approximation
@@ -346,7 +375,7 @@ atan2_accurate_rminimax (double y, double x)
     else // 4th quadrant -> 2nd quadrant (add pi)
       add_tint (z, &PI, z);
   }
-  return tint_tod (z);
+  return tint_tod (z, 0, y, x);
 }
 
 // accurate path, assumes both y and x are neither NaN, nor +/-Inf, nor +/-0
