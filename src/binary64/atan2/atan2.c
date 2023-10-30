@@ -321,35 +321,34 @@ atan2_accurate_rminimax (double y, double x)
     div_tint_d (z, x, y);
   else
     div_tint_d (z, y, x);
+  // below when we write y/x it should be read x/y when |x/y| < 1
+  // |z - y/x| < 2^-185.53 * |z| as in atan2_accurate_small_or_large()
   // the rational approximation is only for z > 0, it is not antisymmetric
   int sz = z->sgn;
   z->sgn = 0;
-  // if (y == TRACEY && x == TRACEX) { printf ("z="); print_tint (z); }
   cp_tint (p, P + 29);
   cp_tint (q, Q + 29);
-  //if (y == TRACEY && x == TRACEX) { printf ("p29="); print_tint (p); }
-  //if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
   for (int i = 28; i >= 0; i--)
   {
     mul_tint (p, p, z);
     mul_tint (q, q, z);
-    //if (i==0 && y == TRACEY && x == TRACEX) { printf ("p%d=", i); print_tint (p); }
     add_tint (p, p, P + i);
     add_tint (q, q, Q + i);
-    //if (i==0 && y == TRACEY && x == TRACEX) { printf ("p%d=", i); print_tint (p); }
   }
-  // if (y == TRACEY && x == TRACEX) { printf ("p="); print_tint (p); }
-  // if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
+  /* The routine errPsplit(e,13) in atan2.sage gives a relative error bound
+     of 2^-182.90 for |p - P(z)|, for -11 <= e <= 0, which corresponds
+     to 2^-12 <= z <= 1. */
+  /* The routine errQsplit(e,12) in atan2.sage gives a relative error bound
+     of 2^-182.61 for |q - Q(z)|, for -11 <= e <= 0, which corresponds
+     to 2^-12 <= z <= 1. */
   // divide p by q
   div_tint (z, p, q);
   z->sgn = sz; // restore sign
-  // if (y == TRACEY && x == TRACEX) { printf ("z1="); print_tint (z); }
   /* Now z approximates atan(y/x) for inv=0, and atan(x/y) for inv=1,
      with -pi/4 < z < pi/4.
   */
   if (inv)
   {
-    // if (y == TRACEY && x == TRACEX) printf ("+/-pi/2-atan(x/y)\n");
     // if x/y > 0 thus atan(x/y) > 0 we apply pi/2 - atan(x/y)
     // if x/y < 0 thus atan(x/y) < 0 we apply -pi/2 - atan(x/y)
     if (z->sgn == 0) { // 0 < atan(x/y) < pi/4
@@ -363,7 +362,6 @@ atan2_accurate_rminimax (double y, double x)
       z->sgn = 1;
       // now -pi/2 < z < -pi/4
     }
-    // if (y == TRACEY && x == TRACEX) { printf ("z2="); print_tint (z); }
   }
   // if x is negative we go to the opposite quadrant
   if (x < 0) {
