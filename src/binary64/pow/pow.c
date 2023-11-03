@@ -1453,6 +1453,7 @@ double cr_pow (double x, double y) {
 
     double cs[] = {1.0, -1.0};
 
+    if (bug) printf ("(int64_t)y=%ld\n", (int64_t)y);
     s = cs[(int64_t)y & 0x1];
 
     // Set x to |x| for the rest of the computation
