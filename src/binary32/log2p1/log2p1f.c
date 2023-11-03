@@ -154,8 +154,14 @@ float cr_log2p1f(float x) {
     }
   } else { // |x| >= 0x1.6f544cp-6
     if (bug) printf ("line 156\n");
+    float h, l;
     if(__builtin_expect(ux == 0x52928e33u, 0)) return 0x1.318ffap+5f + 0x1.fp-20f;
-    if(__builtin_expect(ux == 0x4ebd09e3u, 0)) return 0x1.e90026p+4f + 0x1.fp-21;
+    if(__builtin_expect(ux == 0x4ebd09e3u, 0))
+    {
+      h = 0x1.e90026p+4f;
+      l = 0x1.fp-21;
+      return h + l;
+    }
     b64u64_u t = {.f = z + 1.0};
     unsigned long m = t.u&(~0ul>>12);
     int e = (t.u>>52) - 0x3ff;
