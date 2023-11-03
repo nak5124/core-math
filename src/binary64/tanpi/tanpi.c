@@ -25,7 +25,6 @@ SOFTWARE.
 
 */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
@@ -172,7 +171,6 @@ static __attribute__((noinline)) double as_tanpi_database(double x, double f){
 }
 
 double cr_tanpi(double x){
-  int bug = x == 0x1p1023 + 0x1p1023;
   static const double T[][2] =
     {{0x0p+0, 0x0p+0},{0x1.ada13ceebab9dp-64, 0x1.927278a3b1162p-5},
      {0x1.87d054f689d7ap-58, 0x1.936bb8c5b2da2p-4},{0x1.2cfb5a746f62cp-58, 0x1.2fcac73a6064p-3},
@@ -197,7 +195,6 @@ double cr_tanpi(double x){
 
   b64u64_u ix = {.f = x};
   uint64_t ax = ix.u&(~0ul>>1);
-  if (bug) printf ("x=%la ax=%lu\n", x, ax);
   if(__builtin_expect(ax >= (0x3f3ul<<52), 1)) {
     if(__builtin_expect(ax >= (0x42dul<<52), 0)) {
       if(__builtin_expect(ax >= (0x7fful<<52), 0)) {
