@@ -74,6 +74,7 @@ doit (uint32_t n)
 {
   float x, y, z;
   x = asfloat (n);
+  x = 0x1.7a13c6p+30;
   ref_init ();
   ref_fesetround (rnd);
   y = ref_function_under_test (x);
