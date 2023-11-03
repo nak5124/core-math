@@ -119,8 +119,30 @@ int main(int argc, char *argv[]){
   exit(EXIT_SUCCESS);
 }
 
-int is_equal (b64u64_u a, b64u64_u b){
-  return a.u == b.u;
+static inline uint64_t
+asuint64 (double f)
+{
+  b64u64_u t = {.f = f};
+  return t.u;
+}
+
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
+static inline int
+is_equal (double x, double y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint64 (x) == asuint64 (y);
 }
 
 void test(){
@@ -130,11 +152,11 @@ void test(){
   fesetround(rnd1[rnd]);
   double x;
   while (nextarg(&x)) {
-    b64u64_u zr, zt;
-    zr.f = ref_function_under_test(x);
-    zt.f = cr_function_under_test(x);
-    if (!is_equal (zr, zt)) {
-      if(++failures<10) printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
+    double r, t;
+    r = ref_function_under_test(x);
+    t = cr_function_under_test(x);
+    if (!is_equal (r, t)) {
+      if(++failures<10) printf("FAIL x=%a ref=%a z=%a\n", x, r, t);
     }
     ++count;
   }
