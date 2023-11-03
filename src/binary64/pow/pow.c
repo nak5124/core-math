@@ -1269,7 +1269,6 @@ exact_pow (double *r, double x, double y, const dint64_t *z) {
 
 // Correctly rounded power function
 double cr_pow (double x, double y) {
-  int bug = x == -0x1p-1 && y == 0x1p+64;
   double s = 1.0; /* sign of the result */
 
   f64_u _x = {.f = x};
@@ -1484,7 +1483,6 @@ double cr_pow (double x, double y) {
      and  emul = 2^-57.580 if 1/sqrt(2) < x < sqrt(2)
   */
 
-  if (bug) printf ("rh=%la rl=%la s=%f\n", rh, rl, s);
   exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
@@ -1502,7 +1500,6 @@ double cr_pow (double x, double y) {
   /* if res_h < 0, we have res_max < res_min, but since we only check
      equality between res_min and res_max, it does not matter */
 
-  if (bug) printf ("res_h=%la res_l=%la\n", res_h, res_l);
   if (res_min == res_max)
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
        to avoid double-rounding issues */
