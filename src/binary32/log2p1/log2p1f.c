@@ -159,7 +159,6 @@ float cr_log2p1f(float x) {
        in the second exceptional case, with rounding up it yields 0x1.e90026p+4
        which is incorrect, thus we use this workaround. */
     if(__builtin_expect(ux == 0x52928e33u, 0)) {
-      {
         h = 0x1.318ffap+5f;
         l = 0x1.fp-20f;
         return h + l;
