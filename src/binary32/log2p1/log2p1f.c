@@ -111,6 +111,7 @@ float cr_log2p1f(float x) {
   double z = x;
   b32u32_u t = {.f = x};
   uint32_t ux = t.u, ax = ux&(~0u>>1);
+  if (bug) printf ("ux=%x\n", ux);
   if (__builtin_expect(ux >= 0x17fu<<23, 0)) { // x <= -1
     if (ux==(0x17fu<<23)) return -1.0/0.0f; // -1.0
     if (ux>(0x1ffu<<23)) return x; // nan
