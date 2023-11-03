@@ -37,6 +37,7 @@ typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_log2p1f(float x) {
+  int bug = x == 0x1.7a13c6p+30;
   static const double ix[] = {
     0x1p+0, 0x1.fc07f01fcp-1, 0x1.f81f81f82p-1, 0x1.f44659e4ap-1, 0x1.f07c1f07cp-1,
     0x1.ecc07b302p-1, 0x1.e9131abfp-1, 0x1.e573ac902p-1, 0x1.e1e1e1e1ep-1,
@@ -116,11 +117,11 @@ float cr_log2p1f(float x) {
   } else if(__builtin_expect(ax >= (0xff<<23), 0)){ // +inf, nan
     if(ax > (0xff<<23)) return x; // nan
     return __builtin_inff();
-  } else if(__builtin_expect(ax<0x3cb7aa26u, 1)){ // 0x1.6f544cp-6
+  } else if(__builtin_expect(ax<0x3cb7aa26u, 1)){ // |x| < 0x1.6f544cp-6
     double z2 = z*z, z4 = z2*z2;
-    if(__builtin_expect(ax<0x3b9d9d34u, 1)){ // 0x1.3b3a68p-8
-      if(__builtin_expect(ax<0x39638a7eu, 1)){ // 0x1.c714fcp-13
-	if(__builtin_expect(ax<0x329c5639u, 1)){ // 0x1.38ac72p-26
+    if(__builtin_expect(ax<0x3b9d9d34u, 1)){ // |x| < 0x1.3b3a68p-8
+      if(__builtin_expect(ax<0x39638a7eu, 1)){ // |x| < 0x1.c714fcp-13
+	if(__builtin_expect(ax<0x329c5639u, 1)){ // |x| < 0x1.38ac72p-26
 	  static const double c[] =
 	    {0x1.71547652b82fep+0, -0x1.71547652b82ffp-1};
 	  return z*(c[0] + z*c[1]);
@@ -140,7 +141,8 @@ float cr_log2p1f(float x) {
 	   0x1.2778a510a3682p-2, -0x1.ec745df1551fcp-3};
 	return z*((c[0] + z*c[1]) + z2*(c[2] + z*c[3]) + z4*((c[4] + z*c[5])));
       }
-    } else {
+    } else { // |x| >= 0x1.6f544cp-6
+      if (bug) printf ("line 145, x=%a\n", x);
       static const double c[] =
 	{0x1.71547652b82fep+0, -0x1.71547652b82fbp-1, 0x1.ec709dc3b6a73p-2, -0x1.71547652dc09p-2,
 	 0x1.2776c1a88901p-2, -0x1.ec7095bd4d208p-3, 0x1.a66bec7fc8f7p-3, -0x1.71a900fc3f3f9p-3};
