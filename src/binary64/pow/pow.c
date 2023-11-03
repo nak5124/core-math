@@ -1388,7 +1388,6 @@ double cr_pow (double x, double y) {
     }
   } // From now on, x and y are finite values
 
-  if (bug) printf ("line 1391\n");
   /* first deal with the case x <= 0 */
   if (x <= 0.0) {
     /* pow(x,+/-0) is 1 if x is not a signaling NaN. */
@@ -1483,6 +1482,7 @@ double cr_pow (double x, double y) {
      and  emul = 2^-57.580 if 1/sqrt(2) < x < sqrt(2)
   */
 
+  printf ("rh=%la rl=%la s=%d\n", rh, rl, s);
   exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
