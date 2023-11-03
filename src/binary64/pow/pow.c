@@ -1453,8 +1453,9 @@ double cr_pow (double x, double y) {
 
     double cs[] = {1.0, -1.0};
 
-    if (bug) printf ("(int64_t)y=%ld\n", (int64_t)y);
-    s = cs[(int64_t)y & 0x1];
+    // set sign to 1 for y even, to -1 for y odd
+    int y_parity = __builtin_fabs (y) >= 0x1p53 ? 0 : ((int64_t) y & 0x1);
+    s = cs[y_parity];
 
     // Set x to |x| for the rest of the computation
     x = -x;
