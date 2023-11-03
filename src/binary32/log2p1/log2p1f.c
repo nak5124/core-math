@@ -113,13 +113,16 @@ float cr_log2p1f(float x) {
   uint32_t ux = t.u, ax = ux&(~0u>>1);
   if (bug) printf ("ux=%x\n", ux);
   if (__builtin_expect(ux >= 0x17fu<<23, 0)) { // x <= -1
+    if (bug) printf ("line 116\n");
     if (ux==(0x17fu<<23)) return -1.0/0.0f; // -1.0
     if (ux>(0x1ffu<<23)) return x; // nan
     return __builtin_nanf("-"); // x < -1
   } else if(__builtin_expect(ax >= (0xff<<23), 0)){ // +inf, nan
+    if (bug) printf ("line 121\n");
     if(ax > (0xff<<23)) return x; // nan
     return __builtin_inff();
   } else if(__builtin_expect(ax<0x3cb7aa26u, 1)){ // |x| < 0x1.6f544cp-6
+    if (bug) printf ("line 125\n");
     double z2 = z*z, z4 = z2*z2;
     if(__builtin_expect(ax<0x3b9d9d34u, 1)){ // |x| < 0x1.3b3a68p-8
       if(__builtin_expect(ax<0x39638a7eu, 1)){ // |x| < 0x1.c714fcp-13
@@ -143,14 +146,14 @@ float cr_log2p1f(float x) {
 	   0x1.2778a510a3682p-2, -0x1.ec745df1551fcp-3};
 	return z*((c[0] + z*c[1]) + z2*(c[2] + z*c[3]) + z4*((c[4] + z*c[5])));
       }
-    } else { // |x| >= 0x1.6f544cp-6
-      if (bug) printf ("line 145, x=%a\n", x);
+    } else {
       static const double c[] =
 	{0x1.71547652b82fep+0, -0x1.71547652b82fbp-1, 0x1.ec709dc3b6a73p-2, -0x1.71547652dc09p-2,
 	 0x1.2776c1a88901p-2, -0x1.ec7095bd4d208p-3, 0x1.a66bec7fc8f7p-3, -0x1.71a900fc3f3f9p-3};
       return z*((c[0] + z*c[1]) + z2*(c[2] + z*c[3]) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])));
     }
-  } else {
+  } else { // |x| >= 0x1.6f544cp-6
+    if (bug) printf ("line 156\n");
     if(__builtin_expect(ux == 0x52928e33u, 0)) return 0x1.318ffap+5f + 0x1.fp-20f;
     if(__builtin_expect(ux == 0x4ebd09e3u, 0)) return 0x1.e90026p+4f + 0x1.fp-21;
     b64u64_u t = {.f = z + 1.0};
