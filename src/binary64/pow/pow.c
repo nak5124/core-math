@@ -1482,7 +1482,7 @@ double cr_pow (double x, double y) {
      and  emul = 2^-57.580 if 1/sqrt(2) < x < sqrt(2)
   */
 
-  printf ("rh=%la rl=%la s=%d\n", rh, rl, s);
+  if (bug) printf ("rh=%la rl=%la s=%f\n", rh, rl, s);
   exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
