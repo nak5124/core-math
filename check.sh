@@ -88,10 +88,9 @@ fi
 
 if [ "$CFLAGS" == "" ]; then
    if [ "$CC" == "clang" ]; then
-      # clang does not provide -fsignaling-nans, and -frounding-math does not
-      # seem to have any effect
+      # clang does not provide -fsignaling-nans
       # (https://gitlab.inria.fr/core-math/core-math/-/issues/8)
-      export CFLAGS="-O3 -march=native -fno-finite-math-only"
+      export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math"
    else
       export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
    fi
