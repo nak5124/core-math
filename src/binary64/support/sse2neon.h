@@ -1,3 +1,5 @@
+// copied from https://github.com/DLTcollab/sse2neon (commit 0d6e9b3)
+
 #ifndef SSE2NEON_H
 #define SSE2NEON_H
 
