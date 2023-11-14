@@ -25,7 +25,11 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#include <x86intrin.h>
+#if defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+  #include "../support/sse2neon.h"
+#else
+  #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -264,9 +268,23 @@ double cr_sinh(double x){
   const double s = 0x1.71547652b82fep+12;
   double ax = __builtin_fabs(x), v0 = __builtin_fma(ax, s, 0x1.8000002p+26);
   b64u64_u jt = {.f = v0};
+#if defined(IS_ARM64)
+  __m128d v = vsetq_lane_f64(v0, vdupq_n_f64(0), 0);
+  __m128i tt = {~((1<<26)-1l),0};
+  v = vreinterpretq_f64_s64(
+      vandq_s64(vreinterpretq_s64_f64(v), vreinterpretq_s64_f64 ((__m128d)tt)));
+#elif defined(IS_ARM32)
+  // Not tested
+  double __attribute__((aligned(16))) data[2] = {v0, 0};
+  __m128d v = vld1q_f32((float32_t *)data);
+  __m128i tt = {~((1<<26)-1l),0};
+  v = vreinterpretq_f32_s64(
+      vandq_s64(vreinterpretq_s64_f32(v), vreinterpretq_s64_f32 ((__m128d)tt)));
+#else
   __m128d v = _mm_set_sd (v0);
   __m128i tt = {~((1<<26)-1l),0};
   v = _mm_and_pd(v,(__m128d)tt);
+#endif
   double t = v[0] - 0x1.8p26;
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
