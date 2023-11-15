@@ -303,7 +303,7 @@ double cr_asin(double x){
     if (e==0x400 && m) return x; // nan
     errno = EDOM;
     feraiseexcept (FE_INVALID);
-    return __builtin_nanf64 (">1");
+    return __builtin_nan (">1");
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */
     if (__builtin_expect (e < -26,0)) /* |x| < 2^-26 */
       /* For |x| < 2^-2, we have |asin(x)-x| < 0.25x^3
