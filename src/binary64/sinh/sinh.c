@@ -25,10 +25,8 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#if defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
-  #define IS_ARM
-#else
-  #include <x86intrin.h>
+#if defined(__x86_64__)
+#include <x86intrin.h>
 #endif
 
 // Warning: clang also defines __GNUC__
@@ -268,16 +266,16 @@ double cr_sinh(double x){
   const double s = 0x1.71547652b82fep+12;
   double ax = __builtin_fabs(x), v0 = __builtin_fma(ax, s, 0x1.8000002p+26);
   b64u64_u jt = {.f = v0};
-#if defined(IS_ARM)
-  b64u64_u v = {.f = v0};
-  uint64_t tt = ~((1<<26)-1l);
-  v.u &= tt;
-  double t = v.f - 0x1.8p26;
-#else
+#if defined(__x86_64__)
   __m128d v = _mm_set_sd (v0);
   __m128i tt = {~((1<<26)-1l),0};
   v = _mm_and_pd(v,(__m128d)tt);
   double t = v[0] - 0x1.8p26;
+#else
+  b64u64_u v = {.f = v0};
+  uint64_t tt = ~((1<<26)-1l);
+  v.u &= tt;
+  double t = v.f - 0x1.8p26;
 #endif
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
