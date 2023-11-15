@@ -1486,7 +1486,7 @@ static const double exceptions[EXCEPTIONS][2] = {
 /* the following table contains 0 if log2p1(x) is exact, -1 if it should be
    rounded down with respect to the value in the first table, and +1 if it
    should be rounded up */
-static const char exceptions_rnd[EXCEPTIONS] = {
+static const int8_t exceptions_rnd[EXCEPTIONS] = {
     1, /* -0x1.f5baee010ccc6p-6 */
     1, /* -0x1.98e2aeed83e64p-7 */
     -1, /* -0x1.7ff01253739d1p-7 */
@@ -1749,7 +1749,7 @@ static const char exceptions_rnd[EXCEPTIONS] = {
   if (x == exceptions[a][0])
   {
     double h = exceptions[a][1];
-    char l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
+    int8_t l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
     return h + h * 0x1p-54 * (double) l;
   }
 #undef EXCEPTIONS
