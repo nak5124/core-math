@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#if defined(__x86_64__)
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -238,10 +240,17 @@ double cr_tanh(double x){
   const double s = -0x1.71547652b82fep+13;
   double ax = __builtin_fabs(x), v0 = __builtin_fma(ax, s, 0x1.8000004p+25);
   b64u64_u jt = {.f = v0};
+#if defined(__x86_64__)
   __m128d v = _mm_set_sd (v0);
   __m128i tt = {~((1<<27)-1l), 0};
   v = _mm_and_pd(v,(__m128d)tt);
-  double tn = v[0] - 0x1.8p25, t = tn;
+  double t = v[0] - 0x1.8p25;
+#else
+  b64u64_u v = {.f = v0};
+  uint64_t tt = ~((1<<27)-1l);
+  v.u &= tt;
+  double t = v.f - 0x1.8p26;
+#endif
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
   long i1 = (jt.u>>27)&0x3f, i0 = (jt.u>>33)&0x3f, ie = (long)(jt.u<<13)>>52;
