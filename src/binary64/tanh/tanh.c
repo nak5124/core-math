@@ -249,7 +249,7 @@ double cr_tanh(double x){
   b64u64_u v = {.f = v0};
   uint64_t tt = ~((1<<27)-1l);
   v.u &= tt;
-  double t = v.f - 0x1.8p26;
+  double t = v.f - 0x1.8p25;
 #endif
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
