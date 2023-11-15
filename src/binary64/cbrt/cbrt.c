@@ -25,7 +25,11 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <fenv.h>
+
+#ifdef __x86_64__
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -33,6 +37,28 @@ SOFTWARE.
 #endif
 
 #pragma STDC FENV_ACCESS ON
+
+static inline int get_rounding_mode (fexcept_t *flagp)
+{
+#ifdef __x86_64__
+  *flagp = _mm_getcsr ();
+  return ((*flagp)>>13) & 3;
+#else
+  fegetexceptflag (flagp, FE_ALL_EXCEPT);
+  /* With the GNU libc, fegetround() returns the following values:
+     RNDN: 0, RNDZ: 3072, RNDU: 2048, RNDD: 1024. */
+  return fegetround () >> 10;
+#endif
+}
+
+static inline void set_flags (const fexcept_t *flagp)
+{
+#ifdef __x86_64__
+  _mm_setcsr (*flagp);
+#else
+  fesetexceptflag (flagp, FE_ALL_EXCEPT);
+#endif
+}
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -46,8 +72,8 @@ cr_cbrt (double x)
   const double u0 = 0x1.5555555555555p-2, u1 = 0x1.c71c71c71c71cp-3;
   static const double rsc[] = { 1, -1, 0.5, -0.5, 0.25, -0.25};
   static const double off[] = {0x1p-53, 0, 0, 0};
-  volatile unsigned flag = _mm_getcsr(); /* store MXCSR Control/Status Register */
-  unsigned rm = (flag>>13)&3;
+  fexcept_t flag;
+  unsigned int rm = get_rounding_mode (&flag);
   /* rm=0 for rounding to nearest, and other values for directed roundings */
   b64u64_u cvt0 = {.f = x};
   uint64_t hx = cvt0.u, mant = hx&((~0ul)>>12), sign = hx>>63;
@@ -147,7 +173,7 @@ cr_cbrt (double x)
     cvt4.u = (cvt4.u + (1ul<<15))&0xffffffffffff0000ul;
     if( __builtin_fabs((cvt4.f - y1) - dy) < 0x1p-60 || __builtin_fabs(zz) == 1.0 ){
       cvt3.u = (cvt3.u + (1ul<<15))&0xffffffffffff0000ul;
-      _mm_setcsr(flag);
+      set_flags (&flag);
     }
   }
   return cvt3.f;
