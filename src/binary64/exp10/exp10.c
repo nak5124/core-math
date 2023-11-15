@@ -629,7 +629,7 @@ static const double exceptions[EXCEPTIONS][2] = {
 /* the following table contains 0 if exp10(x) is exact, -1 if it should be
    rounded down with respect to the value in the first table, and +1 if it
    should be rounded up */
-static const char exceptions_rnd[EXCEPTIONS] = {
+static const int8_t exceptions_rnd[EXCEPTIONS] = {
     1, /* -0x1.21f6fc63d1e5p+8 */
     1, /* -0x1.e095699d01895p+7 */
     -1, /* -0x1.b5e974e4bcc37p+7 */
@@ -784,7 +784,7 @@ static const char exceptions_rnd[EXCEPTIONS] = {
   if (x == exceptions[a][0])
   {
     double h = exceptions[a][1];
-    char l = exceptions_rnd[a];
+    int8_t l = exceptions_rnd[a];
     return h + h * 0x1p-54 * (double) l;
   }
   double eh, el;
