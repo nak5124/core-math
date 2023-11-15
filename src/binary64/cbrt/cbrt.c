@@ -45,9 +45,17 @@ static inline int get_rounding_mode (fexcept_t *flagp)
   return ((*flagp)>>13) & 3;
 #else
   fegetexceptflag (flagp, FE_ALL_EXCEPT);
-  /* With the GNU libc, fegetround() returns the following values:
-     RNDN: 0, RNDZ: 3072, RNDU: 2048, RNDD: 1024. */
-  return fegetround () >> 10;
+  switch (fegetround ())
+  {
+  case FE_TONEAREST:
+    return 0;
+  case FE_DOWNWARD:
+    return 1;
+  case FE_UPWARD:
+    return 2;
+  case FE_TOWARDZERO:
+    return 3;
+  }
 #endif
 }
 
