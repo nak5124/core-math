@@ -53,9 +53,9 @@ static inline int get_rounding_mode (fexcept_t *flagp)
     return 1;
   case FE_UPWARD:
     return 2;
-  case FE_TOWARDZERO:
-    return 3;
   }
+  // case FE_TOWARDZERO:
+  return 3;
 #endif
 }
 
