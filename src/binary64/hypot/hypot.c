@@ -26,7 +26,6 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
-#include <x86intrin.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -157,14 +156,12 @@ double cr_hypot(double x, double y){
     return x + y; /* inf, nan */
   }
   double u = __builtin_fmax(x,y), v = __builtin_fmin(x,y);
-  __m128d xd, yd;
-  xd = _mm_set_sd (u);
-  yd = _mm_set_sd (v);
-  __m128i de = (__m128i)xd - (__m128i)yd;
-  if(__builtin_expect(de[0]>(27l<<52),0)) return __builtin_fma(0x1p-27, v, u);
-  ey = ((__m128i)yd)[0];
+  b64u64_u xd = {.f = u}, yd = {.f = v};
+  u64 de = xd.u - yd.u;
+  if(__builtin_expect(de>(27l<<52),0)) return __builtin_fma(0x1p-27, v, u);
+  ey = yd.u;
   if(__builtin_expect(!(ey>>52),0)){
-    ex = ((__m128i)xd)[0];
+    ex = xd.u;
     if(__builtin_expect(!(ex>>52),0)){
       if(!ex) return 0;
       return as_hypot_denorm(ex,ey);
@@ -174,33 +171,31 @@ double cr_hypot(double x, double y){
     ey &= ~0ul>>12;
     ey -= (nz-12l)<<52;
     b64u64_u t = {.u = ey};
-    yd[0] = t.f;
+    yd.f = t.f;
   }
-  __m128i msk = {emsk, emsk}, off = {0x3ffl<<52, 0x3ffl<<52};
-  off -= ((__m128i)xd & msk);
-  xd = (__m128d)((__m128i)xd + off);
-  yd = (__m128d)((__m128i)yd + off);
-  x = xd[0];
-  y = yd[0];
+  i64 off = (0x3ffl<<52) - (xd.u & emsk);
+  xd.u += off;
+  yd.u += off;
+  x = xd.f;
+  y = yd.f;
   double x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
   double y2 = y*y, dy2 = __builtin_fma(y,y,-y2);
   double r2 = x2 + y2, ir2 = 0.5/r2, dr2 = ((x2 - r2) + y2) + (dx2 + dy2);
   double th = __builtin_sqrt(r2), rsqrt = th*ir2;
   double dz = dr2 - __builtin_fma(th,th,-r2), tl = rsqrt*dz;
   th = fasttwosum(th, tl, &tl);
-  __m128d thd = _mm_set_sd (th);
-  __m128d tld = _mm_set_sd (__builtin_fabs(tl));
-  ex = ((__m128i)thd)[0];
-  ey = ((__m128i)tld)[0];
+  b64u64_u thd = {.f = th}, tld = {.f = __builtin_fabs(tl)};
+  ex = thd.u;
+  ey = tld.u;
   ex &= 0x7ffl<<52;
   u64 aidr = ey + (0x3fel<<52) - ex;
   u64 mid = (aidr - 0x3c90000000000000 + 16)>>5;
   if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ul || aidr>0x3c9fffffffffff80ul, 0)) 
-    thd[0] = as_hypot_hard(x,y);
-  thd = (__m128d)((__m128i)thd - off);
-  if(__builtin_expect((u64)(((__m128i)thd)[0])>=(0x7fful<<52), 0)){
+    thd.f = as_hypot_hard(x,y);
+  thd.u -= off;
+  if(__builtin_expect(thd.u>=(0x7fful<<52), 0)){
     errno = ERANGE;
     return 0x1.fffffffffffffp1023 + 0x1.fffffffffffffp1023;
   }
-  return thd[0];
+  return thd.f;
 }
