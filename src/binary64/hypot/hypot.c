@@ -190,12 +190,14 @@ double cr_hypot(double x, double y){
   ex &= 0x7ffl<<52;
   u64 aidr = ey + (0x3fel<<52) - ex;
   u64 mid = (aidr - 0x3c90000000000000 + 16)>>5;
-  if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ul || aidr>0x3c9fffffffffff80ul, 0)) 
+  if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ul || aidr>0x3c9fffffffffff80ul, 0))
     thd.f = as_hypot_hard(x,y);
   thd.u -= off;
   if(__builtin_expect(thd.u>=(0x7fful<<52), 0)){
     errno = ERANGE;
-    return 0x1.fffffffffffffp1023 + 0x1.fffffffffffffp1023;
+    // volatile is needed for gcc13
+    volatile double z = 0x1.fffffffffffffp1023;
+    return z + z;
   }
   return thd.f;
 }
