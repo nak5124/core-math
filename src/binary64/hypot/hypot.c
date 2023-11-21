@@ -196,6 +196,7 @@ double cr_hypot(double x, double y){
   if(__builtin_expect(thd.u>=(0x7fful<<52), 0)){
     errno = ERANGE;
     // volatile is needed for gcc13
+    // see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
     volatile double z = 0x1.fffffffffffffp1023;
     return z + z;
   }
