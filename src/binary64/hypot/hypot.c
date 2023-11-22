@@ -195,7 +195,8 @@ double cr_hypot(double x, double y){
   thd.u -= off;
   if(__builtin_expect(thd.u>=(0x7fful<<52), 0)){
     errno = ERANGE;
-    return 0x1.fffffffffffffp1023 + 0x1.fffffffffffffp1023;
+    volatile double z = 0x1.fffffffffffffp1023;
+    return z + z;
   }
   return thd.f;
 }
