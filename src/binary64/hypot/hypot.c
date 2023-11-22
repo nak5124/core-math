@@ -139,6 +139,13 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y){
   return xi.f;
 }
 
+static double __attribute__((noinline)) as_hypot_overflow(){
+  volatile double z = 0x1.fffffffffffffp1023;
+  double f = z + z;
+  if(f>z) errno = ERANGE;
+  return f;
+}
+
 double cr_hypot(double x, double y){
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 emsk = 0x7ffl<<52, ex = xi.u&emsk, ey = yi.u&emsk;
@@ -193,10 +200,6 @@ double cr_hypot(double x, double y){
   if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ul || aidr>0x3c9fffffffffff80ul, 0)) 
     thd.f = as_hypot_hard(x,y);
   thd.u -= off;
-  if(__builtin_expect(thd.u>=(0x7fful<<52), 0)){
-    errno = ERANGE;
-    volatile double z = 0x1.fffffffffffffp1023;
-    return z + z;
-  }
+  if(__builtin_expect(thd.u>=(0x7fful<<52), 0)) return as_hypot_overflow();
   return thd.f;
 }
