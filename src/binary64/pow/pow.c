@@ -940,7 +940,7 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
     if (rh < RHO0 && s > 0)
     {
       *eh = +0;
-      *el = 0x1p-1074 / 2.0 * s;
+      *el = 0x1p-1074 * (0.5 * s);
       /* For s=1, we have eh=el=+0 except for rounding up,
          thus res_min=+0 or -1, res_max=+0 in the main code,
          the rounding test succeeds, and we return res_max which is the
