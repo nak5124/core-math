@@ -29,12 +29,6 @@ SOFTWARE.
 #include <math.h>
 
 float ref_lgamma(float x){
-  float fx = __builtin_floor(x);
-  if(fx==x){
-    if(x < 0.0f) {
-      return __builtin_nanf("12");
-    }
-  }
   mpfr_t y;
   mpfr_init2 (y, 24);
   mpfr_set_flt (y, x, MPFR_RNDN);
