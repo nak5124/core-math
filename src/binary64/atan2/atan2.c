@@ -430,11 +430,18 @@ fast_two_sum (double *hi, double *lo, double a, double b)
   *lo = b - e; /* exact */
 }
 
+// assumes |ah| >= |bh|
+static inline void
+dd_sum_fast (double *h, double *l, double ah, double al, double bh, double bl)
+{
+  fast_two_sum (h, l, ah, bh);
+  *l += al + bl;
+}
+
 static inline void
 dd_sum (double *h, double *l, double ah, double al, double bh, double bl)
 {
-  d64u64 a = {.f = ah}, b = {.f = bh};
-  if ((a.u << 1) >= (b.u << 1))
+  if (__builtin_fabs (ah) >= __builtin_fabs (bh))
     fast_two_sum (h, l, ah, bh);
   else
     fast_two_sum (h, l, bh, ah);
@@ -466,17 +473,17 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
 // fast path: return err such that |h + l - atan2(y,x)| < err*h 
 static double atan2_fast (double *h, double *l, double y, double x)
 {
-  int bug = y == TRACEY && x == TRACEX;
+  // int bug = y == TRACEY && x == TRACEX;
   d64u64 vy = {.f = y}, vx = {.f = x};
   uint64_t ay = vy.u << 1, ax = vx.u << 1;
   int inv = ay > ax, negx = vx.u >> 63, negz = (vy.u ^ vx.u) >> 63;
-  if (bug) printf ("inv=%d negx=%d negz=%d\n", inv, negx, negz);
+  // if (bug) printf ("inv=%d negx=%d negz=%d\n", inv, negx, negz);
   if (inv) { double t = y; y = x; x = t; }
   // now |y| <= |x|
   double zh, zl;
-  if (bug) printf ("y=%la x=%la\n", y, x);
+  // if (bug) printf ("y=%la x=%la\n", y, x);
   fast_div1 (&zh, &zl, y, x);
-  if (bug) printf ("zh=%la zl=%la\n", zh, zl);
+  //if (bug) printf ("zh=%la zl=%la\n", zh, zl);
 
   // zh + zl = y/x * (1 + eps1) with |eps1| < 2^-98.41
   // the rational approximation is only for z > 0, it is not antisymmetric
@@ -486,17 +493,31 @@ static double atan2_fast (double *h, double *l, double y, double x)
   // multiply by z
   d_mul (&qh, &ql, zh, zl, qh, ql);
   // add Q[9]
-  dd_sum (&qh, &ql, Qfast[18], Qfast[19], qh, ql);
+  dd_sum_fast (&qh, &ql, Qfast[18], Qfast[19], qh, ql);
   double ph = Pfast[18], pl = Pfast[19]; // P[9]
-  for (int i = 8; i >= 0; i--)
+  /* FIXME: since |z| <= 1, the value of ph+pl at the beginning of step i is
+     bounded by |P[i+1|+|P[i+2]|+...+|P[9]|. This is smaller than |P[i]|
+     for i >= 5, thus we can use dd_sum_fast(). Same for Q[i] for i >= 6. */
+  for (int i = 8; i >= 6; i--)
   {
     // multiply by z
     d_mul (&ph, &pl, zh, zl, ph, pl);
     d_mul (&qh, &ql, zh, zl, qh, ql);
-    // add P[i]
-    dd_sum (&ph, &pl, Pfast[2*i], Pfast[2*i+1], ph, pl);
-    // add Q[i]
-    dd_sum (&qh, &ql, Qfast[2*i], Qfast[2*i+1], qh, ql);
+    dd_sum_fast (&ph, &pl, Pfast[2*i], Pfast[2*i+1], ph, pl); // add P[i]
+    dd_sum_fast (&qh, &ql, Qfast[2*i], Qfast[2*i+1], qh, ql); // add Q[i]
+  }
+  // i=5
+  d_mul (&ph, &pl, zh, zl, ph, pl);
+  d_mul (&qh, &ql, zh, zl, qh, ql);
+  dd_sum_fast (&ph, &pl, Pfast[10], Pfast[11], ph, pl); // add P[i]
+  dd_sum (&qh, &ql, Qfast[10], Qfast[11], qh, ql); // add Q[i]
+  for (int i = 4; i >= 0; i--)
+  {
+    // multiply by z
+    d_mul (&ph, &pl, zh, zl, ph, pl);
+    d_mul (&qh, &ql, zh, zl, qh, ql);
+    dd_sum (&ph, &pl, Pfast[2*i], Pfast[2*i+1], ph, pl); // add P[i]
+    dd_sum (&qh, &ql, Qfast[2*i], Qfast[2*i+1], qh, ql); // add Q[i]
   }
   // multiply ph+pl by z
   d_mul (&ph, &pl, zh, zl, ph, pl);
@@ -505,7 +526,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
   // restore sign
   *h *= sz;
   *l *= sz;
-  if (bug) printf ("h=%la l=%la\n", *h, *l);
+  //if (bug) printf ("h=%la l=%la\n", *h, *l);
   if (inv)
   {
     if (!negz)
@@ -515,7 +536,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
       // if y/x < 0 thus atan(y/x) < 0 we apply -pi/2 - atan(y/x)
       dd_sum (h, l, -PIOVER2H, -PIOVER2L, -*h, -*l);
   }
-  if (bug) printf ("h=%la l=%la x=%la\n", *h, *l, x);
+  //if (bug) printf ("h=%la l=%la x=%la\n", *h, *l, x);
   if (negx)
   {
     if (!negz)
@@ -525,7 +546,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
       // 4th quadrant -> 2nd quadrant (add pi)
       dd_sum (h, l, PIH, PIL, *h, *l);
   }
-  if (bug) printf ("h=%la l=%la\n", *h, *l);
+  //if (bug) printf ("h=%la l=%la\n", *h, *l);
   return 0x1.0bp-65; // 2.81818e-20 < 0x1.0bp-65
 }
 
