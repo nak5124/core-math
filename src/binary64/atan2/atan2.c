@@ -225,9 +225,8 @@ atan2_accurate (double y, double x)
     div_tint_d (z, x, y);
   else
     div_tint_d (z, y, x);
-  // if (y == TRACEY && x == TRACEX) { printf ("z="); print_tint (z); }
   // below when we write y/x it should be read x/y when |x/y| < 1
-  // |z - y/x| < 2^-185.53 * |z| as in atan2_accurate_small_or_large()
+  // |z - y/x| < 2^-185.53 * |z| (relative error from div_tint_d)
   // the rational approximation is only for z > 0, it is not antisymmetric
   int sz = z->sgn;
   z->sgn = 0;
@@ -242,8 +241,6 @@ atan2_accurate (double y, double x)
   }
   // multiply p by z
   mul_tint (p, p, z);
-  //if (y == TRACEY && x == TRACEX) { printf ("p="); print_tint (p); }
-  //if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
   /* The routine errPsplit(e,13) in atan2.sage gives a relative error bound
      of 2^-184.14 for |p - z*P(z)|, for -11 <= e <= 0, which corresponds
      to 2^-12 <= z <= 1. */
@@ -252,7 +249,25 @@ atan2_accurate (double y, double x)
      to 2^-12 <= z <= 1. */
   // divide p by q
   div_tint (z, p, q);
-  //if (y == TRACEY && x == TRACEX) { printf ("p/q="); print_tint (z); }
+  /* The relative error of div_tint() is <= 2^-185.53, thus we have:
+     z*P(z)/Q(z) = atan(z) * (1 + eps0) with |eps0| < 3.99613e-59
+     z = y/x * (1 + eps1) with |eps1| < 2^-185.53
+     p = z*P(z) * (1 + eps2) with |eps2| < 2^-184.14
+     q = Q(z) * (1 + eps3)   with |eps3| < 2^-184.19
+     newz = p/q * (1 + eps4) with |eps4| < 2^-185.53
+     The equality z = y/x * (1 + eps1) gives
+     atan(z) = atan(y/x) + eps1*y/x * 1/(1+theta^2) for theta in (z,y/x).
+     Thus |atan(z) - atan(y/x)| <= |eps1*y/x| which yields
+     |atan(z) - atan(y/x)|/|atan(y/x)| <= |eps1*y/x|/|atan(y/x)|
+     Since t/atan(t) is bounded by 1/atan(1) for 0 <= x <= 1, this yields:
+     atan(z) = atan(y/x) * (1 + eps5) with |eps5| <= eps1/atan(1) < 2^-185.18.
+     In summary we have:
+     newz = atan(y/x)*(1+eps0)*(1+eps2)*(1+eps4)*(1+eps5)/(1+eps3)
+     thus:
+     newz = atan(y/x)*(1+eps6) with |eps6| < 2^-182.63.
+     This corresponds to a maximal error of 2^-182.63*2^192 <= 662 ulps.
+  */
+  uint64_t err = 662; // error bound in case inv=0 and x > 0
   z->sgn = sz; // restore sign
   /* Now z approximates atan(y/x) for inv=0, and atan(x/y) for inv=1,
      with -pi/4 < z < pi/4.
@@ -264,14 +279,20 @@ atan2_accurate (double y, double x)
     if (z->sgn == 0) { // 0 < atan(x/y) < pi/4
       z->sgn = 1;
       add_tint (z, &PI2, z);
-      // now pi/4 < z < pi/2
+      /* Now pi/4 < z < pi/2. The absolute error on z was bounded by
+         2^-182.63*pi/4, the error on PI2 is bounded by 2^-197.96, and
+         the add_tint() error is bounded by 2 ulp(pi/4) = 2^-191,
+         which yields a total error < 2^-182.63*pi/4 + 2^-197.96 + 2^-191
+         < 2^-182.97. Relatively to ulp(pi/4) this is less than 523. */
     }
     else // -pi/4 < atan(x/y) < 0
     {
       add_tint (z, &PI2, z);
       z->sgn = 1;
-      // now -pi/2 < z < -pi/4
+      /* Now -pi/2 < z < -pi/4. The same error analysis as above applies,
+         thus we get the same bound of 523 ulps. */
     }
+    err = 523;
   }
   // if x is negative we go to the opposite quadrant
   if (x < 0) {
@@ -279,11 +300,25 @@ atan2_accurate (double y, double x)
       z->sgn = 1;
       add_tint (z, &PI, z);
       z->sgn = 1;
+      /* If inv=0 we had 0 < z < pi/4 thus now -pi < z < -3pi/4.
+         If inv=1 we had pi/4 < z < pi/2 thus now -3pi/4 < z < -pi/2.
+         In all cases the absolute error on z was bounded by 2^-182.97,
+         that on PI is bounded by 2^-196.96, and the add_tint() error is
+         bounded by 2 ulp(pi/2) = 2^-190, which yields a total error
+         < 2^-182.97 + 2^-196.96 + 2^-190 < 2^-182.95.
+         Relatively to ulp(pi/2) this is less than 266 ulps. */
     }
     else // 4th quadrant -> 2nd quadrant (add pi)
+    {
       add_tint (z, &PI, z);
+      /* If inv=0 we had -pi/4 < z < 0 thus now 3pi/4 < z < pi.
+         If inv=1 we had -pi/2 < z < -pi/4 thus now pi/2 < z < 3pi/4.
+         The same analysis as above applies, and we get the same bound
+         of 266 ulps. */
+    }
+    err = 266;
   }
-  return tint_tod (z, 0, y, x);
+  return tint_tod (z, err, y, x);
 }
 
 // atan(y/x)

@@ -53,7 +53,7 @@ static const tint_t ZERO = {.h = 0, .m = 0, .l = 0, .ex = -1076, .sgn = 0};
 static const tint_t ONE = {
   .h = 0x8000000000000000, .m = 0, .l = 0, .ex = 1, .sgn = 0};
 
-// PI is a tint_t representation of pi
+// PI is a tint_t representation of pi, with error < 2^-196.96
 static const tint_t PI = {
   .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
   .ex = 2, .sgn = 0};
