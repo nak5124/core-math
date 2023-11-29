@@ -24,8 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEY 0x1.137050b853c68p+58
-#define TRACEX 0x1.1d12724fbe041p+52
+#define TRACEY 0x0.0000000000001p-1022
+#define TRACEX 0x1p+0
 
 #include <stdio.h>
 #include <stdint.h>
@@ -210,13 +210,14 @@ static const tint_t Q[30] = {
 static double
 atan2_accurate (double y, double x)
 {
-  //if (y == TRACEY && x == TRACEX) printf ("atan2_accurate: y=%la x=%la\n", y, x);
+  //  if (y == TRACEY && x == TRACEX) printf ("atan2_accurate: y=%la x=%la\n", y, x);
   int inv = __builtin_fabs (y) > __builtin_fabs (x);
   tint_t z[1], p[1], q[1];
   if (inv)
     div_tint_d (z, x, y);
   else
     div_tint_d (z, y, x);
+  // if (y == TRACEY && x == TRACEX) { printf ("z="); print_tint (z); }
   // below when we write y/x it should be read x/y when |x/y| < 1
   // |z - y/x| < 2^-185.53 * |z| as in atan2_accurate_small_or_large()
   // the rational approximation is only for z > 0, it is not antisymmetric
@@ -233,6 +234,8 @@ atan2_accurate (double y, double x)
   }
   // multiply p by z
   mul_tint (p, p, z);
+  //if (y == TRACEY && x == TRACEX) { printf ("p="); print_tint (p); }
+  //if (y == TRACEY && x == TRACEX) { printf ("q="); print_tint (q); }
   /* The routine errPsplit(e,13) in atan2.sage gives a relative error bound
      of 2^-184.14 for |p - z*P(z)|, for -11 <= e <= 0, which corresponds
      to 2^-12 <= z <= 1. */
@@ -241,6 +244,7 @@ atan2_accurate (double y, double x)
      to 2^-12 <= z <= 1. */
   // divide p by q
   div_tint (z, p, q);
+  //if (y == TRACEY && x == TRACEX) { printf ("p/q="); print_tint (z); }
   z->sgn = sz; // restore sign
   /* Now z approximates atan(y/x) for inv=0, and atan(x/y) for inv=1,
      with -pi/4 < z < pi/4.

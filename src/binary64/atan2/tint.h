@@ -353,6 +353,7 @@ static inline void tint_fromd (tint_t *a, double x)
 
 // convert a to a double with correct rouding
 // err is a bound in ulps on the maximal error on a->l
+// y,x are the inputs of atan2 (in case we can't round correctly)
 static inline double
 tint_tod (const tint_t *a, uint64_t err, double y, double x)
 {
@@ -398,8 +399,9 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
   static const double S[2] = {1.0, -1.0};
   double s = S[a->sgn];
   h = __builtin_fma (l, s, s * h);
-  h *= 0x1p-53;
-  return h * __builtin_ldexp (1.0, a->ex);
+  h *= 0x1p-52;
+  // now -1073 <= a->ex <= 1024 thus -1074 <= a->ex <= 1023
+  return h * __builtin_ldexp (1.0, a->ex - 1);
 }
 
 /* Put in r an approximation of 1/A, assuming A is not zero.
