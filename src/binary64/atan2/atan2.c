@@ -210,6 +210,14 @@ static const tint_t Q[30] = {
 static double
 atan2_accurate (double y, double x)
 {
+  /* first check when t=y/x is small and exact and x > 0, since for
+     |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest) */
+  double t = y / x;
+  double corr = __builtin_fma (t, x, -y);
+  if (corr == 0 && x > 0) // t is exact
+    if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
+      return __builtin_fma (t, -0x1p-54, t);
+
   //  if (y == TRACEY && x == TRACEX) printf ("atan2_accurate: y=%la x=%la\n", y, x);
   int inv = __builtin_fabs (y) > __builtin_fabs (x);
   tint_t z[1], p[1], q[1];
