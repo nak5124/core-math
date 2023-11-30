@@ -88,6 +88,7 @@ float cr_lgammaf(float x){
     {{.f = -0x1.5fb43ep+1}, 0x1.5b697p-17, 0x1p-42},
     {{.f = -0x1.5fa20cp+1}, -0x1.132f7ap-10, 0x1p-35},
     {{.f = -0x1.580c1ep+1}, -0x1.5787c6p-4, 0x1p-29},
+    {{.f = -0x1.3a7fcap+1}, -0x1.e4cf24p-24, -0x1p-49},
     {{.f = -0x1.c2f04p-30}, 0x1.43a6f6p+4, 0x1p-21},
     {{.f = -0x1.ade594p-30}, 0x1.446ab2p+4, -0x1p-21},
     {{.f = -0x1.437e74p-40}, 0x1.b7dec2p+4, -0x1p-21},
@@ -192,17 +193,37 @@ float cr_lgammaf(float x){
 	 -0x1.1302e3337271p+0, -0x1.c36b802f26dffp-2, -0x1.3ded448acc39dp-3, -0x1.bffc491078eafp-6};
       f = (z-1)*(z-2)*c0*as_r7(z, rn)/as_r8(z, rd);
       if(x < 0.0f){
-	f = 0x1.250d048e7a1bdp+0 - f;
-	double lp = as_ln(as_sinpi(x-fx)*z);
-	f -= lp;
+	if(__builtin_expect(t.u < 0x40301b93u && t.u > 0x402f95c2u, 0)){
+	  double h = (x + 0x1.5fb410a1bd901p+1) - 0x1.a19a96d2e6f85p-54, h2 = h*h, h4 = h2*h2;
+	  static const double c[] =
+	    {-0x1.ea12da904b18cp+0, 0x1.3267f3c265a54p+3, -0x1.4185ac30cadb3p+4, 0x1.f504accc3f2e4p+5,
+	     -0x1.8588444c679b4p+7, 0x1.43740491dc22p+9, -0x1.12400ea23f9e6p+11, 0x1.dac829f365795p+12};
+	  f = h*((c[0] + h*c[1]) + h2*(c[2] + h*c[3]) + h4*((c[4] + h*c[5]) + h2*(c[6] + h*c[7])));
+	} else if(__builtin_expect(t.u >  0x401ceccbu && t.u < 0x401d95cau, 0)){
+	  double h = (x + 0x1.3a7fc9600f86cp+1) + 0x1.55f64f98af8dp-55, h2 = h*h, h4 = h2*h2;
+	  static const double c[] =
+	    {0x1.83fe966af535fp+0, 0x1.36eebb002f61ap+2, 0x1.694a60589a0b3p+0, 0x1.1718d7aedb0b5p+3,
+	     0x1.733a045eca0d3p+2, 0x1.8d4297421205bp+4, 0x1.7feea5fb29965p+4};
+	  f = h*((c[0] + h*c[1]) + h2*(c[2] + h*c[3]) + h4*((c[4] + h*c[5]) + h2*(c[6])));
+	} else if(__builtin_expect(t.u > 0x40492009u && t.u < 0x404940efu, 0)){
+	  double h = (x + 0x1.9260dbc9e59afp+1) + 0x1.f717cd335a7b3p-53, h2 = h*h, h4 = h2*h2;
+	  static const double c[] =
+	    {0x1.f20a65f2fac55p+2, 0x1.9d4d297715105p+4, 0x1.c1137124d5b21p+6, 0x1.267203d24de38p+9,
+	     0x1.99a63399a0b44p+11, 0x1.2941214faaf0cp+14, 0x1.bb912c0c9cdd1p+16};
+	  f = h*((c[0] + h*c[1]) + h2*(c[2] + h*c[3]) + h4*((c[4] + h*c[5]) + h2*(c[6])));
+	} else {
+	  f = 0x1.250d048e7a1bdp+0 - f;
+	  double lp = as_ln(as_sinpi(x-fx)*z);
+	  f -= lp;
+	}
       }
     }
   }
 
   b64u64_u rt = {.f = f};
-  uint64_t tl = (rt.u+2048)&0xfffffff;
+  uint64_t tl = (rt.u+5)&0xfffffff;
   float r = f;
-  if(__builtin_expect(tl <= 5120u, 0)){
+  if(__builtin_expect(tl <= 31u, 0)){
     b32u32_u t = {.f = x};
     for(unsigned i=0;i<sizeof(tb)/sizeof(tb[0]);i++){
       if(t.u == tb[i].x.u) return tb[i].f + tb[i].df;
