@@ -416,6 +416,7 @@ def output_fast(p):
       assert x.exact_rational() == h.exact_rational() + l.exact_rational()
       print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
 
+# return Sollya approximation polynomial for atan(x) for x0-h <= x <= x0+h
 # sollya_approx(0.25,0.25,10,5)
 # use precision 107 up to degree i
 def sollya_approx(x0,h,d,i):
@@ -451,7 +452,7 @@ def Sollya_approx(k,d,i0,verbose=false):
       x0 = (i+1/2)*h
       p, err = sollya_approx(x0,h/2,d,i0)
       # check_poly(p,h/2)
-      err1 = err_poly(p,x0-h/2,x0+h/2,0)
+      err1 = err_poly(p,i,x0-h/2,x0+h/2,0)
       print (i, log(err1)/log(2.))
       if verbose:
          print_poly(p,i0,err,i)
@@ -496,25 +497,36 @@ def RIFulp(x):
    return max(x.lower().ulp(),x.upper().ulp())
 
 def table_err_poly():
-   s = "0"
+   s = "0x1.adp-65" # bound for i=0 (special case)
    R = RealField(9,rnd='RNDU')
-   for i in range(1,64): # i=0 is a special case
+   for i in range(1,64):
       p, err = sollya_approx((i+0.5)/64,1/128.,7,1)
-      err = err_poly(p,-1./128,1./128,err)
+      err = err_poly(p,i,-1./128,1./128,err)
+      err = err + 2^-102.294
       err = R(err)
       s += ", " + get_hex(err)
    print (s)
 
+# max_l()
+# 3.41711218583539e-17 # value for i=0
+def max_l():
+   maxl = 2^(-6-48.7) # |l| < 2^(e-48.7) for i=0 with 2^(e-1) < z < 2^e
+   for i in range(1,64):
+      p, err = sollya_approx((i+0.5)/64,1/128.,7,1)
+      l = err_poly(p,i,-1./128,1./128,err,bound_l=true)
+      l = max(maxl,l)
+   return maxl
+
 # same as err_poly() but for i=0
 def err_poly0(x0,x1,err0,verbose=false):
-   p = ["0x0", "0x1p0", "0x0", "-0x1.5555555555554p-2", "0x0", "0x1.999999989bf0bp-3", "0x0", "-0x1.249094edc886bp-3"]
+   p = ["0x0", "0x1p0", "0x0", "-0x1.5555555555555p-2", "0x0", "0x1.9999999999922p-4", "0x0", "-0x1.249247c670632p-3", "0x0", "0x1.c6e5d41706f0dp-4"]
    R.<x> = RR[]
-   p = add(RR(p[i],16)*x^i for i in [0..7])
-   return err_poly(p,x0,x1,err0,verbose=verbose)
+   p = add(RR(p[i],16)*x^i for i in [0..9])
+   return err_poly(p,0,x0,x1,err0,verbose=verbose)
 
-# split each binade [2^(e-1),2^e] for -1073 <= e <= -6 into 2^K subintervals
-# Err_poly0(73.778,e0=-34,K=8)
-# 4.53350250868976e-20
+# split each binade [2^(e-1),2^e] for e0 <= e <= e1 into 2^K subintervals
+# Err_poly0(71.798,e0=-34,K=8)
+# 4.55142303056794?e-20
 def Err_poly0(err0,K=0,e0=-1073,e1=-6,verbose=false):
    maxerr = 0
    for e in [e0..e1]:
@@ -533,21 +545,35 @@ def Err_poly0(err0,K=0,e0=-1073,e1=-6,verbose=false):
 
 # compute the maximal relative error when evaluating p(x) for x0 <= x <= x1
 # with Horner's rule, where err0 is the relative error from Sollya
+# if bound_l=true, return a bound on the final value l
 # p, err = sollya_approx(1.5/64,1/128.,7,1)
-# err_poly(p,-1./128,1./128,err)
-def err_poly(p,x0,x1,err0,verbose=false):
+# err_poly(p,1,-1./128,1./128,err)
+# 2.37954235609872e-19
+# err_poly(p,1,-1./128,1./128,err,bound_l=true)
+# 1.78253939491364e-15
+def err_poly(p,i,x0,x1,err0,verbose=false,bound_l=false):
    R = p.parent()
    zh = RIF(x0,x1)
    zl = RIF(2^-48.999)
    p = p.change_ring(RIF)
    R = RealField(107)
    d = p.degree()
-   assert d==7, "d==7"
-   # *h = p[9]
-   h = p[7]
    err = dict()
    # z = zh + zl
    z = zh+zl
+   if i==0:
+      assert d==9, "d==9"
+   else:
+      assert d==7, "d==7"
+   # h = (i == 0) ? __builtin_fma (P9, z * z, p[9]) ? p[9]
+   if i==0:
+      z2 = z*z
+      t = p[9]*z2
+      h = t+p[7]
+      err[7] = (RIFulp(h)+RIFulp(t)+p[9]*RIFulp(z2))*z.abs().upper()^7
+   else:
+      h = p[7]
+      err[7] = 0
    errz = RIFulp(z)
    for j in range(6,1,-1):
       # *h = __builtin_fma (*h, zh, p[2+j])
@@ -608,11 +634,13 @@ def err_poly(p,x0,x1,err0,verbose=false):
    if p[0]!=0:
       err[0] += RIFulp(t) # error on t+p1
    l += t
+   if bound_l:
+      return l.abs().upper()
    if p[0]!=0:
       err[0] += RIFulp(l) # error on l += ...
    if verbose:
       print ("j=", 0, "err=", log(err[0])/log(2.))
-   tot_err = add(err[i] for i in [0..6])
+   tot_err = add(err[i] for i in [0..7])
    # add err0
    res = h+l
    if verbose:
