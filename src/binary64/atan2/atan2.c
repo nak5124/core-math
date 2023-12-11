@@ -26,7 +26,6 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdint.h>
-#include <assert.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -465,17 +464,6 @@ static void fast_div1 (double *h, double *l, double bh, double ah)
      where 1/2 is the smallest possible value of h+l. */
 }
 
-// h + l <- (bh + bl) / (ah + al) (copied from tan.c)
-static inline void
-fast_div (double *h, double *l, double bh, double bl, double ah, double al)
-{
-  double y = 1.0 / ah;
-  *h = bh * y;
-  double eh = __builtin_fma (ah, -*h, bh);
-  double el = __builtin_fma (al, -*h, bl);
-  *l = y * (eh + el);
-}
-
 static inline void
 fast_two_sum (double *hi, double *lo, double a, double b)
 {
@@ -488,19 +476,9 @@ fast_two_sum (double *hi, double *lo, double a, double b)
 
 // assumes |ah| >= |bh|
 static inline void
-dd_sum_fast (double *h, double *l, double ah, double al, double bh, double bl)
-{
-  fast_two_sum (h, l, ah, bh);
-  *l += al + bl;
-}
-
-static inline void
 dd_sum (double *h, double *l, double ah, double al, double bh, double bl)
 {
-  if (__builtin_fabs (ah) >= __builtin_fabs (bh))
-    fast_two_sum (h, l, ah, bh);
-  else
-    fast_two_sum (h, l, bh, ah);
+  fast_two_sum (h, l, ah, bh);
   *l += al + bl;
 }
 
@@ -527,13 +505,6 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
   t = __builtin_fma(al, bh, s);
   *lo = __builtin_fma(ah, bl, t);
 }
-
-// |PIH + PIL - pi| < 2^-108.04
-#define PIH 0x1.921fb54442d18p+1
-#define PIL 0x1.1a62633145c07p-53
-// |PIOVER2H + PIOVER2L - pi| < 2^-109.04
-#define PIOVER2H 0x1.921fb54442d18p+0
-#define PIOVER2L 0x1.1a62633145c07p-54
 
 // fast path: return err such that |h + l - atan2(y,x)| < err*h 
 static double atan2_fast (double *h, double *l, double y, double x)
@@ -643,13 +614,13 @@ static double atan2_fast (double *h, double *l, double y, double x)
     if (!negz)
       /* if y/x > 0 thus atan(y/x) > 0 we apply pi/2 - atan(y/x)
          and the result will be in (pi/4, pi/2) */
-      dd_sum_fast (h, l, PIOVER2H, PIOVER2L, -*h, -*l);
+      dd_sum (h, l, PI_OVER2_H, PI_OVER2_L, -*h, -*l);
     /* Assume the relative error on h+l is bounded by eps[i].
        Since |h+l| < pi/4 the absolute error is bounded by eps[i]*pi/4.
-       Now |PIOVER2H + PIOVER2L - pi/2| < 2^-109.04 and the error on
-       dd_sum_fast() is bounded by ulp(PIOVER2L+l_in) + ulp(l_out).
+       Now |PI_OVER2_H + PI_OVER2_L - pi/2| < 2^-109.04 and the error on
+       dd_sum() is bounded by ulp(PI_OVER2_L+l_in) + ulp(l_out).
        Since |l_in| < 2^-54.7 (see max_l() in atan2.sage), we have
-       |PIOVER2L+l_in| < 2^-53.2 thus ulp(PIOVER2L+l_in) <= 2^-106.
+       |PI_OVER2_L+l_in| < 2^-53.2 thus ulp(PI_OVER2_L+l_in) <= 2^-106.
        Now |l_out| < ulp(h_out) + 2^-106 <= 2^-52 + 2^-106 < 2^-51.999
        thus ulp(l_out) <= 2^-104.
        The absolute error is thus bounded by:
@@ -661,7 +632,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
          and the result will be in (-pi/2,-pi/4) */
       // the same error analysis as above applies: the relative error is
       // bounded by eps[i] + 2^-103.294
-      dd_sum_fast (h, l, -PIOVER2H, -PIOVER2L, -*h, -*l);
+      dd_sum (h, l, -PI_OVER2_H, -PI_OVER2_L, -*h, -*l);
   }
   // now -pi/2 < h+l < pi/2 with error bounded by eps[i] + 2^-103.294
   if (negx)
@@ -669,11 +640,11 @@ static double atan2_fast (double *h, double *l, double y, double x)
     if (!negz)
       /* 1st quadrant -> 3rd quadrant (subtract pi), and the result
          will be in (-pi,-pi/2) */
-      dd_sum_fast (h, l, -PIH, -PIL, *h, *l);
+      dd_sum (h, l, -PI_H, -PI_L, *h, *l);
     /* The relative error on h+l is bounded by eps[i] + 2^-103.294.
        Since |h+l| < pi/2 the absolute error is bounded by
        (eps[i] + 2^-103.294)*pi/2.
-       Now |PIH + PIL - pi| < 2^-108.04 and the error on dd_sum_fast()
+       Now |PI_H + PI_L - pi| < 2^-108.04 and the error on dd_sum()
        is bounded by ulp(PIL+l_in) + ulp(l_out).
        Since |l_in| < 2^-54.7 (see max_l() in atan2.sage), we have
        |PIL+l_in| < 2^-52.5 thus ulp(PIL+l_in) <= 2^-105.
@@ -689,7 +660,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
          in (pi/2,pi) */
       // the same error analysis as above applies: the relative error is
       // bounded by eps[i] + 2^-102.294
-      dd_sum_fast (h, l, PIH, PIL, *h, *l);
+      dd_sum (h, l, PI_H, PI_L, *h, *l);
   }
   return err_fast[i];
 }
