@@ -289,18 +289,18 @@ atan2_accurate (double y, double x)
       add_tint (z, &PI2, z);
       /* Now pi/4 < z < pi/2. The absolute error on z was bounded by
          2^-182.63*pi/4, the error on PI2 is bounded by 2^-197.96, and
-         the add_tint() error is bounded by 2 ulp(pi/4) = 2^-191,
-         which yields a total error < 2^-182.63*pi/4 + 2^-197.96 + 2^-191
-         < 2^-182.97. Relatively to ulp(pi/4) this is less than 523. */
+         the add_tint() error is bounded by 2 ulp(pi/2) = 2^-190,
+         which yields a total error < 2^-182.63*pi/4 + 2^-197.96 + 2^-190
+         < 2^-182.967. Relatively to ulp(pi/4) this is less than 524. */
     }
     else // -pi/4 < atan(x/y) < 0
     {
       add_tint (z, &PI2, z);
       z->sgn = 1;
       /* Now -pi/2 < z < -pi/4. The same error analysis as above applies,
-         thus we get the same bound of 523 ulps. */
+         thus we get the same bound of 524 ulps. */
     }
-    err = 523;
+    err = 524;
   }
   // if x is negative we go to the opposite quadrant
   if (x < 0) {
