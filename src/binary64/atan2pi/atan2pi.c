@@ -65,9 +65,6 @@ static inline int is_inf (uint64_t u)
   return u == (0x7fful << 52);
 }
 
-// PI_H+PI_L approximates pi with error bounded by 2^-108.041
-#define PI_H 0x1.921fb54442d18p+1
-#define	PI_L 0x1.1a62633145c07p-53
 // ONE_OVER_PI_H+ONE_OVER_PI_L approximates 1/pi with rel. error < 2^-107.871
 #define ONE_OVER_PI_H 0x1.45f306dc9c883p-2
 #define ONE_OVER_PI_L -0x1.6b01ec5417056p-56
@@ -521,12 +518,13 @@ fast_two_sum (double *hi, double *lo, double a, double b)
   *lo = b - e; /* exact */
 }
 
+// same as dd_sum() from atan2.c, for al=0
 // assumes |ah| >= |bh|
 static inline void
-dd_sum (double *h, double *l, double ah, double al, double bh, double bl)
+dd_sum1 (double *h, double *l, double ah, double bh, double bl)
 {
   fast_two_sum (h, l, ah, bh);
-  *l += al + bl;
+  *l += bl;
 }
 
 // Multiply exactly a and b, such that *hi + *lo = a * b.
@@ -699,16 +697,17 @@ static double atan2pi_fast (double *h, double *l, double y, double x)
   *h *= sz;
   *l *= sz;
 
+  // atan2pi_begin
   // now -1/4 < h+l < 1/4
   if (inv)
   {
     if (!negz)
       /* if y/x > 0 thus atanpi(y/x) > 0 we apply 1/2 - atanpi(y/x)
          and the result will be in (1/4, 1/2) */
-      dd_sum (h, l, 0.5, 0.0, -*h, -*l);
+      dd_sum1 (h, l, 0.5, -*h, -*l);
     /* Assume the relative error on h_in+l_in is bounded by eps'[i].
        Since |h_in+l_in| < 1/4 the absolute error is bounded by eps'[i]/4.
-       Since 0 - l_in is exact, the error on dd_sum() is bounded by
+       Since 0 - l_in is exact, the error on dd_sum1() is bounded by
        2^-105*|h_out| + ulp(l_out).
        Now |l_out| < ulp(h_out) + |l_in| <= ulp(h_out) + 2^-47.607*|h_in|
        [see above] <= ulp(1/2) + 2^-47.607*1/4 < 2^-49.4,
@@ -722,7 +721,7 @@ static double atan2pi_fast (double *h, double *l, double y, double x)
          and the result will be in (-1/2,-1/4) */
       // the same error analysis as above applies: the relative error is
       // bounded by eps'[i] + 2^-99.912
-      dd_sum (h, l, -0.5, -0.0, -*h, -*l);
+      dd_sum1 (h, l, -0.5, -*h, -*l);
   }
   // now -1/2 <= h+l <= 1/2 with error bounded by eps'[i] + 2^-99.912
   if (negx)
@@ -730,11 +729,11 @@ static double atan2pi_fast (double *h, double *l, double y, double x)
     if (!negz)
       /* 1st quadrant -> 3rd quadrant (subtract 1), and the result
          will be in (-1,-1/2) */
-      dd_sum (h, l, -1.0, -0.0, *h, *l);
+      dd_sum1 (h, l, -1.0, *h, *l);
     /* The relative error on h_in+l_in is bounded by eps'[i] + 2^-99.912.
        Since |h_in+l_in| < 1/2 the absolute error is bounded by
        (eps'[i] + 2^-99.912)/2.
-       The error on dd_sum() is bounded by: 2^-105*|h| + ulp(l).
+       The error on dd_sum1() is bounded by: 2^-105*|h| + ulp(l).
        Since |h| <= 1, 2^-105*|h| <= 2^-105.
        Now |l| < ulp(h) + |l_in|. 
        Since |l_in| < 2^-47.607*|h_in| [see above], and |h_in| <= 1/2,
@@ -747,11 +746,12 @@ static double atan2pi_fast (double *h, double *l, double y, double x)
               < eps'[i] + 2^-98.912. */
     else
       /* 4th quadrant -> 2nd quadrant (add 1), and the result will be
-         in (pi/2,pi) */
+         in (1/2,1) */
       // the same error analysis as above applies: the relative error is
       // bounded by eps[i] + 2^-98.912
-      dd_sum (h, l, 1.0, 0.0, *h, *l);
+      dd_sum1 (h, l, 1.0, *h, *l);
   }
+  // atan2pi_end
   return err_fast[i];
 }
 
