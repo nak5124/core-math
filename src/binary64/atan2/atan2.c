@@ -24,9 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEY -0x1.3ea637b6296e1p+15
-#define TRACEX 0x1.c7164a51fe7a8p+1023
-
 #include <stdio.h>
 #include <stdint.h>
 
@@ -41,24 +38,19 @@ typedef union { double f; uint64_t u; } d64u64;
 
 #include "tint.h"
 
-// return non-zero if u (with sign bit cleared) encodes Inf or NaN
-static inline int inf_or_nan (uint64_t u)
-{
-  return (u >> 52) == 0x7ff;
-}
+#define MASK 0x7ffffffffffffffful // 2^63-1 (mask the sign bit)
 
-#define MASK 0x7ffffffffffffffful
-
+// assume sign bit was removed
 static inline int is_nan (uint64_t u)
 {
-  u = u & MASK;
   uint64_t e = u >> 52;
   return e == 0x7ff && u != (e << 52);
 }
 
+// assume sign bit was removed
 static inline int is_inf (uint64_t u)
 {
-  return (u & MASK) == (0x7fful << 52);
+  return u == (0x7fful << 52);
 }
 
 // PI_H+PI_L approximates pi with error bounded by 2^-108.041
@@ -685,11 +677,11 @@ static double atan2_fast (double *h, double *l, double y, double x)
 // atan(y/x)
 double cr_atan2 (double y, double x)
 {
-  // int bug = y == TRACEY && x == TRACEX;
   d64u64 uy = {.f = y}, ux = {.f = x};
   uint64_t ay = uy.u & MASK, ax = ux.u & MASK;
+  int ey = ay >> 52, ex = ax >> 52;
 
-  if (__builtin_expect (inf_or_nan (ay) || inf_or_nan (ax), 0))
+  if (__builtin_expect (ey == 0x7ff || ex == 0x7ff, 0)) // NaN or Inf
   {
     if (is_nan (ay) || is_nan (ax))
       return y + x; // if y or x is sNaN, returns qNaN are raises invalid
@@ -742,23 +734,16 @@ double cr_atan2 (double y, double x)
 
   // now both y and x are neither NaN, nor +/-Inf, nor +/-0
 
-  d64u64 vy = {.f = y}, vx = {.f = x};
-  int ey = (vy.u >> 52) & 0x7ff, ex = (vx.u >> 52) & 0x7ff;
-  // if (bug) printf ("ey=%d ex=%d\n", ey, ex);
   // when y is near the subnormal range, fast_div1() does not work properly
   if (__builtin_expect (ey > 52 && ey - ex > -1000, 1))
   {
     double h, l, err;
-    //if (bug) printf ("enter fast path\n");
     err = atan2_fast (&h, &l, y, x);
     double left =  h + __builtin_fma (h, -err, l);
     double right = h + __builtin_fma (h, +err, l);
     if (left == right)
       return left;
-    //if (bug) printf ("fast path failed\n");
   }
-
-  //if (bug) printf ("calling accurate path\n");
 
   return atan2_accurate (y, x);
 }
