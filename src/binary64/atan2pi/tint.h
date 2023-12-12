@@ -53,15 +53,14 @@ static const tint_t ZERO = {.h = 0, .m = 0, .l = 0, .ex = -1076, .sgn = 0};
 static const tint_t ONE = {
   .h = 0x8000000000000000, .m = 0, .l = 0, .ex = 1, .sgn = 0};
 
-// PI is a tint_t representation of pi, with error < 2^-196.96
-static const tint_t PI = {
-  .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
-  .ex = 2, .sgn = 0};
+// ONE_HALF is a tint_t representation of 1/2
+static const tint_t ONE_HALF = {
+  .h = 0x8000000000000000, .m = 0, .l = 0, .ex = 0, .sgn = 0};
 
-// PI2 is a tint_t representation of pi/2, with error < 2^-197.96
-static const tint_t PI2 = {
-  .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
-  .ex = 1, .sgn = 0};
+// ONE_OVER_PI is a tint_t representation of 1/pi, with rel. error < 2^-198.59
+static const tint_t ONE_OVER_PI = {
+  .h = 0xa2f9836e4e441529, .m = 0xfc2757d1f534ddc0, .l = 0xdb6295993c439042,
+  .ex = -1, .sgn = 0};
 
 // Print a tint_t value for debugging purposes
 static inline void print_tint (const tint_t *a) {
