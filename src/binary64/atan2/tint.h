@@ -149,8 +149,8 @@ tint_zero_p (const tint_t *a)
 }
 
 static inline int cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
-static inline char cmpu64(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
-static inline char cmpu128(u128 a, u128 b) { return (a > b) - (a < b); }
+static inline int cmpu64(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
+static inline int cmpu128(u128 a, u128 b) { return (a > b) - (a < b); }
 
 // Compare the absolute values of a and b
 // Return -1 if |a| < |b|
