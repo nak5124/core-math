@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
+#include <stdio.h> // needed in case of correct rounding failure
 #include <stdint.h>
 
 // Warning: clang also defines __GNUC__
