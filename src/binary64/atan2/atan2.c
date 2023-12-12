@@ -416,7 +416,7 @@ static const double Pfast[64][10] = {
    range [i/64,(i+1)/64]. */
 static const double Xfast[64] = {0, 0x1.8p-6, 0x1.4p-5, 0x1.cp-5, 0x1.2p-4, 0x1.6p-4, 0x1.ap-4, 0x1.ep-4, 0x1.1p-3, 0x1.3p-3, 0x1.5p-3, 0x1.7p-3, 0x1.9p-3, 0x1.bp-3, 0x1.dp-3, 0x1.fp-3, 0x1.08p-2, 0x1.18p-2, 0x1.28p-2, 0x1.38p-2, 0x1.48p-2, 0x1.58p-2, 0x1.68p-2, 0x1.78p-2, 0x1.88p-2, 0x1.98p-2, 0x1.a8p-2, 0x1.b8p-2, 0x1.c8p-2, 0x1.d8p-2, 0x1.e8p-2, 0x1.f8p-2, 0x1.04p-1, 0x1.0cp-1, 0x1.14p-1, 0x1.1cp-1, 0x1.24p-1, 0x1.2cp-1, 0x1.34p-1, 0x1.3cp-1, 0x1.44p-1, 0x1.4cp-1, 0x1.54p-1, 0x1.5cp-1, 0x1.64p-1, 0x1.6cp-1, 0x1.74p-1, 0x1.7cp-1, 0x1.84p-1, 0x1.8cp-1, 0x1.94p-1, 0x1.9cp-1, 0x1.a4p-1, 0x1.acp-1, 0x1.b4p-1, 0x1.bcp-1, 0x1.c4p-1, 0x1.ccp-1, 0x1.d4p-1, 0x1.dcp-1, 0x1.e4p-1, 0x1.ecp-1, 0x1.f4p-1, 0x1.fcp-1};
 
-/* For 0 <= i < 64, err_fast[i] is a bound on the total relative error 
+/* For 0 <= i < 64, err_fast[i] is a bound on the total relative error
    on the range [i/64,(i+1)/64], including the approximation error from
    Pfast[i] and all rounding errors.
    For i=0 the analysis is done in comment in the code below, while for
@@ -429,7 +429,7 @@ static const double err_fast[64] = {0x1.adp-65, 0x1.19p-62, 0x1.ap-63, 0x1.61p-6
    Ensure |l| < 2^-48.999 for 1 <= ah, bh < 2,
    thus |l| < 2^(e-48.999) when bh/ah < 2^e.
    Assumes 2^-1024 < |ah| <= 2^1022, 2^-969 <= |bh|,
-   and 2^-1023 <= |bh/ah| < 2^1023.
+   and 2^-969 <= |bh/ah| <= 2^1023.
 */
 static void fast_div1 (double *h, double *l, double bh, double ah)
 {
@@ -451,7 +451,7 @@ static void fast_div1 (double *h, double *l, double bh, double ah)
   /* y = 1/ah / (1 + eps1) with |eps1| < 2^-52.
      |1-ah*y| < |eps1| < 2^-52. */
   *h = bh * y;
-  /* The condition 2^-1023 <= |bh/ah| < 2^1023 ensures there is no underflow
+  /* The condition 2^-969 <= |bh/ah| <= 2^1023 ensures there is no underflow
      nor overflow, since bh * y = bh/ah / (1 + eps1) with |eps1| < 2^-52. */
   /* h = bh * y / (1 + eps2) with |eps2| < 2^-52
        = bh/ah / (1 + eps1) / (1 + eps2)
@@ -471,6 +471,7 @@ static void fast_div1 (double *h, double *l, double bh, double ah)
   /* from the analysis above, we have |eh| < 2^-48.999 thus the rounding error
      is bounded by ulp(2^-48.999) = 2^-101 */
   *l = y * eh;
+  // the condition 2^-969 <= |bh/ah| ensures that l does not underflow
   /* We have y < 1 and |eh| < 2^-48.999, thus |l| < 2^-48.999 and the rounding
      error on l is bounded by ulp(2^-48.999) = 2^-101.
      The total rounding error is thus bounded by:
@@ -502,7 +503,7 @@ dd_sum (double *h, double *l, double ah, double al, double bh, double bl)
   *l += al + bl;
 }
 
-// Multiply exactly a and b, such that *hi + *lo = a * b. 
+// Multiply exactly a and b, such that *hi + *lo = a * b.
 static inline void a_mul(double *hi, double *lo, double a, double b) {
   *hi = a * b;
   *lo = __builtin_fma (a, b, -*hi);
@@ -527,7 +528,7 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
 }
 
 /* Fast path: return err such that |h + l - atan2(y,x)| < err*h.
-   Assumes 2^-969 < |x|, |y| <= 2^1022 and 2^-1023 <= |y/x| < 2^1023
+   Assumes 2^-969 < |x|, |y| <= 2^1022 and 2^-969 <= |y/x| <= 2^969
    (conditions needed for fast_div1). */
 static double atan2_fast (double *h, double *l, double y, double x)
 {
@@ -544,7 +545,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
   // the rational approximation is only for z > 0, it is not antisymmetric
   double sz = 1.0;
   if (zh < 0) { zh = -zh; zl = -zl; sz = -1.0; }
-  
+
   // now approximate atan(zh+zl) for 0 <= zh+zl < 1
   int i = __builtin_trunc (64.0 * zh); // 0 <= i < 64
   const double *p = Pfast[i];
@@ -748,9 +749,10 @@ double cr_atan2 (double y, double x)
   // now both y and x are neither NaN, nor +/-Inf, nor +/-0
 
   /* atan2_fast requires 2^-969 <= |x|, |y| <= 2^1022
-     and 2^-1023 <= |y/x| < 2^1023 */
-  if (__builtin_expect (54 <= ex && ex <= 2044 && 54 <= ey && ey <= 2044
-                        && -1022 <= ey - ex && ey - ex <= 1022, 1))
+     and 2^-969 <= |y/x| < 2^969 */
+  // 2^-969 <= |x| <= 2^1022 translates into 54 <= ex <= 2044
+  if (__builtin_expect (54 <= ex && ex <= 2044 && 54 <= ey && ey <= 2044 &&
+                        -968 <= ey - ex && ey - ex <= 968, 1))
   {
     double h, l, err;
     err = atan2_fast (&h, &l, y, x);
