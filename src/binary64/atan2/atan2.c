@@ -427,7 +427,10 @@ static const double err_fast[64] = {0x1.adp-65, 0x1.19p-62, 0x1.ap-63, 0x1.61p-6
    (copied and simplified from tan.c).
    Here is it called with 0 < bh/ah < 1.
    Ensure |l| < 2^-48.999 for 1 <= ah, bh < 2,
-   thus |l| < 2^(e-48.999) when bh/ah < 2^e. */
+   thus |l| < 2^(e-48.999) when bh/ah < 2^e.
+   Assumes 2^-1024 < |ah| <= 2^1022, 2^-969 <= |bh|,
+   and 2^-1023 <= |bh/ah| < 2^1023.
+*/
 static void fast_div1 (double *h, double *l, double bh, double ah)
 {
   /* We use here Karp-Markstein's trick for division:
@@ -442,9 +445,14 @@ static void fast_div1 (double *h, double *l, double bh, double ah)
      For the error analysis, we assume 1 <= ah, bh < 2.
   */
   double y = 1.0 / ah;
+  /* There is no overflow in y since |ah| > 2^-1024 and
+     1/nextabove(2^1024) < DBL_MAX.
+     And there is no underflow since |ah| <= 2^1022. */
   /* y = 1/ah / (1 + eps1) with |eps1| < 2^-52.
      |1-ah*y| < |eps1| < 2^-52. */
   *h = bh * y;
+  /* The condition 2^-1023 <= |bh/ah| < 2^1023 ensures there is no underflow
+     nor overflow, since bh * y = bh/ah / (1 + eps1) with |eps1| < 2^-52. */
   /* h = bh * y / (1 + eps2) with |eps2| < 2^-52
        = bh/ah / (1 + eps1) / (1 + eps2)
      thus writing z = h:
@@ -457,6 +465,9 @@ static void fast_div1 (double *h, double *l, double bh, double ah)
      We assume the same bound hold for b,a: |b/a-z'| < 2^-100.999.
   */
   double eh = __builtin_fma (ah, -*h, bh);
+  /* The condition 2^-969 <= |bh| ensures that ah*h, which has at most 106
+     significant bits, and approximates bh, does not underflow, thus the
+     usual error analysis applies. */
   /* from the analysis above, we have |eh| < 2^-48.999 thus the rounding error
      is bounded by ulp(2^-48.999) = 2^-101 */
   *l = y * eh;
@@ -515,7 +526,9 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
   *lo = __builtin_fma(ah, bl, t);
 }
 
-// fast path: return err such that |h + l - atan2(y,x)| < err*h 
+/* Fast path: return err such that |h + l - atan2(y,x)| < err*h.
+   Assumes 2^-969 < |x|, |y| <= 2^1022 and 2^-1023 <= |y/x| < 2^1023
+   (conditions needed for fast_div1). */
 static double atan2_fast (double *h, double *l, double y, double x)
 {
   d64u64 vy = {.f = y}, vx = {.f = x};
@@ -734,8 +747,10 @@ double cr_atan2 (double y, double x)
 
   // now both y and x are neither NaN, nor +/-Inf, nor +/-0
 
-  // when y is near the subnormal range, fast_div1() does not work properly
-  if (__builtin_expect (ey > 52 && ey - ex > -1000, 1))
+  /* atan2_fast requires 2^-969 <= |x|, |y| <= 2^1022
+     and 2^-1023 <= |y/x| < 2^1023 */
+  if (__builtin_expect (54 <= ex && ex <= 2044 && 54 <= ey && ey <= 2044
+                        && -1022 <= ey - ex && ey - ex <= 1022, 1))
   {
     double h, l, err;
     err = atan2_fast (&h, &l, y, x);

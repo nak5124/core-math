@@ -115,10 +115,10 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
-#define N 1000000000ul
+#define N 10000000000ul // total number of tests
 
 static void
-check_random (int i)
+check_random (int i, int nthreads)
 {
   ref_init ();
   ref_fesetround (rnd);
@@ -126,7 +126,7 @@ check_random (int i)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-  for (unsigned long n = 0; n < N; n++)
+  for (unsigned long n = 0; n < N; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -142,7 +142,7 @@ check_random_all (void)
   nthreads = omp_get_num_threads ();
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
 }
 
 int
