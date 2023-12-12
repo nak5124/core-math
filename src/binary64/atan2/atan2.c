@@ -431,7 +431,7 @@ static const double err_fast[64] = {0x1.adp-65, 0x1.19p-62, 0x1.ap-63, 0x1.61p-6
    Assumes 2^-1024 < |ah| <= 2^1022, 2^-969 <= |bh|,
    and 2^-969 <= |bh/ah| <= 2^1023.
 */
-static void fast_div1 (double *h, double *l, double bh, double ah)
+static void fast_div (double *h, double *l, double bh, double ah)
 {
   /* We use here Karp-Markstein's trick for division:
      let b = bh, a = ah, y = o(1/a), and z = o(b*y),
@@ -529,7 +529,7 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
 
 /* Fast path: return err such that |h + l - atan2(y,x)| < err*h.
    Assumes 2^-969 < |x|, |y| <= 2^1022 and 2^-969 <= |y/x| <= 2^969
-   (conditions needed for fast_div1). */
+   (conditions needed for fast_div). */
 static double atan2_fast (double *h, double *l, double y, double x)
 {
   d64u64 vy = {.f = y}, vx = {.f = x};
@@ -538,7 +538,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
   if (inv) { double t = y; y = x; x = t; }
   // now |y| <= |x|
   double zh, zl;
-  fast_div1 (&zh, &zl, y, x);
+  fast_div (&zh, &zl, y, x);
   // for |zh| < 2^e, we have |zl| < 2^(e-48.999)
 
   // zh + zl = y/x * (1 + eps1) with |eps1| < 2^-98.41
