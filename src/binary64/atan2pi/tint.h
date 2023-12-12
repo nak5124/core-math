@@ -25,7 +25,6 @@ SOFTWARE.
 */
 
 #include <stdlib.h>
-#include <assert.h>
 
 typedef unsigned __int128 u128;
 

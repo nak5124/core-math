@@ -24,9 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEY 0x1.bf3cd3c001fd3p-620
-#define TRACEX -0x1.f31e4ee5c7d4bp+629
-
 /* This implementation is derived from the CORE-MATH atan2.c code
    (branch pz_atan2, revision 1ced4a8), using the formula
    atan2pi (y, x) = atan2(y, x) / pi.
@@ -211,8 +208,6 @@ static const tint_t Q[30] = {
 static double
 atan2pi_accurate (double y, double x)
 {
-  int bug = y == TRACEY && x == TRACEX;
-
   int inv = __builtin_fabs (y) > __builtin_fabs (x);
   tint_t z[1], p[1], q[1];
   if (inv) // case |y| > |x|
@@ -243,7 +238,6 @@ atan2pi_accurate (double y, double x)
       return (y > 0) ? 1.0 - 0x1p-54 : -1.0 + 0x1p-54;
     // atan2pi_end
   }
-  if (bug) { printf ("z="); print_tint (z); }
   // below when we write y/x it should be read x/y when |x/y| < 1
   // |z - y/x| < 2^-185.53 * |z| (relative error from div_tint_d)
   // the rational approximation is only for z > 0, it is not antisymmetric
@@ -348,7 +342,6 @@ atan2pi_accurate (double y, double x)
     err = 177;
   }
   // atan2pi_end
-  if (bug) { printf ("err=%lu z=", err); print_tint (z); }
   return tint_tod (z, err, y, x);
 }
 
