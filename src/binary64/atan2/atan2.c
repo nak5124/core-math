@@ -638,51 +638,54 @@ static double atan2_fast (double *h, double *l, double y, double x)
       /* if y/x > 0 thus atan(y/x) > 0 we apply pi/2 - atan(y/x)
          and the result will be in (pi/4, pi/2) */
       dd_sum (h, l, PI_OVER2_H, PI_OVER2_L, -*h, -*l);
-    /* Assume the relative error on h+l is bounded by eps[i].
-       Since |h+l| < pi/4 the absolute error is bounded by eps[i]*pi/4.
+    /* Assume the relative error on h_in+l_in is bounded by eps[i].
+       Since |h_in+l_in| < pi/4 the absolute error is bounded by eps[i]*pi/4.
        Now |PI_OVER2_H + PI_OVER2_L - pi/2| < 2^-109.04 and the error on
-       dd_sum() is bounded by ulp(PI_OVER2_L+l_in) + ulp(l_out).
+       dd_sum() is bounded by 2^-105*|h|+ulp(PI_OVER2_L+l_in) + ulp(l).
+       Since |h| < pi/2, 2^-105*|h| < 2^-105*pi/2 < 2^-104.348.
        Since |l_in| < 2^-54.7 (see max_l() in atan2.sage), we have
        |PI_OVER2_L+l_in| < 2^-53.2 thus ulp(PI_OVER2_L+l_in) <= 2^-106.
-       Now |l_out| < ulp(h_out) + 2^-106 <= 2^-52 + 2^-106 < 2^-51.999
-       thus ulp(l_out) <= 2^-104.
+       Now |l| < ulp(h) + 2^-106 <= 2^-52 + 2^-106 < 2^-51.999
+       thus ulp(l) <= 2^-104.
        The absolute error is thus bounded by:
-       eps[i]*pi/4 + 2^-109.04 + 2^-106 + 2^-104.
+       eps[i]*pi/4 + 2^-109.04 + 2^-104.348 + 2^-106 + 2^-104.
        Since h+l>pi/4, the relative error is bounded by:
-       eps[i] + (2^-109.04 + 2^-106 + 2^-104)/(pi/4) < eps[i] + 2^-103.294. */
+       eps[i] + (2^-109.04 + 2^-104.348 + 2^-106 + 2^-104)/(pi/4)
+       < eps[i] + 2^-102.604. */
     else
       /* if y/x < 0 thus atan(y/x) < 0 we apply -pi/2 - atan(y/x)
          and the result will be in (-pi/2,-pi/4) */
       // the same error analysis as above applies: the relative error is
-      // bounded by eps[i] + 2^-103.294
+      // bounded by eps[i] + 2^-102.604
       dd_sum (h, l, -PI_OVER2_H, -PI_OVER2_L, -*h, -*l);
   }
-  // now -pi/2 < h+l < pi/2 with error bounded by eps[i] + 2^-103.294
+  // now -pi/2 < h+l < pi/2 with error bounded by eps[i] + 2^-102.604
   if (negx)
   {
     if (!negz)
       /* 1st quadrant -> 3rd quadrant (subtract pi), and the result
          will be in (-pi,-pi/2) */
       dd_sum (h, l, -PI_H, -PI_L, *h, *l);
-    /* The relative error on h+l is bounded by eps[i] + 2^-103.294.
+    /* The relative error on h+l is bounded by eps[i] + 2^-102.604.
        Since |h+l| < pi/2 the absolute error is bounded by
-       (eps[i] + 2^-103.294)*pi/2.
+       (eps[i] + 2^-102.604)*pi/2.
        Now |PI_H + PI_L - pi| < 2^-108.04 and the error on dd_sum()
-       is bounded by ulp(PIL+l_in) + ulp(l_out).
+       is bounded by 2^-105*|h| + ulp(PIL+l_in) + ulp(l_out).
+       Since |h| < pi, 2^-105*|h| < 2^-103.348.
        Since |l_in| < 2^-54.7 (see max_l() in atan2.sage), we have
        |PIL+l_in| < 2^-52.5 thus ulp(PIL+l_in) <= 2^-105.
        Now |l_out| < ulp(h_out) + 2^-105 <= 2^-51 + 2^-105 < 2^-50.999
        thus ulp(l_out) <= 2^-103.
        The absolute error is thus bounded by:
-       (eps[i] + 2^-103.294)*pi/2 + 2^-108.04 + 2^-105 + 2^-103.
+       (eps[i] + 2^-102.604)*pi/2 + 2^-108.04 + 2^-103.348 + 2^-105 + 2^-103.
        Since h+l>pi/2, the relative error is bounded by:
-       eps[i] + 2^-103.294 + (2^-108.04 + 2^-105 + 2^-103)/(pi/2)
-              < eps[i] + 2^-102.294. */
+       eps[i] + 2^-102.604 + (2^-108.04 + 2^-103.348 + 2^-105 + 2^-103)/(pi/2)
+              < eps[i] + 2^-101.604. */
     else
       /* 4th quadrant -> 2nd quadrant (add pi), and the result will be
          in (pi/2,pi) */
       // the same error analysis as above applies: the relative error is
-      // bounded by eps[i] + 2^-102.294
+      // bounded by eps[i] + 2^-101.604
       dd_sum (h, l, PI_H, PI_L, *h, *l);
   }
   return err_fast[i];

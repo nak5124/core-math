@@ -502,7 +502,7 @@ def table_err_poly():
    for i in range(1,64):
       p, err = sollya_approx((i+0.5)/64,1/128.,7,1)
       err = err_poly(p,i,-1./128,1./128,err)
-      err = err + 2^-102.294
+      err = err + 2^-101.604
       err = R(err)
       s += ", " + get_hex(err)
    print (s)
