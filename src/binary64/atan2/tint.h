@@ -384,7 +384,7 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
       printf ("Worst-case of atan2 found: y,x=%la,%la\n", y, x);
       exit (1);
     }
-  if (a->ex <= -1022) // subnormal case
+  if (ex <= -1022) // subnormal case
   {
     int sh = -1021 - ex; // 1 <= sh <= 52
     ll = (mm << (64 - sh)) | (ll >> sh);
@@ -408,9 +408,9 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
   static const double S[2] = {1.0, -1.0};
   double s = S[a->sgn];
   h = __builtin_fma (l, s, s * h);
-  h *= 0x1p-53;
-  // now -1021 <= ex <= 1024
-  return h * __builtin_ldexp (1.0, ex);
+  h *= 0x1p-52;
+  // now -1021 <= ex <= 1024, thus 2^(ex-1) does not underflow/overflow
+  return h * __builtin_ldexp (1.0, ex - 1);
 }
 
 /* Put in r an approximation of 1/A, assuming A is not zero.

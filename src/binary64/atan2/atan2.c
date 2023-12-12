@@ -24,8 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACEY 0x1.1e42b12565f95p-1022
-#define TRACEX 0x1.c53b47c82d894p-331
+#define TRACEY -0x1.3ea637b6296e1p+15
+#define TRACEX 0x1.c7164a51fe7a8p+1023
 
 #include <stdio.h>
 #include <stdint.h>
@@ -685,6 +685,7 @@ static double atan2_fast (double *h, double *l, double y, double x)
 // atan(y/x)
 double cr_atan2 (double y, double x)
 {
+  // int bug = y == TRACEY && x == TRACEX;
   d64u64 uy = {.f = y}, ux = {.f = x};
   uint64_t ay = uy.u & MASK, ax = ux.u & MASK;
 
