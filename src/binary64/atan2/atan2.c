@@ -24,6 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* This implementation was possible with the help of Silviu-Ioan Filip,
+   who designed the code to generate a rational approximation of atan(z)
+   over (0,1). See comments before P[] and Q[] below. */
+
 #include <stdio.h> // needed in case of correct rounding failure
 #include <stdint.h>
 
