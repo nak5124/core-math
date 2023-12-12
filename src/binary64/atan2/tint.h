@@ -369,29 +369,38 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
     return (a->sgn ? -0x1p-1074 : 0x1p-1074) * (mid ? 0.5 : 0.75);
   }
 #define MASK53 0x1ffffffffffffful
-  uint64_t low = a->h & 0x7ff; // low 11 bits from a->h
+  uint64_t hh = a->h, mm = a->m, ll = a->l;
+  int ex = a->ex;
+  uint64_t low = hh & 0x7ff; // low 11 bits from a->h
   /* We can't determine the correct rounding when:
      (a) a->m = 0 and the low 10 bits of a->h are zero and a->l < err
      (b) a->m = 111...111 and the low 10 bits of a->h are 1 and
          a->l > 2^64 - err */
-  if (__builtin_expect (a->m == 0 || ~a->m == 0, 0))
-    if ((a->m == 0 && (low == 0 || low == 0x400) && a->l < err) ||
-        (~a->m == 0 && (low == 0x3ff || low == 0x7ff) && ~a->l < err))
+  if (__builtin_expect (mm == 0 || ~mm == 0, 0))
+    if ((mm == 0 && (low == 0 || low == 0x400) && ll < err) ||
+        (~mm == 0 && (low == 0x3ff || low == 0x7ff) && ~ll < err))
     {
-      printf ("Unexpected worst-case found.\n");
-      printf ("Please report to core-math@inria.fr:\n");
+      printf ("Unexpected worst-case found, please report to core-math@inria.fr:\n");
       printf ("Worst-case of atan2 found: y,x=%la,%la\n", y, x);
       exit (1);
     }
-  double h = a->h >> 11, l; // 53 bits from a->h
-  /* 2^52 <= r[3] < 2^53 thus ulp(r[3]) = 1 */
+  if (a->ex <= -1022) // subnormal case
+  {
+    int sh = -1021 - ex; // 1 <= sh <= 52
+    ll = (mm << (64 - sh)) | (ll >> sh);
+    mm = (hh << (64 - sh)) | (mm >> sh);
+    hh = hh >> sh;
+    low = hh & 0x7ff;
+    ex += sh;
+  }
+  double h = hh >> 11, l; // significant bits from a->h
   if (low < 0x400)
     l = 0.25; // round to zero
   else if (low > 0x400)
     l = 0.75; // round away
   else // low = 0x400
   {
-    if (a->m == 0 && a->l == 0)
+    if (mm == 0 && ll == 0)
       l = 0.5; // middle case
     else
       l = 0.75; // round away
@@ -399,9 +408,9 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
   static const double S[2] = {1.0, -1.0};
   double s = S[a->sgn];
   h = __builtin_fma (l, s, s * h);
-  h *= 0x1p-52;
-  // now -1073 <= a->ex <= 1024 thus -1074 <= a->ex <= 1023
-  return h * __builtin_ldexp (1.0, a->ex - 1);
+  h *= 0x1p-53;
+  // now -1021 <= ex <= 1024
+  return h * __builtin_ldexp (1.0, ex);
 }
 
 /* Put in r an approximation of 1/A, assuming A is not zero.
@@ -412,7 +421,12 @@ static inline void inv_tint (tint_t *r, const tint_t *A)
   tint_t q[1];
   double a = tint_tod (A, 0, 0, 0); // exact
   // To simplify the error analysis, we assume 0.5 <= a < 1
+  int subnormal = __builtin_fabs (a) < 0x1p-1022;
+  if (subnormal)
+    a *= 0x1p53;
   tint_fromd (r, 1.0 / a); // accurate to about 53 bits
+  if (subnormal)
+    r->ex += 53;
   /* We have 1 <= r <= 2, with |r - 1/a| < ulp(r) = 2^-52. */
   /* We use Newton's iteration: r1 = r0 + r0*(1-a*r0).
      Let e0 = 1-a*r0 and e1 = 1-a*r1 then we have e1 = e0^2.

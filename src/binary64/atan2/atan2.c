@@ -24,6 +24,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#define TRACEY 0x1.1e42b12565f95p-1022
+#define TRACEX 0x1.c53b47c82d894p-331
+
 #include <stdio.h>
 #include <stdint.h>
 
@@ -210,13 +213,27 @@ static const tint_t Q[30] = {
 static double
 atan2_accurate (double y, double x)
 {
-  /* first check when t=y/x is small and exact and x > 0, since for
-     |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest) */
+  /* First check when t=y/x is small and exact and x > 0, since for
+     |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest). */
   double t = y / x;
   double corr = __builtin_fma (t, x, -y);
   if (corr == 0 && x > 0) // t is exact
     if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
-      return __builtin_fma (t, -0x1p-54, t);
+    {
+      // Warning: if y is in the subnormal range, t might differ from y/x
+      d64u64 vy = {.f = y};
+      uint64_t ay = vy.u << 1;
+      /* If |y| >= 2^-969, then since t*x has at most 106 significant bits,
+         and t*x ~ y, the lower bit of t*x is >= 2^-1074, thus there is no
+         underflow in __builtin_fma (t, x, -y). */
+      if (ay >= 0x6c0000000000000ul)
+        return __builtin_fma (t, -0x1p-54, t);
+      /* Now |y| < 2^-969, since x >= 2^-1074, then t <= 2^105, thus we can
+         scale y and t by 2^105, which will ensure t*x-y does not underflow. */
+      corr = __builtin_fma (t * 0x1p105, x, -y * 0x1p105);
+      if (corr == 0)
+        return __builtin_fma (t, -0x1p-54, t);
+    }
 
   int inv = __builtin_fabs (y) > __builtin_fabs (x);
   tint_t z[1], p[1], q[1];
@@ -724,20 +741,23 @@ double cr_atan2 (double y, double x)
 
   // now both y and x are neither NaN, nor +/-Inf, nor +/-0
 
-  /* check when y/x is small and exact and x > 0, since for
-     |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest) */
-  double t = y / x;
-  double corr = __builtin_fma (t, x, -y);
-  if (__builtin_expect (corr == 0 && x > 0, 0)) // t is exact
-    if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
-      return __builtin_fma (t, -0x1p-54, t);
+  d64u64 vy = {.f = y}, vx = {.f = x};
+  int ey = (vy.u >> 52) & 0x7ff, ex = (vx.u >> 52) & 0x7ff;
+  // if (bug) printf ("ey=%d ex=%d\n", ey, ex);
+  // when y is near the subnormal range, fast_div1() does not work properly
+  if (__builtin_expect (ey > 52 && ey - ex > -1000, 1))
+  {
+    double h, l, err;
+    //if (bug) printf ("enter fast path\n");
+    err = atan2_fast (&h, &l, y, x);
+    double left =  h + __builtin_fma (h, -err, l);
+    double right = h + __builtin_fma (h, +err, l);
+    if (left == right)
+      return left;
+    //if (bug) printf ("fast path failed\n");
+  }
 
-  double h, l, err;
-  err = atan2_fast (&h, &l, y, x);
-  double left =  h + __builtin_fma (h, -err, l);
-  double right = h + __builtin_fma (h, +err, l);
-  if (left == right)
-    return left;
+  //if (bug) printf ("calling accurate path\n");
 
   return atan2_accurate (y, x);
 }

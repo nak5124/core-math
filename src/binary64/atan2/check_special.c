@@ -101,11 +101,11 @@ check (double x, double y)
   mpfr_init2 (Z, 53);
   mpfr_set_d (X, x, MPFR_RNDN);
   mpfr_set_d (Y, y, MPFR_RNDN);
-  z = cr_atan2 (x, y);
-  t = ref_atan2 (x, y);
+  z = cr_atan2 (y, x);
+  t = ref_atan2 (y, x);
   if (!is_equal (z, t))
   {
-    printf ("cr_atan2 and ref_atan2 differ for x=%la y=%la\n", x, y);
+    printf ("cr_atan2 and ref_atan2 differ for y=%la x=%la\n", y, x);
     printf ("cr_atan2  gives %la\n", z);
     printf ("ref_atan2 gives %la\n", t);
     exit (1);
