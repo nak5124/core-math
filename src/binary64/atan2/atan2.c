@@ -302,19 +302,19 @@ atan2_accurate (double y, double x)
     }
     err = 524;
   }
+  // now -pi/2 < z < pi/2
   // if x is negative we go to the opposite quadrant
   if (x < 0) {
     if (z->sgn == 0) { // 1st quadrant -> 3rd quadrant (subtract pi)
       z->sgn = 1;
       add_tint (z, &PI, z);
       z->sgn = 1;
-      /* If inv=0 we had 0 < z < pi/4 thus now -pi < z < -3pi/4.
-         If inv=1 we had pi/4 < z < pi/2 thus now -3pi/4 < z < -pi/2.
-         In all cases the absolute error on z was bounded by 2^-182.97,
-         that on PI is bounded by 2^-196.96, and the add_tint() error is
-         bounded by 2 ulp(pi/2) = 2^-190, which yields a total error
-         < 2^-182.97 + 2^-196.96 + 2^-190 < 2^-182.95.
-         Relatively to ulp(pi/2) this is less than 266 ulps. */
+      /* We had 0 < z < pi/2 thus now -pi < z < -pi/2.
+         The absolute error on z was bounded by max(2^-182.63*pi/4,2^-182.967)
+         = 2^-182.967, that on PI is bounded by 2^-196.96, and the add_tint()
+         error is bounded by 2 ulp(pi/2) = 2^-190, which yields a total error
+         < 2^-182.967 + 2^-196.96 + 2^-190 < 2^-182.955.
+         Relatively to ulp(pi/2) this is less than 265 ulps. */
     }
     else // 4th quadrant -> 2nd quadrant (add pi)
     {
@@ -322,9 +322,9 @@ atan2_accurate (double y, double x)
       /* If inv=0 we had -pi/4 < z < 0 thus now 3pi/4 < z < pi.
          If inv=1 we had -pi/2 < z < -pi/4 thus now pi/2 < z < 3pi/4.
          The same analysis as above applies, and we get the same bound
-         of 266 ulps. */
+         of 265 ulps. */
     }
-    err = 266;
+    err = 265;
   }
   return tint_tod (z, err, y, x);
 }
