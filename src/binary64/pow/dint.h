@@ -63,17 +63,17 @@ static inline uint64_t addu_128 (uint128_t a, uint128_t b, uint128_t *r) {
 }
 
 // Subtract two 128 bit integers and return 1 if a borrow occurred
-static inline char subu_128 (uint128_t a, uint128_t b, uint128_t *r) {
+static inline int subu_128 (uint128_t a, uint128_t b, uint128_t *r) {
   r->r = a.r - b.r;
   // Return the borrow
   return r->r > a.r;
 }
 
-static inline char cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
+static inline int cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
 
-static inline char cmpu(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
+static inline int cmpu(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
 
-static inline char cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
+static inline int cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
 
 #endif
 
