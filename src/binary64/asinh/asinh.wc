@@ -33110,6 +33110,8 @@
 0x1.ed646d0f12e65p+1023
 0x1.edf3606885937p+1023
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
