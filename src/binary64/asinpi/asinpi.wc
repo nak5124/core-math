@@ -1,4 +1,6 @@
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
