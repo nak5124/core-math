@@ -27092,6 +27092,8 @@
 0x1.fd86297b1aad7p-1
 0x1.fdfc242e11011p-1
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
