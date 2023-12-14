@@ -149,7 +149,7 @@ check (double x, double y)
   double z2 = cr_function_under_test(x, y);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
-#ifndef EXCHANGE_X_Y
+#ifndef FIRST_Y
     printf("FAIL x=%la y=%la ref=%la z=%la\n", x, y, z1, z2);
 #else
     printf("FAIL y=%la x=%la ref=%la z=%la\n", x, y, z1, z2);
