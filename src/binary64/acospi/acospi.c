@@ -555,8 +555,8 @@ static const double T2[128][DEGREE+LARGE+2] = {
 typedef union { double x; uint32_t i[2]; } union_t;
 
 // begin_acospi
-// exceptional cases for |x| < 0.5
-#define EXCEPTIONS 113
+// exceptional cases for |x| < 0.5, should be sorted by increasing values
+#define EXCEPTIONS 114
 static const double exceptions[EXCEPTIONS][2] = {
     {-0x1.ac26cc49b0264p-3, 0x1.22530cb92c8f1p-1},
     {-0x1.f8374b05d52b2p-5, 0x1.0a09933a4589ap-1},
@@ -602,6 +602,7 @@ static const double exceptions[EXCEPTIONS][2] = {
     {-0x1.921fb54442d18p-51, 0x1.0000000000002p-1},
     {-0x1.2d97c7f3321d2p-51, 0x1.0000000000001p-1},
     {-0x1.921fb54442d18p-52, 0x1.0000000000001p-1},
+    {-0x1.921fb54442d18p-53, 0x1p-1},
     {0x0p+0, 0x1p-1},
     {0x1.921fb54442d19p-54, 0x1.fffffffffffffp-2},
     {0x1.3a28c59d5433bp-49, 0x1.ffffffffffff3p-2},
@@ -717,6 +718,7 @@ static const int8_t exceptions_rnd[EXCEPTIONS] = {
     -1, /* -0x1.921fb54442d18p-51 */
     1, /* -0x1.2d97c7f3321d2p-51 */
     -1, /* -0x1.921fb54442d18p-52 */
+    -1, /* -0x1.921fb54442d18p-53 */
     0, /* 0x0p+0 */
     1, /* 0x1.921fb54442d19p-54 */
     1, /* 0x1.3a28c59d5433bp-49 */
