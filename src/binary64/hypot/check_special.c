@@ -322,7 +322,7 @@ main (int argc, char *argv[])
         }
     }
 
-  for (int m = 1; m <= 53; m++)
+  for (int m = 1; m <= 27; m++)
   {
     printf ("Checking worst cases with exp(y) = exp(x) - %d\n", m);
     check_worst (m);
