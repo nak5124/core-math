@@ -117,7 +117,7 @@ check (double x, double y)
 }
 
 static void
-check_random (int i)
+check_random (int i, int nthreads)
 {
   ref_init ();
   ref_fesetround (rnd);
@@ -125,9 +125,9 @@ check_random (int i)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-#define N 1000000000ul
 
-  for (unsigned long n = 0; n < N; n++)
+#define N 1000000000ul // total number of tests
+  for (unsigned long n = i; n < N; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -144,7 +144,7 @@ check_random_all (void)
   nthreads = omp_get_num_threads ();
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
 }
 
 /* check values in underflow region */
@@ -220,6 +220,66 @@ check_overflow (void)
 #undef N
 }
 
+/* return y' such that sqrt(x^2+y'^2) is closest to the 54-bit number
+   closest to sqrt(x^2+y^2) */
+static double y_worst (double x, double y)
+{
+  mpfr_t X, Y, Z;
+  mpfr_init2 (X, 192);
+  mpfr_init2 (Y, 192);
+  mpfr_init2 (Z, 54);
+  mpfr_set_d (X, x, MPFR_RNDN);
+  mpfr_sqr (X, X, MPFR_RNDN);
+  mpfr_set_d (Y, y, MPFR_RNDN);
+  mpfr_sqr (Y, Y, MPFR_RNDN);
+  mpfr_add (Y, X, Y, MPFR_RNDN);
+  mpfr_sqrt (Z, Y, MPFR_RNDN);
+  mpfr_prec_round (Z, 192, MPFR_RNDN);
+  mpfr_sqr (Z, Z, MPFR_RNDN); // square Z
+  mpfr_sub (Z, Z, X, MPFR_RNDN); // subtract X
+  mpfr_sqrt (Z, Z, MPFR_RNDN);
+  y = mpfr_get_d (Z, MPFR_RNDN);
+  mpfr_clear (X);
+  mpfr_clear (Y);
+  mpfr_clear (Z);
+  return y;
+}
+
+static void
+check_worst_i (int m, int i, int nthreads)
+{
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buffer[1];
+  double x, y;
+  srand48_r (getpid () + i, buffer);
+
+#define N 1000000000ul // total number of tests
+  for (unsigned long n = i; n < N; n += nthreads)
+  {
+    drand48_r (buffer, &x); // 0 <= x < 1
+    x = 0.5 + x * 0.5;      // 1/2 <= x < 1
+    drand48_r (buffer, &y);
+    y = ldexp (0.5 + x * 0.5, -m);
+    y = y_worst (x, y);
+    check (x, y);
+  }
+#undef N
+}
+
+// check worst cases with exp(y) = exp(x) - i
+static void
+check_worst (int m)
+{
+  int nthreads;
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#pragma omp parallel for
+  for (int i = 0; i < nthreads; i++)
+    check_worst_i (m, i, nthreads);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -261,6 +321,12 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  for (int m = 1; m <= 53; m++)
+  {
+    printf ("Checking worst cases with exp(y) = exp(x) - %d\n", m);
+    check_worst (m);
+  }
 
   printf ("Checking in underflow range\n");
   check_underflow ();
