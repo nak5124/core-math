@@ -2217,7 +2217,7 @@
 0x1.ffe407ce573d3p-8
 0x1.fffbe60b6927p-11
 # non-regression test
--0x1.21a0d7b7f3335p-1010
+0x1.21a0d7b7f3335p-1010
 # other worst cases not included above (computed with BaCSeL,
 # from 4503599627370496/2^79 to 6249411755243648/2^43, with option
 # -m 44 from bacsel, i.e., all worst-cases with at least 43 identical
@@ -35914,6 +35914,8 @@
 0x1.ffec968dbab74p+6
 0x1.fff182c6d8b42p+6
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
