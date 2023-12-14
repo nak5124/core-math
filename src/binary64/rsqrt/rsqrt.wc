@@ -8048,7 +8048,6 @@
 0x1.ffffp-1
 0x1p+0
 0x1p-1
-0x1p1024
 # additional worst cases computed by BaCSeL (-m 44) for 1/2 <= x < 1
 0x1.0290b6af39524p-1
 0x1.0115703827363p-1
@@ -9920,7 +9919,4 @@
 +inf
 -inf
 +0
-# we comment out -0, since mpfr_rsqrt differs from IEEE 754-2019 and this
-# would give a false failure: IEEE 754-2019 says that rsqrt(-0) should give
-# -Inf, whereas mpfr_rsqrt(-0) gives +Inf
-# -0
+-0

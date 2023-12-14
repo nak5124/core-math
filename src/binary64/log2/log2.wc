@@ -31366,6 +31366,8 @@
 0x1.ffa10e29bccc2p-1
 0x1.ffdcbdb4d06bfp-1
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
