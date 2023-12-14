@@ -1,4 +1,6 @@
 # special cases
++snan
+-snan
 +nan
 -nan
 +inf
