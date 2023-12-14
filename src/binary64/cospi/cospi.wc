@@ -37966,6 +37966,8 @@
 # non-regression tests
 0x1.0000000000001p+52
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
