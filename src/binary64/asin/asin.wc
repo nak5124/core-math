@@ -4,7 +4,7 @@
 # this is the union of the "asn" inputs from the file testlibm-data from
 # https://www.vinc17.net/research/testlibm/ (update from 2020-11-27), and
 # all inputs with at least 44 identical bits after the round bit
-# for 2^-26 <= x <= 1 (computed with BaCSeL)
+# for 2^-26 <= x <= 1 (computed with BaCSeL with -m 45)
 0x1.7137449123e7bp-26
 0x1.7137449123e7cp-26
 0x1.7137449123e7dp-26
