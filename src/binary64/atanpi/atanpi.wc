@@ -11,8 +11,9 @@
 # bits after the round bit (-m 44 with bacsel). We only include positive
 # values since we have defined WORST_SYMMETRIC. These worst cases are in
 # the following intervals:
-# a) 0x1p-1072 <= x < 0x1p-1020'
-# b) 0x1p-54 <= x < 0x1.45f306dc9c883p+53
+# a) 0x1p-1072 <= x < 0x1p-1020
+# b) 2^-1020 <= x < 2^-1019 (generic worst cases, see check_worst.c)
+# c) 0x1p-54 <= x < 0x1.45f306dc9c883p+53
 # for the range 0x1p-1020 <= x < 0x1p-54, the worst cases are the same
 # (up to scaling) in each binade, and are tested by check_special.c
 0x1.38a466d1e78p-1033
