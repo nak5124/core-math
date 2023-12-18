@@ -139,9 +139,13 @@ is_equal (double x, double y)
   return asuint64 (x) == asuint64 (y);
 }
 
+int tests = 0;
+
 static void
 check (double x, double y)
 {
+#pragma omp atomic update
+  tests ++;
   ref_init();
   ref_fesetround(rnd);
   double z1 = ref_function_under_test(x, y);
@@ -163,7 +167,7 @@ void
 doloop(void)
 {
   double2 *items;
-  int count, tests = 0;
+  int count;
 
   readstdin(&items, &count);
 
@@ -171,32 +175,24 @@ doloop(void)
   for (int i = 0; i < count; i++) {
     double x = items[i][0], y = items[i][1];
     check (x, y);
-    tests ++;
 #ifdef WORST_SYMMETRIC_Y
     check (x, -y);
-    tests ++;
 #endif
 #ifdef WORST_SYMMETRIC_X
     check (-x, y);
-    tests ++;
 #ifdef WORST_SYMMETRIC_Y
     check (-x, -y);
-    tests ++;
 #endif
 #endif
 #ifdef WORST_SWAP
     check (y, x);
-    tests ++;
 #ifdef WORST_SYMMETRIC_Y
     check (-y, x);
-    tests ++;
 #endif
 #ifdef WORST_SYMMETRIC_X
     check (y, -x);
-    tests ++;
 #ifdef WORST_SYMMETRIC_Y
     check (-y, -x);
-    tests ++;
 #endif
 #endif
 #endif

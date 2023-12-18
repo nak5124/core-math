@@ -91,34 +91,66 @@ asuint (float f)
   return u.i;
 }
 
+int tests = 0, failures = 0;
+
+static void
+check (float x, float y)
+{
+#pragma omp atomic update
+  tests ++;
+  ref_init();
+  ref_fesetround(rnd);
+  float z1 = ref_function_under_test(x, y);
+  fesetround(rnd1[rnd]);
+  float z2 = cr_function_under_test(x, y);
+  if (asuint (z1) != asuint (z2)) {
+    printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
+    fflush(stdout);
+#pragma omp atomic update
+    failures ++;
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+}
+
 void
 doloop(void)
 {
   float2 *items;
-  int count, failures = 0;
+  int count;
 
   readstdin(&items, &count);
 
 #pragma omp parallel for
   for (int i = 0; i < count; i++) {
     float x = items[i][0], y = items[i][1];
-    ref_init();
-    ref_fesetround(rnd);
-    float z1 = ref_function_under_test(x, y);
-    fesetround(rnd1[rnd]);
-    float z2 = cr_function_under_test(x, y);
-    if (asuint (z1) != asuint (z2)) {
-      printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
-      fflush(stdout);
-      failures ++;
-#ifndef DO_NOT_ABORT
-      exit(1);
+    check (x, y);
+#ifdef WORST_SYMMETRIC_Y
+    check (x, -y);
 #endif
-    }
+#ifdef WORST_SYMMETRIC_X
+    check (-x, y);
+#ifdef WORST_SYMMETRIC_Y
+    check (-x, -y);
+#endif
+#endif
+#ifdef WORST_SWAP
+    check (y, x);
+#ifdef WORST_SYMMETRIC_Y
+    check (-y, x);
+#endif
+#ifdef WORST_SYMMETRIC_X
+    check (y, -x);
+#ifdef WORST_SYMMETRIC_Y
+    check (-y, -x);
+#endif
+#endif
+#endif
   }
 
   free(items);
-  printf("%d tests, %d failures\n", count, failures);
+  printf("%d tests, %d failures\n", tests, failures);
 }
 
 int
