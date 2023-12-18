@@ -93,7 +93,7 @@ is_equal (double x, double y)
 }
 
 static void
-check (double x, double y)
+check_aux (double x, double y)
 {
   double z, t;
   mpfr_t X, Y, Z;
@@ -114,6 +114,19 @@ check (double x, double y)
   mpfr_clear (X);
   mpfr_clear (Y);
   mpfr_clear (Z);
+}
+
+void
+check (double x, double y)
+{
+  check_aux (x, y);
+  check_aux (x, -y);
+  check_aux (-x, y);
+  check_aux (-x, -y);
+  check_aux (y, x);
+  check_aux (y, -x);
+  check_aux (-y, x);
+  check_aux (-y, -x);
 }
 
 static void
@@ -160,9 +173,6 @@ check_underflow (void)
     for (int j = 0; j < N; j++)
     {
       check (x, y);
-      check (x, -y);
-      check (-x, y);
-      check (-x, -y);
       x = nextafter (x, 2 * x);
     }
     y = nextafter (y, 2 * y);
@@ -183,13 +193,6 @@ check_large_diff (void)
     for (int j = 0; j < N; j++)
     {
       check (x, y);
-      check (x, -y);
-      check (-x, y);
-      check (-x, -y);
-      check (y, x);
-      check (-y, x);
-      check (y, -x);
-      check (-y, -x);
       x = nextafter (x, 0.5 * x);
     }
     y = nextafter (y, 2 * y);
@@ -210,9 +213,6 @@ check_overflow (void)
     for (int j = 0; j < N; j++)
     {
       check (x, y);
-      check (x, -y);
-      check (-x, y);
-      check (-x, -y);
       x = nextafter (x, 0.5 * x);
     }
     y = nextafter (y, 0.5 * y);
@@ -280,6 +280,88 @@ check_worst (int m)
     check_worst_i (m, i, nthreads);
 }
 
+static uint64_t
+gcd (uint64_t a, uint64_t b)
+{
+  while (b != 0)
+  {
+    uint64_t r = a % b;
+    a = b;
+    b = r;
+  }
+  return a;
+}
+
+#define STEP 5000
+
+/* Check all Pythagorean triples z^2 = x^2 + y^2 with z in the subnormal
+   range. We necessarily have x = r^2 - s^2, y = 2*r*s, z = r^2 + s^2
+   with gcd(r,s) = 1 and one of r, s even
+   (see https://oeis.org/wiki/Pythagorean_triples).
+*/
+static void
+check_triples_subnormal (void)
+{
+  /* the smallest denormal is 2^-1074, the smallest normal is 2^-1022,
+     thus x, y, z are of the form k*2^-1074 with k < 2^52. */
+
+  srand48 (getpid ());
+  uint64_t r0 = lrand48 () % (2 * STEP);
+  if ((r0 & 1) == 0)
+    r0 ++; // ensures r0 is odd and >= 1
+  uint64_t s0 = 1 + (lrand48 () % (2 * STEP));
+  if ((s0 & 1) == 1)
+    s0 ++; // ensures s0 is even and >= 2
+
+  // type I: r is odd
+#pragma omp parallel for
+  for (uint64_t r = r0; r <= 0x4000000; r += 2 * STEP)
+    for (uint64_t s = s0; s < r; s += 2 * STEP)
+    {
+      if (gcd (r, s) == 1)
+      {
+        uint64_t x = r * r - s * s;
+        uint64_t y = 2 * r * s;
+        uint64_t z = r * r + s * s;
+        if (z > 0xffffffffffffful)
+          break;
+        // now (x,y,z) is a primitive Pythagorean triple
+        for (int n = 1; ; n++)
+        {
+          uint64_t nn = n * n;
+          uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
+          if (zz > 0xffffffffffffful)
+            break;
+          check (ldexp (xx, -1074), ldexp (yy, -1074));
+        }
+      }
+    }
+
+  // type II: r is even
+#pragma omp parallel for
+  for (uint64_t r = r0+1; r <= 0x4000000; r += 2 * STEP)
+    for (uint64_t s = s0-1; s < r; s += 2 * STEP)
+    {
+      if (gcd (r, s) == 1)
+      {
+        uint64_t x = r * r - s * s;
+        uint64_t y = 2 * r * s;
+        uint64_t z = r * r + s * s;
+        if (z > 0xffffffffffffful)
+          break;
+        // now (x,y,z) is a primitive Pythagorean triple
+        for (int n = 1; ; n++)
+        {
+          uint64_t nn = n * n;
+          uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
+          if (zz > 0xffffffffffffful)
+            break;
+          check (ldexp (xx, -1074), ldexp (yy, -1074));
+        }
+      }
+    }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -321,6 +403,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking exact subnormal values\n");
+  check_triples_subnormal ();
 
   printf ("Checking worst cases with exp(y) = exp(x) - m\n");
   for (int m = 1; m <= 27; m++)

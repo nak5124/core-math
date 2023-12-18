@@ -26,15 +26,78 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <math.h>
 
 void doloop (int, int);
+void check (float, float);
+uint64_t gcd (uint64_t, uint64_t);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
+
+/* Check all Pythagorean triples z^2 = x^2 + y^2 with z in the subnormal
+   range. We necessarily have x = r^2 - s^2, y = 2*r*s, z = r^2 + s^2
+   with gcd(r,s) = 1 and one of r, s even
+   (see https://oeis.org/wiki/Pythagorean_triples).
+*/
+static void
+check_triples_subnormal (void)
+{
+  uint64_t r, s, x, y, z;
+  /* the smallest denormal is 2^-149, the smallest normal is 2^-126,
+     thus x, y, z are of the form k*2^-149 with k < 2^23. */
+
+  // type I: r is odd
+  for (r = 1; r <= 2896; r += 2)
+    for (s = 2; s < r; s += 2)
+    {
+      if (gcd (r, s) == 1)
+      {
+        x = r * r - s * s;
+        y = 2 * r * s;
+        z = r * r + s * s;
+        if (z > 0x7fffff)
+          break;
+        // now (x,y,z) is a primitive Pythagorean triple
+        for (int n = 1; ; n++)
+        {
+          uint64_t nn = n * n;
+          uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
+          if (zz > 0x7fffff)
+            break;
+          check (ldexpf (xx, -149), ldexpf (yy, -149));
+        }
+      }
+    }
+
+  // type II: r is even
+  for (r = 2; r <= 2896; r += 2)
+    for (s = 1; s < r; s += 2)
+    {
+      if (gcd (r, s) == 1)
+      {
+        x = r * r - s * s;
+        y = 2 * r * s;
+        z = r * r + s * s;
+        if (z > 0x7fffff)
+          break;
+        // now (x,y,z) is a primitive Pythagorean triple
+        for (int n = 1; ; n++)
+        {
+          uint64_t nn = n * n;
+          uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
+          if (zz > 0x7fffff)
+            break;
+          check (ldexpf (xx, -149), ldexpf (yy, -149));
+        }
+      }
+    }
+}
 
 int
 main (int argc, char *argv[])
@@ -79,6 +142,9 @@ main (int argc, char *argv[])
     }
 
   /* we check triples with exponent difference 0 <= k <= 12 */
+  printf ("Checking exact subnormal values\n");
+  check_triples_subnormal ();
+  printf ("Checking Pythagorean triples\n");
   doloop(0, 12);
   return 0;
 }
