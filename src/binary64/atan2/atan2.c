@@ -206,7 +206,7 @@ static const tint_t Q[30] = {
 };
 
 // use a type [29,29] rational approximation of atan(z) for 0 <= z <= 1
-static double
+static double __attribute__((noinline))
 atan2_accurate (double y, double x)
 {
   /* First check when t=y/x is small and exact and x > 0, since for
@@ -730,9 +730,9 @@ double cr_atan2 (double y, double x)
     return (y > 0) ? PI_OVER2_H + PI_OVER2_L : -PI_OVER2_H - PI_OVER2_L;
   }
 
-  if (__builtin_expect (y == 0 || x == 0, 0))
+  if (__builtin_expect (ay == 0 || ax == 0, 0))
   {
-    if (y == 0 && x == 0)
+    if (ay == 0 && ax == 0)
     {
       if (ux.u == 0) // atan2(+/-0, +0) = +/-0
         return y;
@@ -740,7 +740,7 @@ double cr_atan2 (double y, double x)
       return (uy.u == 0) ? PI_H + PI_L : -PI_H - PI_L;
     }
     // only one of y and x is zero
-    if (y == 0)
+    if (ay == 0)
     {
       // atan2(+/-0,x) = +/-0 for x>0
       if (x > 0) return y;
