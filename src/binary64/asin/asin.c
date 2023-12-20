@@ -27,7 +27,10 @@ SOFTWARE.
 #include <errno.h>
 #include <math.h>
 #include <fenv.h>
+
+#ifdef __x86_64__
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -35,6 +38,16 @@ SOFTWARE.
 #endif
 
 #pragma STDC FENV_ACCESS ON
+
+static inline int get_rounding_mode (void)
+{
+#ifdef __x86_64__
+  const unsigned flagp = _mm_getcsr ();
+  return (flagp&(3<<13))>>3;
+#else
+  return fegetround ();
+#endif
+}
 
 typedef unsigned __int128 u128;
 typedef __int128 i128;
@@ -122,7 +135,7 @@ static double asin_acc(double x){
     
 #define X1 0x1.fff8133aa33e4p-1
 
-  const unsigned flagp = _mm_getcsr (), rm = (flagp&(3<<13))>>3;
+  const unsigned rm = get_rounding_mode ();
   b64u64_u t = {.f = x};
   int se = ((t.u>>52)&0x7ff)-0x3ff;
   i64 xsign = t.u&(1l<<63);
@@ -269,7 +282,7 @@ double cr_asin(double x){
   /* pi/2*sqrt(1-x^2)*(ch[0]*x + ch[1]*x^2 + ch[2]*x^3 + ch[3]*x^4) is a rough
      approximation of 64*acos(x) for 0 <= x <= 1, with error less than 0.056 */
   static const double ch[] = {0x1.ffb77e06e54aap+5, -0x1.3b200d87cc0fep+5, 0x1.79457faf679e3p+4, -0x1.dc7d5a91dfb7ep+2};
-  const unsigned flagp = _mm_getcsr (), rm = (flagp&(3<<13))>>3;
+  const unsigned rm = get_rounding_mode ();
   b64u64_u t = {.f = x};
   int e = ((t.u>>52)&0x7ff)-0x3ff;
   /* x = 2^e*y with 1 <= |y| < 2 */
@@ -290,7 +303,7 @@ double cr_asin(double x){
     if (e==0x400 && m) return x; // nan
     errno = EDOM;
     feraiseexcept (FE_INVALID);
-    return __builtin_nanf64 (">1");
+    return __builtin_nan (">1");
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */
     if (__builtin_expect (e < -26,0)) /* |x| < 2^-26 */
       /* For |x| < 2^-2, we have |asin(x)-x| < 0.25x^3

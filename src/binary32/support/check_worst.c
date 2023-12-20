@@ -95,7 +95,7 @@ void
 doloop(void)
 {
   float2 *items;
-  int count;
+  int count, failures = 0;
 
   readstdin(&items, &count);
 
@@ -110,12 +110,15 @@ doloop(void)
     if (asuint (z1) != asuint (z2)) {
       printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
       fflush(stdout);
+      failures ++;
+#ifndef DO_NOT_ABORT
       exit(1);
+#endif
     }
   }
 
   free(items);
-  printf("%d tests passed\n", count);
+  printf("%d tests, %d failures\n", count, failures);
 }
 
 int

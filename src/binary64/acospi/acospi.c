@@ -672,7 +672,7 @@ static const double exceptions[EXCEPTIONS][2] = {
     {0x1.da83e335e379ap-3, 0x1.b3c936985f665p-2},
     {0x1.f608aa4e62781p-2, 0x1.58fc14707d797p-2},
   };
-static const char exceptions_rnd[EXCEPTIONS] = {
+static const int8_t exceptions_rnd[EXCEPTIONS] = {
     1, /* -0x1.ac26cc49b0264p-3 */
     -1, /* -0x1.f8374b05d52b2p-5 */
     -1, /* -0x1.7b9482807fe3cp-5 */
@@ -816,7 +816,7 @@ slow_path (double x)
     if (x == exceptions[a][0])
     {
       double h = exceptions[a][1];
-      char l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
+      int8_t l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
       return h + h * 0x1p-54 * (double) l;
     }
     // end_acospi

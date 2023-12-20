@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#if defined(__x86_64__)
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -260,10 +262,17 @@ double cr_exp(double x){
   const double s = 0x1.71547652b82fep+12;
   double v0 = __builtin_fma(x, s, 0x1.8000004p+25);
   b64u64_u jt = {.f = v0};
+#if defined(__x86_64__)
   __m128d v = _mm_set_sd (v0);
   __m128i tt = {~((1<<27)-1l),0};
   v = _mm_and_pd(v,(__m128d)tt);
-  double tn = v[0] - 0x1.8p25, t = tn;
+  double t = v[0] - 0x1.8p25;
+#else
+  b64u64_u v = {.f = v0};
+  uint64_t tt = ~((1<<27)-1l);
+  v.u &= tt;
+  double t = v.f - 0x1.8p25;
+#endif
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~0ul>>1);
   if(__builtin_expect(aix>=0x40862e42fefa39f0ul, 0)){
@@ -318,11 +327,17 @@ double cr_exp(double x){
       if(__builtin_fabs(afl-0x1p-53) < 0x1p-105 || __builtin_fabs(afl - 0x1p-52)< 0x1p-102 ||
 	 afl<0x1p-102 || afl == 0x1p-54) vh = as_exp_database(x, vh);
     }
+#ifdef __x86__64__
     fh = vh;
     __m128i sb; sb[0] = ie<<52;
     __m128d r = _mm_set_sd (fh);
     r = (__m128d)_mm_add_epi64((__m128i)r, sb);
     fh = r[0];
+#else
+    b64u64_u v = {.f = vh};
+    v.u += ie<<52;
+    fh = v.f;
+#endif
   }
   return fh;
 }

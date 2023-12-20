@@ -928,25 +928,43 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
 
   if (__builtin_expect(rh > RHO2, 0)) {
     if (rh > RHO3) {
+      /* If rh > RHO3, we are sure there is overflow,
+         For s=1 we return eh = el = DBL_MAX, which yields
+         res_min = res_max = +Inf for rounding up or to nearest,
+         and res_min = res_max = DBL_MAX for rounding down or toward zero,
+         which will yield the correct rounding.
+         For s=-1 we return eh = el = -DBL_MAX, which similarly gives
+         res_min = res_max = -Inf or res_min = res_max = -DBL_MAX,
+         which is the correct rounding. */
       *eh = 0x1.fffffffffffffp+1023 * s;
       *el = 0x1.fffffffffffffp+1023 * s;
     }
     else
+      /* If RHO2 < rh <= RHO3, we are in the intermediate region
+         where there might be overflow or not, thus we set eh = el = NaN,
+         which will set res_min = res_max = NaN, the comparison
+         res_min == res_max will fail: we defer to the 2nd phase. */
       *eh = *el = NAN;
     return;
   }
 
   if (__builtin_expect(rh < RHO1, 0)) {
-    if (rh < RHO0 && s > 0)
+    if (rh < RHO0)
     {
-      *eh = +0;
-      *el = 0x1p-1074 / 2.0 * s;
+      *eh = +0.0 * s;
+      *el = 0x1p-1074 * (0.5 * s);
       /* For s=1, we have eh=el=+0 except for rounding up,
-         thus res_min=+0 or -1, res_max=+0 in the main code,
+         thus res_min=+0 or -0, res_max=+0 in the main code,
          the rounding test succeeds, and we return res_max which is the
          expected result in the underflow case.
-         For s=1 and rounding up, we have eh=0, el=2^-1074,
+         For s=1 and rounding up, we have eh=+0, el=2^-1074,
          thus res_min = res_max = 2^-1074, which is the expected result too.
+         For s=-1, we have eh=el=-0 except for rounding down,
+         thus res_min=-0 or +0, res_max=-0 in the main code,
+         the rounding test succeeds, and we return res_max which is the
+         expected result in the underflow case.
+         For s=-1 and rounding down, we have eh=-0, el=-2^-1074,
+         thus res_min = res_max = -2^-1074, which is the expected result too.
       */
     }
     else /* RHO0 <= rh < RHO1 or s < 0: we defer to the 2nd phase */
@@ -1452,7 +1470,9 @@ double cr_pow (double x, double y) {
 
     double cs[] = {1.0, -1.0};
 
-    s = cs[(int64_t)y & 0x1];
+    // set sign to 1 for y even, to -1 for y odd
+    int y_parity = __builtin_fabs (y) >= 0x1p53 ? 0 : ((int64_t) y & 0x1);
+    s = cs[y_parity];
 
     // Set x to |x| for the rest of the computation
     x = -x;

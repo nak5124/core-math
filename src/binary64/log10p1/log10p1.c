@@ -940,7 +940,7 @@ static const double exceptions[EXCEPTIONS][2] = {
     {0x1.69039159cbd42p-7, 0x1.37dba262ebba9p-8},
     {0x1.b9ecff4fdee34p-6, 0x1.7ac42a86a5f66p-7},
   };
-static const char exceptions_rnd[EXCEPTIONS] = {
+static const int8_t exceptions_rnd[EXCEPTIONS] = {
     1, /* -0x1.e0648eff3dad8p-6 */
     -1, /* -0x1.8dd157e27ade5p-6 */
     1, /* -0x1.739b846071578p-6 */
@@ -1178,7 +1178,7 @@ static const char exceptions_rnd[EXCEPTIONS] = {
   if (x == exceptions[a][0])
   {
     double h = exceptions[a][1];
-    char l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
+    int8_t l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
     return h + h * 0x1p-54 * (double) l;
   }
 #undef EXCEPTIONS

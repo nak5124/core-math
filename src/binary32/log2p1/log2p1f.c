@@ -116,11 +116,11 @@ float cr_log2p1f(float x) {
   } else if(__builtin_expect(ax >= (0xff<<23), 0)){ // +inf, nan
     if(ax > (0xff<<23)) return x; // nan
     return __builtin_inff();
-  } else if(__builtin_expect(ax<0x3cb7aa26u, 1)){ // 0x1.6f544cp-6
+  } else if(__builtin_expect(ax<0x3cb7aa26u, 1)){ // |x| < 0x1.6f544cp-6
     double z2 = z*z, z4 = z2*z2;
-    if(__builtin_expect(ax<0x3b9d9d34u, 1)){ // 0x1.3b3a68p-8
-      if(__builtin_expect(ax<0x39638a7eu, 1)){ // 0x1.c714fcp-13
-	if(__builtin_expect(ax<0x329c5639u, 1)){ // 0x1.38ac72p-26
+    if(__builtin_expect(ax<0x3b9d9d34u, 1)){ // |x| < 0x1.3b3a68p-8
+      if(__builtin_expect(ax<0x39638a7eu, 1)){ // |x| < 0x1.c714fcp-13
+	if(__builtin_expect(ax<0x329c5639u, 1)){ // |x| < 0x1.38ac72p-26
 	  static const double c[] =
 	    {0x1.71547652b82fep+0, -0x1.71547652b82ffp-1};
 	  return z*(c[0] + z*c[1]);
@@ -146,9 +146,22 @@ float cr_log2p1f(float x) {
 	 0x1.2776c1a88901p-2, -0x1.ec7095bd4d208p-3, 0x1.a66bec7fc8f7p-3, -0x1.71a900fc3f3f9p-3};
       return z*((c[0] + z*c[1]) + z2*(c[2] + z*c[3]) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])));
     }
-  } else {
-    if(__builtin_expect(ux == 0x52928e33u, 0)) return 0x1.318ffap+5f + 0x1.fp-20f;
-    if(__builtin_expect(ux == 0x4ebd09e3u, 0)) return 0x1.e90026p+4f + 0x1.fp-21;
+  } else { // |x| >= 0x1.6f544cp-6
+    float h, l;
+    /* On cfarm117 with gcc 6.3.0, if we return 0x1.e90026p+4f + 0x1.fp-21
+       in the second exceptional case, with rounding up it yields 0x1.e90026p+4
+       which is incorrect, thus we use this workaround.
+       See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=112367. */
+    if(__builtin_expect(ux == 0x52928e33u, 0)) {
+        h = 0x1.318ffap+5f;
+        l = 0x1.fp-20f;
+        return h + l;
+      }
+    if(__builtin_expect(ux == 0x4ebd09e3u, 0)) {
+      h = 0x1.e90026p+4f;
+      l = 0x1.fp-21;
+      return h + l;
+    }
     b64u64_u t = {.f = z + 1.0};
     unsigned long m = t.u&(~0ul>>12);
     int e = (t.u>>52) - 0x3ff;

@@ -37,8 +37,6 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-__float128 as_cos(__float128);
-
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static void sincosn(int, double*, double*, double*, double*);
@@ -80,7 +78,6 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
 }
 
 static double as_cospi_zero(double x){
-  __float128 X2 = x; X2 *= X2;
   double x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
   static const double ch[][2] = {
     {-0x1.3bd3cc9be45dep+2, -0x1.692b71366cc04p-52}, {0x1.03c1f081b5ac4p+2, -0x1.32b33fda9113cp-52}};

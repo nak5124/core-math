@@ -107,6 +107,26 @@ static __attribute__((noinline)) double polydd(double xh, double xl, int n, cons
 
 static float as_powf_accurate2(float, float);
 
+static inline int isint(float y0){
+  b32u32_u wy = {.f = y0};
+  int ey = ((wy.u>>23) & 0xff) - 127, s = ey + 9;
+  if(ey>=0){
+    if(s>=32) return 1;
+    return !(wy.u<<s);
+  }
+  return 0;
+}
+
+static inline int isodd(float y0){
+  b32u32_u wy = {.f = y0};
+  int ey = ((wy.u>>23) & 0xff) - 127, s = ey + 9, odd = 0;
+  if(ey>=0){
+    if(s<32 && !(wy.u<<s)) odd = (wy.u>>(32-s))&1;
+    if(s==32) odd = wy.u&1;
+  }
+  return odd;
+}
+
 float cr_powf(float x0, float y0){
   static const double ix[] = {
     0x1p+0, 0x1.f07c1f07cp-1, 0x1.e1e1e1e1ep-1, 0x1.d41d41d42p-1,
@@ -138,6 +158,21 @@ float cr_powf(float x0, float y0){
     {0x1.78p-5, -0x1.8d66c5313a71dp-14}, {0x1.74p-6, 0x1.f7430ee200ep-17}, {0x0p+0, 0x0p+0}
   };
 
+  if(__builtin_expect(x0 < 0.0f, 0))
+    if(!isint(y0)) return __builtin_nanf("");
+  if(x0 == 0.0f){
+    if(y0<0.0f){
+      if(isodd(y0))
+	return 1.0f/__builtin_copysignf(0.0f,x0);
+      else
+	return 1.0f/0.0f;
+    } else {
+      if(isodd(y0))
+	return __builtin_copysignf(1.0f,x0)*0.0f;
+      else
+	return 0.0f;
+    }
+  }
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
   uint64_t m = tx.u & ~0ul>>12;
@@ -161,8 +196,18 @@ float cr_powf(float x0, float y0){
   y *= 16;
   double zt = (e - lix[j][0])*y;
   z = l*y + zt;
-  if(__builtin_expect(z>2048,0)) return 0x1p127f*0x1p127f;
-  if(__builtin_expect(z<-2400,0)) return 0x1p-126f*0x1p-126f;
+  if(__builtin_expect(z>2048, 0)){
+    if(isodd(y0))
+      return __builtin_copysignf(0x1p127f, x0)*0x1p127f;
+    else
+      return 0x1p127f*0x1p127f;
+  }
+  if(__builtin_expect(z<-2400, 0)){
+    if(isodd(y0))
+      return __builtin_copysignf(0x1p-126f, x0)*0x1p-126f;
+    else
+      return 0x1p-126f*0x1p-126f;
+  }
   double ia = __builtin_floor(z), h = __builtin_fma(l, y, zt - ia);
   static const double ce[] =
     {0x1.62e42fefa398bp-5, 0x1.ebfbdff84555ap-11, 0x1.c6b08d4ad86d3p-17,

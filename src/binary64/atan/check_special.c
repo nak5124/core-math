@@ -32,6 +32,7 @@ SOFTWARE.
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <float.h>
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -89,6 +90,20 @@ check (double x)
   }
 }
 
+/* check 10^6 values to the left and right of x */
+static void
+check_near (double x)
+{
+  double x_left = x, x_right = x;
+  for (int i = 0; i < 1000000; i++)
+  {
+    check (x_left);
+    check (x_right);
+    x_left = nextafter (x_left, -DBL_MAX);
+    x_right = nextafter (x_right, DBL_MAX);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -133,11 +148,17 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
+  printf ("Checking near threshold values\n");
+  check_near (0x1.b21c475e6362ap-8);
+  check_near (0x1p-27);
+  check_near (0x1.2ded8e34a9035p+7);
+
 #define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
-  
+
+  printf ("Checking random values\n");
 #pragma omp parallel for
   for (uint64_t n = 0; n < N; n++)
   {

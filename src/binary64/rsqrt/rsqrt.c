@@ -26,7 +26,9 @@ SOFTWARE.
 
 #include <errno.h>
 #include <fenv.h>
+#ifdef __x86_64__
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -34,6 +36,16 @@ SOFTWARE.
 #endif
 
 #pragma STDC FENV_ACCESS ON
+
+static inline int get_rounding_mode (void)
+{
+#ifdef __x86_64__
+  const unsigned flagp = _mm_getcsr ();
+  return (flagp&(3<<13))>>3;
+#else
+  return fegetround ();
+#endif
+}
 
 typedef unsigned __int128 u128;
 typedef unsigned long u64;
@@ -51,7 +63,7 @@ static double __attribute__((noinline)) as_rsqrt_refine(double rf, double a){
   }
   if(ia.u<<11 == 1ul<<63){
   } else {
-    unsigned mode = (_mm_getcsr () &(3<<13))>>3;
+    unsigned mode = get_rounding_mode ();
     int e = (ia.u>>52)&1;
     u64 rm, am;
     rm = (ir.u<<11|1l<<63)>>11;
