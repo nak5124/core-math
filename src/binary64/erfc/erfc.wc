@@ -102151,7 +102151,6 @@
 -0x1.f6f080096781p-11
 -0x1.f570b3c22a5e3p-11
 -0x1.f21fe32d96f82p-11
--0x1.f21fe32d96f82p-11
 -0x1.f23fbb524e958p-11
 -0x1.f33e3bff901f7p-11
 -0x1.f1fde938e706bp-11
@@ -102304,7 +102303,6 @@
 -0x1.cfe0d18a2b7b7p-11
 -0x1.cd02b1aedbcbbp-11
 -0x1.ca8f9d879afa6p-11
--0x1.c9bfb5023b24fp-11
 -0x1.c9bfb5023b24fp-11
 -0x1.cacee1e58a306p-11
 -0x1.caee771e6f024p-11
@@ -118323,17 +118321,17 @@
 # non-regression tests
 0x1.a8b13468353bfp+4
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
 -inf
 +0
 -0
-# corner values used in the code
--0x1.7744f8f74e94cp2
--0x1.7744f8f74e94bp2
--0x1.7744f8f74e94ap+2
--0x1.c5bf891b4ef6bp-54
+# corner values used in the code (and not present above)
+-0x1.7744f8f74e94cp+2
+-0x1.7744f8f74e94bp+2
 -0x1.c5bf891b4ef6ap-54
 -0x1.c5bf891b4ef69p-54
 0x1.b39dc41e48bfcp+4
@@ -118341,7 +118339,6 @@
 0x1.b39dc41e48bfep+4
 0x1.c5bf891b4ef69p-55
 0x1.c5bf891b4ef6ap-55
-0x1.c5bf891b4ef6bp-55
 0x1.713786d9c7c08p+1
 0x1.713786d9c7c09p+1
 0x1.713786d9c7c0ap+1

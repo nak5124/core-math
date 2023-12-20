@@ -194,7 +194,7 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
   double v2, v0 = fasttwosum(ah, al, &v2), v1 = fasttwosum(v2, at, &v2);
   double ax = __builtin_fabs(x);
   b64u64_u t0 = {.f = v0}, t1 = {.f = v1};
-  if(__builtin_expect(((t1.u+1)&(~0ul>>12))<=2 || ((t0.u>>52)&0x7ff)-((t1.u>>52)&0x7ff)>104, 0)){
+  if(__builtin_expect(((t1.u+1)&(~0ul>>12))<=2 || ((t0.u>>52)&0x7ff)-((t1.u>>52)&0x7ff)>103, 0)){
     static const double db[][3] = {
       {0x1.0dc89a3b5501p-7, 0x1.0dc70ac228717p-7, 0x1p-61},
       {0x1.e3fb41d2d226p-8, 0x1.e3f9013a852f8p-8, 0x1p-62},
@@ -206,6 +206,8 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
       {0x1.fd2ac95e57ef9p-8, 0x1.fd2829febc03ap-8, -0x1p-112},
       {0x1.6419079bbf601p-6, 0x1.640aade8f5427p-6, 0x1p-114},
       {0x1.7ba49f739829fp-1, 0x1.46ac372243536p-1, 0x1p-110},
+      {0x1.d768804487b07p-3, 0x1.cf5676f373ec1p-3, -0x1p-110},
+      {0x1.bb04a79820063p-8, 0x1.bb02ed5c5e956p-8, -0x1p-115}
     };
     for(unsigned i=0;i<sizeof(db)/sizeof(db[0]);i++)
       if(ax == db[i][0]) return __builtin_copysign(db[i][1],x) + __builtin_copysign(1.0,x)*db[i][2];

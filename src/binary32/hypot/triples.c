@@ -53,7 +53,7 @@ asuint (float f)
 }
 
 static void
-doit (float x, float y)
+check_aux (float x, float y)
 {
   float z1, z2;
   z1 = ref_hypot(x, y);
@@ -64,6 +64,19 @@ doit (float x, float y)
     fflush(stdout);
     exit(1);
   }
+}
+
+void
+check (float x, float y)
+{
+  check_aux (x, y);
+  check_aux (x, -y);
+  check_aux (-x, y);
+  check_aux (-x, -y);
+  check_aux (y, x);
+  check_aux (y, -x);
+  check_aux (-y, x);
+  check_aux (-y, -x);
 }
 
 /* check that x = m * 2*k for 2^23 <= m < 2^24,
@@ -85,7 +98,7 @@ valid (uint64_t x, uint64_t y, uint64_t z, int k)
   return ret;
 }
 
-static uint64_t
+uint64_t
 gcd (uint64_t a, uint64_t b)
 {
   while (b != 0)
@@ -124,7 +137,7 @@ generate1 (uint64_t p, uint64_t q, int k)
       break;
     if (valid (xj, yj, zj, k))
     {
-      doit (xj, yj);
+      check (xj, yj);
       count ++;
     }
   }
@@ -158,7 +171,7 @@ generate2 (uint64_t p, uint64_t q, int k)
       break;
     if (valid (xj, yj, zj, k))
     {
-      doit (xj, yj);
+      check (xj, yj);
       count ++;
     }
   }

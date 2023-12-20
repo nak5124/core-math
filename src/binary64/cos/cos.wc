@@ -38502,6 +38502,8 @@
 0x1.582d779b53224p+10
 0x1.58a02f46988d6p+10
 # special values
++snan
+-snan
 +nan
 -nan
 +inf

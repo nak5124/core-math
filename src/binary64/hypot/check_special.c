@@ -93,7 +93,7 @@ is_equal (double x, double y)
 }
 
 static void
-check (double x, double y)
+check_aux (double x, double y)
 {
   double z, t;
   mpfr_t X, Y, Z;
@@ -116,8 +116,21 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
+void
+check (double x, double y)
+{
+  check_aux (x, y);
+  check_aux (x, -y);
+  check_aux (-x, y);
+  check_aux (-x, -y);
+  check_aux (y, x);
+  check_aux (y, -x);
+  check_aux (-y, x);
+  check_aux (-y, -x);
+}
+
 static void
-check_random (int i)
+check_random (int i, int nthreads)
 {
   ref_init ();
   ref_fesetround (rnd);
@@ -125,9 +138,9 @@ check_random (int i)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-#define N 1000000000ul
 
-  for (unsigned long n = 0; n < N; n++)
+#define N 1000000000ul // total number of tests
+  for (unsigned long n = i; n < N; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -144,7 +157,7 @@ check_random_all (void)
   nthreads = omp_get_num_threads ();
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
 }
 
 /* check values in underflow region */
@@ -160,9 +173,6 @@ check_underflow (void)
     for (int j = 0; j < N; j++)
     {
       check (x, y);
-      check (x, -y);
-      check (-x, y);
-      check (-x, -y);
       x = nextafter (x, 2 * x);
     }
     y = nextafter (y, 2 * y);
@@ -183,13 +193,6 @@ check_large_diff (void)
     for (int j = 0; j < N; j++)
     {
       check (x, y);
-      check (x, -y);
-      check (-x, y);
-      check (-x, -y);
-      check (y, x);
-      check (-y, x);
-      check (y, -x);
-      check (-y, -x);
       x = nextafter (x, 0.5 * x);
     }
     y = nextafter (y, 2 * y);
@@ -210,14 +213,153 @@ check_overflow (void)
     for (int j = 0; j < N; j++)
     {
       check (x, y);
-      check (x, -y);
-      check (-x, y);
-      check (-x, -y);
       x = nextafter (x, 0.5 * x);
     }
     y = nextafter (y, 0.5 * y);
   }
 #undef N
+}
+
+/* return y' such that sqrt(x^2+y'^2) is closest to the 54-bit number
+   closest to sqrt(x^2+y^2) */
+static double y_worst (double x, double y)
+{
+  mpfr_t X, Y, Z;
+  mpfr_init2 (X, 192);
+  mpfr_init2 (Y, 192);
+  mpfr_init2 (Z, 54);
+  mpfr_set_d (X, x, MPFR_RNDN);
+  mpfr_sqr (X, X, MPFR_RNDN);
+  mpfr_set_d (Y, y, MPFR_RNDN);
+  mpfr_sqr (Y, Y, MPFR_RNDN);
+  mpfr_add (Y, X, Y, MPFR_RNDN);
+  mpfr_sqrt (Z, Y, MPFR_RNDN);
+  mpfr_prec_round (Z, 192, MPFR_RNDN);
+  mpfr_sqr (Z, Z, MPFR_RNDN); // square Z
+  mpfr_sub (Z, Z, X, MPFR_RNDN); // subtract X
+  mpfr_sqrt (Z, Z, MPFR_RNDN);
+  y = mpfr_get_d (Z, MPFR_RNDN);
+  mpfr_clear (X);
+  mpfr_clear (Y);
+  mpfr_clear (Z);
+  return y;
+}
+
+static void
+check_worst_i (int m, int i, int nthreads)
+{
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buffer[1];
+  double x, y;
+  srand48_r (getpid () + i, buffer);
+
+#define N 1000000000ul // total number of tests
+  for (unsigned long n = i; n < N; n += nthreads)
+  {
+    drand48_r (buffer, &x); // 0 <= x < 1
+    x = 0.5 + x * 0.5;      // 1/2 <= x < 1
+    drand48_r (buffer, &y);
+    y = ldexp (0.5 + x * 0.5, -m);
+    y = y_worst (x, y);
+    check (x, y);
+  }
+#undef N
+}
+
+// check worst cases with exp(y) = exp(x) - i
+static void
+check_worst (int m)
+{
+  int nthreads;
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#pragma omp parallel for
+  for (int i = 0; i < nthreads; i++)
+    check_worst_i (m, i, nthreads);
+}
+
+static uint64_t
+gcd (uint64_t a, uint64_t b)
+{
+  while (b != 0)
+  {
+    uint64_t r = a % b;
+    a = b;
+    b = r;
+  }
+  return a;
+}
+
+#define STEP 5000
+
+/* Check all Pythagorean triples z^2 = x^2 + y^2 with z in the subnormal
+   range. We necessarily have x = r^2 - s^2, y = 2*r*s, z = r^2 + s^2
+   with gcd(r,s) = 1 and one of r, s even
+   (see https://oeis.org/wiki/Pythagorean_triples).
+*/
+static void
+check_triples_subnormal (void)
+{
+  /* the smallest denormal is 2^-1074, the smallest normal is 2^-1022,
+     thus x, y, z are of the form k*2^-1074 with k < 2^52. */
+
+  srand48 (getpid ());
+  uint64_t r0 = lrand48 () % (2 * STEP);
+  if ((r0 & 1) == 0)
+    r0 ++; // ensures r0 is odd and >= 1
+  uint64_t s0 = 1 + (lrand48 () % (2 * STEP));
+  if ((s0 & 1) == 1)
+    s0 ++; // ensures s0 is even and >= 2
+
+  // type I: r is odd
+#pragma omp parallel for
+  for (uint64_t r = r0; r <= 0x4000000; r += 2 * STEP)
+    for (uint64_t s = s0; s < r; s += 2 * STEP)
+    {
+      if (gcd (r, s) == 1)
+      {
+        uint64_t x = r * r - s * s;
+        uint64_t y = 2 * r * s;
+        uint64_t z = r * r + s * s;
+        if (z > 0xffffffffffffful)
+          break;
+        // now (x,y,z) is a primitive Pythagorean triple
+        for (int n = 1; ; n++)
+        {
+          uint64_t nn = n * n;
+          uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
+          if (zz > 0xffffffffffffful)
+            break;
+          check (ldexp (xx, -1074), ldexp (yy, -1074));
+        }
+      }
+    }
+
+  // type II: r is even
+#pragma omp parallel for
+  for (uint64_t r = r0+1; r <= 0x4000000; r += 2 * STEP)
+    for (uint64_t s = s0-1; s < r; s += 2 * STEP)
+    {
+      if (gcd (r, s) == 1)
+      {
+        uint64_t x = r * r - s * s;
+        uint64_t y = 2 * r * s;
+        uint64_t z = r * r + s * s;
+        if (z > 0xffffffffffffful)
+          break;
+        // now (x,y,z) is a primitive Pythagorean triple
+        for (int n = 1; ; n++)
+        {
+          uint64_t nn = n * n;
+          uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
+          if (zz > 0xffffffffffffful)
+            break;
+          check (ldexp (xx, -1074), ldexp (yy, -1074));
+        }
+      }
+    }
 }
 
 int
@@ -261,6 +403,13 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking exact subnormal values\n");
+  check_triples_subnormal ();
+
+  printf ("Checking worst cases with exp(y) = exp(x) - m\n");
+  for (int m = 1; m <= 27; m++)
+    check_worst (m);
 
   printf ("Checking in underflow range\n");
   check_underflow ();

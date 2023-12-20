@@ -86,9 +86,9 @@ dint_zero_p (const dint64_t *a)
   return a->hi == 0;
 }
 
-static inline char cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
+static inline int cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
 
-static inline char cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
+static inline int cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
 
 /* ZERO is a dint64_t representation of 0, which ensures that
    dint_tod(ZERO) = 0 */

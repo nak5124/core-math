@@ -1,5 +1,5 @@
 # This file contains worst cases for atanh with at least 43 identical bits
-# after the round bit.
+# after the round bit (computed with BaCSeL with -m 44).
 # Important notes:
 # (1) since atanh(-x) = -atanh(x), if x is a worst case, then -x is too.
 #     To save space, only positive numbers are included here.
@@ -27092,6 +27092,8 @@
 0x1.fd86297b1aad7p-1
 0x1.fdfc242e11011p-1
 # special values
++snan
+-snan
 +nan
 -nan
 +inf

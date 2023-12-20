@@ -7580,6 +7580,8 @@
 -0x1.ffccec4c86504p+4
 -0x1.fff08a6896f93p+4
 # special cases
++snan
+-snan
 +nan
 -nan
 +inf
@@ -123295,3 +123297,4 @@
 # non-regression tests
 0x1.f6c5e84a1d441p+958
 0x1.a53fbd921da79p-54
+0x1.62e42f2421d7dp+9

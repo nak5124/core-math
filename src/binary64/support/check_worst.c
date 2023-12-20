@@ -139,9 +139,13 @@ is_equal (double x, double y)
   return asuint64 (x) == asuint64 (y);
 }
 
+int tests = 0;
+
 static void
 check (double x, double y)
 {
+#pragma omp atomic update
+  tests ++;
   ref_init();
   ref_fesetround(rnd);
   double z1 = ref_function_under_test(x, y);
@@ -149,7 +153,7 @@ check (double x, double y)
   double z2 = cr_function_under_test(x, y);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
-#ifndef FIRST_Y
+#ifndef EXCHANGE_X_Y
     printf("FAIL x=%la y=%la ref=%la z=%la\n", x, y, z1, z2);
 #else
     printf("FAIL y=%la x=%la ref=%la z=%la\n", x, y, z1, z2);
@@ -195,7 +199,7 @@ doloop(void)
   }
 
   free(items);
-  printf("%d tests passed\n", count);
+  printf("%d tests passed\n", tests);
 }
 
 int

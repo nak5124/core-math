@@ -289,7 +289,7 @@ __builtin_roundeven (double x)
 #endif
 
 /*
-  Approximation of exp(x)
+  Approximation of exp(x) for -0x1.2b708872320e2p+5 < x < 0x1.62e42fefa39fp+9
   (the code in pow.c has x = xh + xl as input, we simplified it since here
   we have xl=0, we kept the corresponding line in comment for reference).
 
@@ -308,7 +308,7 @@ static inline void exp_1 (double *hi, double *lo, double x) {
 
 #define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
   // double k = __builtin_roundeven (xh * INVLOG2);
-  double k = __builtin_roundeven (x * INVLOG2);
+  double k = __builtin_roundeven (x * INVLOG2); // k <= 4194304
 
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
@@ -335,6 +335,14 @@ static inline void exp_1 (double *hi, double *lo, double x) {
   d_mul (hi, lo, *hi, *lo, qh, ql);
   f64_u _d;
 
+  /* special case for M = 2047 since _d.f would be 2^1024 which is not
+     representable */
+  if (__builtin_expect (M == 2047, 0))
+  {
+    M --;
+    *hi = 2 * *hi;
+    *lo = 2 * *lo;
+  }
   _d.u = M << 52;
   *hi *= _d.f;
   *lo *= _d.f;
@@ -433,6 +441,14 @@ static inline void exp_2 (double *hi, double *lo, double x) {
   d_mul (hi, lo, *hi, *lo, qh, ql);
   f64_u _d;
 
+  /* special case for M = 2047 since _d.f would be 2^1024 which is not
+     representable */
+  if (__builtin_expect (M == 2047, 0))
+  {
+    M --;
+    *hi = 2 * *hi;
+    *lo = 2 * *lo;
+  }
   _d.u = M << 52;
   *hi *= _d.f;
   *lo *= _d.f;

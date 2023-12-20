@@ -134939,6 +134939,8 @@
 0x1.ffffffffffffep-1
 0x1
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
