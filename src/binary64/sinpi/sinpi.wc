@@ -56424,6 +56424,8 @@
 0x1p1023
 0x1.fffffffffffffp+1023
 # special values
++snan
+-snan
 +nan
 -nan
 +inf

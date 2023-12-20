@@ -1,3 +1,5 @@
+# worst cases of asinh computed with BaCSeL with at least 43 identical bits
+# after the round bit (-m 44) in [0x1.7137449123ef6p-26, 0x1p+1024)
 0x1.d12ed0af1a239p-26
 0x1.d12ed0af1a241p-26
 0x1.d12ed0af1a249p-26
@@ -33110,6 +33112,8 @@
 0x1.ed646d0f12e65p+1023
 0x1.edf3606885937p+1023
 # special values
++snan
+-snan
 +nan
 -nan
 +inf

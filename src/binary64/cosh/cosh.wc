@@ -2031,18 +2031,18 @@
 0x1.fff020807d1f7p-3
 # non-regression tests
 0x1.3c44d4133d14dp-8
--0x1.ba0790df30f6ep-818
--0x1.3e0a7fcad17d1p-532
--0x1.86ff555a5d6c1p-263
+0x1.ba0790df30f6ep-818
+0x1.3e0a7fcad17d1p-532
+0x1.86ff555a5d6c1p-263
 0x1.9ac9e3ea867dap-382
 0x1.260615f80852p-500
 0x1.2da6b35409173p-107
 0x1.ab38a22d397a7p-269
 0x1.ac6e62ce015ffp-184
--0x1.bd76814aff9d2p-34
+0x1.bd76814aff9d2p-34
 0x1.5435f78207a61p-781
 0x1.ee88048fe5e1dp-693
--0x1.457ef63c379bcp-949
+0x1.457ef63c379bcp-949
 # other worst cases generated with bacsel (not already above)
 # with at least 43 identical bits after the round bit
 # in the range [1/2^26, 6249411755243648/2^43)
@@ -36424,6 +36424,8 @@
 0x1.feefa790e8302p-17
 0x1.febc29963a40fp-17
 # special values
++snan
+-snan
 +nan
 -nan
 +inf

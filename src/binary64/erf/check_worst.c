@@ -172,7 +172,7 @@ void test(int maxfailures){
     }
     ++count;
   }
-  printf("%d test arguments, %d succesfully passed and %d failure(s)\n", count, count-failures, failures);
+  printf("%d tests passed, %d failure(s)\n", count, failures);
 }
 
 int transform(double x, double *out){

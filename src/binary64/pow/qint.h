@@ -56,14 +56,14 @@ typedef union {
 } uint128_t;
 
 // Add two 128-bit integers and return 1 if a carry occured
-static inline char addu_128 (uint128_t a, uint128_t b, uint128_t *r) {
+static inline int addu_128 (uint128_t a, uint128_t b, uint128_t *r) {
   r->r = a.r + b.r;
   // Return the carry
   return r->r < a.r;
 }
 
 // Subtract two 128-bit integers and return 1 if a borrow occured
-static inline char subu_128 (uint128_t a, uint128_t b, uint128_t *r) {
+static inline int subu_128 (uint128_t a, uint128_t b, uint128_t *r) {
   r->r = a.r - b.r;
   // Return the borrow
   return r->r > a.r;
@@ -84,14 +84,14 @@ static inline signed char cmpu (uint64_t a, uint64_t b) {
 #endif
 
 // Add two 128-bit integers and return 1 if a carry occured
-static inline char addu128 (u128 a, u128 b, u128 *r) {
+static inline int addu128 (u128 a, u128 b, u128 *r) {
   *r = a + b;
   // Return the carry
   return *r < a;
 }
 
 // Subtract two 128-bit integers and return 1 if a borrow occured
-static inline char subu128 (u128 a, u128 b, u128 *r) {
+static inline int subu128 (u128 a, u128 b, u128 *r) {
   *r = a - b;
   // Return the borrow
   return *r > a;

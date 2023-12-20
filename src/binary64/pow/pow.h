@@ -185,7 +185,7 @@ static inline void d_square(double *hi, double *lo, double ah, double al) {
 static inline long dtoi(double x) { return (long)x; }
 
 // Returns 1 if x is an integer
-static inline char is_int(double x) { return x == __builtin_roundeven (x); }
+static inline int is_int(double x) { return x == __builtin_roundeven (x); }
 
 // Returns (e, m) such that m is odd and x = 2^E \times m
 static inline void extract(int64_t *e, uint64_t *m, double x) {

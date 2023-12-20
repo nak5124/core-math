@@ -1787,7 +1787,7 @@ cr_log2p1_accurate (double x)
   double ax = __builtin_fabs (x);
 
   if (ax < 0x1p-5)
-      return (ax < 0x1p-900) ? cr_log2p1_accurate_tiny (x)
+      return (ax < 0x1p-105) ? cr_log2p1_accurate_tiny (x)
         : cr_log2p1_accurate_small (x);
 
   /* (xh,xl) <- 1+x */

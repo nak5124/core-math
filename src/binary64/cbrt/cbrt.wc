@@ -1,4 +1,5 @@
 # worst cases for cbrt produced with bacsel (revision bf0bec8)
+# with at least 44 identical bits after the round bit:
 # make GMP=$GMP MPFR=$MPFR FPLLL=$FPLLL DEFSAL="-DCBRT -DBASIS=2"
 # ./bacsel -rnd_mode all -prec 128 -n 53 -nn 53 -m 45 -t 19 -t0 4503599627370496 -t1 9007199254740992 -d 2 -alpha 2 -nthreads 64 -e_in 0
 # ./bacsel -rnd_mode all -prec 128 -n 53 -nn 53 -m 45 -t 19 -t0 4503599627370496 -t1 9007199254740992 -d 2 -alpha 2 -nthreads 64 -e_in 1
@@ -105540,6 +105541,8 @@
 0x1.fffaa681aa825p+1
 0x1.fffe6e1bdd63fp+1
 # special values
++snan
+-snan
 +nan
 -nan
 +inf

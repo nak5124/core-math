@@ -56,7 +56,7 @@ typedef union {
 } uint128_t;
 
 // Add two 128 bit integers and return 1 if an overflow occured
-static inline char addu_128(uint128_t a, uint128_t b, uint128_t *r) {
+static inline int addu_128(uint128_t a, uint128_t b, uint128_t *r) {
   r->l = a.l + b.l;
   r->h = a.h + b.h + (r->l < a.l);
 
@@ -64,8 +64,8 @@ static inline char addu_128(uint128_t a, uint128_t b, uint128_t *r) {
   return r->h == a.h ? r->l < a.l : r->h < a.h;
 }
 
-// Substract two 128 bit integers and return 1 if an underflow occured
-static inline char subu_128(uint128_t a, uint128_t b, uint128_t *r) {
+// Subtract two 128 bit integers and return 1 if an underflow occured
+static inline int subu_128(uint128_t a, uint128_t b, uint128_t *r) {
   uint128_t c = {.r = -b.r};
   r->l = a.l + c.l;
   r->h = a.h + c.h + (r->l < a.l);
@@ -74,9 +74,9 @@ static inline char subu_128(uint128_t a, uint128_t b, uint128_t *r) {
   return a.h != r->h ? r->h > a.h : r->l > a.l;
 }
 
-static inline char cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
+static inline int cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
 
-static inline char cmpu(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
+static inline int cmpu(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
 
 #endif
 
