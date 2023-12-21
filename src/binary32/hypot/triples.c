@@ -56,6 +56,8 @@ static void
 check_aux (float x, float y)
 {
   float z1, z2;
+  ref_init();
+  ref_fesetround(rnd);
   z1 = ref_hypot(x, y);
   fesetround(rnd1[rnd]);
   z2 = cr_hypotf(x, y);
