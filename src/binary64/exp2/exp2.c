@@ -56,9 +56,8 @@ static inline double muldd(double xh, double xl, double ch, double cl, double *l
 }
 
 static inline double mulddd(double xh, double ch, double cl, double *l){
-  double alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
-  ahhl += alhh;
-  *l = ahhl;
+  double ahhh = ch*xh;
+  *l = cl*xh + __builtin_fma(ch, xh, -ahhh);
   return ahhh;
 }
 
