@@ -25,7 +25,6 @@ SOFTWARE.
 */
 
 #include <stdint.h> /* for uint64_t */
-#include <math.h>   /* for ldexp */
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
