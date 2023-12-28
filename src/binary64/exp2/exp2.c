@@ -221,7 +221,10 @@ double cr_exp2(double x){
 	return z*z;
       }
     } else {
-      if(ix.u >= 0x4090000000000000ul) return 0x1p1023 * 0x1p1023;
+      if(ix.u >= 0x4090000000000000ul){
+	volatile double z = 0x1p1023;
+	return z*z;
+      }
     }
   }
 
