@@ -68928,3 +68928,9 @@
 -inf
 +0
 -0
+# denormal threshold
+-0x1.ff00000000002p+9
+-0x1.ff00000000001p+9
+-0x1.ffp+9
+-0x1.fefffffffffffp+9
+-0x1.feffffffffffep+9

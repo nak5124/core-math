@@ -51,9 +51,8 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
 }
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
-  double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
-  ahhl += alhh + ahlh;
-  *l = ahhl;
+  double ahhh = ch*xh;
+  *l = (cl*xh + ch*xl) + __builtin_fma(ch, xh, -ahhh);
   return ahhh;
 }
 
@@ -230,7 +229,7 @@ double cr_exp2(double x){
   long k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
-  double th = t0h*t1h, tl = t0h*t1l + t1h*t0l + __builtin_fma(t0h,t1h,-th);
+  double tl, th = muldd(t0h,t0l, t1h,t1l, &tl);
   static const double c[] =
     {0x1.62e42fefa39efp-13, 0x1.ebfbdff82c58fp-27, 0x1.c6b08d73b3e01p-41, 0x1.3b2ab6fdda001p-55};
   double tz = th*z, r1 = th, r0 = tz*((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + tl, eps = 19e-20*tz;
@@ -239,7 +238,7 @@ double cr_exp2(double x){
     {0x1.c6b08d704a0cp-41, -0x1.d3a15710d3d83p-95}, {0x1.3b2ab6fba4e77p-55, 0x1.4dd5d2a5e025ap-110},
     {0x1.5d87fe7a66459p-70, -0x1.dc47e47beb9ddp-124}, {0x1.430912f9fb79dp-85, -0x1.4fcd51fcb764p-139}};
 
-  if(__builtin_expect(ie>-1023, 1)){
+  if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){
     double lb = r1 + (r0 - eps), ub = r1 + (r0 + eps);
     if(__builtin_expect(lb != ub, 0)) {
       double fl, fh = polydd(z, 6, cd, &fl);
