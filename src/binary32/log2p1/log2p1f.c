@@ -183,7 +183,9 @@ float cr_log2p1f(float x) {
   }
 }
 
+#ifndef __INTEL_CLANG_COMPILER
 /* just to compile since glibc does not contain this function */
 float log2p1f(float x){
   return cr_log2p1f(x);
 }
+#endif

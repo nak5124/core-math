@@ -134,7 +134,14 @@ double cr_rsqrt(double x){
   return rf;
 }
 
+#ifdef __INTEL_CLANG_COMPILER // rsqrt is called invsqrt with icx
+extern double invsqrt (double);
+double rsqrt(double x){
+  return invsqrt(x);
+}
+#else
 /* rsqrt function is not in glibc so define it here just to compile tests */
 double rsqrt(double x){
   return cr_rsqrt(x);
 }
+#endif

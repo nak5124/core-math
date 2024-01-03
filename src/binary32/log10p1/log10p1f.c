@@ -145,7 +145,9 @@ float cr_log10p1f(float x){
   return ub;
 }
 
+#ifndef __INTEL_CLANG_COMPILER
 /* just to compile since glibc does not contain this function */
 float log10p1f(float x){
   return cr_log10p1f(x);
 }
+#endif

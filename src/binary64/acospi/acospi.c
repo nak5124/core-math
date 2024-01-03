@@ -1064,8 +1064,10 @@ cr_acospi (double x)
   }
 }
 
+#ifndef __INTEL_CLANG_COMPILER
 /* just to compile since glibc does not provide this function */
 double acospi (double x)
 {
   return acos (x) / M_PI;
 }
+#endif
