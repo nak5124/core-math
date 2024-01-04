@@ -142,9 +142,7 @@ float cr_exp10m1f(float x){
   }
 }
 
-#ifndef __INTEL_CLANG_COMPILER
 /* just to compile since glibc does not contain this function */
 float exp10m1f(float x){
   return cr_exp10m1f(x);
 }
-#endif

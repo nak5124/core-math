@@ -997,10 +997,8 @@ cr_exp2m1 (double x)
   return exp2m1_accurate (x);
 }
 
-#ifndef __INTEL_CLANG_COMPILER
 // fake function as long as GNU libc does not provide it
 double exp2m1 (double x)
 {
   return exp2 (x) - 1.0;
 }
-#endif

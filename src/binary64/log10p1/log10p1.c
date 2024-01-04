@@ -1575,10 +1575,8 @@ static inline double dint_tod(dint64_t *a) {
   return r.f * e.f;
 }
 
-#ifndef __INTEL_CLANG_COMPILER
 // since GNU does not provide log10p1, we use a fake function as reference
 double log10p1 (double x)
 {
   return log10 (1.0 + x);
 }
-#endif
