@@ -9,7 +9,7 @@ TYPE_UNDER_TEST := float
 all:: check_exhaustive
 
 check_exhaustive: check_exhaustive.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
-	$(CC) $(LDFLAGS) -fopenmp -o $@ $^ -lmpfr -lm
+	$(CC) $(CFLAGS) $(LDFLAGS) -fopenmp -o $@ $^ -lmpfr -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -I ../support -c -o $@ $<
