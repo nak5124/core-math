@@ -103,23 +103,6 @@ static inline double as_ldexp(double x, i64 i){
 #endif
 }
 
-static inline double as_todenormal(double x){
-#ifdef __x86_64__
-  __m128i sb; sb[0] = ~0ul>>12;
-#if defined(__clang__)
-  __m128d r = _mm_set_sd(x);
-#else
-  __m128d r; asm("":"=x"(r):"0"(x));
-#endif
-  r = _mm_and_pd(r, (__m128d)sb);
-  return r[0];
-#else
-  b64u64_u ix = {.f = x};
-  ix.u &= ~0ul>>12;
-  return ix.f;
-#endif
-}
-
 static const double db[] =
   {0x1.e923c188ea79bp-4, 0x1.1a0408712e00ap-2, 0x1.1c38132777b26p-2, 0x1.27f4980d511ffp-2,
    0x1.8172a0e02f90ep-2, 0x1.8bbe2fb45c151p-2, 0x1.bcab27d05abdep-2, 0x1.005ae04256babp-1,
