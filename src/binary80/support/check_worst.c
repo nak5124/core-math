@@ -47,7 +47,7 @@ int rnd;
 
 typedef long double ldouble2[2];
 
-typedef union { long double f; __int128 i; } d80u128;
+typedef union {long double f; uint64_t m, e;} b80u128_u;
 
 /* scanf %La from buf, allowing snan, +snan and -snan */
 static int
@@ -57,12 +57,19 @@ sscanf_snan (char *buf, long double *x)
     return 1;
   else if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
   {
-    *x = 0.0 / 0.0; // FIXME
+    b80u128_u v;
+    // +snan has encoding m=2^63+1, e=32767 (for example)
+    v.e = 0x7fff;
+    v.m = 0x8000000000000001ul;
+    *x = v.f;
     return 1;
   }
   else if (strncmp (buf, "-snan", 5) == 0)
   {
-    *x = 0.0 / 0.0; // FIXME
+    // -snan has encoding m=2^63+1, e=65535 (for example)
+    v.e = 0xffff;
+    v.m = 0x8000000000000001ul;
+    *x = v.f;
     return 1;
   }
   return 0;
@@ -107,21 +114,21 @@ readstdin(ldouble2 **result, int *count)
   }
 }
 
-static inline uint64_t
-asuint128 (long double f)
+static int
+is_nan (long double x)
 {
-  d80u128 u = {.f = f};
-  return u.i;
+  b80u128_u v = {.f = x};
+  return ((v.e & 0x7fff) == 0x7fff && (v.m != (1ul << 63)));
 }
 
 static inline int
 is_equal (long double x, long double y)
 {
-  if (isnan (x))
-    return isnan (y);
-  if (isnan (y))
-    return isnan (x);
-  return asuint128 (x) == asuint128 (y);
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return x == y;
 }
 
 int tests = 0;

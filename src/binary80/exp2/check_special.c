@@ -29,7 +29,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
-#include <math.h>
 #include <unistd.h>
 
 int ref_fesetround (int);
@@ -43,13 +42,32 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd = 0;
 int verbose = 0;
 
+// only the lower 16 bits of e are used
+// 1.0 has encoding m=2^63, e=16383
+// -1.0 has encoding m=2^63, e=49151
+// 2 has encoding m=2^63, e=16384
+// +qnan has encoding m=2^63+2^62, e=32767
+// -qnan has encoding m=2^63+2^62, e=65535
+// +inf has encoding m=2^63, e=32767
+// -inf has encoding m=2^63, e=65535
+// +snan has encoding m=2^63+2^62-1, e=32767
+// -snan has encoding m=2^63+2^62-1, e=65535
+typedef union {long double f; uint64_t m, e;} b80u128_u;
+
+static int
+is_nan (long double x)
+{
+  b80u128_u v = {.f = x};
+  return ((v.e & 0x7fff) == 0x7fff && (v.m != (1ul << 63)));
+}
+
 static inline int
 is_equal (long double x, long double y)
 {
-  if (isnan (x))
-    return isnan (y);
-  if (isnan (y))
-    return isnan (x);
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
   return x == y;
 }
 
@@ -67,18 +85,14 @@ check (long double x)
   }
 }
 
-typedef union {long double f; uint64_t u, v;} b80u80_u;
-
 static long double
 get_random ()
 {
-  b80u80_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
-  v.v = rand ();
-  v.v |= (uint64_t) rand () << 31;
-  v.v |= (uint64_t) rand () << 62;
+  b80u128_u v;
+  v.m = rand ();
+  v.m |= (uint64_t) rand () << 31;
+  v.m |= (uint64_t) rand () << 62;
+  v.v = rand () & 65535;
   return v.f;
 }
 

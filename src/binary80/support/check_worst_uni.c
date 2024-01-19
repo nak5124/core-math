@@ -35,7 +35,6 @@ SOFTWARE.
 #ifndef CORE_MATH_NO_OPENMP
 #include <omp.h>
 #endif
-#include <math.h> // for isnan, FIXME: remove this dependency
 
 #include "function_under_test.h"
 
@@ -48,7 +47,7 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 
-typedef union { long double f; __int128 i; } d80u128;
+typedef union {long double f; uint64_t m, e;} b80u128_u;
 
 static void
 readstdin(long double **result, int *count)
@@ -80,12 +79,20 @@ readstdin(long double **result, int *count)
     // special code for snan, since glibc does not read them
     if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
     {
-      *item = 0.0 / 0.0; // FIXME
+      b80u128_u v;
+      // +snan has encoding m=2^63+1, e=32767 (for example)
+      v.e = 0x7fff;
+      v.m = 0x8000000000000001ul;
+      *item = v.f;
       (*count)++;
     }
     else if (strncmp (buf, "-snan", 5) == 0)
     {
-      *item = 0.0 / 0.0; // FIXME
+      b80u128_u v;
+      // -snan has encoding m=2^63+1, e=65535 (for example)
+      v.e = 0xffff;
+      v.m = 0x8000000000000001ul;
+      *item = v.f;
       (*count)++;
     }
     else if (sscanf(buf, "%La", item) == 1)
@@ -93,21 +100,21 @@ readstdin(long double **result, int *count)
   }
 }
 
-static inline __int128
-asuint128 (long double f)
+static int
+is_nan (long double x)
 {
-  d80u128 u = {.f = f};
-  return u.i;
+  b80u128_u v = {.f = x};
+  return ((v.e & 0x7fff) == 0x7fff && (v.m != (1ul << 63)));
 }
 
 static inline int
 is_equal (long double x, long double y)
 {
-  if (isnan (x))
-    return isnan (y);
-  if (isnan (y))
-    return isnan (x);
-  return asuint128 (x) == asuint128 (y);
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return x == y;
 }
 
 void
