@@ -52,13 +52,13 @@ int verbose = 0;
 // -inf has encoding m=2^63, e=65535
 // +snan has encoding m=2^63+2^62-1, e=32767
 // -snan has encoding m=2^63+2^62-1, e=65535
-typedef union {long double f; uint64_t m, e;} b80u128_u;
+typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 
 static int
 is_nan (long double x)
 {
-  b80u128_u v = {.f = x};
-  return ((v.e & 0x7fff) == 0x7fff && (v.m != (1ul << 63)));
+  b80u80_t v = {.f = x};
+  return (v.e == 0x7fff && (v.m != (1ul << 63)));
 }
 
 static inline int
@@ -88,11 +88,11 @@ check (long double x)
 static long double
 get_random ()
 {
-  b80u128_u v;
+  b80u80_t v;
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
   v.m |= (uint64_t) rand () << 62;
-  v.v = rand () & 65535;
+  v.e = rand () & 65535;
   return v.f;
 }
 

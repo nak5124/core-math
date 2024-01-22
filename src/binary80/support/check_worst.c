@@ -47,7 +47,7 @@ int rnd;
 
 typedef long double ldouble2[2];
 
-typedef union {long double f; uint64_t m, e;} b80u128_u;
+typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u96_t;
 
 /* scanf %La from buf, allowing snan, +snan and -snan */
 static int
@@ -57,7 +57,7 @@ sscanf_snan (char *buf, long double *x)
     return 1;
   else if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
   {
-    b80u128_u v;
+    b80u80_t v;
     // +snan has encoding m=2^63+1, e=32767 (for example)
     v.e = 0x7fff;
     v.m = 0x8000000000000001ul;
@@ -66,6 +66,7 @@ sscanf_snan (char *buf, long double *x)
   }
   else if (strncmp (buf, "-snan", 5) == 0)
   {
+    b80u80_t v;
     // -snan has encoding m=2^63+1, e=65535 (for example)
     v.e = 0xffff;
     v.m = 0x8000000000000001ul;
@@ -117,8 +118,8 @@ readstdin(ldouble2 **result, int *count)
 static int
 is_nan (long double x)
 {
-  b80u128_u v = {.f = x};
-  return ((v.e & 0x7fff) == 0x7fff && (v.m != (1ul << 63)));
+  b80u80_t v = {.f = x};
+  return (v.e == 0x7fff && (v.m != (1ul << 63)));
 }
 
 static inline int
