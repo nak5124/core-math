@@ -104,3 +104,12 @@ def analyze_P():
    print ("rel. err=", log(err)/log(2.))
    print ("max l=", l.abs().upper())
    
+# split binade [2^(e-1),2^e) into k blocks
+def doit_bacsel(e,k):
+   t0 = 2^63
+   t1 = 2^64
+   h = ceil((t1-t0)/k)
+   for i in range(k):
+      u0 = t0+h*i
+      u1 = min(t0+h*(i+1),t1)
+      print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 20 64")
