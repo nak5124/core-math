@@ -57,9 +57,9 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
 }
 
 static inline double sum(double xh, double xl, double ch, double cl, double *l){
-  double s = xh + ch, d = s - xh;
-  *l = ((ch - d) + (xh + (d - s))) + (xl + cl);
-  return s;
+  double sl, sh = twosum(xh,ch, &sl);
+  *l = (xl + cl) + sl;
+  return sh;
 }
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
@@ -158,7 +158,7 @@ static const double ln[4][16][3] = {
    {-0x1.706f04cc2c9f6p-93, -0x1.f3bc0ce9b9a08p-42, -0x1.0a2ab37p-11},
    {0x1.ab6f41df01d7fp-93, 0x1.a7cbc9a97ba4p-44, -0x1.62e0ap-12},
    {-0x1.67e487663ca3ep-100, -0x1.957976dc5f36p-43, -0x1.62e84fcp-13},
-   {0x0p+0, 0x0p+0, 0x0p+0},     
+   {0x0p+0, 0x0p+0, 0x0p+0},
    {0x1.9681e48dde135p-93, -0x1.868625640a69p-43, 0x1.62e7bp-13},
    {0x1.a2948cd558655p-93, -0x1.2ee3d96b696ap-42, 0x1.62e35f6p-12},
    {-0x1.cfc26ccf6d0e4p-96, 0x1.53edbcf1165p-46, 0x1.0a2b4b2p-11},
@@ -184,18 +184,61 @@ static const double ln[4][16][3] = {
    {0x1.4f787e495e5ep-93, -0x1.fbb791220a18p-46, 0x1.3682f14p-14}}
 };
 
-double cr_log1p(double x){
-  static const struct {ushort c0; short c1;} B[] = {
-    {301, 27565}, {7189, 24786}, {13383, 22167}, {18923, 19696},
-    {23845, 17361}, {28184, 15150}, {31969, 13054}, {35231, 11064},
-    {37996, 9173}, {40288, 7372}, {42129, 5657}, {43542, 4020},
-    {44546, 2457}, {45160, 962}, {45399, -468}, {45281, -1838},
-    {44821, -3151}, {44032, -4412}, {42929, -5622}, {41522, -6786},
-    {39825, -7905}, {37848, -8982}, {35602, -10020}, {33097, -11020},
-    {30341, -11985}, {27345, -12916}, {24115, -13816}, {20661, -14685},
-    {16989, -15526}, {13107, -16339}, {9022, -17126}, {4740, -17889}
-  };
+static const double rf[64] = {
+  0x1.6816818p+0, 0x1.642c858p+0, 0x1.605816p+0, 0x1.5c98828p+0,
+  0x1.58ed23p+0, 0x1.5555558p+0, 0x1.51d07e8p+0, 0x1.4e5e0a8p+0,
+  0x1.4afd6ap+0, 0x1.47ae148p+0, 0x1.446f868p+0, 0x1.4141418p+0,
+  0x1.3e22ccp+0, 0x1.3b13b1p+0, 0x1.381381p+0, 0x1.3521cf8p+0,
+  0x1.323e348p+0, 0x1.2f684cp+0, 0x1.2c9fb5p+0, 0x1.29e4128p+0,
+  0x1.27350b8p+0, 0x1.249249p+0, 0x1.21fb78p+0, 0x1.1f7048p+0,
+  0x1.1cf06bp+0, 0x1.1a7b96p+0, 0x1.181181p+0, 0x1.15b1e6p+0,
+  0x1.135c81p+0, 0x1.111111p+0, 0x1.0ecf568p+0, 0x1.0c9715p+0,
+  0x1.0a68108p+0, 0x1.0842108p+0, 0x1.0624ddp+0, 0x1.041041p+0,
+  0x1.020408p+0, 0x1p+0, 0x1.f81f82p-1, 0x1.f07c1fp-1,
+  0x1.e9131a8p-1, 0x1.e1e1e2p-1, 0x1.dae6078p-1, 0x1.d41d42p-1,
+  0x1.cd85688p-1, 0x1.c71c72p-1, 0x1.c0e07p-1, 0x1.bacf918p-1,
+  0x1.b4e81b8p-1, 0x1.af286cp-1, 0x1.a98ef6p-1, 0x1.a41a418p-1,
+  0x1.9ec8e98p-1, 0x1.9999998p-1, 0x1.948b1p-1, 0x1.8f9c19p-1,
+  0x1.8acb91p-1, 0x1.8618618p-1, 0x1.8181818p-1, 0x1.7d05f4p-1,
+  0x1.78a4c8p-1, 0x1.745d178p-1, 0x1.702e06p-1, 0x1.6c16c18p-1
+};
 
+static const double lf[64][2] = {
+  {-0x1.f2f8281bade6ap-42, -0x1.5d5bde3994p-2}, {0x1.c2843fdd367a4p-42, -0x1.522ae0438cp-2},
+  {-0x1.06c10c34c14bp-44, -0x1.4718dc171cp-2}, {0x1.cfa4e853f589p-43, -0x1.3c2526cb34p-2},
+  {-0x1.ce3ac179bd856p-42, -0x1.314f1e0534p-2}, {-0x1.b91f82deb8122p-42, -0x1.269621934cp-2},
+  {0x1.46bbb83d7163ep-42, -0x1.1bf995a9a8p-2}, {0x1.b842e5a74bdbp-42, -0x1.1178e84a8p-2},
+  {-0x1.862715e5bb534p-42, -0x1.071385f4d4p-2}, {-0x1.9bcbcbea0cdf8p-42, -0x1.f991c6eb38p-3},
+  {-0x1.01101cb605958p-43, -0x1.e530f1067p-3}, {0x1.0c38c81ad8f06p-42, -0x1.d10380b658p-3},
+  {0x1.3aa40992a6d82p-42, -0x1.bd0874c3cp-3}, {0x1.30f68780ae82ep-42, -0x1.a93ed248bp-3},
+  {-0x1.7d116989d098p-47, -0x1.95a5ac5f7p-3}, {-0x1.1e0012ba619cap-42, -0x1.823c150518p-3},
+  {0x1.54535d5671858p-43, -0x1.6f0127cf58p-3}, {-0x1.ed87db3498128p-42, -0x1.5bf407b54p-3},
+  {-0x1.aafde9c9fc39ap-42, -0x1.4913d94338p-3}, {-0x1.015868c234p-43, -0x1.365fca3158p-3},
+  {0x1.eff33f502c226p-42, -0x1.23d7126cap-3}, {0x1.b8521e874d358p-43, -0x1.1178e7228p-3},
+  {0x1.54d75afe84568p-43, -0x1.fe89129dcp-4}, {-0x1.1a813f3fa7c1ep-42, -0x1.da7278384p-4},
+  {-0x1.6c6676f40963ep-42, -0x1.b6ac8afadp-4}, {-0x1.2620b7957a7a6p-42, -0x1.9335e4d59p-4},
+  {0x1.f8ffee5598f38p-43, -0x1.700d2f4ebp-4}, {-0x1.fab0f5bf42ca2p-42, -0x1.4d311652p-4},
+  {-0x1.7a3e970b1c3a8p-44, -0x1.2aa049247p-4}, {-0x1.d030435fecb5p-43, -0x1.08598a59ep-4},
+  {0x1.35084a4fb8ab8p-43, -0x1.ccb7357dep-5}, {0x1.32f36d60b44c4p-43, -0x1.894aa1cap-5},
+  {0x1.c1bcce5be811p-45, -0x1.466ae8a2ep-5}, {0x1.777740b18714ap-42, -0x1.0415d81e8p-5},
+  {-0x1.955c057693d94p-43, -0x1.8492470c8p-6}, {0x1.4f71addb8bep-43, -0x1.020564894p-6},
+  {-0x1.bcda4e198afbp-44, -0x1.01014f588p-7}, {0x1.cp-67, 0x0p+0},
+  {-0x1.fe0df75092c5ep-42, 0x1.fc0a891p-7}, {0x1.98036ec7e0a1p-45, 0x1.f829b1e78p-6},
+  {0x1.ba010f49e5ffp-42, 0x1.774593832p-5}, {-0x1.3ab13c266d328p-42, 0x1.f0a30a012p-5},
+  {-0x1.71798573e45d4p-43, 0x1.341d78b1cp-4}, {0x1.ad32f072669fcp-42, 0x1.6f0d272e5p-4},
+  {-0x1.54e391e16ea38p-43, 0x1.a926d434bp-4}, {-0x1.a302bbaf0559p-45, 0x1.e27074e2bp-4},
+  {0x1.cb4cd66e31f3p-44, 0x1.0d77e8cd08p-3}, {-0x1.5b7a5bc474128p-44, 0x1.29552e92p-3},
+  {-0x1.7062e8135f74p-46, 0x1.44d2b5e4b8p-3}, {0x1.3d4c88fe1f4bp-43, 0x1.5ff3060a78p-3},
+  {-0x1.37b70004a6946p-42, 0x1.7ab890411p-3}, {-0x1.4a5885167c1ecp-42, 0x1.9525aa7f48p-3},
+  {0x1.ff9d5953004acp-42, 0x1.af3c940008p-3}, {0x1.a21ec41d8219cp-43, 0x1.c8ff7cf9a8p-3},
+  {-0x1.a322bf2f02ae8p-44, 0x1.e27075e2bp-3}, {0x1.f1548b8a33616p-42, 0x1.fb9186b5ep-3},
+  {0x1.0e36401f7a006p-42, 0x1.0a324e0f38p-2}, {-0x1.9f1fa55382a8ap-42, 0x1.1675cacabcp-2},
+  {-0x1.a69763deb096p-44, 0x1.22941fc0f8p-2}, {0x1.d30bc3ac91bdap-42, 0x1.2e8e2bee1p-2},
+  {0x1.7a79cf4d73b28p-44, 0x1.3a64c59694p-2}, {0x1.ec345197b22dep-42, 0x1.4618bb81c4p-2},
+  {-0x1.f4810a30aeba8p-44, 0x1.51aad7c2ep-2}, {0x1.394d2371c1d1cp-43, 0x1.5d1bdbbd8p-2}
+};
+
+double cr_log1p(double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   double ln1, ln0, eps;
@@ -230,9 +273,9 @@ double cr_log1p(double x){
       eps = x3*0x1.94p-52;
     }
   } else {
-    static const double c[] =
-      {-0x1p-1, 0x1.5555555555555p-2, -0x1.fffffffff2p-3, 0x1.99999999887e6p-3,
-       -0x1.5555c55570f25p-3, 0x1.2492b9217dbfep-3};
+    static const double c[] = {
+      -0x1.000000000003dp-1, 0x1.5555555554cf5p-2, -0x1.ffffffeca2939p-3, 0x1.99999a3661724p-3,
+      -0x1.555d345bfe6fdp-3, 0x1.247b887a6e5edp-3};
     b64u64_u t, dt;
     if(__builtin_expect((i64)ix.u<0x4340000000000000l && ix.u<0xbff0000000000000ul, 1)){
       t.f = fasttwosum(1.0, x, &dt.f);
@@ -249,23 +292,24 @@ double cr_log1p(double x){
 	  return 0.0/0.0; // <-1
 	}
       }
-    }  
-    u64 i = (t.u>>(52-5))&0x1f;
-    long d = t.u & (~0ul>>17);
-    i64 j = t.u + 13841960651842387968ul + ((u64)B[i].c0<<33) + ((long)B[i].c1*(d>>16));
-    i64 j1 = (j>>48)&0xf, j2 = (j>>44)&0xf, je = j>>52;
-    i64 eoff = je<<52;
-    t.u -= eoff;
-    if(__builtin_expect(dt.u<<1, 1)) dt.u -= eoff;
-    double r = rt[0][j1]*rt[1][j2];
-    double dh = r*t.f, dl = __builtin_fma(r,t.f,-dh) + r*dt.f;
+    }
+    i64 j = t.u - 0x3fe6a00000000000l, j1 = (j>>(52-6))&0x3f, je = (j>>52), eoff = je<<52;
+    b64u64_u rs = {.f = rf[j1]};
+    if(__builtin_expect(je<1022, 1)){
+      rs.u -= eoff;
+    } else {
+      rs.u -= 1021l<<52;
+      static const double sc[] = {0x1p-1, 0x1p-2, 0x1p-3};
+      rs.f *= sc[je-1022];
+    }
+    double dh = rs.f*t.f, dl = __builtin_fma(rs.f,t.f,-dh) + rs.f*dt.f;
     double xl, xh = fasttwosum(dh-1.0, dl, &xl), x2 = xh*xh;
     xl += x2*((c[0] + xh*c[1]) + x2*((c[2] + xh*c[3]) + x2*(c[4] + xh*c[5])));
     double L1 = 0x1.62e42fefa4p-1*je, L0 = -0x1.8432a1b0e2634p-43*je;
-    ln1 = ln[0][j1][2] + ln[1][j2][2] + L1;
-    ln0 = ln[0][j1][1] + ln[1][j2][1] + L0;
+    ln1 = lf[j1][1] + L1;
+    ln0 = lf[j1][0] + L0;
     ln1 = fastsum(ln1, ln0, xh, xl, &ln0);
-    eps = 0x1p-68;
+    eps = 0x1.ap-65;
   }
   double lb = ln1 + (ln0 - eps), ub = ln1 + (ln0 + eps);
   if(__builtin_expect(lb != ub, 0)) return as_log1p_refine(x, lb);
@@ -322,7 +366,7 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
     } else {
       if(__builtin_expect((i64)ix.u>=0x4690000000000000l, 0))
 	t.f = x;
-      else 
+      else
 	t.f = 1 + x;
       dt.u = 0;
     }
@@ -355,7 +399,7 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
   }
   ln22 = fasttwosum(ln22,ln21, &ln21);
   ln21 = fasttwosum(ln21,ln20, &ln20);
-  
+
   b64u64_u t = {.f = ln21};
   if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
     b64u64_u w = {.f = ln20};
