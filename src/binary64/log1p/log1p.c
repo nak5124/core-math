@@ -24,9 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
 #include <stdint.h>
-#include <assert.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -40,14 +38,7 @@ typedef int64_t i64;
 typedef unsigned short ushort;
 typedef union {double f; uint64_t u;} b64u64_u;
 
-static int valid (double x, double y) {
-  return x == 0 || __builtin_fabs (x) >= __builtin_fabs (y);
-}
-
 static inline double fasttwosum(double x, double y, double *e){
-  int ok = valid (x, y);
-  if (!ok) printf ("x=%la y=%la\n", x, y);
-  assert (ok);
   double s = x + y, z = s - x;
   *e = y - z;
   return s;
@@ -60,7 +51,6 @@ static inline double twosum(double xh, double ch, double *l){
 }
 
 static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
-  assert (valid (xh, yh));
   double sl, sh = fasttwosum(xh, yh, &sl);
   *e = (xl + yl) + sl;
   return sh;
@@ -86,7 +76,6 @@ static inline double mulddd(double x, double ch, double cl, double *l){
 
 static inline double polydd(double xh, double xl, int n, const double c[][2], double *l){
   int i = n-1;
-  assert (valid (c[i][0], *l));
   double ch = fasttwosum(c[i][0], *l, l), cl = c[i][1] + *l;
   while(--i>=0){
     ch = muldd(xh,xl, ch,cl, &cl);
@@ -98,7 +87,6 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
 
 static inline double polyddd(double x, int n, const double c[][2], double *l){
   int i = n-1;
-  assert (valid (c[i][0], *l));
   double ch = fasttwosum(c[i][0], *l, l), cl = c[i][1] + *l;
   while(--i>=0){
     ch = mulddd(x, ch,cl, &cl);
@@ -110,6 +98,11 @@ static inline double polyddd(double x, int n, const double c[][2], double *l){
 
 static double __attribute__((noinline)) as_log1p_refine(double, double);
 
+/*
+  rt[4][16] and ln[4][16][3] are lookup tables for the quadripartite scheme
+  centered around zero.
+  -ln(rt[][]) = ln[][][2] + ln[][][1] + ln[][][0]
+*/
 static const double rt[4][16] = {
   {0x1.6a09e68p+0, 0x1.5ab07ep+0, 0x1.4bfdad8p+0, 0x1.3dea65p+0,
    0x1.306fe08p+0, 0x1.2387a7p+0, 0x1.172b84p+0, 0x1.0b5587p+0,
@@ -196,6 +189,11 @@ static const double ln[4][16][3] = {
    {0x1.4f787e495e5ep-93, -0x1.fbb791220a18p-46, 0x1.3682f14p-14}}
 };
 
+/*
+  rf[64] and lf[64][2] are lookup tables for the fast path
+  -ln(rf[][]) = lf[][1] + lf[][0]
+  values are approximately from 1/sqrt(2) to sqrt(2)
+*/
 static const double rf[64] = {
   0x1.6816818p+0, 0x1.642c858p+0, 0x1.605816p+0, 0x1.5c98828p+0,
   0x1.58ed23p+0, 0x1.5555558p+0, 0x1.51d07e8p+0, 0x1.4e5e0a8p+0,
@@ -290,8 +288,6 @@ double cr_log1p(double x){
       -0x1.555d345bfe6fdp-3, 0x1.247b887a6e5edp-3};
     b64u64_u t, dt;
     if(__builtin_expect((i64)ix.u<0x4340000000000000l && ix.u<0xbff0000000000000ul, 1)){
-      if (!valid (1.0, x)) printf ("x=%la\n", x);
-      assert (valid (1.0, x));
       t.f = fasttwosum(1.0, x, &dt.f);
     } else {
       if(__builtin_expect(ix.u<0x4690000000000000ul, 1)){
@@ -317,7 +313,6 @@ double cr_log1p(double x){
       rs.f *= sc[je-1022];
     }
     double dh = rs.f*t.f, dl = __builtin_fma(rs.f,t.f,-dh) + rs.f*dt.f;
-    assert (valid (dh-1.0, dl));
     double xl, xh = fasttwosum(dh-1.0, dl, &xl), x2 = xh*xh;
     xl += x2*((c[0] + xh*c[1]) + x2*((c[2] + xh*c[3]) + x2*(c[4] + xh*c[5])));
     double L1 = 0x1.62e42fefa4p-1*je, L0 = -0x1.8432a1b0e2634p-43*je;
@@ -391,7 +386,6 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
     double th = t12*t34, tl = __builtin_fma(t12,t34,-th);
     double dh = th*t.f, dl = __builtin_fma(th,t.f,-dh);
     double sh = tl*t.f, sl = __builtin_fma(tl,t.f,-sh);
-    assert (valid (dh-1, dl));
     double xl, xh = fasttwosum(dh-1, dl, &xl);
     xh = fastsum(xh, xl, sh, sl, &xl);
     if(dt.u){
@@ -413,9 +407,7 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
     }
     ln21 = sum(ln21, ln20, sh, sl, &ln20);
   }
-  assert (valid (ln22,ln21));
   ln22 = fasttwosum(ln22,ln21, &ln21);
-  assert (valid (ln21,ln20));
   ln21 = fasttwosum(ln21,ln20, &ln20);
 
   b64u64_u t = {.f = ln21};
