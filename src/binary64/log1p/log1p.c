@@ -24,7 +24,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -38,7 +40,14 @@ typedef int64_t i64;
 typedef unsigned short ushort;
 typedef union {double f; uint64_t u;} b64u64_u;
 
+static int valid (double x, double y) {
+  return x == 0 || __builtin_fabs (x) >= __builtin_fabs (y);
+}
+
 static inline double fasttwosum(double x, double y, double *e){
+  int ok = valid (x, y);
+  if (!ok) printf ("x=%la y=%la\n", x, y);
+  assert (ok);
   double s = x + y, z = s - x;
   *e = y - z;
   return s;
@@ -51,6 +60,7 @@ static inline double twosum(double xh, double ch, double *l){
 }
 
 static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
+  assert (valid (xh, yh));
   double sl, sh = fasttwosum(xh, yh, &sl);
   *e = (xl + yl) + sl;
   return sh;
@@ -76,6 +86,7 @@ static inline double mulddd(double x, double ch, double cl, double *l){
 
 static inline double polydd(double xh, double xl, int n, const double c[][2], double *l){
   int i = n-1;
+  assert (valid (c[i][0], *l));
   double ch = fasttwosum(c[i][0], *l, l), cl = c[i][1] + *l;
   while(--i>=0){
     ch = muldd(xh,xl, ch,cl, &cl);
@@ -87,6 +98,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
 
 static inline double polyddd(double x, int n, const double c[][2], double *l){
   int i = n-1;
+  assert (valid (c[i][0], *l));
   double ch = fasttwosum(c[i][0], *l, l), cl = c[i][1] + *l;
   while(--i>=0){
     ch = mulddd(x, ch,cl, &cl);
@@ -242,7 +254,7 @@ double cr_log1p(double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   double ln1, ln0, eps;
-  if(__builtin_expect(ax<0x7f60000000000000ul, 1)){
+  if(__builtin_expect(ax<0x7f60000000000000ul, 1)){ // |x| < 0.0625
     double x2 = x*x;
     if(__builtin_expect(ax<0x7e60000000000000ul, 1)){
       ln1 = x;
@@ -272,12 +284,14 @@ double cr_log1p(double x){
       ln0 += x3*f;
       eps = x3*0x1.94p-52;
     }
-  } else {
+  } else { // |x| >= 0.0625
     static const double c[] = {
       -0x1.000000000003dp-1, 0x1.5555555554cf5p-2, -0x1.ffffffeca2939p-3, 0x1.99999a3661724p-3,
       -0x1.555d345bfe6fdp-3, 0x1.247b887a6e5edp-3};
     b64u64_u t, dt;
     if(__builtin_expect((i64)ix.u<0x4340000000000000l && ix.u<0xbff0000000000000ul, 1)){
+      if (!valid (1.0, x)) printf ("x=%la\n", x);
+      assert (valid (1.0, x));
       t.f = fasttwosum(1.0, x, &dt.f);
     } else {
       if(__builtin_expect(ix.u<0x4690000000000000ul, 1)){
@@ -303,6 +317,7 @@ double cr_log1p(double x){
       rs.f *= sc[je-1022];
     }
     double dh = rs.f*t.f, dl = __builtin_fma(rs.f,t.f,-dh) + rs.f*dt.f;
+    assert (valid (dh-1.0, dl));
     double xl, xh = fasttwosum(dh-1.0, dl, &xl), x2 = xh*xh;
     xl += x2*((c[0] + xh*c[1]) + x2*((c[2] + xh*c[3]) + x2*(c[4] + xh*c[5])));
     double L1 = 0x1.62e42fefa4p-1*je, L0 = -0x1.8432a1b0e2634p-43*je;
@@ -376,6 +391,7 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
     double th = t12*t34, tl = __builtin_fma(t12,t34,-th);
     double dh = th*t.f, dl = __builtin_fma(th,t.f,-dh);
     double sh = tl*t.f, sl = __builtin_fma(tl,t.f,-sh);
+    assert (valid (dh-1, dl));
     double xl, xh = fasttwosum(dh-1, dl, &xl);
     xh = fastsum(xh, xl, sh, sl, &xl);
     if(dt.u){
@@ -397,7 +413,9 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
     }
     ln21 = sum(ln21, ln20, sh, sl, &ln20);
   }
+  assert (valid (ln22,ln21));
   ln22 = fasttwosum(ln22,ln21, &ln21);
+  assert (valid (ln21,ln20));
   ln21 = fasttwosum(ln21,ln20, &ln20);
 
   b64u64_u t = {.f = ln21};
