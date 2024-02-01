@@ -254,11 +254,11 @@ double cr_log1p(double x){
   double ln1, ln0, eps;
   if(__builtin_expect(ax<0x7f60000000000000ul, 1)){ // |x| < 0.0625
     double x2 = x*x;
-    if(__builtin_expect(ax<0x7e60000000000000ul, 1)){
+    if(__builtin_expect(ax<0x7e60000000000000ul, 1)){ // |x| < 0x1p-12
       ln1 = x;
       eps = 0x1.6p-64*x;
-      if(__builtin_expect(ax<0x7d43360000000000ul, 1)){
-	if(ax<0x7940000000000000ul){
+      if(__builtin_expect(ax<0x7d43360000000000ul, 1)){ // |x| < 0x1.19bp-21
+	if(ax<0x7940000000000000ul){ // |x| < 0x1p-53
 	  if(!ax) return x;
 	  return __builtin_fma(__builtin_fabs(x), -0x1p-54, x);
 	}
@@ -288,12 +288,13 @@ double cr_log1p(double x){
       -0x1.555d345bfe6fdp-3, 0x1.247b887a6e5edp-3};
     b64u64_u t, dt;
     if(__builtin_expect((i64)ix.u<0x4340000000000000l && ix.u<0xbff0000000000000ul, 1)){
+      // 0.0625 < x < 0x1p+53 or -1 < x < -0.0625
       t.f = fasttwosum(1.0, x, &dt.f);
     } else {
-      if(__builtin_expect(ix.u<0x4690000000000000ul, 1)){
+      if(__builtin_expect(ix.u<0x4690000000000000ul, 1)){ // x < 0x1p+106
 	t.f = x; dt.f = 1;
       } else {
-	if(__builtin_expect(ix.u<0x7ff0000000000000ul, 1)){
+	if(__builtin_expect(ix.u<0x7ff0000000000000ul, 1)){ // x < 0x1p+1024
 	  t.f = x; dt.f = 0;
 	} else {
 	  if((ix.u<<1)>0xffe0000000000000ul) return x; // nan
