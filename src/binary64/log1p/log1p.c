@@ -288,9 +288,11 @@ double cr_log1p(double x){
       -0x1.555d345bfe6fdp-3, 0x1.247b887a6e5edp-3};
     b64u64_u t, dt;
     if(__builtin_expect((i64)ix.u<0x4340000000000000l && ix.u<0xbff0000000000000ul, 1)){
-      // 0.0625 < x < 0x1p+53 or -1 < x < -0.0625 since the first
-      // argument 1.0 has mantissa 0 then the fasttwosum algorithm
-      // works well up to 0x1p+53 for the second argument
+      /* 0.0625 < x < 0x1p+53 or -1 < x < -0.0625. In the case 1 < x < 2^53
+         the fasttwosum() pre-condition is not fulfilled. But in that case
+         the 2nd operation z = s - x = s - 1 of fasttwosum() is exact, since
+         x+y <= 2^53, thus the last operation computes e = (x+y) - s, which is
+         exact by Sterbenz theorem. */
       t.f = fasttwosum(1.0, x, &dt.f);
     } else {
       if(__builtin_expect(ix.u<0x4690000000000000ul, 1)){ // x < 0x1p+106
