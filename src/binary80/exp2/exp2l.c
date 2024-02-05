@@ -59,8 +59,8 @@ static inline void
 d_mul (long double *hi, long double *lo, long double ah, long double al,
        long double bh, long double bl) {
   a_mul (hi, lo, ah, bh);
-  *lo = __builtin_fmal (ah, bl, *lo);
-  *lo = __builtin_fmal (al, bh, *lo);
+  *lo += ah * bl;
+  *lo += al * bh;
 }
 
 // T2[i] approximates 2^(i/2^5) with relative error < 2^-129.565
@@ -181,12 +181,12 @@ P (long double *h, long double *l, long double x)
   static const long double p[] = {1.0L, 0x1.62e42fefa39ef358p-1L,
                             0x1.ebfbdff82c58ea86p-3L, 0x1.c6b08d6835c26dep-5L,
                             0x1.3b2ab70cf131bd7ep-7L};
-  long double y = __builtin_fmal (p[4], x, p[3]);
-  y = __builtin_fmal (y, x, p[2]);
+  long double y = p[4] * x + p[3];
+  y = y * x + p[2];
   fast_two_sum (h, l, p[1], y * x);
   long double t;
   a_mul (h, &t, *h, x);
-  t = __builtin_fmal (*l, x, t);
+  t = *l * x + t;
   fast_two_sum (h, l, p[0], *h);
   *l += t;
 }
@@ -206,7 +206,7 @@ fast_path (long double *h, long double *l, long double x)
   
   int32_t k = __builtin_roundl (0x1p15L * x); // -16445*2^15 <= k <= 16383*2^15
   // if (x == TRACE) printf ("k=%d\n", k);
-  long double r = __builtin_fmal (k, -0x1p-15L, x);
+  long double r = x - (long double) k * 0x1p-15L;
   // if (x == TRACE) printf ("r=%La\n", r);
   int32_t i = (k + 538869760) & 32767;
   // if (x == TRACE) printf ("i=%d\n", i);
@@ -355,8 +355,8 @@ cr_exp2l (long double x)
   long double h, l;
   fast_path (&h, &l, x);
   static const long double err = 0x1.36p-84; // 2^-83.727 < err
-  long double left = h +  __builtin_fmal (h, -err, l);
-  long double right = h + __builtin_fmal (h, err, l);
+  long double left = h +  (l - h * err);
+  long double right = h + (l + h * err);
   // if (x == TRACE) printf ("left=%La right=%La\n", left, right);
   if (__builtin_expect (left == right, 1))
     return left;
