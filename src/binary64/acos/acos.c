@@ -89,6 +89,9 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
 static double __attribute__((noinline)) as_acos_refine(double, double);
 
 double cr_acos (double x){
+  // coefficients of a polynomial approximation of asin(x):
+  // asin(x) = x*(cc[j][0] + cc[j][1] + t*P(t, cc[j] + 2))
+  // where t = x^2 - j/128
   static const double cc[][8] = {
     {                   1,                      0, 0x1.5555555555555p-3, 0x1.33333333333e4p-4,
      0x1.6db6db6d31f82p-5, 0x1.f1c71f6889397p-6, 0x1.6e874b7045b46p-6, 0x1.1f753132271e2p-6},
@@ -161,23 +164,29 @@ double cr_acos (double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   double t,z,zl,jd,f0h,f0l;
-  if(ax>0x7fc0000000000000ul){
+  if(ax>0x7fc0000000000000ul){ // |x|>0.5
     static const double off[][2] = {{0,0}, {0x1.921fb54442d18p+1, 0x1.1a62633145c07p-53}};
     i64 k = ix.u>>63;
     f0h = off[k][0];
     f0l = off[k][1];
-    if(__builtin_expect(ax>=0x7fe0000000000000ul, 0)){
-      if(ax==0x7fe0000000000000ul) return f0h + f0l;
+    if(__builtin_expect(ax>=0x7fe0000000000000ul, 0)){ // |x| >= 1
+      if(ax==0x7fe0000000000000ul) return f0h + f0l; // |x| = 1
       if(ax>0xffe0000000000000ul) return x; // nan
       errno = EDOM;
-      return 0./0.;
+      return 0./0.; // |x|>1
     }
+    // for x>0.5 we use range reduction for double angle formula
+    // acos(x) = 2*asin((1-x)/2) and for x<-0.5 acos(x) = pi -
+    // 2*asin((1-x)/2)
     t = 2 - 2*__builtin_fabs(x);
     jd = __builtin_roundeven(t*0x1p5);
     z = __builtin_copysign(__builtin_sqrt(t), x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
-  } else {
+  } else { // |x|<=0.5
+    // for |x|<=0.5 we use acos(x) = pi/2 - asin(x) so the argument
+    // range for asin is the same for both branches to reuse the lookup
+    // tables.
     t = x*x;
     jd = __builtin_roundeven(t*0x1p7);
     t = __builtin_fma(x,x,-0x1p-7*jd);
@@ -186,6 +195,8 @@ double cr_acos (double x){
     f0h = 0x1.921fb54442d18p+0;
     f0l = 0x1.1a62633145c07p-54;
   }
+  // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
+  // where t = xh^2 - j/128 and j = round(128*xh^2)
   long j = jd;
   const double *c = cc[j];
   double t2 = t*t, d = t*((c[2] + t*c[3]) + t2*((c[4] + t*c[5]) + t2*(c[6] + t*c[7])));
@@ -199,6 +210,9 @@ double cr_acos (double x){
 }
 
 double as_acos_refine(double x, double phi){
+  // Consider x as sin(phi) then cos(phi) is ch + cl = sqrt(1-x^2)
+  // Using angle rotation formula bring the argument close to zero
+  // where the asin Taylor expansion works well.
   double s2 = x*x, dx2 = __builtin_fma(x,x,-s2);
   double c2l, c2h = fasttwosub(1.0,s2,&c2l);
   c2l -= dx2;
@@ -209,6 +223,7 @@ double as_acos_refine(double x, double phi){
   double cl = (c2l - __builtin_fma(ch,ch,-c2f))*((0.5/c2f)*ch);
 
   long jf = __builtin_roundeven(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
+  // sin(pi/64*j) in the double-double format
   static const double s[33][2] = {
     {0x0p+0, 0x0p+0}, {-0x1.912bd0d569a9p-61, 0x1.91f65f10dd814p-5},
     {-0x1.e2718d26ed688p-60, 0x1.917a6bc29b42cp-4}, {0x1.13000a89a11ep-58, 0x1.2c8106e8e613ap-3},
