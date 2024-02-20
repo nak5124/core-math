@@ -85,14 +85,14 @@ def RIFulp(x):
    return max(x.lower().ulp(),x.upper().ulp())
 
 # analyze_P()
-# err1= -116.000000000000
-# err2= -98.0000000000000
+# err1= -115.999994496566
+# err2= -97.9999944965657
 # err3= -98.0000000000000
 # err4= -80.0000000000000
 # err5= -143.000000000000
 # err6= -126.999984741211
 # err7= -126.000000000000
-# rel. err= -79.8964038894336
+# rel. err= -79.8964038894141
 # max l= 1.08420217248550444e-19
 def analyze_P():
    err0 = 2^-83.748 # absolute error
@@ -104,13 +104,14 @@ def analyze_P():
    p2 = RI(R("0x1.ebfbdff82c58ea86p-3",16))
    p1 = RI(R("0x1.62e42fefa39ef358p-1",16))
    p0 = RI(1)
-   # y = __builtin_fmal (p[4], x, p[3])
+   # y = p[4] * x + p[3]
    y = p4*x+p3
-   err1 = RIFulp(y)*x.abs().upper()^3
+   err1 = (RIFulp(p4*x)+RIFulp(y))*x.abs().upper()^3
    print ("err1=", log(err1)/log(2.))
-   # y = __builtin_fmal (y, x, p[2])
+   # y = y * x + p[2]
+   yin = y
    y = y*x+p2
-   err2 = RIFulp(y)*x.abs().upper()^2
+   err2 = (RIFulp(yin*x)+RIFulp(y))*x.abs().upper()^2
    print ("err2=", log(err2)/log(2.))
    # fast_two_sum (h, l, p[1], y * x)
    z = y*x
