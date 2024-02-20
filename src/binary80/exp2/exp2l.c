@@ -47,11 +47,37 @@ fast_two_sum (long double *s, long double *t, long double a, long double b)
   *t = b - e;
 }
 
-/* Return in hi+lo an approximation of (ah + al) * (bh + bl), assuming
-   ah+al < 2 and bh+bl < 2. */
+// Dekker's algorithm: rh + rl = u * v
+// Reference: Algorithm Mul12 from https://ens-lyon.hal.science/ensl-01529804 pages 21-22
+// See also Handbook of Floating-Point Arithmetic, 2nd edition, Veltkamp splitting (Algorith 4.9)
+// and Dekker's product (Algorithm 4.10)
+// The Handbook only mentions rounding to nearest, but exhaustive tests up to precision 10
+// seem to indicate it also works for directed roundings.
+static inline void
+a_mul (long double *rh, long double *rl, long double u, long double v)
+{
+  static const long double c = 0x1.00000001p+32;
+  long double up , u1 , u2 , vp , v1 , v2;
+  up = u*c; vp = v*c;
+  u1 = (u - up) + up; v1 = (v - vp) + vp;
+  u2 = u - u1; v2 = v - v1;
+  *rh = u * v;
+  *rl = (((u1 * v1 - *rh) + u1 * v2) + u2 * v1) + u2 * v2;
+}
+
+// Return in hi+lo an approximation of (ah + al) * (bh + bl)
 static inline void
 d_mul (long double *hi, long double *lo, long double ah, long double al,
        long double bh, long double bl) {
+  a_mul (hi, lo, ah, bh);
+  *lo += ah * bl + al * bh;
+}
+
+/* Return in hi+lo an approximation of (ah + al) * (bh + bl), assuming
+   ah+al < 2 and bh+bl < 2. */
+static inline void
+d_mul1 (long double *hi, long double *lo, long double ah, long double al,
+        long double bh, long double bl) {
   static const long double C = 0x1.8p+32l;
   long double ahh = (C + ah) - C, bhh = (C + bh) - C;
   long double ahl = ah - ahh, bhl = bh - bhh;
@@ -62,7 +88,7 @@ d_mul (long double *hi, long double *lo, long double ah, long double al,
   *lo = t1 + (t2 + t3);
 }
 
-// Same as d_mul, but assumes ah and bh fit into 32 bits
+// Same as d_mul1, but assumes ah and bh fit into 32 bits
 static inline void
 d_mul2 (long double *hi, long double *lo, long double ah, long double al,
         long double bh, long double bl) {
@@ -71,7 +97,7 @@ d_mul2 (long double *hi, long double *lo, long double ah, long double al,
   *lo = (t1 + t2) + t3;
 }
 
-// Same as d_mul, but assumes bh fits into 32 bits
+// Same as d_mul1, but assumes bh fits into 32 bits
 static inline void
 d_mul3 (long double *hi, long double *lo, long double ah, long double al,
         long double bh, long double bl) {
@@ -407,17 +433,17 @@ fast_path (long double *h, long double *l, long double x)
        | hh + ll - 2^(i2/2^5) * 2^(i1/2^10) * 2^(i0/2^15) | < 2^-90.663
        with |hh| < 2 and |ll| < 2^-28.678.
   */
-  d_mul (h, l, *h, *l, hh, ll);
+  d_mul1 (h, l, *h, *l, hh, ll);
   /* At input, we have 0.999989 < h_in + l_in < 1.000011 and 1 <= hh + ll < 1.999958,
      thus at output 0.999989 < h + l < 1.999980. The different errors are:
    * that on h_in + l_in, bounded by 2^-79.896 (relative), which gives an absolute error
      bounded by 2^-79.896*1.000011*1.999980 < 2^-78.895
    * that on hh + ll, bounded by 2^-90.663 (absolute), which gives an absolute error
      bounded by 1.000011*2^-90.663 < 2^-90.662
-   * the d_mul() call decomposes into:
+   * the d_mul1() call decomposes into:
      - hi = ahh * bhh [exact]
      - t1 = ahh * (bhl + bl) where ahh is the upper part of h_in, bhl is the lower part of hh,
-       and bl = ll. We have |bhl| < ulp(C) = 2^-31 where C is the magic constant in d_mul(),
+       and bl = ll. We have |bhl| < ulp(C) = 2^-31 where C is the magic constant in d_mul1(),
        and |bl| < 2^-28.678 thus |bhl + bl| < 2^-28.414 and the rounding error on bhl+bl is
        bounded by ulp(2^-28.414) = 2^-92. This error is multiplied by |ahh| < 2 thus contributes
        to at most 2^-91. Now |t1| < 2*2^-28.414 thus the rounding error on t1 is bounded by

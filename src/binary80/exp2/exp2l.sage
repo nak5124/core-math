@@ -156,3 +156,118 @@ def doit_bacsel(e,k):
       u0 = t0+h*i
       u1 = min(t0+h*(i+1),t1)
       print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 20 64")
+
+def dekker(u,v):
+   R = u.parent()
+   c = R("0x1.00000001p+32",16)
+   up = u*c
+   vp = v*c
+   u1 = (u - up) + up
+   v1 = (v - vp) + vp;
+   u2 = u - u1
+   v2 = v - v1
+   rh = u*v
+   rl = (((u1 * v1 - rh) + u1 * v2) + u2 * v1) + u2 * v2
+   return rh, rl 
+
+def check_dekker(u,v):
+   h, l = dekker (u,v)
+   U = u.exact_rational()
+   V = v.exact_rational()    
+   H = h.exact_rational()
+   L = l.exact_rational()
+   return H+L == U*V
+
+def check_dekker_all(K=10^6,rnd='RNDN'):
+   R = RealField(64,rnd=rnd)
+   for k in range(K):
+      u = R.random_element()
+      v = R.random_element()
+      if not check_dekker(u,v):
+         print (get_hex(u), get_hex(v))
+         raise ValueError
+
+from functools import cmp_to_key
+
+def cmp(x,y):
+   if x[2] < y[2]:
+      return int(-1)
+   if x[2] > y[2]:
+      return int(1)
+   # now x[2] = y[2]
+   if x[1] < y[1]:
+      return int(-1)
+   if x[1] > y[1]:
+      return int(1)
+   if x[0] < y[0]:
+      return int(-1)
+   if x[0] > y[0]:
+      return int(1)
+   return int(0)
+
+def cmpneg(x,y):
+   if x[2] > y[2]:
+      return int(-1)
+   if x[2] < y[2]:
+      return int(1)
+   # now x[2] = y[2]
+   if x[0] < y[0]:
+      return int(-1)
+   if x[0] > y[0]:
+      return int(1)
+   if x[1] < y[1]:
+      return int(-1)
+   if x[1] > y[1]:
+      return int(1)
+   return int(0)
+
+def statall(f):
+   f = open(f,"r")
+   l = []
+   while true:
+      s = f.readline()
+      if s=='':
+         break
+      s = s.split(" ")
+      assert len(s) == 5, "len(s) == 5"
+      t0 = ZZ(s[0])
+      t1 = ZZ(s[1])
+      e = ZZ(s[2])
+      assert ZZ(s[3])==64, "s[3]==64"
+      assert ZZ(s[4])==64, "s[4]==64"
+      l.append((t0,t1,e))
+   f.close()
+   lpos = [x for x in l if x[0]>0]
+   lneg = [x for x in l if x[0]<0]
+   assert len(l) == len(lpos) + len(lneg)
+   lpos.sort(key=cmp_to_key(cmp))
+   lpos2 = []
+   for t0,t1,e in lpos:
+      if lpos2==[]:
+         lpos2 = [((t0,e),(t1,e))]
+      else:
+         t1old,e1old = lpos2[-1][1]
+         if t1old*2^e1old > t0*2^e:
+            print ((t1old,e1old), (t0, e))
+         assert t1old*2^e1old <= t0*2^e, "t1old*2^e1old <= t0*2^e"
+         if t1old*2^e1old == t0*2^e:
+            lpos2[-1] = (lpos2[-1][0],(t1,e))
+         else:
+            lpos2.append(((t0,e),(t1,e)))
+   lpos = lpos2
+   lneg.sort(key=cmp_to_key(cmpneg))
+   lneg2 = []
+   for t0,t1,e in lneg:
+      if lneg2==[]:
+         lneg2 = [((t0,e),(t1,e))]
+      else:
+         t1old,e1old = lneg2[-1][1]
+         if t1old*2^e1old > t0*2^e:
+            print ((t1old,e1old), (t0, e))
+         assert (t1old-1)*2^e1old <= (t0-1)*2^e, "(t1old-1)*2^e1old <= (t0-1)*2^e"
+         if (t1old-1)*2^e1old == (t0-1)*2^e:
+            lneg2[-1] = (lneg2[-1][0],(t1,e))
+         else:
+            lneg2.append(((t0,e),(t1,e)))
+   lneg = lneg2
+   return lpos,lneg
