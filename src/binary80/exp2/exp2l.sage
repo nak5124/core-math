@@ -87,12 +87,10 @@ def RIFulp(x):
 # analyze_P()
 # err1= -115.999994496566
 # err2= -97.9999944965657
-# err3= -98.0000000000000
+# err3= -79.9999944965657
 # err4= -80.0000000000000
-# err5= -143.000000000000
-# err6= -126.999984741211
-# err7= -126.000000000000
-# rel. err= -79.8964038894141
+# err5= -126.999984741211
+# rel. err= -78.9472649184332
 # max l= 1.08420217248550444e-19
 def analyze_P():
    err0 = 2^-83.748 # absolute error
@@ -113,36 +111,23 @@ def analyze_P():
    y = y*x+p2
    err2 = (RIFulp(yin*x)+RIFulp(y))*x.abs().upper()^2
    print ("err2=", log(err2)/log(2.))
-   # fast_two_sum (h, l, p[1], y * x)
-   z = y*x
-   err3a = RIFulp(z)
-   h = p1+z
-   u = RIFulp(h)
-   l = RI(-u,u)
-   # the fast_two_sum error is bounded by 2^(1-2*p)*|h|
-   err3b = 2^-127*h.abs().upper()
-   err3 = (err3a+err3b)*x.abs().upper()
+   # *h = y * x + p[1]
+   h = y*x+p1
+   err3 = (RIFulp(y*x)+RIFulp(h))*x.abs().upper()
    print ("err3=", log(err3)/log(2.))
    # h = *h * x
    h = h*x
    err4 = RIFulp(h)
    print ("err4=", log(err4)/log(2.))
-   # t = *l * x
-   t = l*x
-   err5 = RIFulp(t)
-   print ("err5=", log(err5)/log(2.))
    # fast_two_sum (h, l, p[0], *h)
    h = p0+h
    u = RIFulp(h)
    l = RI(-u,u)
-   err6 = 2^-127*h.abs().upper()
-   print ("err6=", log(err6)/log(2.))
-   # *l += t;
-   err7 = RIFulp(l)
-   print ("err7=", log(err7)/log(2.))
+   err5 = 2^-127*h.abs().upper()
+   print ("err5=", log(err5)/log(2.))
    # convert err0 into relative error
    err0 = err0*(h+l).abs().upper()
-   err = err0+err1+err2+err3+err4+err5+err6+err7
+   err = err0+err1+err2+err3+err4+err5
    # convert into relative error
    err = err/(h+l).abs().lower()
    print ("rel. err=", log(err)/log(2.))

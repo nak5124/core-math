@@ -329,7 +329,7 @@ static const long double T0[32][2] = {
 #endif
 
 // put in h+l an approximation of 2^x for |x| < 2^-16, with relative error
-// bounded by 2^-79.896 (see routine analyze_P in exp2l.sage), and |l| < 2^-63
+// bounded by 2^-78.947 (see routine analyze_P in exp2l.sage), and |l| < 2^-63
 static void
 P (long double *h, long double *l, long double x)
 {
@@ -340,12 +340,9 @@ P (long double *h, long double *l, long double x)
                             0x1.3b2ab70cf131bd7ep-7L};
   long double y = p[4] * x + p[3];
   y = y * x + p[2];
-  fast_two_sum (h, l, p[1], y * x);
+  *h = y * x + p[1];
   *h = *h * x;
-  long double t;
-  t = *l * x;
   fast_two_sum (h, l, p[0], *h);
-  *l += t;
 }
 
 #define TRACE 0x8.0017f89c43248p+6L
@@ -374,7 +371,7 @@ fast_path (long double *h, long double *l, long double x)
   // k = e*2^15 + i2*2^10 + i1*2^5 + i0
   // x = k*2^-15 + r with |r| < 2^-16
   // 2^x = 2^e * 2^(i2/2^5) * 2^(i1/2^10) * 2^(i0/2^15) * 2^r
-  P (h, l, r); // relative error bounded by 2^-79.896
+  P (h, l, r); // relative error bounded by 2^-78.947
   // if (x == TRACE) printf ("P: h=%La l=%La\n", *h, *l);
   long double hh, ll;
   d_mul2 (&hh, &ll, T2fast[i2][0], T2fast[i2][1], T1fast[i1][0], T1fast[i1][1]);
@@ -436,8 +433,8 @@ fast_path (long double *h, long double *l, long double x)
   d_mul1 (h, l, *h, *l, hh, ll);
   /* At input, we have 0.999989 < h_in + l_in < 1.000011 and 1 <= hh + ll < 1.999958,
      thus at output 0.999989 < h + l < 1.999980. The different errors are:
-   * that on h_in + l_in, bounded by 2^-79.896 (relative), which gives an absolute error
-     bounded by 2^-79.896*1.000011*1.999980 < 2^-78.895
+   * that on h_in + l_in, bounded by 2^-78.947 (relative), which gives an absolute error
+     bounded by 2^-78.947*1.000011*1.999980 < 2^-77.946
    * that on hh + ll, bounded by 2^-90.663 (absolute), which gives an absolute error
      bounded by 1.000011*2^-90.663 < 2^-90.662
    * the d_mul1() call decomposes into:
@@ -467,8 +464,8 @@ fast_path (long double *h, long double *l, long double x)
        t1 + (t2+t3) is bounded by ulp(2^-27.191) = 2^-91.  The total rounding error on lo is thus
        bounded by 2^-93 + 2^-91 < 2^-90.678.
      The absolute error on h + l is thus bounded by:
-     2^-78.895 + 2^-90.662 + 2^-90 + 2^-92 + 2^-121.191 + 2^-90.678 < 2^-78.893.
-     Since |h + l| > 0.999989 this yields a relative error < 2^-78.893/0.999989 < 2^-78.892.
+     2^-77.946 + 2^-90.662 + 2^-90 + 2^-92 + 2^-121.191 + 2^-90.678 < 2^-77.945.
+     Since |h + l| > 0.999989 this yields a relative error < 2^-77.945/0.999989 < 2^-77.944.
    */
   if (__builtin_expect (e >= -16355, 1))
   {
@@ -476,7 +473,7 @@ fast_path (long double *h, long double *l, long double x)
        thus if l*2^e is in the subnormal range, we have an additional absolute
        error of at most 2^-16445, which corresponds to an additional relative
        error < 2^-16445/(0.99998*2^-16355) < 2^-89.999. This gives a final
-       bound of (1 + 2^-78.892) * (1 + 2^-89.999) - 1 < 2^-78.891.
+       bound of (1 + 2^-77.944) * (1 + 2^-89.999) - 1 < 2^-77.943.
        No overflow is possible here since x < 16384. */
     v.f = *h;
     v.e += e;
@@ -532,7 +529,7 @@ cr_exp2l (long double x)
 
   long double h, l;
   fast_path (&h, &l, x);
-  static const long double err = 0x1.15p-79; // 2^-78.891 < err
+  static const long double err = 0x1.0bp-78; // 2^-77.943 < err
   long double left = h +  (l - h * err);
   long double right = h + (l + h * err);
   // if (x == TRACE) printf ("left=%La right=%La\n", left, right);
