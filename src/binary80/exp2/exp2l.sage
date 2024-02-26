@@ -81,7 +81,7 @@ def print_T0fast():
 
 # return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
 # this internal routine is used below
-def RIFulp(x):
+def RIulp(x):
    return max(x.lower().ulp(),x.upper().ulp())
 
 # analyze_P()
@@ -104,24 +104,24 @@ def analyze_P():
    p0 = RI(1)
    # y = p[4] * x + p[3]
    y = p4*x+p3
-   err1 = (RIFulp(p4*x)+RIFulp(y))*x.abs().upper()^3
+   err1 = (RIulp(p4*x)+RIulp(y))*x.abs().upper()^3
    print ("err1=", log(err1)/log(2.))
    # y = y * x + p[2]
    yin = y
    y = y*x+p2
-   err2 = (RIFulp(yin*x)+RIFulp(y))*x.abs().upper()^2
+   err2 = (RIulp(yin*x)+RIulp(y))*x.abs().upper()^2
    print ("err2=", log(err2)/log(2.))
    # *h = y * x + p[1]
    h = y*x+p1
-   err3 = (RIFulp(y*x)+RIFulp(h))*x.abs().upper()
+   err3 = (RIulp(y*x)+RIulp(h))*x.abs().upper()
    print ("err3=", log(err3)/log(2.))
    # h = *h * x
    h = h*x
-   err4 = RIFulp(h)
+   err4 = RIulp(h)
    print ("err4=", log(err4)/log(2.))
    # fast_two_sum (h, l, p[0], *h)
    h = p0+h
-   u = RIFulp(h)
+   u = RIulp(h)
    l = RI(-u,u)
    err5 = 2^-127*h.abs().upper()
    print ("err5=", log(err5)/log(2.))
@@ -132,16 +132,132 @@ def analyze_P():
    err = err/(h+l).abs().lower()
    print ("rel. err=", log(err)/log(2.))
    print ("max l=", l.abs().upper())
+
+# analyze_Pacc()
+# err1= -152.999997248280
+# err2= -133.999997248280
+# err3= -134.000000000000
+# err4= -177.415037499279
+# err5= -159.433959645837
+# err6= -159.415037499279
+# err7= -141.570704961070
+# err8= -141.415037499279
+# err9= -125.415032412998
+# rel. err= -125.403714690496
+# max l= 1.08422046458161582e-19
+def analyze_Pacc():
+   err0 = 2^-133.987 # absolute error
+   R = RealField(64)
+   RI = RealIntervalField(64)
+   x = RI(-2^-16,2^-16)
+   p6 = RI(R("0x1.4309131bde9fabeap-13",16))
+   p5 = RI(R("0x1.5d87fe78ad725bcep-10",16))
+   p4 = RI(R("0x1.3b2ab6fba4e7729cp-7",16))
+   p3h = RI(R("0x1.c6b08d704a0bf8b4p-5",16))
+   p3l = RI(R("-0x1.8b4ba2fbcf44117p-70",16))
+   p2h = RI(R("0x1.ebfbdff82c58ea86p-3",16))
+   p2l = RI(R("0x1.e2d60dd936b9ba5ep-68",16))
+   p1h = RI(R("0x1.62e42fefa39ef358p-1",16))
+   p1l = RI(R("-0x1.b0e2633fe0676a9cp-67",16))
+   p0 = RI(1)
+   # y = p[6] * x + p[5]
+   y = p6*x+p5
+   err1 = (RIulp(p6*x)+RIulp(y))*x.abs().upper()^5
+   print ("err1=", log(err1)/log(2.))
+   # y = y * x + p[4]
+   yin = y
+   y = y*x+p4
+   err2 = (RIulp(yin*x)+RIulp(y))*x.abs().upper()^4
+   print ("err2=", log(err2)/log(2.))
+   # y = y * x
+   yin = y
+   y = y*x
+   err3a = RIulp(yin*x)
+   # fast_two_sum (h, l, p3h, y)
+   h = p3h+y
+   u = RIulp(h)
+   l = RI(-u,u)
+   err3b = 2^-127*h.abs().upper()
+   # l += p3l
+   l += p3l
+   err3c = RIulp(l)
+   err3 = (err3a+err3b+err3c)*x.abs().upper()^3
+   print ("err3=", log(err3)/log(2.))
+   # now multiply h+l by x
+   # a_mul (h, t, h, x) # exact
+   h = h*x
+   u = RIulp(h)
+   t = RI(-u,u)
+   # l = l*x+t
+   lin = l
+   l = l*x+t
+   err4 = (RIulp(lin*x)+RIulp(l))*x.abs().upper()^2
+   print ("err4=", log(err4)/log(2.))
+   # add p2h+p2l
+   # fast_two_sum (h, t, p2h, h)
+   h = p2h+h
+   u = RIulp(h)
+   t = RI(-u,u)
+   err5a = 2^-127*h.abs().upper()
+   # l += t + p2l
+   l += t+p2l
+   err5 = (err5a+RIulp(t+p2l)+RIulp(l))*x.abs().upper()^2
+   print ("err5=", log(err5)/log(2.))
+   # now multiply h+l by x
+   # a_mul (h, t, h, x) # exact
+   h = h*x
+   u = RIulp(h)
+   t = RI(-u,u)
+   # l = l*x+t
+   lin = l
+   l = l*x+t
+   err6 = (RIulp(lin*x)+RIulp(l))*x.abs().upper()
+   print ("err6=", log(err6)/log(2.))
+   # add p1h+p1l
+   # fast_two_sum (h, t, p1h, h)
+   h = p1h+h
+   u = RIulp(h)
+   t = RI(-u,u)
+   err7a = 2^-127*h.abs().upper()
+   # l += t + p1l
+   l += t+p1l
+   err7 = (err7a+RIulp(t+p1l)+RIulp(l))*x.abs().upper()
+   print ("err7=", log(err7)/log(2.))
+   # now multiply h+l by x
+   # a_mul (h, t, h, x) # exact
+   h = h*x
+   u = RIulp(h)
+   t = RI(-u,u)
+   # l = l*x+t
+   lin = l
+   l = l*x+t
+   err8 = RIulp(lin*x)+RIulp(l)
+   print ("err8=", log(err8)/log(2.))
+   # add p0
+   # fast_two_sum (h, t, p0, h)
+   h = p0+h
+   u = RIulp(h)
+   t = RI(-u,u)
+   err9a = 2^-127*h.abs().upper()
+   # l += t
+   l += t
+   err9 = err9a+RIulp(l)
+   print ("err9=", log(err9)/log(2.))
+   # convert err0 into relative error
+   err0 = err0*(h+l).abs().upper()
+   err = err0+err1+err2+err3+err4+err5+err6+err7+err8+err9
+   # convert into relative error
+   err = err/(h+l).abs().lower()
+   print ("rel. err=", log(err)/log(2.))
+   print ("max l=", l.abs().upper())
    
 # split binade [2^(e-1),2^e) into k blocks
-def doit_bacsel(e,k):
-   t0 = 2^63
-   t1 = 2^64
+def doit_bacsel(e,k,t0=2^63,t1=2^64):
    h = ceil((t1-t0)/k)
    for i in range(k):
       u0 = t0+h*i
       u1 = min(t0+h*(i+1),t1)
-      print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 20 64")
+      print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 30.5 64")
 
 def dekker(u,v):
    R = u.parent()
@@ -207,6 +323,8 @@ def cmpneg(x,y):
       return int(1)
    return int(0)
 
+# statall("/tmp/log")
+# ([((9223372036854775808, -64), (18446744073709551616, 0))], [])
 def statall(f):
    f = open(f,"r")
    l = []
@@ -257,3 +375,17 @@ def statall(f):
             lneg2.append(((t0,e),(t1,e)))
    lneg = lneg2
    return lpos,lneg
+
+# given l a list of worst cases in [0,1), extend it to worst cases in [1,16384)
+def extend_wc(l):
+   extra = []
+   R = RealField(64)
+   for k in range(1,16384):
+      lnew = []
+      for x in l:
+         y = R(k)+x
+         if y.exact_rational() == k + x.exact_rational():
+            lnew.append(y)
+            extra.append(y)
+      l = lnew
+   return extra  
