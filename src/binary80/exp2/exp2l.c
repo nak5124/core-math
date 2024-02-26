@@ -47,6 +47,20 @@ fast_two_sum (long double *s, long double *t, long double a, long double b)
   *t = b - e;
 }
 
+// Veltkamp's splitting: split x into xh + xl such that
+// x = xh + xl exactly
+// xh fits in 32 bits and |xh| <= 2^e if 2^(e-1) <= |x| < 2^e
+// xl fits in 32 bits and |xl| < 2^(e-32)
+static inline void
+split (long double *xh, long double *xl, long double x)
+{
+  static const long double C = 0x1.00000001p+32L;
+  long double gamma = C * x;
+  long double delta = x - gamma;
+  *xh = gamma + delta;
+  *xl = x - *xh;
+}
+
 // Dekker's algorithm: rh + rl = u * v
 // Reference: Algorithm Mul12 from https://ens-lyon.hal.science/ensl-01529804 pages 21-22
 // See also Handbook of Floating-Point Arithmetic, 2nd edition, Veltkamp splitting (Algorith 4.9)
@@ -58,11 +72,9 @@ fast_two_sum (long double *s, long double *t, long double a, long double b)
 static inline void
 a_mul (long double *rh, long double *rl, long double u, long double v)
 {
-  static const long double c = 0x1.00000001p+32;
-  long double up , u1 , u2 , vp , v1 , v2;
-  up = u*c; vp = v*c;
-  u1 = (u - up) + up; v1 = (v - vp) + vp;
-  u2 = u - u1; v2 = v - v1;
+  long double u1, u2, v1, v2;
+  split (&u1, &u2, u);
+  split (&v1, &v2, v);
   *rh = u * v;
   *rl = (((u1 * v1 - *rh) + u1 * v2) + u2 * v1) + u2 * v2;
 }
@@ -77,7 +89,7 @@ d_mul (long double *hi, long double *lo, long double ah, long double al,
 }
 
 /* Return in hi+lo a 96-bit approximation of (ah + al) * (bh + bl), assuming
-   ah+al < 2 and bh+bl < 2. */
+   1 <= ah+al, bh+bl < 2. */
 static inline void
 d_mul1 (long double *hi, long double *lo, long double ah, long double al,
         long double bh, long double bl) {
