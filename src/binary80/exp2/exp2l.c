@@ -61,14 +61,16 @@ split (long double *xh, long double *xl, long double x)
   *xl = x - *xh;
 }
 
-// Dekker's algorithm: rh + rl = u * v
-// Reference: Algorithm Mul12 from https://ens-lyon.hal.science/ensl-01529804 pages 21-22
-// See also Handbook of Floating-Point Arithmetic, 2nd edition, Veltkamp splitting (Algorith 4.9)
-// and Dekker's product (Algorithm 4.10)
-// The Handbook only mentions rounding to nearest, but exhaustive tests up to precision 10
-// seem to indicate it also works for directed roundings.
-// This is confirmed by "Note on the Veltkamp/Dekker Algorithms with Directed Roundings",
-// Paul Zimmermann, February 2024 (assuming no underflow/overflow).
+/* Dekker's algorithm: rh + rl = u * v
+   Reference: Algorithm Mul12 from https://ens-lyon.hal.science/ensl-01529804,
+   pages 21-22.
+   See also Handbook of Floating-Point Arithmetic, 2nd edition, Veltkamp
+   splitting (Algorithm 4.9) and Dekker's product (Algorithm 4.10).
+   The Handbook only mentions rounding to nearest, but Veltkamp's and
+   Dekker's algorithms also work for directed roundings.
+   See "Note on the Veltkamp/Dekker Algorithms with Directed Roundings",
+   Paul Zimmermann, https://inria.hal.science/hal-04480440, February 2024.
+*/
 static inline void
 a_mul (long double *rh, long double *rl, long double u, long double v)
 {
@@ -359,7 +361,8 @@ P (long double *h, long double *l, long double x)
 }
 
 // put in h+l an approximation of 2^x for |x| < 2^-16, with relative error
-// bounded by 2^-125.403 (see routine analyze_Pacc in exp2l.sage), and |l| < 2^-62.999
+// bounded by 2^-125.403 (see routine analyze_Pacc in exp2l.sage)
+// and |l| < 2^-62.999
 static void
 Pacc (long double *h, long double *l, long double x)
 {
@@ -403,30 +406,23 @@ Pacc (long double *h, long double *l, long double x)
 
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
-   Return h + l approximating 2^x with relative error < 2^-78.891
+   Return h + l approximating 2^x with relative error < 2^-77.943
    or h = l = NaN.
 */
 static void
 fast_path (long double *h, long double *l, long double x)
 {
-  // if (x == TRACE) printf ("enter fast_path x=%La\n", x);
   b80u80_t v = {.f = x};
 
   int32_t k = __builtin_roundl (0x1p15L * x); // -16445*2^15 <= k <= 16383*2^15
-  // if (x == TRACE) printf ("k=%d\n", k);
   long double r = x - (long double) k * 0x1p-15L;
-  // if (x == TRACE) printf ("r=%La\n", r);
   int32_t i = (k + 538869760) & 32767;
-  // if (x == TRACE) printf ("i=%d\n", i);
   int32_t e = (k - i) >> 15;
-  // if (x == TRACE) printf ("e=%d\n", e);
   int32_t i0 = i & 0x1f, i1 = (i >> 5) & 0x1f, i2 = i >> 10;
-  // if (x == TRACE) printf ("i2=%d i1=%d i0=%d\n", i2, i1, i0);
   // k = e*2^15 + i2*2^10 + i1*2^5 + i0
   // x = k*2^-15 + r with |r| < 2^-16
   // 2^x = 2^e * 2^(i2/2^5) * 2^(i1/2^10) * 2^(i0/2^15) * 2^r
   P (h, l, r); // relative error bounded by 2^-78.947
-  // if (x == TRACE) printf ("P: h=%La l=%La\n", *h, *l);
   long double hh, ll;
   d_mul2 (&hh, &ll, T2fast[i2][0], T2fast[i2][1], T1fast[i1][0], T1fast[i1][1]);
   /* We have |T2fast[i2][0]|, |T1fast[i1][0]| < 2,
@@ -443,26 +439,33 @@ fast_path (long double *h, long double *l, long double x)
        t2 = T2fast[i2][1] * T1fast[i1][0]
        t3 = T2fast[i2][1] * T1fast[i1][1]
        lo = (t1 + t2) + t3
-       Since |T2fast[i2][0]| < 2 and |T1fast[i1][1]| < 2^-32, we have |t1| < 2^-31
-       and the rounding error on t1 is bounded by ulp(2^-32) = 2^-95.
-       Since |T2fast[i2][1]| < 2^-32 and |T1fast[i1][0]| < 2, we have |t2| < 2^-31
-       and the rounding error on t2 is bounded by ulp(2^-32) = 2^-95.
-       Since |T2fast[i2][1]| < 2^-32 and |T1fast[i1][1]| < 2^-32, we have |t3| < 2^-64
-       and the rounding error on t3 is bounded by ulp(2^-65) = 2^-128.
-       Then we have |t1+t2| < 2^-30 and the rounding error on t1+t2 is bounded by 2^-94.
-       Then (t1+t2)+t3 < 2^-29 and the rounding error on (t1+t2)+t3 is bounded by 2^-93.
+       Since |T2fast[i2][0]| < 2 and |T1fast[i1][1]| < 2^-32, we have
+       |t1| < 2^-31 and the rounding error on t1 is bounded by
+       ulp(2^-32) = 2^-95.
+       Since |T2fast[i2][1]| < 2^-32 and |T1fast[i1][0]| < 2, we have
+       |t2| < 2^-31 and the rounding error on t2 is bounded by
+       ulp(2^-32) = 2^-95.
+       Since |T2fast[i2][1]| < 2^-32 and |T1fast[i1][1]| < 2^-32, we have
+       |t3| < 2^-64 and the rounding error on t3 is bounded by
+       ulp(2^-65) = 2^-128.
+       Then we have |t1+t2| < 2^-30 and the rounding error on t1+t2 is
+       bounded by 2^-94.
+       Then (t1+t2)+t3 < 2^-29 and the rounding error on (t1+t2)+t3 is
+       bounded by 2^-93.
        The absolute error is thus bounded by:
-       2^-97.119 + 2^-96.055 + 2^-194.174 + 2^-95 + 2^-95 + 2^-94 + 2^-93 < 2^-91.877:
-       | hh + ll - 2^(i2/2^5) * 2^(i1/2^10) | < 2^-92.763
-       with |hh| < 2 and |ll| < 2^-29.999.
+       2^-97.119 + 2^-96.055 + 2^-194.174 + 2^-95 + 2^-95 + 2^-128
+       + 2^-94 + 2^-93 < 2^-91.877:
+       | hh + ll - 2^(i2/2^5) * 2^(i1/2^10) | < 2^-91.877
+       with |hh| < 2 and |ll| < 2^-29.
   */
   d_mul3 (&hh, &ll, hh, ll, T0fast[i0][0], T0fast[i0][1]);
-  /* We have |hh_in|, |T0fast[i0][0]| < 2, |ll_in| < 2^-30, |T0fast[i0][1]| < 2^-32:
+  /* We have |hh_in|, |T0fast[i0][0]| < 2, |ll_in| < 2^-30,
+     |T0fast[i0][1]| < 2^-32:
      * the absolute error on T0fast[i0] is bounded by 2^-97.055, which gives
        an absolute error < (2+2^-30)*2^-97.055 < 2^-96.054
-     * the absolute error on hh_in+ll_in is bounded by 2^-92.763, which gives
-       an absolute error < 2^-92.763*T0fast[i0] < 2^-92.762
-     * the 2nd term error is bounded by 2^-92.763*2^-97.055 = 2^-189.818
+     * the absolute error on hh_in+ll_in is bounded by 2^-91.877, which gives
+       an absolute error < 2^-91.877*T0fast[i0] < 2^-91.876
+     * the 2nd term error is bounded by 2^-91.877*2^-97.055 = 2^-188.932
      * the d_mul3() call decomposes into:
        hi = ahh * T0fast[i0][0] [exact]
        t1 = ahh * T0fast[i0][1]
@@ -471,55 +474,68 @@ fast_path (long double *h, long double *l, long double x)
        lo = (t1 + t3) + t2
        Since |ahh| < 2 and |T0fast[i0][1]| < 2^-32, we have |t1| < 2^-31
        and the rounding error on t1 is bounded by ulp(2^-32) = 2^-95.
-       Since |ahl + al| < 2^-31+2^-31 = 2^-30 and |T0fast[i0][0]| < 2, we have |t2| < 2^-29
-       and the rounding error on t2 is bounded by ulp(2^-30) = 2^-93.
-       Since |ahl + al| < 2^-31+2^-31 = 2^-30 and |T0fast[i0][1]| < 2^-32, we have |t3| < 2^-62
-       and the rounding error on t3 is bounded by ulp(2^-63) = 2^-126.
-       Then we have |t1+t3| < 2^-31+2^-62 and the rounding error on t1+t3 is bounded
-       by ulp(2^-31+2^-62) = 2^-94.
-       Then we have |(t1+t3)+t2| < 2^-31+2^-62+2^-29 and the rounding error on (t1+t3)+t2 is bounded
-       by ulp(2^-31+2^-62+2^-29) = 2^-92.
+       Since |ahl + al| < 2^-31+2^-31 = 2^-30 and |T0fast[i0][0]| < 2,
+       we have |t2| < 2^-29 and the rounding error on t2 is bounded by
+       ulp(2^-30) = 2^-93.
+       Since |ahl + al| < 2^-31+2^-31 = 2^-30 and |T0fast[i0][1]| < 2^-32,
+       we have |t3| < 2^-62 and the rounding error on t3 is bounded by
+       ulp(2^-63) = 2^-126.
+       Then we have |t1+t3| < 2^-31+2^-62 and the rounding error on t1+t3
+       is bounded by ulp(2^-31+2^-62) = 2^-94.
+       Then we have |(t1+t3)+t2| < 2^-31+2^-62+2^-29 and the rounding error
+       on (t1+t3)+t2 is bounded by ulp(2^-31+2^-62+2^-29) = 2^-92.
        The absolute error is thus bounded by:
-       2^-96.054 + 2^-92.762 + 2^-189.818 + 2^-95 + 2^-93 + 2^-126 + 2^-94 + 2^-92 < 2^-90.663:
-       | hh + ll - 2^(i2/2^5) * 2^(i1/2^10) * 2^(i0/2^15) | < 2^-90.663
+       2^-96.054 + 2^-91.876 + 2^-188.932 + 2^-95 + 2^-93 + 2^-126 + 2^-94
+       + 2^-92 < 2^-90.403:
+       | hh + ll - 2^(i2/2^5) * 2^(i1/2^10) * 2^(i0/2^15) | < 2^-90.403
        with |hh| < 2 and |ll| < 2^-28.678.
   */
   d_mul1 (h, l, *h, *l, hh, ll);
-  /* At input, we have 0.999989 < h_in + l_in < 1.000011 and 1 <= hh + ll < 1.999958,
-     thus at output 0.999989 < h + l < 1.999980. The different errors are:
-   * that on h_in + l_in, bounded by 2^-78.947 (relative), which gives an absolute error
-     bounded by 2^-78.947*1.000011*1.999980 < 2^-77.946
-   * that on hh + ll, bounded by 2^-90.663 (absolute), which gives an absolute error
-     bounded by 1.000011*2^-90.663 < 2^-90.662
+  /* At input, we have 0.999989 < h_in + l_in < 1.000011 and
+     1 <= hh + ll < 1.999958, thus at output 0.999989 < h + l < 1.999980.
+     The different errors are:
+   * that on h_in + l_in, bounded by 2^-78.947 (relative), which gives an
+     absolute error bounded by 2^-78.947*1.000011*1.999980 < 2^-77.946
+   * that on hh + ll, bounded by 2^-90.403 (absolute), which gives an
+     absolute error bounded by 1.000011*2^-90.403 < 2^-90.402
    * the d_mul1() call decomposes into:
      - hi = ahh * bhh [exact]
-     - t1 = ahh * (bhl + bl) where ahh is the upper part of h_in, bhl is the lower part of hh,
-       and bl = ll. We have |bhl| < ulp(C) = 2^-31 where C is the magic constant in d_mul1(),
-       and |bl| < 2^-28.678 thus |bhl + bl| < 2^-28.414 and the rounding error on bhl+bl is
-       bounded by ulp(2^-28.414) = 2^-92. This error is multiplied by |ahh| < 2 thus contributes
-       to at most 2^-91. Now |t1| < 2*2^-28.414 thus the rounding error on t1 is bounded by
-       ulp(2^-27.414) = 2^-91. The total rounding error on t1 is thus at most 2^-91+2^-91=2^-90.
-     - t2 = (ahl + al) * bhh where ahl is the lower part of h_in, al = l, and bhh is the upper
-       part of hh. We have |ahl| < ulp(C) = 2^-31 and |al| < 2^-63, thus the rounding error on
-       ahl+al is bounded by ulp(2^-31+2^-63) = 2^-94. This error is multiplied by |bhh| < 2 thus
-       contributes to at most 2^-93. Now |t2| < (2^-31+2^-63)*2 = 2^-30+2^-62 thus the rounding
-       error on t2 is bounded by ulp(2^-30+2^-62) = 2^-93. The total rounding error on t2 is thus
-       bounded by 2^-93+2^-93 = 2^-92.
-     - t3 = (ahl + al) * (bhl + bl). We have |ahl+al| < 2^-31+2^-63 and |bhl+bl| < 2^-31+2^-28.678,
-       thus the rounding error on ahl + al, which is bounded by 2^-94, is multiplied by at most
-       2^-31+2^-28.678 and contributes to at most 2^-122.414. The rounding error on bhl + bl, which
-       is bounded by 2^-92, is multiplied by at most 2^-31+2^-63 and contributes to at most
-       2^-122.999. Now |t3| < (2^-31+2^-63)*(2^-31+2^-28.678) < 2^-59.414 and the rounding error on
-       t3 is bounded by ulp(2^-59.414) = 2^-123. The total rounding error on t3 is thus bounded by
+     - t1 = ahh * (bhl + bl) where ahh is the upper part of h_in, bhl is the
+       lower part of hh, and bl = ll. We have |bhl| < ulp(C) = 2^-31 where C
+       is the magic constant in d_mul1(), and |bl| < 2^-28.678 thus
+       |bhl + bl| < 2^-28.414 and the rounding error on bhl+bl is bounded by
+       ulp(2^-28.414) = 2^-92. This error is multiplied by |ahh| < 2 thus
+       contributes to at most 2^-91. Now |t1| < 2*2^-28.414 thus the rounding
+       error on t1 is bounded by ulp(2^-27.414) = 2^-91. The total rounding
+       error on t1 is thus at most 2^-91+2^-91=2^-90.
+     - t2 = (ahl + al) * bhh where ahl is the lower part of h_in, al = l, and
+       bhh is the upper part of hh. We have |ahl| < ulp(C) = 2^-31 and
+       |al| < 2^-63, thus the rounding error on ahl+al is bounded by
+       ulp(2^-31+2^-63) = 2^-94. This error is multiplied by |bhh| < 2 thus
+       contributes to at most 2^-93. Now |t2| < (2^-31+2^-63)*2 = 2^-30+2^-62
+       thus the rounding error on t2 is bounded by ulp(2^-30+2^-62) = 2^-93.
+       The total rounding error on t2 is thus bounded by 2^-93+2^-93 = 2^-92.
+     - t3 = (ahl + al) * (bhl + bl). We have |ahl+al| < 2^-31+2^-63 and
+       |bhl+bl| < 2^-31+2^-28.678, thus the rounding error on ahl + al, which
+       is bounded by 2^-94, is multiplied by at most 2^-31+2^-28.678 and
+       contributes to at most 2^-122.414. The rounding error on bhl + bl, which
+       is bounded by 2^-92, is multiplied by at most 2^-31+2^-63 and
+       contributes to at most 2^-122.999.
+       Now |t3| < (2^-31+2^-63)*(2^-31+2^-28.678) < 2^-59.414 and the rounding
+       error on t3 is bounded by ulp(2^-59.414) = 2^-123. The total rounding
+       error on t3 is thus bounded by
        2^-122.414 + 2^-122.999 + 2^-123 < 2^-121.191.
-     - lo = t1 + (t2 + t3). We have |t2| < 2^-30+2^-62 < 2^-29.999 and |t3| < 2^-59.414 thus
-       |t2+t3| < 2^-29.998 and the rounding error on t2+t3 is bounded by ulp(2^-29.998) = 2^-93.
-       Now |t1 + (t2+t3)| < 2^-27.414 + 2^-29.998 < 2^-27.191 thus the rounding error on
-       t1 + (t2+t3) is bounded by ulp(2^-27.191) = 2^-91.  The total rounding error on lo is thus
-       bounded by 2^-93 + 2^-91 < 2^-90.678.
+     - lo = t1 + (t2 + t3). We have |t2| < 2^-30+2^-62 < 2^-29.999 and
+       |t3| < 2^-59.414 thus |t2+t3| < 2^-29.998 and the rounding error on
+       t2+t3 is bounded by ulp(2^-29.998) = 2^-93.
+       Now |t1 + (t2+t3)| < 2^-27.414 + 2^-29.998 < 2^-27.191 thus the
+       rounding error on t1 + (t2+t3) is bounded by ulp(2^-27.191) = 2^-91.
+       The total rounding error on lo is thus bounded by
+       2^-93 + 2^-91 < 2^-90.678.
      The absolute error on h + l is thus bounded by:
-     2^-77.946 + 2^-90.662 + 2^-90 + 2^-92 + 2^-121.191 + 2^-90.678 < 2^-77.945.
-     Since |h + l| > 0.999989 this yields a relative error < 2^-77.945/0.999989 < 2^-77.944.
+     2^-77.946 + 2^-90.402 + 2^-90 + 2^-92 + 2^-121.191 + 2^-90.678 < 2^-77.945
+     Since |h + l| > 0.999989 this yields a relative error less then
+     2^-77.945/0.999989 < 2^-77.944.
    */
   if (__builtin_expect (e >= -16355, 1))
   {
@@ -750,7 +766,7 @@ cr_exp2l (long double x)
   if (__builtin_expect (left == right, 1))
     return left;
 
-  if (x == TRACE) printf ("fast path failed\n");
+  //if (x == TRACE) printf ("fast path failed\n");
 
   accurate_path (&h, &l, x);
   return h + l;
