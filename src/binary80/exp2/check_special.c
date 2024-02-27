@@ -30,12 +30,13 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <unistd.h>
+#include <math.h> // for ldexpl
 
 int ref_fesetround (int);
 void ref_init (void);
 
-double cr_exp2l (double);
-double ref_exp2l (double);
+long double cr_exp2l (long double);
+long double ref_exp2l (long double);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
@@ -58,7 +59,7 @@ static int
 is_nan (long double x)
 {
   b80u80_t v = {.f = x};
-  return (v.e == 0x7fff && (v.m != (1ul << 63)));
+  return ((v.e == 0x7fff || v.e == 0xffff) && (v.m != (1ul << 63)));
 }
 
 static inline int
@@ -74,9 +75,9 @@ is_equal (long double x, long double y)
 static void
 check (long double x)
 {
-  double y1 = ref_exp2l (x);
+  long double y1 = ref_exp2l (x);
   fesetround (rnd1[rnd]);
-  double y2 = cr_exp2l (x);
+  long double y2 = cr_exp2l (x);
   if (! is_equal (y1, y2))
   {
     printf ("FAIL x=%La ref=%La z=%La\n", x, y1, y2);
@@ -146,25 +147,26 @@ main (int argc, char *argv[])
   /* x0 is the smallest x such that 2^-16446 <= RN(2^-x) */
   long double x0 = 16446;
   /* x1 is the smallest x such that 2^-16384 <= RN(2^-x) */
-  double x1 = 16384;
+  long double x1 = 16384;
   /* in the [x0,x1) range, floating-point numbers have an integer part
      of 15 bits, thus we multiply by 2^49 to get integers, where 49 = 64-15 */
   uint64_t n0 = ldexpl (x0, 49);
   uint64_t n1 = ldexpl (x1, 49);
-#define SKIP 320000
-  n0 += getpid () % SKIP;
+#define SKIP 32000000
+  n0 -= getpid () % SKIP;
 #pragma omp parallel for
-  for (uint64_t n = n0; n < n1; n += SKIP)
+  for (uint64_t n = n0; n > n1; n -= SKIP)
     check (-ldexpl ((long double) n, -49));
   /* x2 is the smallest x such that 2^-16382 <= RN(2^-x) */
-  double x2 = 16382;
+  long double x2 = 16382;
   /* in the [x1,x2) range, floating-point numbers have an integer part
      of 14 bits, thus we multiply by 2^50 to get integers, where 50 = 64-14 */
   n1 = ldexpl (x1, 50);
   uint64_t n2 = ldexpl (x2, 50);
+  n1 -= getpid () % SKIP;
 #pragma omp parallel for
-  for (uint64_t n = n1; n < n2; n += SKIP)
-    check (-ldexpl ((lonog double) n, -50));
+  for (uint64_t n = n1; n > n2; n -= SKIP)
+    check (-ldexpl ((long double) n, -50));
 
   printf ("Checking random values\n");
 #define N 1000000000UL /* total number of tests */

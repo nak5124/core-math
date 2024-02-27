@@ -399,7 +399,7 @@ Pacc (long double *h, long double *l, long double x)
   *l += t;
 }
 
-#define TRACE 0xf.004e3650cfdaa33p+3L
+#define TRACE -0xf.fb195b600929c23p+10L
 
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
@@ -619,8 +619,6 @@ static const long double exceptions[EXCEPTIONS][3] = {
     }
   }
   
-  b80u80_t v = {.f = x};
-
   int32_t k = __builtin_roundl (0x1p15L * x); // -16445*2^15 <= k <= 16383*2^15
   // if (x == TRACE) printf ("k=%d\n", k);
   long double r = x - (long double) k * 0x1p-15L;
@@ -640,31 +638,24 @@ static const long double exceptions[EXCEPTIONS][3] = {
   // normalize h+l
   fast_two_sum (h, l, *h, *l);
   // if (x == TRACE) printf ("x=%La h=%La l=%La e=%d\n", x, *h, *l, e);
-  v.f = *h;
-  v.e += e;
   if (e >= -16381)
   {
-    *h = v.f;
-    if (*l != 0)
-    {
-      b80u80_t w = {.f = *l};
-      w.e += e;
-      *l = w.f;
-    }
-  }
-  else if (e >= -16445) // near subnormal range
-  {
-    hh = v.f; // might not equal 2^e*h
-    v.e -= e;
-    *h = *h - v.f; // remaining (truncated) part
-    *h += *l;
-    *l = __builtin_ldexp (*h, e);
-  }
-  else
-  {
-    *h = *h + *l;
+    /* Since |h| > 0.5, ulp(h) >= 2^-64, thus ulp(h)*2^e >= 2^-16445 which is the smallest
+       subnormal, thus 2^e*h is exact. */
     *h = __builtin_ldexpl (*h, e);
-    *l = 0;
+    *l = __builtin_ldexpl (*l, e);
+  }
+  else // near subnormal range
+  {
+    hh = *h;
+    *h = __builtin_ldexpl (*h, e); // might not equal 2^e*h
+    // if (x == TRACE) printf ("h=%La\n", *h);
+    hh = hh - __builtin_ldexpl (*h, -e); // remaining (truncated) part
+    // if (x == TRACE) printf ("hh=%La\n", hh);
+    hh += *l;
+    // if (x == TRACE) printf ("hh=%La\n", hh);
+    *l = __builtin_ldexpl (hh, e);
+    // if (x == TRACE) printf ("l=%La\n", *l);
   }
 }
 
@@ -710,7 +701,7 @@ cr_exp2l (long double x)
   static const long double err = 0x1.0bp-78; // 2^-77.943 < err
   long double left = h +  (l - h * err);
   long double right = h + (l + h * err);
-  // if (x == TRACE) printf ("left=%La right=%La\n", left, right);
+  //  if (x == TRACE) printf ("left=%La right=%La\n", left, right);
   if (__builtin_expect (left == right, 1))
     return left;
 

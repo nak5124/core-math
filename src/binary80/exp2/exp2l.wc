@@ -137279,3 +137279,7 @@
 0x1.c38ff9df0a55ae82p+9
 0x1.d90ff9df0a55ae82p+9
 0x1.ef0ff9df0a55ae82p+9
+# non-regression tests
+-0x8p+11
+-0x8.000000001e848p+11
+-0xf.fb195b600929c23p+10
