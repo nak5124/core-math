@@ -399,7 +399,7 @@ Pacc (long double *h, long double *l, long double x)
   *l += t;
 }
 
-#define TRACE -0xf.fb195b600929c23p+10L
+#define TRACE -0xf.f84cbb09f612fcap+10L
 
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
@@ -529,12 +529,18 @@ fast_path (long double *h, long double *l, long double x)
        error < 2^-16445/(0.99998*2^-16355) < 2^-89.999. This gives a final
        bound of (1 + 2^-77.944) * (1 + 2^-89.999) - 1 < 2^-77.943.
        No overflow is possible here since x < 16384. */
+    // since |h| > 0.5, |h*2^e| > 2^-16356 and is exactly representable
     v.f = *h;
     v.e += e;
     *h = v.f;
     b80u80_t w = {.f = *l};
-    w.e += e;
-    *l = w.f;
+    if (__builtin_expect ((w.e & 0x7fff) + e > 0, 1))
+      {
+        w.e += e;
+        *l = w.f;
+      }
+    else
+      *l = __builtin_ldexpl (*l, e);
   }
   else
   {
@@ -688,7 +694,7 @@ cr_exp2l (long double x)
   // case of tiny inputs
   // for 0 <= x <= 0x1.71547652b82fe176p-64, 2^x rounds to 1 to nearest
   // for -0x1.71547652b82fe176p-65 <= x <= 0, 2^x rounds to 1 to nearest
-  if (__builtin_expect (e <= 16319, 0))
+  if (__builtin_expect (e <= 16319, 0)) // |x| < 2^-63
   {
     if (0 <= x && x <= 0x1.71547652b82fe176p-64L)
       return __builtin_fmal (x, x, 0x1p0L);
@@ -696,16 +702,19 @@ cr_exp2l (long double x)
       return __builtin_fmal (x, -x, 0x1p0L);
   }
 
+  // now -16446 < x < -0x1.71547652b82fe176p-65 or 0x1.71547652b82fe176p-64 < x < 16384
+
   long double h, l;
   fast_path (&h, &l, x);
   static const long double err = 0x1.0bp-78; // 2^-77.943 < err
+  //if (x == TRACE) printf ("h=%La l=%La\n", h, l);
   long double left = h +  (l - h * err);
   long double right = h + (l + h * err);
-  //  if (x == TRACE) printf ("left=%La right=%La\n", left, right);
+  //if (x == TRACE) printf ("left=%La right=%La\n", left, right);
   if (__builtin_expect (left == right, 1))
     return left;
 
-  // if (x == TRACE) printf ("fast path failed\n");
+  //if (x == TRACE) printf ("fast path failed\n");
 
   accurate_path (&h, &l, x);
   return h + l;
