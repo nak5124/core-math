@@ -399,7 +399,7 @@ Pacc (long double *h, long double *l, long double x)
   *l += t;
 }
 
-#define TRACE -0xf.f84cbb09f612fcap+10L
+#define TRACE -0xc.81571d9f0287227p-57L
 
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
@@ -553,9 +553,45 @@ fast_path (long double *h, long double *l, long double x)
 static void
 accurate_path (long double *h, long double *l, long double x)
 {
-#define EXCEPTIONS 59
+#define EXCEPTIONS 95
 static const long double exceptions[EXCEPTIONS][3] = {
     {-0xb.8aa3b295c17f0bcp-68L, 0x1.fffffffffffffffep-1L, 0x1.fffffffffffffffep-66L},
+    {-0xd.b4a26411d5c6de3p-64L, 0x1.ffffffffffffffeep-1L, -0x1.fffffffffffffffep-66L},
+    {-0xb.738e6b3095fc0f1p-61L, 0x1.ffffffffffffff82p-1L, -0x1.fffffffffffffffep-66L},
+    {-0xb.fe0e178f9b0e03cp-61L, 0x1.ffffffffffffff7ap-1L, 0x1.fffffffffffffffep-66L},
+    {-0xe.2dd21ae4fa369cap-59L, 0x1.fffffffffffffd8ap-1L, 0x1.fffffffffffffffep-66L},
+    {-0xc.81571d9f0287227p-57L, 0x1.fffffffffffff756p-1L, -0x1.fffffffffffffffep-66L},
+    {-0xd.4759a60edbc72d3p-55L, 0x1.ffffffffffffdb2ep-1L, 0x1.fffffffffffffffep-66L},
+    {-0x9.dd2c3c92e75472bp-49L, 0x1.fffffffffff929aep-1L, 0x1.fffffffffffffffep-66L},
+    {-0xf.80d811a47bbbfb8p-44L, 0x1.fffffffffea8203ap-1L, -0x1.fffffffffffffffep-66L},
+    {-0xe.ceb5c7152d2355cp-40L, 0x1.ffffffffeb78f5c2p-1L, 0x1.fffffffffffffffep-66L},
+    {-0xd.15f3e165e7e7965p-29L, 0x1.ffffff6edfd62336p-1L, 0x1.fffffffffffffffep-66L},
+    {-0x1.8acea303b9027c9ep-16L, 0x1.fffddcaf7d274244p-1L, 0x1.99115086dbbc6382p-125L},
+    {-0x1.9632fa92f69b0c6p-16L, 0x1.fffdcce4a5b33a76p-1L, -0x1.fffffffffffffffep-66L},
+    {-0x1.c483049c00e8420cp-16L, 0x1.fffd8cb0fa80cba6p-1L, 0x1.8ab5cb057dbb0a8ep-126L},
+    {-0x1.d8a770dbc7a8d258p-16L, 0x1.fffd70c4cb93c8bap-1L, 0x1.5f6c1dcddd5cb248p-126L},
+    {-0x1.dc3b0251ef38ec24p-16L, 0x1.fffd6bcf92b3de66p-1L, 0x1.fffffffffffffffcp-66L},
+    {-0x1.e4510ac98ee39be4p-16L, 0x1.fffd6099f46ef5e2p-1L, 0x1.70785dc4175eaa92p-125L},
+    {-0x1.30bdeead0ab9134cp-15L, 0x1.fffcb3162ca0ab18p-1L, 0x1.b085b44a9ffece56p-127L},
+    {-0x1.4b8845d4d3bce1dcp-15L, 0x1.fffc68cf5119c93ep-1L, -0x1.fffffffffffffff6p-66L},
+    {-0x1.5ab466bb2121b42ep-15L, 0x1.fffc3ebe8713b664p-1L, 0x1.4794c429a7c346fep-127L},
+    {-0x1.7c6bb99fdcfc558ap-15L, 0x1.fffbe14422b12992p-1L, 0x1.e4881d91d2510f54p-127L},
+    {-0x1.96b881a89db711a6p-15L, 0x1.fffb9859824377a6p-1L, 0x1.32dbd19e16999c6ap-126L},
+    {-0x1.d8b40a96c0713da2p-15L, 0x1.fffae169ee695a74p-1L, -0x1.11d73a958b1b6542p-127L},
+    {-0x1.e72e5f9c812b5b42p-15L, 0x1.fffab9463445011ap-1L, -0x1.72ea717dcf13acaap-128L},
+    {-0x1.5ddcb2f8e0723232p-14L, 0x1.fff86c023545a07ap-1L, -0x1.b50115bd78aebdb2p-129L},
+    {-0x1.67ea37c6de6a2772p-14L, 0x1.fff834446d42642ap-1L, 0x1.6820caff6c7a57d2p-133L},
+    {-0x1.6ba69f937e83e83ap-14L, 0x1.fff81f8d4e4c103cp-1L, 0x1.99ebbd1392e0286ap-128L},
+    {-0x1.7ce1f43c7d85bb2ep-14L, 0x1.fff7c00132fd1274p-1L, 0x1.6d7e7a0efa77c39p-128L},
+    {-0x1.8ab5703915d7e7b6p-14L, 0x1.fff77357636a03ap-1L, -0x1.29904853f06bd67ep-128L},
+    {-0x1.958e70bf63affe9ap-13L, 0x1.ffee6e89752e81ap-1L, 0x1.b5b6383b18c01722p-126L},
+    {-0x1.9c58f6ff042fa28ap-13L, 0x1.ffee233b3604cefap-1L, 0x1.2257cc77e2096b9ep-128L},
+    {-0x1.d92ae26a88c884dep-12L, 0x1.ffd702732609618cp-1L, 0x1.a1fb5ae0eb0555a8p-127L},
+    {-0x1.ea3acc97462ccf9ap-12L, 0x1.ffd5881e8b4652e2p-1L, 0x1.26c68ec1d499c84cp-128L},
+    {-0x1.e39e86a4effe162cp-11L, 0x1.ffac38d23251f566p-1L, 0x1.f2e25b6e60a416eap-128L},
+    {-0x1.ec5b7502dd091e32p-11L, 0x1.ffaab570c1cc7738p-1L, -0x1.fdce3e329720149ep-129L},
+    {-0x1.ef4f6db7dd41df6p-11L, 0x1.ffaa3286acf30704p-1L, -0x1.2803d5a97386f78p-127L},
+    {-0x1.b6270cdcb5d62e2p-10L, 0x1.ff683c5f631723d4p-1L, 0x1.efc1c6c83b14ee7cp-126L},
     {0xb.8aa3b295c17f0bcp-67L, 0x1.0000000000000002p+0L, -0x1.fffffffffffffffep-65L},
     {0xa.194f3c43094f2a2p-64L, 0x1.0000000000000006p+0L, 0x1.fffffffffffffffep-65L},
     {0xc.434dedbf1d96fc1p-63L, 0x1.0000000000000012p+0L, -0x1.fffffffffffffffep-65L},
@@ -714,7 +750,7 @@ cr_exp2l (long double x)
   if (__builtin_expect (left == right, 1))
     return left;
 
-  //if (x == TRACE) printf ("fast path failed\n");
+  if (x == TRACE) printf ("fast path failed\n");
 
   accurate_path (&h, &l, x);
   return h + l;

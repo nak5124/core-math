@@ -252,7 +252,17 @@ def analyze_Pacc():
    print ("max l=", l.abs().upper())
    
 # split binade [2^(e-1),2^e) into k blocks
-def doit_bacsel(e,k,t0=2^63,t1=2^64):
+def doit_bacsel(e,k,t0=None,t1=None,neg=false):
+   if t0==None:
+      if neg:
+         t0 = -2^64+1
+      else:
+         t0 = 2^63
+   if t1==None:
+      if neg:
+         t1 = -2^63+1
+      else:
+         t1 = 2^64
    h = ceil((t1-t0)/k)
    for i in range(k):
       u0 = t0+h*i
