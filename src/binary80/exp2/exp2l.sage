@@ -334,7 +334,8 @@ def cmpneg(x,y):
    return int(0)
 
 # statall("/tmp/log")
-# ([((9223372036854775808, -64), (18446744073709551616, 0))], [])
+# ([((9223372036854775808, -64), (18446744073709551616, 0))],
+# [((-18446744073709551615, 0), (-13306513097844322491, -64))])
 def statall(f):
    f = open(f,"r")
    l = []
@@ -376,7 +377,7 @@ def statall(f):
          lneg2 = [((t0,e),(t1,e))]
       else:
          t1old,e1old = lneg2[-1][1]
-         if t1old*2^e1old > t0*2^e:
+         if (t1old-1)*2^e1old > (t0-1)*2^e:
             print ((t1old,e1old), (t0, e))
          assert (t1old-1)*2^e1old <= (t0-1)*2^e, "(t1old-1)*2^e1old <= (t0-1)*2^e"
          if (t1old-1)*2^e1old == (t0-1)*2^e:
@@ -393,6 +394,22 @@ def extend_wc(l):
    for k in range(1,16384):
       lnew = []
       for x in l:
+         assert x > 0, "x > 0"
+         y = R(k)+x
+         if y.exact_rational() == k + x.exact_rational():
+            lnew.append(y)
+            extra.append(y)
+      l = lnew
+   return extra  
+
+# given l a list of worst cases in (-1,0], extend it to worst cases in (-16384,-1]
+def extend_wc_neg(l):
+   extra = []
+   R = RealField(64)
+   for k in range(-1,-16446,-1):
+      lnew = []
+      for x in l:
+         assert x < 0, "x < 0"
          y = R(k)+x
          if y.exact_rational() == k + x.exact_rational():
             lnew.append(y)

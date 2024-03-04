@@ -569,7 +569,7 @@ fast_path (long double *h, long double *l, long double x)
 static void
 accurate_path (long double *h, long double *l, long double x)
 {
-#define EXCEPTIONS 141
+#define EXCEPTIONS 152
 static const long double exceptions[EXCEPTIONS][3] = {
     {-0xb.8aa3b295c17f0bcp-68L, 0x1.fffffffffffffffep-1L, 0x1.fffffffffffffffep-66L},
     {-0xd.b4a26411d5c6de3p-64L, 0x1.ffffffffffffffeep-1L, -0x1.fffffffffffffffep-66L},
@@ -654,6 +654,17 @@ static const long double exceptions[EXCEPTIONS][3] = {
     {-0x1.3156bf341603b4ep-3L, 0x1.cdbb2250ecf28d18p-1L, 0x1.51f7c471f44bbd42p-126L},
     {-0x1.a1e464cd5bc4a23ap-3L, 0x1.bc7904bc8f246052p-1L, -0x1.ef0ffdad209a7e62p-128L},
     {-0x1.9ed07fa75f06bea6p-3L, 0x1.bcef9ae152269ee2p-1L, -0x1.19a488c957763c78p-128L},
+    {-0x1.37b7d6ebc3c535c2p-2L, 0x1.9e9a71830d784296p-1L, -0x1.fffffffffffffffcp-66L},
+    {-0x1.227c3bbe796837f8p-2L, 0x1.a49af00837c3b46ap-1L, 0x1.55129bf7e816581ap-129L},
+    {-0x1.56b05bdd054d245ep-1L, 0x1.41f2cb598284c76ap-1L, 0x1.d2f63b235d1b5822p-129L},
+    {-0x1.3928fef54f77ebe6p-1L, 0x1.4f145246ca66c496p-1L, 0x1.38c74600bb4d06a4p-126L},
+    {-0x1.262ad7e682c0769cp+0L, 0x1.cdbb2250ecf28d18p-2L, 0x1.51f7c471f44bbd42p-127L},
+    {-0x1.489f0eef9e5a0dfep+0L, 0x1.a49af00837c3b46ap-2L, 0x1.55129bf7e816581ap-130L},
+    {-0x1.93156bf341603b4ep+1L, 0x1.cdbb2250ecf28d18p-4L, 0x1.51f7c471f44bbd42p-129L},
+    {-0x1.05ece6c8bd30968cp-1L, 0x1.6725658526f34c7ap-1L, -0x1.977481b2530f44f6p-129L},
+    {-0x1.4e9e87fd5c97e3b4p-1L, 0x1.457c21a3a033a3ecp-1L, -0x1.56dfc93184a53a02p-128L},
+    {-0x1.82f673645e984b46p+0L, 0x1.6725658526f34c7ap-2L, -0x1.977481b2530f44f6p-130L},
+    {-0x1.a74f43feae4bf1dap+0L, 0x1.457c21a3a033a3ecp-2L, -0x1.56dfc93184a53a02p-129L},
     {0xb.8aa3b295c17f0bcp-67L, 0x1.0000000000000002p+0L, -0x1.fffffffffffffffep-65L},
     {0xa.194f3c43094f2a2p-64L, 0x1.0000000000000006p+0L, 0x1.fffffffffffffffep-65L},
     {0xc.434dedbf1d96fc1p-63L, 0x1.0000000000000012p+0L, -0x1.fffffffffffffffep-65L},
