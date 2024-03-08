@@ -12,13 +12,12 @@ def print_T2():
    print (log(maxerr)/log(2.))
 
 def print_T2fast():
-   print ("static const long double T2fast[32][2] = {")
-   R = RealField(64)
-   R32 = RealField(32)
+   print ("static const double T2fast[32][2] = {")
+   R = RealField(53)
    maxerr = 0
    for i in range(2^5):
       x = n(2^(i/2^5), 200)
-      h = R(R32(x))
+      h = R(x)
       l = R(x-h.exact_rational())
       print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
@@ -39,13 +38,12 @@ def print_T1():
    print (log(maxerr)/log(2.))
 
 def print_T1fast():
-   print ("static const long double T1fast[32][2] = {")
-   R = RealField(64)
-   R32 = RealField(32)
+   print ("static const double T1fast[32][2] = {")
+   R = RealField(53)
    maxerr = 0
    for i in range(2^5):
       x = n(2^(i/2^10), 200)
-      h = R(R32(x))
+      h = R(x)
       l = R(x-h.exact_rational())
       print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
@@ -66,13 +64,12 @@ def print_T0():
    print (log(maxerr)/log(2.))
 
 def print_T0fast():
-   print ("static const long double T0fast[32][2] = {")
-   R = RealField(64)
-   R32 = RealField(32)
+   print ("static const double T0fast[32][2] = {")
+   R = RealField(53)
    maxerr = 0
    for i in range(2^5):
       x = n(2^(i/2^15), 200)
-      h = R(R32(x))
+      h = R(x)
       l = R(x-h.exact_rational())
       print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
@@ -84,50 +81,91 @@ def print_T0fast():
 def RIulp(x):
    return max(x.lower().ulp(),x.upper().ulp())
 
+def a_mul(a,b):
+   hi = a*b
+   u = RIulp(hi)
+   lo = RIF(-u,u)
+   return hi,lo
+
+def d_mul(ah,al,bh,bl):
+   hi, s = a_mul(ah,bh)
+   t = al*bh+s
+   lo = ah*bl+t
+   return hi,lo,(RIF(RIulp(t)+RIulp(lo))+RIF(al)*RIF(bl)).abs().upper()
+
+# given maximum absolute values, return a bound on the *absolute* error of d_mul,
+# and the maximum value of lo
+# err_d_mul(2.,2^-53.,2.,2^-53.)
+# 4.06756404254584e-31
+def err_d_mul(ahmax,almax,bhmax,blmax):
+   hi = ahmax*bhmax
+   s = hi.ulp()
+   t = almax*bhmax+s
+   lo = ahmax*blmax+t
+   return t.ulp()+lo.ulp()+almax*blmax, lo
+
 # analyze_P()
-# err1= -115.999994496566
-# err2= -97.9999944965657
-# err3= -79.9999944965657
-# err4= -80.0000000000000
-# err5= -126.999984741211
-# rel. err= -78.9472649184332
-# max l= 1.08420217248550444e-19
+# err1= -104.999994496566
+# err2= -86.9999944965657
+# err3= -121.528758743543
+# err4= -119.999999999999
+# err5= -118.796973547466
+# err6= -104.999984741210
+# err7= -104.000000000001
+# rel. err= -86.8876714459048
+# max l= 2.22049521164608e-16
 def analyze_P():
-   err0 = 2^-83.748 # absolute error
-   R = RealField(64)
-   RI = RealIntervalField(64)
-   x = RI(-2^-16,2^-16)
-   p4 = RI(R("0x1.3b2ab70cf131bd7ep-7",16))
-   p3 = RI(R("0x1.c6b08d6835c26dep-5",16))
-   p2 = RI(R("0x1.ebfbdff82c58ea86p-3",16))
-   p1 = RI(R("0x1.62e42fefa39ef358p-1",16))
+   err0 = 2^-90.627 # absolute error
+   R = RealField(53)
+   RI = RealIntervalField(53)
+   xh = RI(-2^-16,2^-16)
+   xl = RI(-2^-69,2^-69)
+   p4 = RI(R("0x1.3b2a52e855b32p-7",16))
+   p3 = RI(R("0x1.c6b08d7057b35p-5",16))
+   p2 = RI(R("0x1.ebfbdff82c58fp-3",16))
+   p1h = RI(R("0x1.62e42fefa39efp-1",16))
+   p1l = RI(R("0x1.abc9c864cbd56p-56",16))
    p0 = RI(1)
-   # y = p[4] * x + p[3]
-   y = p4*x+p3
-   err1 = (RIulp(p4*x)+RIulp(y))*x.abs().upper()^3
+   # y = p[5] * xh + p[4]
+   y = p4*xh+p3
+   err1 = (RIulp(p4*xh)+RIulp(y))*xh.abs().upper()^3
    print ("err1=", log(err1)/log(2.))
-   # y = y * x + p[2]
+   # y = y * xh + p[3]
    yin = y
-   y = y*x+p2
-   err2 = (RIulp(yin*x)+RIulp(y))*x.abs().upper()^2
+   y = y*xh+p2
+   err2 = (RIulp(yin*xh)+RIulp(y))*xh.abs().upper()^2
    print ("err2=", log(err2)/log(2.))
-   # *h = y * x + p[1]
-   h = y*x+p1
-   err3 = (RIulp(y*x)+RIulp(h))*x.abs().upper()
-   print ("err3=", log(err3)/log(2.))
-   # h = *h * x
-   h = h*x
-   err4 = RIulp(h)
-   print ("err4=", log(err4)/log(2.))
-   # fast_two_sum (h, l, p[0], *h)
-   h = p0+h
+   # a_mul_double (h, l, y, xh)
+   h = y*xh
    u = RIulp(h)
    l = RI(-u,u)
-   err5 = 2^-127*h.abs().upper()
+   # fast_two_sum_double (h, &t, p[1], h)
+   h = p1h+h
+   u = RIulp(h)
+   t = RI(-u,u)
+   err3 = (h.abs().upper()*2^-105)*xh.abs().upper()
+   print ("err3=", log(err3)/log(2.))
+   # *l += t + p[2]
+   t += p1l
+   l += t
+   err4 = (RIulp(t)+RIulp(l))*xh.abs().upper()
+   print ("err4=", log(err4)/log(2.))
+   # d_mul_double (h, l, *h, *l, xh, xl)
+   h, l, err5 = d_mul(h,l,xh,xl)
    print ("err5=", log(err5)/log(2.))
+   # fast_two_sum_double (h, &t, p[0], h)
+   h = p0+h
+   u = RIulp(h)
+   t = RI(-u,u)
+   err6 = h.abs().upper()*2^-105
+   print ("err6=", log(err6)/log(2.))
+   # *l += t
+   l += t
+   err7 = RIulp(l)
+   print ("err7=", log(err7)/log(2.))
    # convert err0 into relative error
    err0 = err0*(h+l).abs().upper()
-   err = err0+err1+err2+err3+err4+err5
+   err = err0+err1+err2+err3+err4+err5+err6+err7
    # convert into relative error
    err = err/(h+l).abs().lower()
    print ("rel. err=", log(err)/log(2.))
