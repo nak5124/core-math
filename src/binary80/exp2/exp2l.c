@@ -36,7 +36,7 @@ SOFTWARE.
 #pragma STDC FENV_ACCESS ON
 
 // anonymous structs, see https://port70.net/~nsz/c/c11/n1570.html#6.7.2.1p19
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
+typedef union {long double f; struct __attribute__((__packed__)) {uint64_t m; uint32_t e:16; uint32_t empty:16;};} b96u96_u;
 
 /* s + t <- a + b, assuming |a| >= |b| */
 static inline void
@@ -412,9 +412,18 @@ Pacc (long double *h, long double *l, long double x)
 static void
 fast_path (long double *h, long double *l, long double x)
 {
-  b80u80_t v = {.f = x};
+  b96u96_u v = {.f = x};
 
-  int32_t k = __builtin_roundl (0x1p15L * x); // -16445*2^15 <= k <= 16383*2^15
+  int64_t s = 48 - ((v.e&0x7fff) - 0x3fff);
+  uint64_t m = v.m + (1l<<(s-1)), sgn = -(v.e>>15);
+  if(__builtin_expect(m<v.m,0)) {
+    s--;
+    m = (v.m>>1) + (1l<<(s-1));
+  }
+  if(s>63) m = 0;
+  m >>= s;
+  m = (m^sgn) - sgn;
+  int32_t k = m; // -16445*2^15 <= k <= 16383*2^15
   long double r = x - (long double) k * 0x1p-15L;
   int32_t i = (k + 538869760) & 32767;
   int32_t e = (k - i) >> 15;
@@ -549,7 +558,7 @@ fast_path (long double *h, long double *l, long double x)
     v.f = *h;
     v.e += e;
     *h = v.f;
-    b80u80_t w = {.f = *l};
+    b96u96_u w = {.f = *l};
     if (__builtin_expect ((w.e & 0x7fff) + e > 0, 1))
       {
         w.e += e;
@@ -777,9 +786,8 @@ static const long double exceptions[EXCEPTIONS][3] = {
 long double
 cr_exp2l (long double x)
 {
-  b80u80_t v = {.f = x};
-  uint16_t e = v.e & 0x7fff;
-
+  b96u96_u v = {.f = x};
+  uint32_t e = v.e & 0x7fff;
   // printf ("x=%La v.e=%u\n", x, v.e);
 
   // check NaN, Inf, overflow, underflow
