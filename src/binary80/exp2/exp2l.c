@@ -1,6 +1,6 @@
 /* Correctly rounded exp2l function for binary64 values.
 
-Copyright (c) 2024 Paul Zimmermann
+Copyright (c) 2024 Alexei Sibidanov and Paul Zimmermann
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -36,7 +36,7 @@ SOFTWARE.
 #pragma STDC FENV_ACCESS ON
 
 // anonymous structs, see https://port70.net/~nsz/c/c11/n1570.html#6.7.2.1p19
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
+typedef union {long double f; struct __attribute__((__packed__)) {uint64_t m; uint32_t e:16; uint32_t empty:16;};} b96u96_u;
 
 /* s + t <- a + b, assuming |a| >= |b| */
 static inline void
@@ -438,7 +438,7 @@ Pacc (long double *h, long double *l, long double x)
   *l += t;
 }
 
-#define TRACE -0xc.81571d9f0287227p-57L
+#define TRACE 0x8.18c728ec71a98p-19L
 
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
@@ -448,9 +448,26 @@ Pacc (long double *h, long double *l, long double x)
 static void
 fast_path (long double *H, long double *L, long double x)
 {
-  b80u80_t v = {.f = x};
+  b96u96_u v = {.f = x};
 
-  int32_t k = __builtin_roundl (0x1p15L * x); // -16445*2^15 <= k <= 16383*2^15
+  // compute k = round(2^15*x)
+  int64_t s = 48 - ((v.e&0x7fff) - 0x3fff);
+  // if e = (v.e&0x7fff) - 0x3fff, we have 2^e <= |x| < 2^(e+1)
+  // thus with s = 48 - e: 2^(48-s) <= |x| < 2^(49-s)
+  // With the input range for x we have -65 <= e <= 14 thus 34 <= s <= 113
+  uint64_t m = v.m + (1l<<(s-1)), sgn = -(v.e>>15);
+  // x = (-1)^sgn*m/2^63*2^e
+  // bit s in v.m (when x is multiplied by 2^15) corresponds to 1, thus bit s-1 to 1/2
+  if(__builtin_expect(m<v.m,0)) { // exponent shift in 2^15*x+1/2
+    s--;
+    m = (v.m>>1) + (1l<<(s-1));
+  }
+  // bit s in v.m corresponds to 1 in 2^15*x+1/2
+  if(s>63) m = 0; // |x| < 2^-16
+  m >>= s; // round to integer
+  m = (m^sgn) - sgn; // gives m for sgn = 0, -m otherwise
+  int32_t k = m; // -16445*2^15 <= k <= 16383*2^15
+
   long double r = x - (long double) k * 0x1p-15L;
   /* Now |r| <= 2^-16 and r is an integer multiple of ulp(x).
      If |x| >= 2^-6, then ulp(x) >= 2^-69, thus r is exactly representable as double.
@@ -507,7 +524,7 @@ fast_path (long double *H, long double *L, long double x)
     v.f = h;
     v.e += e;
     *H = v.f;
-    b80u80_t w = {.f = l};
+    b96u96_u w = {.f = l};
     if (__builtin_expect ((w.e & 0x7fff) + e > 0, 1))
       {
         w.e += e;
@@ -735,9 +752,8 @@ static const long double exceptions[EXCEPTIONS][3] = {
 long double
 cr_exp2l (long double x)
 {
-  b80u80_t v = {.f = x};
-  uint16_t e = v.e & 0x7fff;
-
+  b96u96_u v = {.f = x};
+  uint32_t e = v.e & 0x7fff;
   // printf ("x=%La v.e=%u\n", x, v.e);
 
   // check NaN, Inf, overflow, underflow
