@@ -778,7 +778,7 @@ cr_exp2l (long double x)
   long double left = h +  (l - h * err);
   long double right = h + (l + h * err);
   //if (x == TRACE) printf ("left=%La right=%La\n", left, right);
-  // if (__builtin_expect (left == right, 1))
+  if (__builtin_expect (left == right, 1))
     return left;
 
   //if (x == TRACE) printf ("fast path failed\n");
