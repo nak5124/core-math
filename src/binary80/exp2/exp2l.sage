@@ -19,7 +19,7 @@ def print_T2fast():
       x = n(2^(i/2^5), 200)
       h = R(x)
       l = R(x-h.exact_rational())
-      print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
+      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
    print ("};")
    print (log(maxerr)/log(2.))
@@ -45,7 +45,7 @@ def print_T1fast():
       x = n(2^(i/2^10), 200)
       h = R(x)
       l = R(x-h.exact_rational())
-      print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
+      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
    print ("};")
    print (log(maxerr)/log(2.))
@@ -71,7 +71,7 @@ def print_T0fast():
       x = n(2^(i/2^15), 200)
       h = R(x)
       l = R(x-h.exact_rational())
-      print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
+      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
    print ("};")
    print (log(maxerr)/log(2.))
@@ -105,14 +105,14 @@ def err_d_mul(ahmax,almax,bhmax,blmax):
    return t.ulp()+lo.ulp()+almax*blmax, lo
 
 # analyze_P()
-# err1= -104.999994496566
-# err2= -86.9999944965657
-# err3= -121.528758743543
+# err1= -104.999991108898
+# err2= -86.9999896091589
+# err3= -87.0575276595616
 # err4= -119.999999999999
 # err5= -118.796973547466
 # err6= -104.999984741210
 # err7= -104.000000000001
-# rel. err= -86.8876714459048
+# rel. err= -85.9700916604987
 # max l= 2.22049521164608e-16
 def analyze_P():
    err0 = 2^-90.627 # absolute error
@@ -128,12 +128,14 @@ def analyze_P():
    p0 = RI(1)
    # y = p[5] * xh + p[4]
    y = p4*xh+p3
-   err1 = (RIulp(p4*xh)+RIulp(y))*xh.abs().upper()^3
+   # we ignored p4*xl
+   err1 = (RIulp(p4*xh)+(p4*xl).abs().upper()+RIulp(y))*xh.abs().upper()^3
    print ("err1=", log(err1)/log(2.))
    # y = y * xh + p[3]
    yin = y
    y = y*xh+p2
-   err2 = (RIulp(yin*xh)+RIulp(y))*xh.abs().upper()^2
+   # we ignored y*xl
+   err2 = (RIulp(yin*xh)+(yin*xl).abs().upper()+RIulp(y))*xh.abs().upper()^2
    print ("err2=", log(err2)/log(2.))
    # a_mul_double (h, l, y, xh)
    h = y*xh
@@ -143,7 +145,8 @@ def analyze_P():
    h = p1h+h
    u = RIulp(h)
    t = RI(-u,u)
-   err3 = (h.abs().upper()*2^-105)*xh.abs().upper()
+   # we ignored y*xl
+   err3 = (h.abs().upper()*2^-105+(y*xl).abs().upper())*xh.abs().upper()
    print ("err3=", log(err3)/log(2.))
    # *l += t + p[2]
    t += p1l

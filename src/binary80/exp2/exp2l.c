@@ -24,9 +24,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
+/* References:
+   [1] Note on the Veltkamp/Dekker Algorithms with Directed Roundings,
+       Paul Zimmermann, https://inria.hal.science/hal-04480440, February 2024.
+   [2] CR-LIBM A library of correctly rounded elementary functions in double-precision,
+       Catherine Daramy-Loirat, David Defour, Florent de Dinechin, Matthieu Gallet, Nicolas Gast,
+       Christoph Lauter, Jean-Michel Muller, https://ens-lyon.hal.science/ensl-01529804, 2017.
+   [3] Handbook of Floating-Point Arithmetic, Jean-Michel Muller, Nicolas Brunie, Florent de Dinechin,
+       Claude-Pierre Jeannerod, Mioara Joldes, Vincent Lefèvre, Guillaume Melquiond, Nathalie Revol,
+       Serge Torres, 2018.
+ */
+
 #include <stdint.h>
-#include <assert.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -36,7 +45,10 @@ SOFTWARE.
 #pragma STDC FENV_ACCESS ON
 
 // anonymous structs, see https://port70.net/~nsz/c/c11/n1570.html#6.7.2.1p19
-typedef union {long double f; struct __attribute__((__packed__)) {uint64_t m; uint32_t e:16; uint32_t empty:16;};} b96u96_u;
+typedef union {
+  long double f;
+  struct __attribute__((__packed__)) {uint64_t m; uint32_t e:16; uint32_t empty:16;};
+} b96u96_u;
 
 /* s + t <- a + b, assuming |a| >= |b| */
 static inline void
@@ -60,6 +72,7 @@ fast_two_sum_double (double *s, double *t, double a, double b)
 // x = xh + xl exactly
 // xh fits in 32 bits and |xh| <= 2^e if 2^(e-1) <= |x| < 2^e
 // xl fits in 32 bits and |xl| < 2^(e-32)
+// See reference [1].
 static inline void
 split (long double *xh, long double *xl, long double x)
 {
@@ -71,14 +84,12 @@ split (long double *xh, long double *xl, long double x)
 }
 
 /* Dekker's algorithm: rh + rl = u * v
-   Reference: Algorithm Mul12 from https://ens-lyon.hal.science/ensl-01529804,
-   pages 21-22.
-   See also Handbook of Floating-Point Arithmetic, 2nd edition, Veltkamp
-   splitting (Algorithm 4.9) and Dekker's product (Algorithm 4.10).
+   Reference: Algorithm Mul12 from reference [2], pages 21-22.
+   See also reference [3], Veltkamp splitting (Algorithm 4.9) and
+   Dekker's product (Algorithm 4.10).
    The Handbook only mentions rounding to nearest, but Veltkamp's and
    Dekker's algorithms also work for directed roundings.
-   See "Note on the Veltkamp/Dekker Algorithms with Directed Roundings",
-   Paul Zimmermann, https://inria.hal.science/hal-04480440, February 2024.
+   See reference [1].
 */
 static inline void
 a_mul (long double *rh, long double *rl, long double u, long double v)
@@ -91,7 +102,7 @@ a_mul (long double *rh, long double *rl, long double u, long double v)
 }
 
 // Multiply exactly a and b, such that *hi + *lo = a * b.
-static inline void a_mul_double(double *hi, double *lo, double a, double b) {
+static inline void a_mul_double (double *hi, double *lo, double a, double b) {
   *hi = a * b;
   *lo = __builtin_fma (a, b, -*hi);
 }
@@ -105,163 +116,130 @@ d_mul (long double *hi, long double *lo, long double ah, long double al,
   *lo += al * bh;
 }
 
-/* Return in hi+lo a 96-bit approximation of (ah + al) * (bh + bl), assuming
-   1 <= ah+al, bh+bl < 2. */
-static inline void
-d_mul1 (long double *hi, long double *lo, long double ah, long double al,
-        long double bh, long double bl) {
-  static const long double C = 0x1.8p+32l;
-  long double ahh = (C + ah) - C, bhh = (C + bh) - C;
-  long double ahl = ah - ahh, bhl = bh - bhh;
-  *hi = ahh * bhh; // exact since ahh and bhh have at most 32 significant bits
-  long double t1 = ahh * (bhl + bl);
-  long double t2 = (ahl + al) * bhh;
-  long double t3 = (ahl + al) * (bhl + bl);
-  *lo = t1 + (t2 + t3);
-}
-
-// Same as d_mul1, but assumes ah and bh fit into 32 bits
-static inline void
-d_mul2 (long double *hi, long double *lo, long double ah, long double al,
-        long double bh, long double bl) {
-  *hi = ah * bh; // exact
-  long double t1 = ah * bl, t2 = al * bh, t3 = al * bl;
-  *lo = (t1 + t2) + t3;
-}
-
-// Same as d_mul1, but assumes bh fits into 32 bits
-static inline void
-d_mul3 (long double *hi, long double *lo, long double ah, long double al,
-        long double bh, long double bl) {
-  static const long double C = 0x1.8p+32l; // ulp(C) = 2^-31
-  long double ahh = (C + ah) - C, ahl = ah - ahh;
-  *hi = ahh * bh; // exact
-  long double t1 = ahh * bl;
-  long double t2 = (ahl + al) * bh;
-  long double t3 = (ahl + al) * bl;
-  *lo = (t1 + t3) + t2;
-}
-
 // Returns (ah + al) * (bh + bl) - (al * bl)
 // We can ignore al * bl when assuming al <= ulp(ah) and bl <= ulp(bh)
-static inline void d_mul_double(double *hi, double *lo, double ah, double al,
-                         double bh, double bl) {
+static inline void d_mul_double (double *hi, double *lo, double ah, double al,
+                                 double bh, double bl) {
   double s, t;
 
-  a_mul_double(hi, &s, ah, bh);
-  t = __builtin_fma(al, bh, s);
-  *lo = __builtin_fma(ah, bl, t);
+  a_mul_double (hi, &s, ah, bh);
+  t = __builtin_fma (al, bh, s);
+  *lo = __builtin_fma (ah, bl, t);
 }
 
-// T2fast[i] approximates 2^(i/2^5) with absolute error < 2^-107.22
+// T2fast[i] approximates 2^(i/2^5) for 0 <= i < 32 with absolute error < 2^-107.22
+// generated by print_T2fast() in exp2l.sage
 static const double T2fast[32][2] = {
-   {0x1p+0L, 0x0p+0L},
-   {0x1.059b0d3158574p+0L, 0x1.d73e2a475b465p-55L},
-   {0x1.0b5586cf9890fp+0L, 0x1.8a62e4adc610bp-54L},
-   {0x1.11301d0125b51p+0L, -0x1.6c51039449b3ap-54L},
-   {0x1.172b83c7d517bp+0L, -0x1.19041b9d78a76p-55L},
-   {0x1.1d4873168b9aap+0L, 0x1.e016e00a2643cp-54L},
-   {0x1.2387a6e756238p+0L, 0x1.9b07eb6c70573p-54L},
-   {0x1.29e9df51fdee1p+0L, 0x1.612e8afad1255p-55L},
-   {0x1.306fe0a31b715p+0L, 0x1.6f46ad23182e4p-55L},
-   {0x1.371a7373aa9cbp+0L, -0x1.63aeabf42eae2p-54L},
-   {0x1.3dea64c123422p+0L, 0x1.ada0911f09ebcp-55L},
-   {0x1.44e086061892dp+0L, 0x1.89b7a04ef80dp-59L},
-   {0x1.4bfdad5362a27p+0L, 0x1.d4397afec42e2p-56L},
-   {0x1.5342b569d4f82p+0L, -0x1.07abe1db13cadp-55L},
-   {0x1.5ab07dd485429p+0L, 0x1.6324c054647adp-54L},
-   {0x1.6247eb03a5585p+0L, -0x1.383c17e40b497p-54L},
-   {0x1.6a09e667f3bcdp+0L, -0x1.bdd3413b26456p-54L},
-   {0x1.71f75e8ec5f74p+0L, -0x1.16e4786887a99p-55L},
-   {0x1.7a11473eb0187p+0L, -0x1.41577ee04992fp-55L},
-   {0x1.82589994cce13p+0L, -0x1.d4c1dd41532d8p-54L},
-   {0x1.8ace5422aa0dbp+0L, 0x1.6e9f156864b27p-54L},
-   {0x1.93737b0cdc5e5p+0L, -0x1.75fc781b57ebcp-57L},
-   {0x1.9c49182a3f09p+0L, 0x1.c7c46b071f2bep-56L},
-   {0x1.a5503b23e255dp+0L, -0x1.d2f6edb8d41e1p-54L},
-   {0x1.ae89f995ad3adp+0L, 0x1.7a1cd345dcc81p-54L},
-   {0x1.b7f76f2fb5e47p+0L, -0x1.5584f7e54ac3bp-56L},
-   {0x1.c199bdd85529cp+0L, 0x1.11065895048ddp-55L},
-   {0x1.cb720dcef9069p+0L, 0x1.503cbd1e949dbp-56L},
-   {0x1.d5818dcfba487p+0L, 0x1.2ed02d75b3707p-55L},
-   {0x1.dfc97337b9b5fp+0L, -0x1.1a5cd4f184b5cp-54L},
-   {0x1.ea4afa2a490dap+0L, -0x1.e9c23179c2893p-54L},
-   {0x1.f50765b6e454p+0L, 0x1.9d3e12dd8a18bp-54L},
+   {0x1p+0, 0x0p+0},
+   {0x1.059b0d3158574p+0, 0x1.d73e2a475b465p-55},
+   {0x1.0b5586cf9890fp+0, 0x1.8a62e4adc610bp-54},
+   {0x1.11301d0125b51p+0, -0x1.6c51039449b3ap-54},
+   {0x1.172b83c7d517bp+0, -0x1.19041b9d78a76p-55},
+   {0x1.1d4873168b9aap+0, 0x1.e016e00a2643cp-54},
+   {0x1.2387a6e756238p+0, 0x1.9b07eb6c70573p-54},
+   {0x1.29e9df51fdee1p+0, 0x1.612e8afad1255p-55},
+   {0x1.306fe0a31b715p+0, 0x1.6f46ad23182e4p-55},
+   {0x1.371a7373aa9cbp+0, -0x1.63aeabf42eae2p-54},
+   {0x1.3dea64c123422p+0, 0x1.ada0911f09ebcp-55},
+   {0x1.44e086061892dp+0, 0x1.89b7a04ef80dp-59},
+   {0x1.4bfdad5362a27p+0, 0x1.d4397afec42e2p-56},
+   {0x1.5342b569d4f82p+0, -0x1.07abe1db13cadp-55},
+   {0x1.5ab07dd485429p+0, 0x1.6324c054647adp-54},
+   {0x1.6247eb03a5585p+0, -0x1.383c17e40b497p-54},
+   {0x1.6a09e667f3bcdp+0, -0x1.bdd3413b26456p-54},
+   {0x1.71f75e8ec5f74p+0, -0x1.16e4786887a99p-55},
+   {0x1.7a11473eb0187p+0, -0x1.41577ee04992fp-55},
+   {0x1.82589994cce13p+0, -0x1.d4c1dd41532d8p-54},
+   {0x1.8ace5422aa0dbp+0, 0x1.6e9f156864b27p-54},
+   {0x1.93737b0cdc5e5p+0, -0x1.75fc781b57ebcp-57},
+   {0x1.9c49182a3f09p+0, 0x1.c7c46b071f2bep-56},
+   {0x1.a5503b23e255dp+0, -0x1.d2f6edb8d41e1p-54},
+   {0x1.ae89f995ad3adp+0, 0x1.7a1cd345dcc81p-54},
+   {0x1.b7f76f2fb5e47p+0, -0x1.5584f7e54ac3bp-56},
+   {0x1.c199bdd85529cp+0, 0x1.11065895048ddp-55},
+   {0x1.cb720dcef9069p+0, 0x1.503cbd1e949dbp-56},
+   {0x1.d5818dcfba487p+0, 0x1.2ed02d75b3707p-55},
+   {0x1.dfc97337b9b5fp+0, -0x1.1a5cd4f184b5cp-54},
+   {0x1.ea4afa2a490dap+0, -0x1.e9c23179c2893p-54},
+   {0x1.f50765b6e454p+0, 0x1.9d3e12dd8a18bp-54},
 };
 
-// T1fast[i] approximates 2^(i/2^10) with absolute error < 2^-107.03
+// T1fast[i] approximates 2^(i/2^10) for 0 <= i < 32 with absolute error < 2^-107.03
+// generated by print_T1fast() in exp2l.sage
 static const double T1fast[32][2] = {
-   {0x1p+0L, 0x0p+0L},
-   {0x1.002c605e2e8cfp+0L, -0x1.d7c96f201bb2fp-55L},
-   {0x1.0058c86da1c0ap+0L, -0x1.5e00e62d6b30dp-56L},
-   {0x1.0085382faef83p+0L, 0x1.da93f90835f75p-56L},
-   {0x1.00b1afa5abcbfp+0L, -0x1.4f6b2a7609f71p-55L},
-   {0x1.00de2ed0ee0f5p+0L, -0x1.406ac4e81a645p-57L},
-   {0x1.010ab5b2cbd11p+0L, 0x1.c1d0660524e08p-54L},
-   {0x1.0137444c9b5b5p+0L, -0x1.2b6aeb6176892p-56L},
-   {0x1.0163da9fb3335p+0L, 0x1.b61299ab8cdb7p-54L},
-   {0x1.019078ad6a19fp+0L, -0x1.008eff5142bf9p-56L},
-   {0x1.01bd1e77170b4p+0L, 0x1.5e7626621eb5bp-56L},
-   {0x1.01e9cbfe113efp+0L, -0x1.c11f5239bf535p-55L},
-   {0x1.02168143b0281p+0L, -0x1.2bf310fc54eb6p-55L},
-   {0x1.02433e494b755p+0L, -0x1.314aa16278aa3p-54L},
-   {0x1.027003103b10ep+0L, -0x1.082ef51b61d7ep-56L},
-   {0x1.029ccf99d720ap+0L, 0x1.64cbba902ca27p-58L},
-   {0x1.02c9a3e778061p+0L, -0x1.19083535b085dp-56L},
-   {0x1.02f67ffa765e6p+0L, -0x1.b8db0e9dbd87ep-55L},
-   {0x1.032363d42b027p+0L, 0x1.fea8d61ed6016p-54L},
-   {0x1.03504f75ef071p+0L, 0x1.bc2ee8e5799acp-54L},
-   {0x1.037d42e11bbccp+0L, 0x1.56811eeade11ap-57L},
-   {0x1.03aa3e170aafep+0L, -0x1.f1a93c1b824d3p-54L},
-   {0x1.03d7411915a8ap+0L, 0x1.b7c00e7b751dap-54L},
-   {0x1.04044be896ab6p+0L, 0x1.9dc3add8f9c02p-54L},
-   {0x1.04315e86e7f85p+0L, -0x1.0a31c1977c96ep-54L},
-   {0x1.045e78f5640b9p+0L, 0x1.35bc86af4ee9ap-56L},
-   {0x1.048b9b35659d8p+0L, 0x1.21cd53d5e8b66p-57L},
-   {0x1.04b8c54847a28p+0L, -0x1.e7992580447bp-56L},
-   {0x1.04e5f72f654b1p+0L, 0x1.4c3793aa0d08dp-55L},
-   {0x1.051330ec1a03fp+0L, 0x1.79a8be239ca45p-54L},
-   {0x1.0540727fc1762p+0L, -0x1.abcae24b819dfp-54L},
-   {0x1.056dbbebb786bp+0L, 0x1.06c87433776c9p-55L},
+   {0x1p+0, 0x0p+0},
+   {0x1.002c605e2e8cfp+0, -0x1.d7c96f201bb2fp-55},
+   {0x1.0058c86da1c0ap+0, -0x1.5e00e62d6b30dp-56},
+   {0x1.0085382faef83p+0, 0x1.da93f90835f75p-56},
+   {0x1.00b1afa5abcbfp+0, -0x1.4f6b2a7609f71p-55},
+   {0x1.00de2ed0ee0f5p+0, -0x1.406ac4e81a645p-57},
+   {0x1.010ab5b2cbd11p+0, 0x1.c1d0660524e08p-54},
+   {0x1.0137444c9b5b5p+0, -0x1.2b6aeb6176892p-56},
+   {0x1.0163da9fb3335p+0, 0x1.b61299ab8cdb7p-54},
+   {0x1.019078ad6a19fp+0, -0x1.008eff5142bf9p-56},
+   {0x1.01bd1e77170b4p+0, 0x1.5e7626621eb5bp-56},
+   {0x1.01e9cbfe113efp+0, -0x1.c11f5239bf535p-55},
+   {0x1.02168143b0281p+0, -0x1.2bf310fc54eb6p-55},
+   {0x1.02433e494b755p+0, -0x1.314aa16278aa3p-54},
+   {0x1.027003103b10ep+0, -0x1.082ef51b61d7ep-56},
+   {0x1.029ccf99d720ap+0, 0x1.64cbba902ca27p-58},
+   {0x1.02c9a3e778061p+0, -0x1.19083535b085dp-56},
+   {0x1.02f67ffa765e6p+0, -0x1.b8db0e9dbd87ep-55},
+   {0x1.032363d42b027p+0, 0x1.fea8d61ed6016p-54},
+   {0x1.03504f75ef071p+0, 0x1.bc2ee8e5799acp-54},
+   {0x1.037d42e11bbccp+0, 0x1.56811eeade11ap-57},
+   {0x1.03aa3e170aafep+0, -0x1.f1a93c1b824d3p-54},
+   {0x1.03d7411915a8ap+0, 0x1.b7c00e7b751dap-54},
+   {0x1.04044be896ab6p+0, 0x1.9dc3add8f9c02p-54},
+   {0x1.04315e86e7f85p+0, -0x1.0a31c1977c96ep-54},
+   {0x1.045e78f5640b9p+0, 0x1.35bc86af4ee9ap-56},
+   {0x1.048b9b35659d8p+0, 0x1.21cd53d5e8b66p-57},
+   {0x1.04b8c54847a28p+0, -0x1.e7992580447bp-56},
+   {0x1.04e5f72f654b1p+0, 0x1.4c3793aa0d08dp-55},
+   {0x1.051330ec1a03fp+0, 0x1.79a8be239ca45p-54},
+   {0x1.0540727fc1762p+0, -0x1.abcae24b819dfp-54},
+   {0x1.056dbbebb786bp+0, 0x1.06c87433776c9p-55},
 };
 
-// T0fast[i] approximates 2^(i/2^15) with absolute error < 2^-107.21
+// T0fast[i] approximates 2^(i/2^15) for 0 <= i < 32 with absolute error < 2^-107.21
+// generated by print_T0fast() in exp2l.sage
 static const double T0fast[32][2] = {
-  {0x1p+0L, 0x0p+0L},
-   {0x1.000162e525eep+0L, 0x1.51d5115f56655p-54L},
-   {0x1.0002c5cc37da9p+0L, 0x1.247426170d232p-54L},
-   {0x1.000428b535c85p+0L, 0x1.fb74d9ea60832p-54L},
-   {0x1.00058ba01fbap+0L, -0x1.a4a4d4cad39fep-54L},
-   {0x1.0006ee8cf5b22p+0L, 0x1.932ef86740288p-55L},
-   {0x1.0008517bb7b38p+0L, -0x1.9bcb5db05e94p-57L},
-   {0x1.0009b46c65c0bp+0L, 0x1.eb71a14c21e8bp-54L},
-   {0x1.000b175effdc7p+0L, 0x1.ae8e38c59c72ap-54L},
-   {0x1.000c7a5386096p+0L, 0x1.9efe59410befap-54L},
-   {0x1.000ddd49f84a3p+0L, 0x1.1b41ae4029256p-56L},
-   {0x1.000f404256a18p+0L, 0x1.87fa20970e17ap-57L},
-   {0x1.0010a33ca112p+0L, -0x1.68ddbffb2ac39p-58L},
-   {0x1.00120638d79e5p+0L, 0x1.fcfcbaad3ac82p-54L},
-   {0x1.00136936fa493p+0L, 0x1.f2be4da91d517p-55L},
-   {0x1.0014cc3709154p+0L, -0x1.257410422c2fdp-55L},
-   {0x1.00162f3904052p+0L, -0x1.7b5d0d58ea8f4p-58L},
-   {0x1.0017923ceb1b8p+0L, 0x1.f5e282a52dbd9p-55L},
-   {0x1.0018f542be5b1p+0L, 0x1.36ad1777e482p-54L},
-   {0x1.001a584a7dc68p+0L, -0x1.a447def06db7ep-55L},
-   {0x1.001bbb5429606p+0L, 0x1.73c902846716ep-54L},
-   {0x1.001d1e5fc12b8p+0L, -0x1.6354c4339b91p-54L},
-   {0x1.001e816d452a6p+0L, 0x1.3da68462bd1e4p-54L},
-   {0x1.001fe47cb55fdp+0L, -0x1.334e0c9692b31p-58L},
-   {0x1.0021478e11ce6p+0L, 0x1.4115cb6b16a8ep-54L},
-   {0x1.0022aaa15a78dp+0L, -0x1.6c81d3063bdb2p-57L},
-   {0x1.00240db68f61cp+0L, -0x1.c65136ca57a55p-54L},
-   {0x1.002570cdb08bdp+0L, -0x1.ded5dcc6c5bd4p-55L},
-   {0x1.0026d3e6bdf9bp+0L, 0x1.e3a2b72b6b281p-55L},
-   {0x1.00283701b7ae2p+0L, -0x1.870119822944dp-54L},
-   {0x1.00299a1e9dabbp+0L, -0x1.bd5a8a6af3c4ep-54L},
-   {0x1.002afd3d6ff51p+0L, -0x1.13c6aeb99597p-54L},
+   {0x1p+0, 0x0p+0},
+   {0x1.000162e525eep+0, 0x1.51d5115f56655p-54},
+   {0x1.0002c5cc37da9p+0, 0x1.247426170d232p-54},
+   {0x1.000428b535c85p+0, 0x1.fb74d9ea60832p-54},
+   {0x1.00058ba01fbap+0, -0x1.a4a4d4cad39fep-54},
+   {0x1.0006ee8cf5b22p+0, 0x1.932ef86740288p-55},
+   {0x1.0008517bb7b38p+0, -0x1.9bcb5db05e94p-57},
+   {0x1.0009b46c65c0bp+0, 0x1.eb71a14c21e8bp-54},
+   {0x1.000b175effdc7p+0, 0x1.ae8e38c59c72ap-54},
+   {0x1.000c7a5386096p+0, 0x1.9efe59410befap-54},
+   {0x1.000ddd49f84a3p+0, 0x1.1b41ae4029256p-56},
+   {0x1.000f404256a18p+0, 0x1.87fa20970e17ap-57},
+   {0x1.0010a33ca112p+0, -0x1.68ddbffb2ac39p-58},
+   {0x1.00120638d79e5p+0, 0x1.fcfcbaad3ac82p-54},
+   {0x1.00136936fa493p+0, 0x1.f2be4da91d517p-55},
+   {0x1.0014cc3709154p+0, -0x1.257410422c2fdp-55},
+   {0x1.00162f3904052p+0, -0x1.7b5d0d58ea8f4p-58},
+   {0x1.0017923ceb1b8p+0, 0x1.f5e282a52dbd9p-55},
+   {0x1.0018f542be5b1p+0, 0x1.36ad1777e482p-54},
+   {0x1.001a584a7dc68p+0, -0x1.a447def06db7ep-55},
+   {0x1.001bbb5429606p+0, 0x1.73c902846716ep-54},
+   {0x1.001d1e5fc12b8p+0, -0x1.6354c4339b91p-54},
+   {0x1.001e816d452a6p+0, 0x1.3da68462bd1e4p-54},
+   {0x1.001fe47cb55fdp+0, -0x1.334e0c9692b31p-58},
+   {0x1.0021478e11ce6p+0, 0x1.4115cb6b16a8ep-54},
+   {0x1.0022aaa15a78dp+0, -0x1.6c81d3063bdb2p-57},
+   {0x1.00240db68f61cp+0, -0x1.c65136ca57a55p-54},
+   {0x1.002570cdb08bdp+0, -0x1.ded5dcc6c5bd4p-55},
+   {0x1.0026d3e6bdf9bp+0, 0x1.e3a2b72b6b281p-55},
+   {0x1.00283701b7ae2p+0, -0x1.870119822944dp-54},
+   {0x1.00299a1e9dabbp+0, -0x1.bd5a8a6af3c4ep-54},
+   {0x1.002afd3d6ff51p+0, -0x1.13c6aeb99597p-54},
 };
 
-// T2[i] approximates 2^(i/2^5) with relative error < 2^-129.565
+// T2[i] approximates 2^(i/2^5) for 0 <= i < 32 with relative error < 2^-129.565
+// generated by print_T2() in exp2l.sage
 static const long double T2[32][2] = {
    {0x1p+0L, 0x0p+0L},
    {0x1.059b0d31585743aep+0L, 0x1.f1523ada32905ffap-66L},
@@ -297,7 +275,8 @@ static const long double T2[32][2] = {
    {0x1.f50765b6e4540674p+0L, 0x1.f096ec50c575ff32p-65L},
 };
 
-// T1[i] approximates 2^(i/2^10) with relative error < 2^-129.048
+// T1[i] approximates 2^(i/2^10) for 0 <= i < 32 with relative error < 2^-129.048
+// generated by print_T1() in exp2l.sage
 static const long double T1[32][2] = {
    {0x1p+0L, 0x0p+0L},
    {0x1.002c605e2e8cec5p+0L, 0x1.b486ff22688e8042p-66L},
@@ -333,7 +312,8 @@ static const long double T1[32][2] = {
    {0x1.056dbbebb786b20ep+0L, -0x1.bc5e64449ba34522p-66L},
 };
 
-// T0[i] approximates 2^(i/2^15) with relative error < 2^-129.004
+// T0[i] approximates 2^(i/2^15) for 0 <= i < 32 with relative error < 2^-129.004
+// generated by print_T0() in exp2l.sage
 static const long double T0[32][2] = {
    {0x1p+0L, 0x0p+0L},
    {0x1.000162e525ee0548p+0L, -0x1.5775054cd5adbfb2p-65L},
@@ -370,7 +350,7 @@ static const long double T0[32][2] = {
 };
 
 // put in h+l an approximation of 2^x for |xh+xl| < 2^-16, with relative error
-// bounded by 2^-86.887 (see routine analyze_P in exp2l.sage), and |l| < 2^-51.999
+// bounded by 2^-85.970 (see routine analyze_P in exp2l.sage), and |l| < 2^-51.999
 // At input we have |xh|,|xh+xl| <= 2^-16 and |xl| <= 2^-69
 static void
 P (double *h, double *l, double xh, double xl)
@@ -438,8 +418,6 @@ Pacc (long double *h, long double *l, long double x)
   *l += t;
 }
 
-#define TRACE 0x8.18c728ec71a98p-19L
-
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
    Return H + L approximating 2^x with relative error < 2^-85.803
@@ -452,7 +430,7 @@ fast_path (long double *H, long double *L, long double x)
 
   // compute k = round(2^15*x)
   int64_t s = 48 - ((v.e&0x7fff) - 0x3fff);
-  // if e = (v.e&0x7fff) - 0x3fff, we have 2^e <= |x| < 2^(e+1)
+  // let e = (v.e&0x7fff) - 0x3fff: we have 2^e <= |x| < 2^(e+1)
   // thus with s = 48 - e: 2^(48-s) <= |x| < 2^(49-s)
   // With the input range for x we have -65 <= e <= 14 thus 34 <= s <= 113
   uint64_t m = v.m + (1l<<(s-1)), sgn = -(v.e>>15);
@@ -483,18 +461,18 @@ fast_path (long double *H, long double *L, long double x)
   // x = k*2^-15 + r with |r| < 2^-16
   // 2^x = 2^e * 2^(i2/2^5) * 2^(i1/2^10) * 2^(i0/2^15) * 2^r
   double h, l, hh, ll;
-  P (&h, &l, rh, rl); // relative error bounded by 2^-86.887, with |l| < 2^-51.999
+  P (&h, &l, rh, rl); // relative error bounded by 2^-85.970, with |l| < 2^-51.999
   d_mul_double (&hh, &ll, T2fast[i2][0], T2fast[i2][1], T1fast[i1][0], T1fast[i1][1]);
   /* We have |T2fast[i2][0]|, |T1fast[i1][0]| < 2, |T2fast[i2][1]|, |T1fast[i1][1]| < 2^-53.
      The call err_d_mul(2.,2^-53.,2.,2^-53.) with err_d_mul from exp2l.sage
      yields (4.06756404254584e-31, 1.33226762955019e-15) thus the absolute error is bounded
-     by 2^-100.95 and |ll| < 2^-49.415.
+     by 4.06756404254584e-31 < 2^-100.95 and |ll| < 1.33226762955019e-15 < 2^-49.415.
   */
   d_mul_double (&hh, &ll, hh, ll, T0fast[i0][0], T0fast[i0][1]);
   /* We have |hh_in|, |T0fast[i0][0]| < 2, |ll_in| < 2^-49.415, |T0fast[i0][1]| < 2^-53.
      The call err_d_mul(2.,2^-49.415,2.,2^-53.) with err_d_mul from exp2l.sage
      yields (1.72563707481138e-30, 3.77482754261006e-15) thus the absolute error is bounded
-     by 2^-98.87 and |ll| < 2^-47.912.
+     by 1.72563707481138e-30 < 2^-98.87 and |ll| < 3.77482754261006e-15 < 2^-47.912.
      If we add the input error on hh_in+ll_in bounded by 2^-100.95 and multiplied by
      T0fast[i0][0]+T0fast[i0][1] < 2, this yields a total absolute error of:
      2^-98.87 + 2^-100.95*2 < 2^-98.311.
@@ -504,13 +482,13 @@ fast_path (long double *H, long double *L, long double x)
      and 1 <= hh + ll < 1.999958, |ll| < 2^-47.912, thus at output 0.999989 < h + l < 1.999980.
      The call err_d_mul(1.000011,2^-51.999,1.999958,2^-47.912) with err_d_mul from exp2l.sage
      yields (1.72652675153480e-30, 4.44263794756115e-15) thus the absolute error is bounded
-     by 2^-98.86 and |ll| < 2^-47.677.
+     by 1.72652675153480e-30 < 2^-98.86 and |ll| < 4.44263794756115e-15 < 2^-47.677.
      If we add the input error on hh+ll bounded by 2^-98.311 and multiplied by
-     h_in+l_in < 1.000011, and the input error on h_in+l_in bounded by 2^-86.887*1.000011
+     h_in+l_in < 1.000011, and the input error on h_in+l_in bounded by 2^-85.970*1.000011
      and multiplied by hh+ll < 1.999958, this yields a total absolute error of:
-     2^-98.86 + 1.000011*2^-98.311 + 2^-86.887*1.000011*1.999958 < 2^-85.886.
+     2^-98.86 + 1.000011*2^-98.311 + 2^-85.970*1.000011*1.999958 < 2^-84.969.
      Since |h+l| > 0.999989 this yields a relative error of at most:
-     2^-85.886/0.999989 < 2^-85.885.
+     2^-84.969/0.999989 < 2^-84.968.
    */
   if (__builtin_expect (e >= -16355, 1))
   {
@@ -518,7 +496,7 @@ fast_path (long double *H, long double *L, long double x)
        thus if l*2^e is in the subnormal range, we have an additional absolute
        error of at most 2^-16445, which corresponds to an additional relative
        error < 2^-16445/(0.99998*2^-16355) < 2^-89.999. This gives a final
-       bound of (1 + 2^-85.885) * (1 + 2^-89.999) - 1 < 2^-85.803.
+       bound of (1 + 2^-84.968) * (1 + 2^-89.999) - 1 < 2^-84.924.
        No overflow is possible here since x < 16384. */
     // since |h| > 0.5, |h*2^e| > 2^-16356 and is exactly representable
     v.f = h;
@@ -710,24 +688,17 @@ static const long double exceptions[EXCEPTIONS][3] = {
   }
   
   int32_t k = __builtin_roundl (0x1p15L * x); // -16445*2^15 <= k <= 16383*2^15
-  // if (x == TRACE) printf ("k=%d\n", k);
   long double r = x - (long double) k * 0x1p-15L;
-  // if (x == TRACE) printf ("r=%La\n", r);
   int32_t i = (k + 538869760) & 32767;
-  // if (x == TRACE) printf ("i=%d\n", i);
   int32_t e = (k - i) >> 15;
-  // if (x == TRACE) printf ("e=%d\n", e);
   int32_t i0 = i & 0x1f, i1 = (i >> 5) & 0x1f, i2 = i >> 10;
-  // if (x == TRACE) printf ("i2=%d i1=%d i0=%d\n", i2, i1, i0);
   Pacc (h, l, r);
-  // if (x == TRACE) printf ("P: h=%La l=%La\n", *h, *l);
   long double hh, ll;
   d_mul (&hh, &ll, T2[i2][0], T2[i2][1], T1[i1][0], T1[i1][1]);
   d_mul (&hh, &ll, hh, ll, T0[i0][0], T0[i0][1]);
   d_mul (h, l, *h, *l, hh, ll);
   // normalize h+l
   fast_two_sum (h, l, *h, *l);
-  // if (x == TRACE) printf ("x=%La h=%La l=%La e=%d\n", x, *h, *l, e);
   if (e >= -16381)
   {
     /* Since |h| > 0.5, ulp(h) >= 2^-64, thus ulp(h)*2^e >= 2^-16445 which is the smallest
@@ -739,13 +710,9 @@ static const long double exceptions[EXCEPTIONS][3] = {
   {
     hh = *h;
     *h = __builtin_ldexpl (*h, e); // might not equal 2^e*h
-    // if (x == TRACE) printf ("h=%La\n", *h);
     hh = hh - __builtin_ldexpl (*h, -e); // remaining (truncated) part
-    // if (x == TRACE) printf ("hh=%La\n", hh);
     hh += *l;
-    // if (x == TRACE) printf ("hh=%La\n", hh);
     *l = __builtin_ldexpl (hh, e);
-    // if (x == TRACE) printf ("l=%La\n", *l);
   }
 }
 
@@ -754,7 +721,6 @@ cr_exp2l (long double x)
 {
   b96u96_u v = {.f = x};
   uint32_t e = v.e & 0x7fff;
-  // printf ("x=%La v.e=%u\n", x, v.e);
 
   // check NaN, Inf, overflow, underflow
   // overflow for x >= 16384, i.e., 16397 <= e <= 32767
@@ -789,15 +755,11 @@ cr_exp2l (long double x)
 
   long double h, l;
   fast_path (&h, &l, x);
-  static const long double err = 0x1.26p-86; // 2^-85.803 < err
-  //if (x == TRACE) printf ("h=%La l=%La\n", h, l);
+  static const long double err = 0x1.0ep-85; // 2^-84.924 < err
   long double left = h +  (l - h * err);
   long double right = h + (l + h * err);
-  //if (x == TRACE) printf ("left=%La right=%La\n", left, right);
   if (__builtin_expect (left == right, 1))
     return left;
-
-  //if (x == TRACE) printf ("fast path failed\n");
 
   accurate_path (&h, &l, x);
   return h + l;
