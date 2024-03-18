@@ -310,6 +310,19 @@ def doit_bacsel(e,k,t0=None,t1=None,neg=false):
       u1 = min(t0+h*(i+1),t1)
       print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 30.5 64")
 
+# output command for 2^(e-1) <= 2^x < 2^e where -16444 <= e <= -16382
+def doit_bacsel_subnormal(e):
+   x0 = R64(e-1).nextabove()
+   x1 = R64(e).nextbelow()
+   s0, t0, e0 = x0.sign_mantissa_exponent()
+   s1, t1, e1 = x1.sign_mantissa_exponent()
+   assert s0==s1, "s0==s1"
+   assert e0==e1, "e0==e1"
+   t0 = s0*t0
+   t1 = s1*t1
+   nn = e + 16445
+   print ("./doit.sh " + str(t0) + " " + str(t1+1) + " 64 " + str(e) + " 64 30.5 " + str(nn))
+
 def dekker(u,v):
    R = u.parent()
    c = R("0x1.00000001p+32",16)
