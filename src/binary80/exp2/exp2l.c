@@ -36,6 +36,7 @@ SOFTWARE.
  */
 
 #include <stdint.h>
+#include <x86intrin.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -50,6 +51,7 @@ typedef union {
   struct __attribute__((__packed__)) {uint64_t m; uint32_t e:16; uint32_t empty:16;};
 } b96u96_u;
 
+typedef union {double f;uint64_t u;} b64u64_u;
 /* s + t <- a + b, assuming |a| >= |b| */
 static inline void
 fast_two_sum (long double *s, long double *t, long double a, long double b)
@@ -423,9 +425,8 @@ Pacc (long double *h, long double *l, long double x)
    Return H + L approximating 2^x with relative error < 2^-85.803
    or H = L = NaN.
 */
-static void
-fast_path (long double *H, long double *L, long double x)
-{
+static long double fast_path (int *H, long double x){
+  unsigned flag = _mm_getcsr(), rm = (flag>>13)&3;
   b96u96_u v = {.f = x};
 
   // compute k = round(2^15*x)
@@ -450,13 +451,12 @@ fast_path (long double *H, long double *L, long double x)
   /* Now |r| <= 2^-16 and r is an integer multiple of ulp(x).
      If |x| >= 2^-6, then ulp(x) >= 2^-69, thus r is exactly representable as double.
   */
-  double rh, rl;
+  double rh, rl = 0;
   rh = r;
-  rl = r - (long double) rh;
+  if(__builtin_expect(!(k>512 || k<-512),0))
+    rl = r - (long double) rh;
   /* Since |rh| <= 2^-16, we have |rl| <= ulp(2^-17) = 2^-69. */
-  int32_t i = (k + 538869760) & 32767;
-  int32_t e = (k - i) >> 15;
-  int32_t i0 = i & 0x1f, i1 = (i >> 5) & 0x1f, i2 = i >> 10;
+  int32_t e = k >> 15, i0 = k & 0x1f, i1 = (k >> 5) & 0x1f, i2 = (k >> 10) & 0x1f;
   // k = e*2^15 + i2*2^10 + i1*2^5 + i0
   // x = k*2^-15 + r with |r| < 2^-16
   // 2^x = 2^e * 2^(i2/2^5) * 2^(i1/2^10) * 2^(i0/2^15) * 2^r
@@ -490,33 +490,42 @@ fast_path (long double *H, long double *L, long double x)
      Since |h+l| > 0.999989 this yields a relative error of at most:
      2^-84.969/0.999989 < 2^-84.968.
    */
-  if (__builtin_expect (e >= -16355, 1))
-  {
-    /* Multiply h, l by 2^e. Since e >= -16355, we have 2^x>=0.99998*2^-16355
-       thus if l*2^e is in the subnormal range, we have an additional absolute
-       error of at most 2^-16445, which corresponds to an additional relative
-       error < 2^-16445/(0.99998*2^-16355) < 2^-89.999. This gives a final
-       bound of (1 + 2^-84.968) * (1 + 2^-89.999) - 1 < 2^-84.924.
-       No overflow is possible here since x < 16384. */
-    // since |h| > 0.5, |h*2^e| > 2^-16356 and is exactly representable
-    v.f = h;
-    v.e += e;
-    *H = v.f;
-    b96u96_u w = {.f = l};
-    if (__builtin_expect ((w.e & 0x7fff) + e > 0, 1))
-      {
-        w.e += e;
-        *L = w.f;
-      }
+  b64u64_u th = {.f = h}, tl = {.f = l};
+  long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
+  long ml = (tl.u&~(0xfffl<<52))|1l<<52, sgnl = -(tl.u>>63);
+  ml = (ml^sgnl) - sgnl;
+  int64_t mlt;
+  long sh = de-11;
+  if(__builtin_expect(sh>63,0)){
+    mlt = sgnl;
+    if(__builtin_expect(sh-64>63,0))
+      ml = sgnl;
     else
-      *L = __builtin_ldexpl (l, e);
+      ml >>= sh-64;
+  } else {
+    mlt = ml>>sh;
+    ml <<= 64-sh;
   }
-  else
-  {
-    v.e = 32767;
-    v.m = 0xc000000000000000ul;
-    *H = *L = v.f; // +qnan
+  uint64_t mh = ((th.u<<11)|1l<<63);
+  long eps = 0x10e*(mh>>30);
+  mh += mlt;
+  if(__builtin_expect(!(mh>>63),0)){
+    mh = mh<<1 | (uint64_t)ml>>63;
+    ml <<= 1;
+    e--;
+    eps <<= 1;
   }
+  if(rm==0){
+    mh += (uint64_t)ml>>63;
+    ml <<= 1;
+  } else if(rm==2) {
+    mh += 1;
+    ml = -ml;
+  }
+  v.m = mh;
+  v.e = e + 0x3c00 + eh;
+  *H = (uint64_t)(ml+eps) < (uint64_t)2*eps || e < -16355 || (ml<<1)==0;
+  return v.f;
 }
 
 static void
@@ -631,7 +640,7 @@ static const long double exceptions[EXCEPTIONS][3] = {
     {0xe.0c9e1609da847dbp-37L, 0x1.000000004de7e1e2p+0L, 0x1.fffffffffffffffep-65L},
     {0x9.aab514ef3077eddp-36L, 0x1.000000006b3561fep+0L, -0x1.fffffffffffffffep-65L},
     {0xd.f39d71dc272a58p-29L, 0x1.0000004d5d3d3d86p+0L, -0x1.fffffffffffffffep-65L},
-    {0xa.824ad65265e94b6p-25L, 0x1.000003a4626653aap+0L, 0x1.fffffffffffffffep-65L},
+    {0xa.824ad65265e94b6p-25L, 0x1.000003a4626653aap+0L, -0x1p-65L},
     {0xd.0527fc86dd2ec59p-25L, 0x1.000004832f1eead2p+0L, -0x1.fffffffffffffffep-65L},
     {0xd.ca1bcc03e818338p-25L, 0x1.000004c7714ce422p+0L, 0x1.fffffffffffffffep-65L},
     {0xc.5f396165dfc60bap-11L, 0x1.0112fe9112c95b06p+0L, 0x1.fffffffffffffffep-65L},
@@ -752,15 +761,11 @@ cr_exp2l (long double x)
   }
 
   // now -16446 < x < -0x1.71547652b82fe176p-65 or 0x1.71547652b82fe176p-64 < x < 16384
-
-  long double h, l;
-  fast_path (&h, &l, x);
-  static const long double err = 0x1.0ep-85; // 2^-84.924 < err
-  long double left = h +  (l - h * err);
-  long double right = h + (l + h * err);
-  if (__builtin_expect (left == right, 1))
-    return left;
-
+  long double h;
+  int canround;
+  h = fast_path (&canround, x);
+  if(__builtin_expect(!canround, 1)) return h;
+  long double l;
   accurate_path (&h, &l, x);
   return h + l;
 }
