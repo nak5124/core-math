@@ -321,7 +321,9 @@ def doit_bacsel_subnormal(e):
    t0 = s0*t0
    t1 = s1*t1
    nn = e + 16445
-   print ("./doit.sh " + str(t0) + " " + str(t1+1) + " 64 " + str(e) + " 64 30.5 " + str(nn))
+   t = 30.2-(30.2-16.4)*(nn-1)/62
+   t = round(10*t)/10.
+   print ("./doit.sh " + str(t0) + " " + str(t1+1) + " 64 " + str(e0+64) + " 64 " + str(t) + " " + str(nn))
 
 def dekker(u,v):
    R = u.parent()
