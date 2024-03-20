@@ -524,7 +524,7 @@ static long double fast_path (int *H, long double x){
   }
   v.m = mh;
   v.e = e + 0x3c00 + eh;
-  *H = (uint64_t)(ml+eps) < (uint64_t)2*eps || e < -16355 || (ml<<1)==0;
+  *H = (uint64_t)(ml+eps) < (uint64_t)2*eps || e < -16355 || (ml<<1)==0 || mh==0;
   return v.f;
 }
 
