@@ -708,10 +708,16 @@ static const long double exceptions[EXCEPTIONS][3] = {
   d_mul (h, l, *h, *l, hh, ll);
   // normalize h+l
   fast_two_sum (h, l, *h, *l);
-  if (e >= -16381)
+  /* Warning: we might have a double-rounding issue here with rounding to nearest.
+     Consider for example x=-0xf.ff1ad89a52a4115p+10. We have h=0xb.f69348826640047p-3
+     which is scaled to 0xb.f69348826640047p-16384 (e=-16381), and l=0x8.befc7707a661334p-68
+     which is scaled to 0x0.000000000000001p-16385, then h+l yields 0xb.f69348826640048p-16384. */
+  ll = __builtin_ldexpl (*l, e);
+  if (e >= -16381 && __builtin_ldexpl (ll, -e) == *l)
   {
     /* Since |h| > 0.5, ulp(h) >= 2^-64, thus ulp(h)*2^e >= 2^-16445 which is the smallest
-       subnormal, thus 2^e*h is exact. */
+       subnormal, thus 2^e*h is exact. Moreover since ll*2^-e = l, ll = l*2^e exactly,
+       thus we can't have the double-rounding issue. */
     *h = __builtin_ldexpl (*h, e);
     *l = __builtin_ldexpl (*l, e);
   }
@@ -721,7 +727,10 @@ static const long double exceptions[EXCEPTIONS][3] = {
     *h = __builtin_ldexpl (*h, e); // might not equal 2^e*h
     hh = hh - __builtin_ldexpl (*h, -e); // remaining (truncated) part
     hh += *l;
-    *l = __builtin_ldexpl (hh, e);
+    /* We use __builtin_fmal to avoid the double-rounding issue, even if it is
+       slow because emulated in software, this code is called very rarely. */
+    *h = __builtin_fmal (hh, __builtin_ldexpl (1.0L, e), *h);
+    *l = 0;
   }
 }
 
