@@ -140,7 +140,6 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   int s = v.e >> 15; // sign bit
   int e = v.e & 0x7fff; // 0 <= e < 32767
   uint64_t m = v.m;
-  if (x == TRACE) printf ("e=%d\n", e);
   if (e == 0) // subnormal
   {
     int k = __builtin_clzl (m);
@@ -151,11 +150,9 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   v.e = 16383; // reduce v.f in [1,2)
   int i = (e + 63) % 3; // we add 63 since e can be negative
   *exp = ((e + 63) / 3) - 5482;
-  if (x == TRACE) printf ("v.f=%La i=%d exp=%d\n", v.f, i, *exp);
   // cbrt(x) = (-1)^s * cbrt(m/2^63) * 2^e * 2^(i/3)
   double xh = v.f;
   double xl = v.f - (long double) xh;
-  if (x == TRACE) printf ("xh=%la xl=%la\n", xh, xl);
 
   /* the polynomial c0+c1*x+...+c5*x^5 approximates x^(1/3) on [1,2] with absolute
      error bounded by 2^-19.473 (cf cbrt.sollya) */
@@ -169,37 +166,61 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   double x0 = __builtin_fma (c[1], xh, c[0]);
   x2 = __builtin_fma (x4, xx, x2);
   x0 = __builtin_fma (x2, xx, x0);
-  if (x == TRACE) printf ("x0=%la\n", x0);
   // x0 approximates cbrt(xh) with absolute error < 2^-19.473
   double h0 = __builtin_fma (x0 * x0, x0, -xh) * r;
-  /* Write a = x, and x0 = a^(1/3) + e0, with |e0| < 2^-19.473.
+  /* Note: all ulp() below are for a precision of 53 bits (binary64).
+     Write a = x, and x0 = a^(1/3) + e0, with |e0| < 2^-19.473.
      Then x0^3 - a = 3*a^(2/3)*e0 + 3*a^(1/3)*e0^2 + e0^3.
-     Ignoring rounding errors (since h0 has precision 53 bits, and we aim at 40
-     bits for x1), h0 = (x0^3-a)/a = 3*a^(-1/3)*e0 + f with |f| = |(3*a^(1/3)*e0^2 + e0^3)/a|.
-     The maximum of (3*a^(1/3)*e0^2 + e0^3)/a is attained at a=1, thus |f| < 2^-37.36. */
-  if (x == TRACE) printf ("h0=%la\n", h0);
+     Ignoring rounding errors, we have:
+     h0 = (x0^3-a)/a = 3*a^(-1/3)*e0 + f with |f| = |(3*a^(1/3)*e0^2 + e0^3)/a|.
+     The maximum of (3*a^(1/3)*e0^2 + e0^3)/a is attained at a=1, thus |f| < 2^-37.36.
+     Since |h0| < 2^-17, ulp(h0) <= 2^-70, the difference between |(3*a^(1/3)*e0^2 + e0^3)/a|
+     and 2^-37.36 is more than 4e6 ulp(h0), thus the bound 2^-37.36 clearly includes
+     the rounding errors. */
 
 #define MINUS_ONE_THIRD -0x1.5555555555555p-2
   double x1 = __builtin_fma (x0 * h0, MINUS_ONE_THIRD, x0);
-  if (x == TRACE) printf ("x1=%la\n", x1);
   /* x0*h0/3 = (a^(1/3) + e0) * (a^(-1/3)*e0 + f/3)
              = e0 + a^(1/3)*f/3 + a^(-1/3)*e0^2 + e0*f/3
-     The maximum of a^(1/3)*f/3 + a^(-1/3)*e0^2 + e0*f/3 is attained at a=2, thus:
+     Ignoring rounding errors, the maximum of a^(1/3)*f/3 + a^(-1/3)*e0^2 + e0*f/3
+     is attained at a=2, thus:
      x0*h0/3 = e0 - e1 with |e1| < 2^-37.90.
-     Thus x1 = a^(1/3) + e1 with |e1| < 2^-37.90. */
+     Thus x1 = a^(1/3) + e1 with |e1| < 2^-37.90.
+     Since |x0*h0/3| < 2^-19, ulp(x0*h0/3) <= 2^-72, the difference between
+     |a^(1/3)*f/3 + a^(-1/3)*e0^2 + e0*f/3| and 2^-37.90 is more than 9e7 ulp(x0*h0/3),
+     thus the bound 2^-37.90 clearly includes the rounding errors. */
+
   double th, tl;
   a_mul_double (&th, &tl, x1, x1); // x1^2 = th + tl
-  if (x == TRACE) printf ("th=%la tl=%la\n", th, tl);
   double h1 = __builtin_fma (th, x1, -xh);
   double h1l = __builtin_fma (tl, x1, -xl);
   h1 = (h1 + h1l) * r;
-  if (x == TRACE) printf ("h1=%la\n", h1);
   /* Since x1 = a^(1/3) + e1 with |e1| < 2^-37.90, |h1| < 2^-35.64
      (this bound is attained in a=2, for x1 = a^(1/3) + 2^-37.90).
      Since h1 is a correction term, we can compute it in double precision only.
      Ignoring rounding errors again, we have:
-     h1 = (x1^3-a)/a = 3*a^(-1/3)*e1 + f' with |f| = |(3*a^(1/3)*e1^2 + e^3)/a|.
-     The maximum of (3*a^(1/3)*e1^2 + e1^3)/a is attained at a=1, thus |f'| < 2^-74.21. */
+     h1 = (x1^3-a)/a = 3*a^(-1/3)*e1 + f' with |f'| = |(3*a^(1/3)*e1^2 + e1^3)/a|.
+     The maximum of (3*a^(1/3)*e1^2 + e1^3)/a is attained at a=1, thus |f'| < 2^-74.21.
+     Now let us analyze rounding errors:
+     * a_mul_double is exact, thus there is no rounding error
+     * the rounding error in h1 is bounded by ulp(h1).
+       Since |h1| < |3*a^(-1/3)*e1 + f'| < 2^-36, ulp(h1) <= 2^-89.
+       This error is multiplied by r with |r| <= 1 thus contributes to at most 2^-89 in h1.
+     * the rounding error in h1l is bounded by ulp(h1l).
+       We have |tl| <= ulp(th), where |th| <= x1^2 < 2, thus |tl| <= ulp(th) <= 2^-52.
+       Since |x1| < 2, this yields |tl*x1| < 2^-51.
+       Now |xl| <= ulp(xh) <= 2^-52, thus |h1l| < 2^-51+2^-52, and the rounding error on tl
+       is bounded by ulp(2^-51+2^-52) = 2^-103.
+       This error is multiplied by r with |r| <= 1 thus contributes to at most 2^-103 in h1.
+     * |h1 + h1l| < |3*a^(-1/3)*e1 + f' + 2^-51+2^-52| < 2^-36, thus the rounding error on
+       h1 + h1l is bounded by ulp(2^-37) = 2^-89, and is multiplied by r with |r| <= 1
+       thus contributes to at most 2^-89 in h1.
+     * |(h1 + h1l) * r| < 2^-36, thus the rounding error in the product is bounded by
+       ulp(2^-37) = 2^-89.
+     The contribution of the rounding errors is thus bounded by:
+     2^-89 + 2^-103 + 2^-89 + 2^-89 < 2^-87.41. This is much smaller than
+     the difference between (3*a^(1/3)*e1^2 + e1^3)/a and the bound 2^-74.21,
+     thus this bound covers also rounding errors. */
 
   /* x1*h1/3 = (a^(1/3) + e1) * (a^(-1/3)*e1 + f'/3)
              = e1 + a^(1/3)*f'/3 + a^(-1/3)*e1^2 + e1*f'/3
@@ -208,18 +229,28 @@ fast_path (long double *h, long double *l, int *exp, long double x)
      Thus x1 - x1*h1/3 = a^(1/3) + e2 with |e2| < 2^-74.75. */
 
   double corr = (x1 * h1) * MINUS_ONE_THIRD;
-  if (x == TRACE) printf ("corr=%la\n", corr);
+  /* Here we have two rounding errors:
+     (a) the rounding error on x1 * h1. Since |x1| < 2 and |h1| < 2^-36, |x1*h1| < 2^-35
+         thus this rounding error is bounded by ulp(2^-36) = 2^-88. This rounding error
+         is multiplied by MINUS_ONE_THIRD thus contributes to at most
+         2^-88 * |MINUS_ONE_THIRD| < 2^-89.58.
+     (b) the rounding error on w * MINUS_ONE_THIRD where w = RND(x1*h1). Since |w| < 2^-35
+         and |MINUS_ONE_THIRD| < 1/2, we have |corr| < 2^-36, thus this rounding error is
+         bounded by ulp(corr) <= 2^-89.
+     The sum (a) + (b) is thus bounded by 2^-89.58 + 2^-89 < 2^-88.26.
+     This yields a total error bound for x1 + corr of:
+     2^-74.75 + 2^-88.26 < 2^-74.749.
+   */
 
   /* multiply (x1,corr) by 2^(i/3): sh[i]+sl[i] is a double-double approximation of 2^(i/3) */
   static const double sh[] = {1.0, 0x1.428a2f98d728bp+0, 0x1.965fea53d6e3dp+0};
   static const double sl[] = {0.0, -0x1.ddc22548ea41ep-56, -0x1.f53e999952f09p-54};
   d_mul_double (&x1, &corr, x1, corr, sh[i], sl[i]);
-  if (x == TRACE) printf ("x1a=%la corra=%la\n", x1, corr);
 
   const double sgn[] = {1.0, -1.0};
   *h = x1 * sgn[s];
   *l = corr * sgn[s];
-  // err[i] is a bound for 2^-74.75*2^(i/3)
+  // err[i] is a bound for 2^-74.749*2^(i/3)
   static const double err[] = {0x1.31p-75, 0x1.80p-75, 0x1.e4p-75};
   return err[i];
 }
@@ -236,7 +267,7 @@ cr_cbrtl (long double x)
 
   long double h, l;
   long double err = fast_path (&h, &l, &e, x);
-  if (x == TRACE) printf ("h=%La l=%La\n", h, l);
+  // if (x == TRACE) printf ("h=%La l=%La\n", h, l);
   long double left = h + (l - err);
   long double right = h + (l + err);
   if (left == right)
