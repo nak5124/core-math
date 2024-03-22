@@ -1,0 +1,15 @@
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
+# exact values
+0x1p0
+# non-regression tests
+0x8.aafc586bc946f9dp-8893
+0x3.a75458fb05a57a6p-16385
+0x1.0fd1204cd12d938cp+2
+0x8.7e890266896c9c6p-6934
+-0x8.7e890266896c9c6p-6934
