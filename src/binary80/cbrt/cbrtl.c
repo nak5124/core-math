@@ -35,7 +35,7 @@ SOFTWARE.
        Serge Torres, 2018.
  */
 
-#define TRACE 0x8.7e890266896c9c6p-1L
+#define TRACE -0x9.a4cec4c1a306723p-4945L
 
 #include <stdio.h>
 #include <stdint.h>
@@ -111,6 +111,13 @@ static inline void a_mul_double (double *hi, double *lo, double a, double b) {
   *lo = __builtin_fma (a, b, -*hi);
 }
 
+// Return in hi+lo a 128-bit approximation of (ah + al) * b
+static inline void
+s_mul (long double *hi, long double *lo, long double ah, long double al, long double b) {
+  a_mul (hi, lo, ah, b); // exact
+  *lo += al * b;
+}
+
 // Return in hi+lo a 128-bit approximation of (ah + al) * (bh + bl)
 static inline void
 d_mul (long double *hi, long double *lo, long double ah, long double al,
@@ -149,6 +156,7 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   // now x = (m/2^63)*2^(e-16383) with 2^63 <= m < 2^64
   v.e = 16383; // reduce v.f in [1,2)
   int i = (e + 63) % 3; // we add 63 since e can be negative
+  if (x == TRACE) printf ("i=%d\n", i);
   *exp = ((e + 63) / 3) - 5482;
   // cbrt(x) = (-1)^s * cbrt(m/2^63) * 2^e * 2^(i/3)
   double xh = v.f;
@@ -255,6 +263,55 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   return err[i];
 }
 
+// (h+l)*2^e is the approximation from the fast path
+static long double
+accurate_path (long double h, long double l, int e, long double x)
+{
+  /* Since the fast path delivers an approximation with about 75-bit accuracy,
+     it suffices to perform one step of Newton's iteration:
+     (1) letting x2 = h + l, first compute the error e2 = (x2^3 - x) / x
+     (2) then compute x3 = x2 - x2*e2/3
+  */
+
+  long double x0 = x;
+  if (x0 == TRACE) printf ("h=%La l=%La\n", h, l);
+
+  /* Rescale x so that 1 <= x < 8. With x' = 2^(-3e)*x, we have 1 <= x' < 8
+     and h+l is an approximation of cbrt(x'), thus 1 <= h+l <= 2. */
+  x = __builtin_ldexpl (x, -3 * e);
+
+  long double yh, yl;
+  // compute yh+yl = (h+l)^3
+  d_mul (&yh, &yl, h, l, h, l);
+  d_mul (&yh, &yl, yh, yl, h, l);
+  if (x0 == TRACE) printf ("yh=%La yl=%La\n", yh, yl);
+  // subtract x and normalize
+  yh = yh - x;
+  if (x0 == TRACE) printf ("yh=%La\n", yh);
+  yh = yh + yl;
+  if (x0 == TRACE) printf ("yh=%La\n", yh);
+  /* since we had a 75-bit accurate approximation, |yh| should be bounded by 2^-75
+     thus working with a single long double is enough */
+  yh = yh / x;
+  if (x0 == TRACE) printf ("yh=%La\n", yh);
+
+  // multiply yh by h
+  yh = yh * h;
+  // divide by -3
+#define MINUS_ONE_THIRD_L -0x1.5555555555555556p-2L
+  yh = yh * MINUS_ONE_THIRD_L;
+  // add to lower term
+  l += yh;
+
+  if (x0 == TRACE) printf ("h=%La l=%La\n", h, l);
+
+  // multiply by 2^e, there can be no overflow/underflow
+  h = __builtin_ldexpl (h, e);
+  l = __builtin_ldexpl (l, e);
+
+  return h + l;
+}
+
 long double
 cr_cbrtl (long double x)
 {
@@ -267,16 +324,20 @@ cr_cbrtl (long double x)
 
   long double h, l;
   long double err = fast_path (&h, &l, &e, x);
-  // if (x == TRACE) printf ("h=%La l=%La\n", h, l);
+  if (x == TRACE) printf ("h=%La l=%La\n", h, l);
   long double left = h + (l - err);
   long double right = h + (l + err);
   if (left == right)
   {
+    if (x == TRACE) printf ("fast path succeeded\n");
     // multiply left by 2^e
     b96u96_u v = {.f = left};
     v.e += e;
     return v.f;
   }
 
-  return 0;
+  if (x == TRACE) printf ("fast path failed\n");
+
+  // we reuse the initial approximation (h+l)*2^e in the accurate path
+  return accurate_path ((long double) h, (long double) l, e, x);
 }
