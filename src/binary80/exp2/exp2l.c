@@ -422,7 +422,7 @@ Pacc (long double *h, long double *l, long double x)
 
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
-   Calculate an approximation of 2^x with relative error < 2^-85.803.
+   Calculate an approximation of 2^x with relative error < 2^-84.968.
    If needmoreaccuracy is set to a non-zero value, returns in x
    a correctly rounded approximation to the long double format.
 */
@@ -512,7 +512,9 @@ static long double fast_path (int *needmoreaccuracy, long double x){
   }
   // construct the mantissa of the long double number
   uint64_t mh = ((th.u<<11)|1l<<63);
-  long eps = 0x10e*(mh>>30); // approximation error
+  /* The relative error is bounded by 2^-84.968 * mh < 0x1.06p-85 * mh.
+     Since we add it to ml, we have to add 0x1.06p-85 * mh * 2^64 = 0x106p-29 * mh. */
+  long eps = 0x106*(mh>>29);
   mh += mlt;
   if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
 				     // can unset the msb so shift the
