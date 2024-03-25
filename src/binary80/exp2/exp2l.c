@@ -423,8 +423,8 @@ Pacc (long double *h, long double *l, long double x)
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
    Calculate an approximation of 2^x with relative error < 2^-85.803.
-   Returns a correctly rounded approximation to the long double format or
-   a flag that a more accurate approximation is needed.
+   If needmoreaccuracy is set to a non-zero value, returns in x
+   a correctly rounded approximation to the long double format.
 */
 static long double fast_path (int *needmoreaccuracy, long double x){
   // get current rounding mode
@@ -495,7 +495,7 @@ static long double fast_path (int *needmoreaccuracy, long double x){
   b64u64_u th = {.f = h}, tl = {.f = l};
   long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
   // the high part is always positive, the low part can be positive or negative
-  // represent the mantissa of the low part in two's compliment format
+  // represent the mantissa of the low part in two's complement format
   long ml = (tl.u&~(0xfffl<<52))|1l<<52, sgnl = -(tl.u>>63);
   ml = (ml^sgnl) - sgnl;
   int64_t mlt;
@@ -512,7 +512,7 @@ static long double fast_path (int *needmoreaccuracy, long double x){
   }
   // construct the mantissa of the long double number
   uint64_t mh = ((th.u<<11)|1l<<63);
-  long eps = 0x10e*(mh>>30); // approximaton error
+  long eps = 0x10e*(mh>>30); // approximation error
   mh += mlt;
   if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
 				     // can unset the msb so shift the
