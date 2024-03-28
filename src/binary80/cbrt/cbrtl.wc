@@ -7,6 +7,8 @@
 -0
 # exact values
 0x1p0
+# the following value is nextbelow(1)
+0x1.fffffffffffffffep-1
 # non-regression tests
 0x8.aafc586bc946f9dp-8893
 0x3.a75458fb05a57a6p-16385
