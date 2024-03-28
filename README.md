@@ -74,6 +74,7 @@ to get latency instead of reciprocal throughput.
 
 When you run ./perf.sh acosf, it does the following:
 
+   $ export OPENMP=-fopenmp
    $ cd src/binary32/acos
    $ make clean
    $ make CFLAGS="-O3 -march=native"
