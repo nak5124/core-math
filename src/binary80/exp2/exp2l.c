@@ -36,7 +36,11 @@ SOFTWARE.
  */
 
 #include <stdint.h>
+#include <fenv.h>
+
+#ifdef __x86_64__
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -44,6 +48,16 @@ SOFTWARE.
 #endif
 
 #pragma STDC FENV_ACCESS ON
+
+static inline int get_rounding_mode (void)
+{
+#ifdef __x86_64__
+  const unsigned flagp = _mm_getcsr ();
+  return (flagp&(3<<13))>>3;
+#else
+  return fegetround ();
+#endif
+}
 
 // anonymous structs, see https://port70.net/~nsz/c/c11/n1570.html#6.7.2.1p19
 typedef union {
@@ -428,7 +442,7 @@ Pacc (long double *h, long double *l, long double x)
 */
 static long double fast_path (int *needmoreaccuracy, long double x){
   // get current rounding mode
-  unsigned flag = _mm_getcsr(), rm = (flag>>13)&3;
+  const unsigned rm = get_rounding_mode ();
   b96u96_u v = {.f = x};
 
   // compute k = round(2^15*x)
@@ -524,10 +538,10 @@ static long double fast_path (int *needmoreaccuracy, long double x){
     e--;
     eps <<= 1;
   }
-  if(rm==0){ // round to nearest
+  if(rm==FE_TONEAREST){ // round to nearest
     mh += (uint64_t)ml>>63;
     ml <<= 1;
-  } else if(rm==2) { // round to +inf
+  } else if(rm==FE_UPWARD) { // round to +inf
     mh += 1;
     ml = -ml;
   }
