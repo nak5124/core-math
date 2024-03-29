@@ -169,6 +169,23 @@ doloop(void)
   printf("%d tests passed, %d failure(s)\n", tests, failures);
 }
 
+// check the "long double" type is the double-extended format
+static void
+check_long_double (void)
+{
+  fesetround (FE_TONEAREST);
+  long double x = 1.0, y = 1.0;
+  int p = 0;
+  while (x + y != x)
+    y = y * 0.5, p ++;
+  if (p != 64)
+  {
+    printf ("The long-double format is not the double-extended format\n");
+    printf ("It has a precision of %d bits\n", p);
+    exit (1);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -204,6 +221,8 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  check_long_double ();
 
   doloop();
 }
