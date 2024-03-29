@@ -83,7 +83,7 @@ check (float y, float x)
   }
 }
 
-#define N 10000000
+#define N 1000000000
 
 static void
 check_random (int i)
