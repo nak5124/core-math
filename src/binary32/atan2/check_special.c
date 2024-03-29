@@ -1,6 +1,6 @@
-/* Check log2p1 on random inputs.
+/* Generate special cases for atan2f testing.
 
-Copyright (c) 2022-2023 Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -26,66 +26,84 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
+#include <stdint.h>
+#include <unistd.h>
 #include <fenv.h>
 #include <math.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <omp.h>
+#include <mpfr.h>
 
-int ref_init (void);
-int ref_fesetround (int);
-
-double cr_log2p1 (double);
-double ref_log2p1 (double);
+float cr_atan2f (float, float);
+void ref_init (void);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
+int rnd2[] = { MPFR_RNDN, MPFR_RNDZ, MPFR_RNDU, MPFR_RNDD };
 
 int rnd = 0;
+
 int verbose = 0;
 
-static inline uint64_t
-asuint64 (double f)
+/* reference code using MPFR */
+static float
+ref_atan2 (float y, float x, int rnd)
 {
-  union
-  {
-    double f;
-    uint64_t i;
-  } u = {f};
-  return u.i;
+  mpfr_t xi, yi;
+  mpfr_inits2 (24, xi, yi, NULL);
+  mpfr_set_flt (xi, x, MPFR_RNDN);
+  mpfr_set_flt (yi, y, MPFR_RNDN);
+  int inex = mpfr_atan2 (xi, yi, xi, rnd2[rnd]);
+  mpfr_subnormalize (xi, inex, rnd2[rnd]);
+  float ret = mpfr_get_flt (xi, MPFR_RNDN);
+  mpfr_clears (xi, yi, NULL);
+  return ret;
 }
 
-typedef union {double f; uint64_t u;} b64u64_u;
+typedef union { uint32_t n; float x; } union_t;
 
-static double
-get_random ()
+static float
+asfloat (uint32_t n)
 {
-  b64u64_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
-  return v.f;
+  union_t u;
+  u.n = n;
+  return u.x;
 }
 
 static void
-check (double x)
+check (float y, float x)
 {
-  int bug;
-  double y1 = ref_log2p1 (x);
-  fesetround (rnd1[rnd]);
-  double y2 = cr_log2p1 (x);
-  if (isnan (y1))
-    bug = !isnan (y2);
-  else if (isnan (y2))
-    bug = !isnan (y1);
-  else
-    bug = asuint64 (y1) != asuint64 (y2);
-  if (bug)
+  float z, t;
+  t = ref_atan2 (y, x, rnd);
+  z = cr_atan2f (y, x);
+  if ((isnan (t) && !isnan(z)) || (!isnan (t) && isnan(z)) ||
+      (!isnan (t) && !isnan(z) && z != t))
   {
-    printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
-    fflush (stdout);
+    printf ("FAIL y=%a x=%a ref=%a z=%a\n", y, x, t, z);
     exit (1);
+  }
+}
+
+#define N 1000000000
+
+static void
+check_random (int i)
+{
+  long l;
+  float x, y;
+  struct drand48_data buffer[1];
+  ref_init ();
+  fesetround (rnd1[rnd]);
+  srand48_r (i, buffer);
+  for (int n = 0; n < N; n++)
+  {
+    lrand48_r (buffer, &l);
+    y = asfloat (l);
+    lrand48_r (buffer, &l);
+    x = asfloat (l);
+    check (y, x);
+    check (y, -x);
+    check (-y, x);
+    check (-y, -x);
   }
 }
 
@@ -130,23 +148,13 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
-  ref_init ();
-  ref_fesetround (rnd);
 
-#define N 1000000000UL /* total number of tests */
-
-  unsigned int seed = getpid ();
-  srand (seed);
-
+  int nthreads;
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+  /* check random values */
 #pragma omp parallel for
-  for (uint64_t n = 0; n < N; n++)
-  {
-    ref_init ();
-    ref_fesetround (rnd);
-    double x;
-    do x = get_random (); while (x <= -1.0);
-    check (x);
-  }
-
+  for (int i = 0; i < nthreads; i++)
+    check_random (getpid () + i);
   return 0;
 }

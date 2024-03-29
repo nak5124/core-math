@@ -61,7 +61,6 @@ static double
 get_random ()
 {
   b64u64_u v;
-  long l;
   v.u = rand ();
   v.u |= (uint64_t) rand () << 31;
   v.u |= (uint64_t) rand () << 62;

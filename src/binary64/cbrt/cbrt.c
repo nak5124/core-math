@@ -88,7 +88,9 @@ cr_cbrt (double x)
   unsigned e = (hx>>52)&0x7ff;
   if(__builtin_expect(((e+1)&0x7ff)<2, 0)){
     uint64_t ix = hx&((~0ul)>>1);
-    if(e==0x7ff||ix==0) return x + x; /* 0, inf, nan */
+    if(e==0x7ff||ix==0) return x + x; /* 0, inf, nan: we return x + x instead of simply x,
+                                         to that for x a signaling NaN, it correctly triggers
+                                         the invalid exception. */
     int nz = __builtin_clzl(ix) - 11;  /* subnormal */
     mant <<= nz;
     mant &= (~(0ul))>>12;
