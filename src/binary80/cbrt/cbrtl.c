@@ -35,7 +35,7 @@ SOFTWARE.
        Serge Torres, 2018.
  */
 
-#define TRACE 0xa.2ba6818c294d62dp-3L
+#define TRACE -0x8.1f59a9331a78a6p-716L
 
 #include <stdio.h>
 #include <stdint.h>
@@ -273,7 +273,7 @@ accurate_path (long double h, long double l, int e, long double x)
      (2) then compute x3 = x2 - x2*e2/3
   */
 
-  // long double x0 = x;
+  //  long double x0 = x;
   // if (x0 == TRACE) printf ("enter accurate_path: h=%La l=%La\n", h, l);
 
   /* Rescale x so that 1 <= x < 8. With x' = 2^(-3e)*x, we have 1 <= x' < 8
@@ -312,24 +312,28 @@ accurate_path (long double h, long double l, int e, long double x)
 
   // if (x0 == TRACE) printf ("h=%La l=%La e=%d\n", h, l, e);
 
-  /* the exceptions are of two sorts: (i) those for which the accurate path would deliver
-     a wrong result and (ii) those for which |l| < 2^-128 or |l| = 0xf.fffffffffffffffp-67,
-     which would be considered as exact below */
-#define EXCEPTIONS 14
+  /* the exceptions are of 3 sorts:
+     (a) those for which the accurate path would deliver a wrong result
+     (b) those for which |l| < 2^-128 or |l| = 0xf.fffffffffffffffp-67, which would be considered
+         as exact below
+     (c) those which are exact, but fail the test |l| < 2^-128 or |l| = 0xf.fffffffffffffffp-67
+  */
+#define EXCEPTIONS 15
   static const long double exceptions[EXCEPTIONS][3] = {
-    { 0x1.0000000000000006p+0L, 0x1.0000000000000002p+0L, -0x1.fffffffffffffffap-127L },
+    { 0x1.0000000000000006p+0L, 0x1.0000000000000002p+0L, -0x1.fffffffffffffffap-127L }, // (b)
     { 0x1.0dbd07c3a0effc3cp+0L, 0x1.047ff9c4763635f4p+0L, -0x1.0d01be7c7ddff78p-125L },
     { 0x1.345f2e864d24dc48p+0L, 0x1.1062d441bcb66ac6p+0L, -0x1.25760941fbabef0ap-126L },
     { 0x1.39bccadcdf06cf52p+0L, 0x1.11f4f1c51a59cf1cp+0L, -0x1.127fbd1eec03180cp-127L },
-    { 0x1.4574d0318529ac5ap+0L, 0x1.155380a1c6d9bf1p+0L, -0x1.b5f7501c676fbceep-125L },
+    { 0x1.4574d0318529ac5ap+0L, 0x1.155380a1c6d9bf1p+0L, -0x1.b5f7501c676fbceep-125L }, // (b)
     { 0x1.5ab3b8cd6331f996p+0L, 0x1.1b3be9d3a867aed2p+0L, -0x1.b9f3f168683e9cp-126L },
+    { -0x1.03eb3526634f14cp+1L, -0x1.442d6p+0L, -0x0p+0L }, // (c)
     { 0x1.49aeac6ab7339f56p+1L, 0x1.5eea399f6210bb34p+0L, -0x1.241533845f3ac4b2p-128L },
-    { 0x1.afd3ca9d1d1ffd6p+0L, 0x1.30bd89e00e36ff28p+0L, -0x1.87eaea494b15744ap-125L },
+    { 0x1.afd3ca9d1d1ffd6p+0L, 0x1.30bd89e00e36ff28p+0L, -0x1.87eaea494b15744ap-125L }, // (b)
     { 0x1.edf2b3c243a75f86p+1L, 0x1.918a9da0f7d771fcp+0L, 0x1.34ebc81a251fb1b4p-128L },
     { 0x1.fb9eff906fae397ep+1L, 0x1.95367c64ec46dc9ap+0L, 0x1.fffffffffffffffep-65L },
     { 0x1.338421a3be1fd548p+2L, 0x1.affc50cd58267d3ep+0L, -0x1.2d4a23684179c0b2p-127L },
     { 0x1.6557399d292630dcp+2L, 0x1.c62895951870d52p+0L, -0x1.8f30a09c6585d70cp-126L },
-    { 0x1.cc5de7f0e10c9936p+2L, 0x1.ee2cf52f898c7194p+0L, -0x1.e751814b68f1f1b2p-126L },
+    { 0x1.cc5de7f0e10c9936p+2L, 0x1.ee2cf52f898c7194p+0L, -0x1.e751814b68f1f1b2p-126L }, // (b)
     { 0x1.fffffffffffffffap+2L, 0x1.fffffffffffffffep+0L, -0x1.0000000000000002p-127L },
   };
   for (int i = 0; i < EXCEPTIONS; i++)
