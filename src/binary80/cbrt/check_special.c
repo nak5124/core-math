@@ -88,9 +88,6 @@ check (long double x)
   if (y2 != 0 && ! is_equal (y1, y2))
   {
     printf ("FAIL x=%La ref=%La z=%La\n", x, y1, y2);
-    printf ("x:"); print_encoding (x);
-    printf ("ref:"); print_encoding (y1);
-    printf ("z:"); print_encoding (y2);
     fflush (stdout);
     exit (1);
   }
