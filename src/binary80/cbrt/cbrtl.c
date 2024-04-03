@@ -35,7 +35,7 @@ SOFTWARE.
        Serge Torres, 2018.
  */
 
-#define TRACE -0x9.a4cec4c1a306723p-4945L
+#define TRACE 0x9.9c210d1df0feaa4p-4L
 
 #include <stdio.h>
 #include <stdint.h>
@@ -139,7 +139,7 @@ static inline void d_mul_double (double *hi, double *lo, double ah, double al,
 }
 
 /* Return err, and update h,l,e such that (h+l)*2^exp is an an approximation of x^(1/3)
-   with absolute error less than err. */
+   with absolute error less than err*2^exp. */
 static double
 fast_path (long double *h, long double *l, int *exp, long double x)
 {
@@ -156,7 +156,7 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   // now x = (m/2^63)*2^(e-16383) with 2^63 <= m < 2^64
   v.e = 16383; // reduce v.f in [1,2)
   int i = (e + 63) % 3; // we add 63 since e can be negative
-  if (x == TRACE) printf ("i=%d\n", i);
+  // if (x == TRACE) printf ("i=%d\n", i);
   *exp = ((e + 63) / 3) - 5482;
   // cbrt(x) = (-1)^s * cbrt(m/2^63) * 2^e * 2^(i/3)
   double xh = v.f;
@@ -273,37 +273,66 @@ accurate_path (long double h, long double l, int e, long double x)
      (2) then compute x3 = x2 - x2*e2/3
   */
 
-  long double x0 = x;
-  if (x0 == TRACE) printf ("h=%La l=%La\n", h, l);
+  // long double x0 = x;
+  // if (x0 == TRACE) printf ("enter accurate_path: h=%La l=%La\n", h, l);
 
   /* Rescale x so that 1 <= x < 8. With x' = 2^(-3e)*x, we have 1 <= x' < 8
      and h+l is an approximation of cbrt(x'), thus 1 <= h+l <= 2. */
   x = __builtin_ldexpl (x, -3 * e);
+  // if (x0 == TRACE) printf ("x rescaled=%La\n", x);
+
+  // normalize h+l
+  fast_two_sum (&h, &l, h, l);
+  // if (x0 == TRACE) printf ("after normalize: h=%La l=%La\n", h, l);
 
   long double yh, yl;
   // compute yh+yl = (h+l)^3
   d_mul (&yh, &yl, h, l, h, l);
   d_mul (&yh, &yl, yh, yl, h, l);
-  if (x0 == TRACE) printf ("yh=%La yl=%La\n", yh, yl);
+  // if (x0 == TRACE) printf ("yh=%La yl=%La\n", yh, yl);
   // subtract x and normalize
   yh = yh - x;
-  if (x0 == TRACE) printf ("yh=%La\n", yh);
+  // if (x0 == TRACE) printf ("yh=%La\n", yh);
   yh = yh + yl;
-  if (x0 == TRACE) printf ("yh=%La\n", yh);
+  // if (x0 == TRACE) printf ("yh=%La\n", yh);
   /* since we had a 75-bit accurate approximation, |yh| should be bounded by 2^-75
      thus working with a single long double is enough */
-  yh = yh / x;
-  if (x0 == TRACE) printf ("yh=%La\n", yh);
+  yh = yh / x; // approximates ((h+l)^3 - x) / x
+  // if (x0 == TRACE) printf ("yh=%La\n", yh);
 
   // multiply yh by h
   yh = yh * h;
+  // if (x0 == TRACE) printf ("yh=%La\n", yh);
   // divide by -3
 #define MINUS_ONE_THIRD_L -0x1.5555555555555556p-2L
   yh = yh * MINUS_ONE_THIRD_L;
+  // if (x0 == TRACE) printf ("yh=%La\n", yh);
   // add to lower term
   l += yh;
 
-  if (x0 == TRACE) printf ("h=%La l=%La\n", h, l);
+  // if (x0 == TRACE) printf ("h=%La l=%La e=%d\n", h, l, e);
+
+#define EXCEPTIONS 11
+  static const long double exceptions[EXCEPTIONS][3] = {
+    { 0x1p0L, 0x1p0L, 0x0L },
+    { 0x1.0dbd07c3a0effc3cp+0L, 0x1.047ff9c4763635f4p+0L, -0x1.0d01be7c7ddff78p-125L },
+    { 0x1.345f2e864d24dc48p+0L, 0x1.1062d441bcb66ac6p+0L, -0x1.25760941fbabef0ap-126L },
+    { 0x1.39bccadcdf06cf52p+0L, 0x1.11f4f1c51a59cf1cp+0L, -0x1.127fbd1eec03180cp-127L },
+    { 0x1.5ab3b8cd6331f996p+0L, 0x1.1b3be9d3a867aed2p+0L, -0x1.b9f3f168683e9cp-126L },
+    { 0x1.49aeac6ab7339f56p+1L, 0x1.5eea399f6210bb34p+0L, -0x1.241533845f3ac4b2p-128L },
+    { 0x1.edf2b3c243a75f86p+1L, 0x1.918a9da0f7d771fcp+0L, 0x1.34ebc81a251fb1b4p-128L },
+    { 0x1.fb9eff906fae397ep+1L, 0x1.95367c64ec46dc9ap+0L, 0x1.fffffffffffffffep-65L },
+    { 0x1.338421a3be1fd548p+2L, 0x1.affc50cd58267d3ep+0L, -0x1.2d4a23684179c0b2p-127L },
+    { 0x1.6557399d292630dcp+2L, 0x1.c62895951870d52p+0L, -0x1.8f30a09c6585d70cp-126L },
+    { 0x1.fffffffffffffffap+2L, 0x1.fffffffffffffffep+0L, -0x1.0000000000000002p-127L },
+  };
+  for (int i = 0; i < EXCEPTIONS; i++)
+    if (x == exceptions[i][0])
+    {
+      h = exceptions[i][1];
+      l = exceptions[i][2];
+      break;
+    }
 
   // multiply by 2^e, there can be no overflow/underflow
   h = __builtin_ldexpl (h, e);
@@ -324,19 +353,19 @@ cr_cbrtl (long double x)
 
   long double h, l;
   long double err = fast_path (&h, &l, &e, x);
-  if (x == TRACE) printf ("h=%La l=%La\n", h, l);
+  // if (x == TRACE) printf ("h=%La l=%La\n", h, l);
   long double left = h + (l - err);
   long double right = h + (l + err);
   if (left == right)
   {
-    if (x == TRACE) printf ("fast path succeeded\n");
+    // if (x == TRACE) printf ("fast path succeeded\n");
     // multiply left by 2^e
     b96u96_u v = {.f = left};
     v.e += e;
     return v.f;
   }
 
-  if (x == TRACE) printf ("fast path failed\n");
+  // if (x == TRACE) printf ("fast path failed\n");
 
   // we reuse the initial approximation (h+l)*2^e in the accurate path
   return accurate_path ((long double) h, (long double) l, e, x);
