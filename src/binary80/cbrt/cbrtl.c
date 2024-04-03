@@ -35,7 +35,7 @@ SOFTWARE.
        Serge Torres, 2018.
  */
 
-#define TRACE 0x9.9c210d1df0feaa4p-4L
+#define TRACE -0x8.1f2e5db215e992p-13712L
 
 #include <stdio.h>
 #include <stdint.h>
@@ -333,6 +333,10 @@ accurate_path (long double h, long double l, int e, long double x)
       l = exceptions[i][2];
       break;
     }
+
+  // if |l| < 2^-128, x^(1/3) is necessarily exact
+  if (__builtin_fabsl (l) < 0x1p-128L)
+    l = 0x0L;
 
   // multiply by 2^e, there can be no overflow/underflow
   h = __builtin_ldexpl (h, e);
