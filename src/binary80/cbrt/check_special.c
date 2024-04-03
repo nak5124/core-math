@@ -114,12 +114,11 @@ get_random ()
 static void
 check_exact (void)
 {
-  int e;
-  // the smallest exact cube is 2^-16445, it is generated with m=2^61 and e=-5502
+  // the smallest exact cube is 2^-16443, it is generated with m=2097152 and e=-5502;
   // the largest exact cube is 0x1.ffffdbd247267c7ap+16383, it is generated with
   // m=2642245 and e=5440
 #pragma omp parallel for
-  for (e = -5502; e <= 5440; e++)
+  for (int e = -5502; e <= 5440; e++)
   {
     uint64_t m;
     // 2^61 <= |m^3| < 2^64 implies 1321123 <= m <= 2642245
@@ -179,6 +178,9 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
+  printf ("Checking exact values\n");
+  check_exact ();
+
   printf ("Checking random values\n");
 #define N 1000000000UL /* total number of tests */
 
@@ -194,9 +196,6 @@ main (int argc, char *argv[])
     x = get_random ();
     check (x);
   }
-
-  printf ("Checking exact values\n");
-  check_exact ();
 
   return 0;
 }
