@@ -35,7 +35,7 @@ SOFTWARE.
        Serge Torres, 2018.
  */
 
-#define TRACE -0x8.1f59a9331a78a6p-716L
+#define TRACE -0x9.130930a911309f4p+6808L
 
 #include <stdio.h>
 #include <stdint.h>
@@ -273,13 +273,13 @@ accurate_path (long double h, long double l, int e, long double x)
      (2) then compute x3 = x2 - x2*e2/3
   */
 
-  //  long double x0 = x;
+  long double x0 = x;
   // if (x0 == TRACE) printf ("enter accurate_path: h=%La l=%La\n", h, l);
 
   /* Rescale x so that 1 <= x < 8. With x' = 2^(-3e)*x, we have 1 <= x' < 8
      and h+l is an approximation of cbrt(x'), thus 1 <= h+l <= 2. */
   x = __builtin_ldexpl (x, -3 * e);
-  // if (x0 == TRACE) printf ("x rescaled=%La\n", x);
+  if (x0 == TRACE) printf ("x rescaled=%La\n", x);
 
   // normalize h+l
   fast_two_sum (&h, &l, h, l);
@@ -310,7 +310,11 @@ accurate_path (long double h, long double l, int e, long double x)
   // add to lower term
   l += yh;
 
-  // if (x0 == TRACE) printf ("h=%La l=%La e=%d\n", h, l, e);
+  if (x0 == TRACE) printf ("h=%La l=%La e=%d\n", h, l, e);
+
+  /* FIXME: to detect exact cases, round h to nearest to 22 bits of precision,
+     then take the cube, and check it matches x rescaled. We can do that only
+     when l is small enough or near enough from ulp(1). */
 
   /* the exceptions are of 3 sorts:
      (a) those for which the accurate path would deliver a wrong result
@@ -318,7 +322,7 @@ accurate_path (long double h, long double l, int e, long double x)
          as exact below
      (c) those which are exact, but fail the test |l| < 2^-128 or |l| = 0xf.fffffffffffffffp-67
   */
-#define EXCEPTIONS 15
+#define EXCEPTIONS 18
   static const long double exceptions[EXCEPTIONS][3] = {
     { 0x1.0000000000000006p+0L, 0x1.0000000000000002p+0L, -0x1.fffffffffffffffap-127L }, // (b)
     { 0x1.0dbd07c3a0effc3cp+0L, 0x1.047ff9c4763635f4p+0L, -0x1.0d01be7c7ddff78p-125L },
@@ -327,6 +331,9 @@ accurate_path (long double h, long double l, int e, long double x)
     { 0x1.4574d0318529ac5ap+0L, 0x1.155380a1c6d9bf1p+0L, -0x1.b5f7501c676fbceep-125L }, // (b)
     { 0x1.5ab3b8cd6331f996p+0L, 0x1.1b3be9d3a867aed2p+0L, -0x1.b9f3f168683e9cp-126L },
     { -0x1.03eb3526634f14cp+1L, -0x1.442d6p+0L, -0x0p+0L }, // (c)
+    { -0x1.22577001f06940c8p+1L, -0x1.505c9p+0L, -0x0p+0L }, // (c)
+    { -0x1.2260fca56d0902p+1L, -0x1.50604p+0L, -0x0p+0L }, // (c)
+    { -0x1.22612615222613e8p+1L, -0x1.50605p+0L, -0x0p+0L }, // (c)
     { 0x1.49aeac6ab7339f56p+1L, 0x1.5eea399f6210bb34p+0L, -0x1.241533845f3ac4b2p-128L },
     { 0x1.afd3ca9d1d1ffd6p+0L, 0x1.30bd89e00e36ff28p+0L, -0x1.87eaea494b15744ap-125L }, // (b)
     { 0x1.edf2b3c243a75f86p+1L, 0x1.918a9da0f7d771fcp+0L, 0x1.34ebc81a251fb1b4p-128L },
