@@ -263,6 +263,22 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   return err[i];
 }
 
+// round h to nearest to precision 22 bits
+static long double
+round22 (long double h)
+{
+  b96u96_u v = {.f = h};
+  uint64_t m = v.m;
+  m = (m + 0x20000000000ul) & 0xfffffc0000000000ul;
+  if (m == 0)
+  {
+    m = 1ul << 63;
+    v.e ++;
+  }
+  v.m = m;
+  return v.f;
+}
+
 // (h+l)*2^e is the approximation from the fast path
 static long double
 accurate_path (long double h, long double l, int e, long double x)
@@ -273,13 +289,18 @@ accurate_path (long double h, long double l, int e, long double x)
      (2) then compute x3 = x2 - x2*e2/3
   */
 
-  long double x0 = x;
+  //  long double x0 = x;
   // if (x0 == TRACE) printf ("enter accurate_path: h=%La l=%La\n", h, l);
 
   /* Rescale x so that 1 <= x < 8. With x' = 2^(-3e)*x, we have 1 <= x' < 8
      and h+l is an approximation of cbrt(x'), thus 1 <= h+l <= 2. */
   x = __builtin_ldexpl (x, -3 * e);
-  if (x0 == TRACE) printf ("x rescaled=%La\n", x);
+  // if (x0 == TRACE) printf ("x rescaled=%La\n", x);
+
+  // detect exact cases
+  long double t = round22 (h);
+  if (t * t * t == x)
+    return __builtin_ldexpl (t, e);
 
   // normalize h+l
   fast_two_sum (&h, &l, h, l);
@@ -310,37 +331,23 @@ accurate_path (long double h, long double l, int e, long double x)
   // add to lower term
   l += yh;
 
-  if (x0 == TRACE) printf ("h=%La l=%La e=%d\n", h, l, e);
+  //  if (x0 == TRACE) printf ("h=%La l=%La e=%d\n", h, l, e);
 
   /* FIXME: to detect exact cases, round h to nearest to 22 bits of precision,
      then take the cube, and check it matches x rescaled. We can do that only
      when l is small enough or near enough from ulp(1). */
 
-  /* the exceptions are of 3 sorts:
-     (a) those for which the accurate path would deliver a wrong result
-     (b) those for which |l| < 2^-128 or |l| = 0xf.fffffffffffffffp-67, which would be considered
-         as exact below
-     (c) those which are exact, but fail the test |l| < 2^-128 or |l| = 0xf.fffffffffffffffp-67
-  */
-#define EXCEPTIONS 18
+#define EXCEPTIONS 10
   static const long double exceptions[EXCEPTIONS][3] = {
-    { 0x1.0000000000000006p+0L, 0x1.0000000000000002p+0L, -0x1.fffffffffffffffap-127L }, // (b)
     { 0x1.0dbd07c3a0effc3cp+0L, 0x1.047ff9c4763635f4p+0L, -0x1.0d01be7c7ddff78p-125L },
     { 0x1.345f2e864d24dc48p+0L, 0x1.1062d441bcb66ac6p+0L, -0x1.25760941fbabef0ap-126L },
     { 0x1.39bccadcdf06cf52p+0L, 0x1.11f4f1c51a59cf1cp+0L, -0x1.127fbd1eec03180cp-127L },
-    { 0x1.4574d0318529ac5ap+0L, 0x1.155380a1c6d9bf1p+0L, -0x1.b5f7501c676fbceep-125L }, // (b)
     { 0x1.5ab3b8cd6331f996p+0L, 0x1.1b3be9d3a867aed2p+0L, -0x1.b9f3f168683e9cp-126L },
-    { -0x1.03eb3526634f14cp+1L, -0x1.442d6p+0L, -0x0p+0L }, // (c)
-    { -0x1.22577001f06940c8p+1L, -0x1.505c9p+0L, -0x0p+0L }, // (c)
-    { -0x1.2260fca56d0902p+1L, -0x1.50604p+0L, -0x0p+0L }, // (c)
-    { -0x1.22612615222613e8p+1L, -0x1.50605p+0L, -0x0p+0L }, // (c)
     { 0x1.49aeac6ab7339f56p+1L, 0x1.5eea399f6210bb34p+0L, -0x1.241533845f3ac4b2p-128L },
-    { 0x1.afd3ca9d1d1ffd6p+0L, 0x1.30bd89e00e36ff28p+0L, -0x1.87eaea494b15744ap-125L }, // (b)
     { 0x1.edf2b3c243a75f86p+1L, 0x1.918a9da0f7d771fcp+0L, 0x1.34ebc81a251fb1b4p-128L },
     { 0x1.fb9eff906fae397ep+1L, 0x1.95367c64ec46dc9ap+0L, 0x1.fffffffffffffffep-65L },
     { 0x1.338421a3be1fd548p+2L, 0x1.affc50cd58267d3ep+0L, -0x1.2d4a23684179c0b2p-127L },
     { 0x1.6557399d292630dcp+2L, 0x1.c62895951870d52p+0L, -0x1.8f30a09c6585d70cp-126L },
-    { 0x1.cc5de7f0e10c9936p+2L, 0x1.ee2cf52f898c7194p+0L, -0x1.e751814b68f1f1b2p-126L }, // (b)
     { 0x1.fffffffffffffffap+2L, 0x1.fffffffffffffffep+0L, -0x1.0000000000000002p-127L },
   };
   for (int i = 0; i < EXCEPTIONS; i++)
@@ -348,22 +355,11 @@ accurate_path (long double h, long double l, int e, long double x)
     {
       h = exceptions[i][1];
       l = exceptions[i][2];
-      goto scale;
+      return __builtin_ldexpl (h + l, e);
     }
 
-  // if |l| < 2^-128, x^(1/3) is necessarily exact
-  if (__builtin_fabsl (l) < 0x1p-128L)
-    l = 0x0L;
-  // same for |l| = nextbelow(ulp(1))
-  if (__builtin_fabsl (l) == 0xf.fffffffffffffffp-67L)
-    l = __builtin_copysignl (0x1p-63L, l);
-
- scale:
   // multiply by 2^e, there can be no overflow/underflow
-  h = __builtin_ldexpl (h, e);
-  l = __builtin_ldexpl (l, e);
-
-  return h + l;
+  return __builtin_ldexpl (h + l, e);
 }
 
 long double
