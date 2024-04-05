@@ -38,6 +38,7 @@ SOFTWARE.
  */
 
 #include <stdint.h>
+#include <fenv.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -349,6 +350,10 @@ cr_cbrtl (long double x)
   if (__builtin_expect (e == 32767 || (e == 0 && v.m == 0), 0))
     return x;
 
+  // save inexact flag
+  fexcept_t flagp;
+  fegetexceptflag (&flagp, FE_INEXACT);
+
   long double h, l;
   long double err = fast_path (&h, &l, &e, x);
   long double left = h + (l - err);
@@ -360,6 +365,9 @@ cr_cbrtl (long double x)
     v.e += e;
     return v.f;
   }
+
+  // restore inexact flag
+  fesetexceptflag (&flagp, FE_INEXACT);
 
   // we reuse the initial approximation (h+l)*2^e in the accurate path
   return accurate_path ((long double) h, (long double) l, e, x);
