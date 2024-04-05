@@ -143,10 +143,11 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   int i = (e + 63) % 3; // we add 63 since e can be negative
   *exp = ((e + 63) / 3) - 5482;
   // cbrt(x) = (-1)^s * cbrt(m/2^63) * 2^e * 2^(i/3)
-  uint64_t rnd = (v.m>>10)&1;
-  b64u64_u xhu = {.u = ((v.m>>11) + rnd)+(0x3fel<<52)}, xlu = {.u = (v.m<<53)>>12|(0x3ffl-52)<<52};
-  static const double off[] = {0x1p-52,0x1p-51};
-  double xh = xhu.f, xl = xlu.f - off[rnd];
+  // split x into xh + xl (rounding towards zero)
+  b64u64_u xhu = {.u = (v.m>>11)+(0x3fel<<52)},
+           xlu = {.u = (v.m<<53)>>12|(0x3ffl-52)<<52};
+  static const double off = 0x1p-52;
+  double xh = xhu.f, xl = xlu.f - off;
 
   /* the polynomial c0+c1*x+...+c5*x^5 approximates x^(1/3) on [1,2] with
      absolute error bounded by 2^-19.473 (cf cbrt.sollya) */
