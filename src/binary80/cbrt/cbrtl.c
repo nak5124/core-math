@@ -37,7 +37,6 @@ SOFTWARE.
        2018.
  */
 
-#include <stdio.h>
 #include <stdint.h>
 
 // Warning: clang also defines __GNUC__
@@ -53,6 +52,8 @@ typedef union {
   struct __attribute__((__packed__))
   {uint64_t m; uint32_t e:16; uint32_t empty:16;};
 } b96u96_u;
+
+typedef union {double f; uint64_t u;} b64u64_u;
 
 /* s + t <- a + b, assuming |a| >= |b| */
 static inline void
@@ -142,8 +143,10 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   int i = (e + 63) % 3; // we add 63 since e can be negative
   *exp = ((e + 63) / 3) - 5482;
   // cbrt(x) = (-1)^s * cbrt(m/2^63) * 2^e * 2^(i/3)
-  double xh = v.f;
-  double xl = v.f - (long double) xh;
+  uint64_t rnd = (v.m>>10)&1;
+  b64u64_u xhu = {.u = ((v.m>>11) + rnd)+(0x3fel<<52)}, xlu = {.u = (v.m<<53)>>12|(0x3ffl-52)<<52};
+  static const double off[] = {0x1p-52,0x1p-51};
+  double xh = xhu.f, xl = xlu.f - off[rnd];
 
   /* the polynomial c0+c1*x+...+c5*x^5 approximates x^(1/3) on [1,2] with
      absolute error bounded by 2^-19.473 (cf cbrt.sollya) */
@@ -342,7 +345,7 @@ cr_cbrtl (long double x)
   int e = v.e & 0x7fff;
 
   // check NaN, Inf, 0: cbrtl(x) = x
-  if (__builtin_expect (e == 32767 || x == 0, 0))
+  if (__builtin_expect (e == 32767 || (e == 0 && v.m == 0), 0))
     return x;
 
   long double h, l;
