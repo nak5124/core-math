@@ -62,13 +62,6 @@ is_nan (long double x)
   return ((v.e == 0x7fff || v.e == 0xffff) && (v.m != (1ul << 63)));
 }
 
-static void
-print_encoding (long double x)
-{
-  b80u80_t v = {.f = x};
-  printf ("e=%d m=%lu\n", v.e, v.m);
-}
-
 static inline int
 is_equal (long double x, long double y)
 {
@@ -76,7 +69,8 @@ is_equal (long double x, long double y)
     return is_nan (y);
   if (is_nan (y))
     return is_nan (x);
-  return x == y;
+  b80u80_t v = {.f = x}, w = {.f = y};
+  return v.e == w.e && v.m == w.m; // ensures +0 and -0 differ
 }
 
 static void
@@ -85,7 +79,7 @@ check (long double x)
   long double y1 = ref_cbrtl (x);
   fesetround (rnd1[rnd]);
   long double y2 = cr_cbrtl (x);
-  if (y2 != 0 && ! is_equal (y1, y2))
+  if (! is_equal (y1, y2))
   {
     printf ("FAIL x=%La ref=%La z=%La\n", x, y1, y2);
     fflush (stdout);
