@@ -73,15 +73,36 @@ is_equal (long double x, long double y)
   return v.e == w.e && v.m == w.m; // ensures +0 and -0 differ
 }
 
+// return non-zero if y^3 = x exactly (might clobber inexact flag)
+static int
+is_exact (long double x, long double y)
+{
+  fexcept_t flagp;
+  feclearexcept (FE_INEXACT);
+  long double z = y * y * y;
+  fegetexceptflag (&flagp, FE_INEXACT);
+  return flagp == 0;
+}
+
 static void
 check (long double x)
 {
   long double y1 = ref_cbrtl (x);
   fesetround (rnd1[rnd]);
+  fexcept_t flagp;
+  feclearexcept (FE_INEXACT);
   long double y2 = cr_cbrtl (x);
+  fegetexceptflag (&flagp, FE_INEXACT);
   if (! is_equal (y1, y2))
   {
     printf ("FAIL x=%La ref=%La z=%La\n", x, y1, y2);
+    fflush (stdout);
+    exit (1);
+  }
+  // check that inexact flag is not set for exact values
+  if (is_exact (x, y1) && flagp)
+  {
+    printf ("Error: inexact flag set for x=%La\n", x);
     fflush (stdout);
     exit (1);
   }
