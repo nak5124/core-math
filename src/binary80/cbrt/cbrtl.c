@@ -276,7 +276,7 @@ round22 (long double h)
 
 // (h+l)*2^e is the approximation from the fast path
 static long double
-accurate_path (long double h, long double l, int e, long double x)
+accurate_path (long double h, long double l, int e, long double x, fexcept_t flagp)
 {
   /* Since the fast path delivers an approximation with about 75-bit accuracy,
      it suffices to perform one step of Newton's iteration:
@@ -290,8 +290,11 @@ accurate_path (long double h, long double l, int e, long double x)
 
   // detect exact cases
   long double t = round22 (h);
-  if (t * t * t == x)
+  if (t * t * t == x){
+    // restore inexact flag
+    fesetexceptflag (&flagp, FE_INEXACT);
     return __builtin_ldexpl (t, e);
+  }
 
   // normalize h+l
   fast_two_sum (&h, &l, h, l);
@@ -361,14 +364,21 @@ cr_cbrtl (long double x)
   if (left == right)
   {
     // multiply left by 2^e
-    b96u96_u v = {.f = left};
-    v.e += e;
-    return v.f;
+    b96u96_u r = {.f = left};
+    r.e += e;
+    if(__builtin_expect((r.m<<22)==0,0)){
+      int k = __builtin_ctzl(r.m);
+      uint64_t p = r.m>>k, p3 = p*p*p;
+      k = __builtin_clzl(p3);
+      if ( (v.m>>63) == 0) v.m <<= __builtin_clzl(v.m);
+      if ( (p3<<k) == v.m) {
+	// restore inexact flag
+	fesetexceptflag (&flagp, FE_INEXACT);
+      }
+    }
+    return r.f;
   }
 
-  // restore inexact flag
-  fesetexceptflag (&flagp, FE_INEXACT);
-
   // we reuse the initial approximation (h+l)*2^e in the accurate path
-  return accurate_path ((long double) h, (long double) l, e, x);
+  return accurate_path (h, l, e, x, flagp);
 }
