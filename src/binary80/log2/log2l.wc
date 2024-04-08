@@ -1,0 +1,10 @@
+# special values
++nan
+-nan
++inf
+-inf
++0
+-0
+# exact values
+0x1p-1
+0x1p0
