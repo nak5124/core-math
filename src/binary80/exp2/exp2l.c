@@ -36,7 +36,11 @@ SOFTWARE.
  */
 
 #include <stdint.h>
+#include <fenv.h>
+
+#ifdef __x86_64__
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -44,6 +48,16 @@ SOFTWARE.
 #endif
 
 #pragma STDC FENV_ACCESS ON
+
+static inline int get_rounding_mode (void)
+{
+#ifdef __x86_64__
+  const unsigned flagp = _mm_getcsr ();
+  return (flagp&(3<<13))>>3;
+#else
+  return fegetround ();
+#endif
+}
 
 // anonymous structs, see https://port70.net/~nsz/c/c11/n1570.html#6.7.2.1p19
 typedef union {
@@ -422,11 +436,13 @@ Pacc (long double *h, long double *l, long double x)
 
 /* Assume -16446 < x < -0x1.71547652b82fe176p-65
    or 0x1.71547652b82fe176p-64 < x < 16384.
-   Return H + L approximating 2^x with relative error < 2^-85.803
-   or H = L = NaN.
+   Calculate an approximation of 2^x with relative error < 2^-84.968.
+   If needmoreaccuracy is set to a non-zero value, returns in x
+   a correctly rounded approximation to the long double format.
 */
-static long double fast_path (int *H, long double x){
-  unsigned flag = _mm_getcsr(), rm = (flag>>13)&3;
+static long double fast_path (int *needmoreaccuracy, long double x){
+  // get current rounding mode
+  const unsigned rm = get_rounding_mode ();
   b96u96_u v = {.f = x};
 
   // compute k = round(2^15*x)
@@ -492,6 +508,8 @@ static long double fast_path (int *H, long double x){
    */
   b64u64_u th = {.f = h}, tl = {.f = l};
   long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
+  // the high part is always positive, the low part can be positive or negative
+  // represent the mantissa of the low part in two's complement format
   long ml = (tl.u&~(0xfffl<<52))|1l<<52, sgnl = -(tl.u>>63);
   ml = (ml^sgnl) - sgnl;
   int64_t mlt;
@@ -506,25 +524,31 @@ static long double fast_path (int *H, long double x){
     mlt = ml>>sh;
     ml <<= 64-sh;
   }
+  // construct the mantissa of the long double number
   uint64_t mh = ((th.u<<11)|1l<<63);
-  long eps = 0x10e*(mh>>30);
+  /* The relative error is bounded by 2^-84.968 * mh < 0x1.06p-85 * mh.
+     Since we add it to ml, we have to add 0x1.06p-85 * mh * 2^64 = 0x106p-29 * mh. */
+  long eps = 0x106*(mh>>29);
   mh += mlt;
-  if(__builtin_expect(!(mh>>63),0)){
+  if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
+				     // can unset the msb so shift the
+				     // number back
     mh = mh<<1 | (uint64_t)ml>>63;
     ml <<= 1;
     e--;
     eps <<= 1;
   }
-  if(rm==0){
+  if(rm==FE_TONEAREST){ // round to nearest
     mh += (uint64_t)ml>>63;
     ml <<= 1;
-  } else if(rm==2) {
+  } else if(rm==FE_UPWARD) { // round to +inf
     mh += 1;
     ml = -ml;
   }
-  v.m = mh;
-  v.e = e + 0x3c00 + eh;
-  *H = (uint64_t)(ml+eps) < (uint64_t)2*eps || e < -16355 || (ml<<1)==0 || mh==0;
+  v.m = mh; // mantissa
+  v.e = e + 0x3c00 + eh; // exponent
+  // rounding test || result is subnormal || cannot round in integer format || integer overflow
+  *needmoreaccuracy = (uint64_t)(ml+eps) < (uint64_t)2*eps || e < -16355 || (ml<<1)==0 || mh==0;
   return v.f;
 }
 
@@ -771,9 +795,9 @@ cr_exp2l (long double x)
 
   // now -16446 < x < -0x1.71547652b82fe176p-65 or 0x1.71547652b82fe176p-64 < x < 16384
   long double h;
-  int canround;
-  h = fast_path (&canround, x);
-  if(__builtin_expect(!canround, 1)) return h;
+  int needmoreaccuracy;
+  h = fast_path (&needmoreaccuracy, x);
+  if(__builtin_expect(!needmoreaccuracy, 1)) return h;
   long double l;
   accurate_path (&h, &l, x);
   return h + l;

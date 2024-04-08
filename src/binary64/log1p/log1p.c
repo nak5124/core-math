@@ -1,7 +1,6 @@
 /* Correctly rounded log(1+x) for binary64 values.
 
-Copyright (c) 2022-2023 INRIA and CERN.
-Authors: Paul Zimmermann and Tom Hubrecht.
+Copyright (c) 2024 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -26,7 +25,6 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#include "dint.h"
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -35,928 +33,396 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union { double f; uint64_t u; } d64u64;
+typedef uint64_t u64;
+typedef int64_t i64;
+typedef unsigned short ushort;
+typedef union {double f; uint64_t u;} b64u64_u;
 
-/* Add a + b, such that *hi + *lo approximates a + b.
-   Assumes |a| >= |b|.  */
-static void
-fast_two_sum (double *hi, double *lo, double a, double b)
-{
-  double e;
-
-  *hi = a + b;
-  e = *hi - a; /* exact */
-  *lo = b - e; /* exact */
-  /* Now hi + lo = a + b exactly for rounding to nearest.
-     For directed rounding modes, this is not always true.
-     Take for example a = 1, b = 2^-200, and rounding up,
-     then hi = 1 + 2^-52, e = 2^-52 (it can be proven that
-     e is always exact), and lo = -2^52 + 2^-105, thus
-     hi + lo = 1 + 2^-105 <> a + b = 1 + 2^-200.
-     A bound on the error is given
-     in "Note on FastTwoSum with Directed Roundings"
-     by Paul Zimmermann, https://hal.inria.fr/hal-03798376, 2022.
-     Theorem 1 says that
-     the difference between a+b and hi+lo is bounded by 2u^2|a+b|
-     and also by 2u^2|hi|. Here u=2^-53, thus we get:
-     |(a+b)-(hi+lo)| <= 2^-105 min(|a+b|,|hi|) */
+static inline double fasttwosum(double x, double y, double *e){
+  double s = x + y, z = s - x;
+  *e = y - z;
+  return s;
 }
 
-/* For 362 <= i <= 724, r[i] = _INVERSE[i-362] is a 10-bit approximation of
-   1/x[i], where i*2^-9 <= x[i] < (i+1)*2^-9.
-   More precisely r[i] is a 10-bit value such that r[i]*y-1 is representable
-   exactly on 53 bits for any y, i*2^-9 <= y < (i+1)*2^-9.
-   Moreover |r[i]*y-1| <= 0.00212097167968735. */
-static const double _INVERSE[363]= {
-    0x1.698p+0, 0x1.688p+0, 0x1.678p+0, 0x1.668p+0, 0x1.658p+0, 0x1.648p+0, 0x1.638p+0,
-    0x1.63p+0, 0x1.62p+0, 0x1.61p+0, 0x1.6p+0, 0x1.5fp+0, 0x1.5ep+0, 0x1.5dp+0,
-    0x1.5cp+0, 0x1.5bp+0, 0x1.5a8p+0, 0x1.598p+0, 0x1.588p+0, 0x1.578p+0, 0x1.568p+0,
-    0x1.56p+0, 0x1.55p+0, 0x1.54p+0, 0x1.53p+0, 0x1.52p+0, 0x1.518p+0, 0x1.508p+0,
-    0x1.4f8p+0, 0x1.4fp+0, 0x1.4ep+0, 0x1.4dp+0, 0x1.4cp+0, 0x1.4b8p+0, 0x1.4a8p+0,
-    0x1.4ap+0, 0x1.49p+0, 0x1.48p+0, 0x1.478p+0, 0x1.468p+0, 0x1.458p+0, 0x1.45p+0,
-    0x1.44p+0, 0x1.43p+0, 0x1.428p+0, 0x1.418p+0, 0x1.41p+0, 0x1.4p+0, 0x1.3f8p+0,
-    0x1.3e8p+0, 0x1.3ep+0, 0x1.3dp+0, 0x1.3cp+0, 0x1.3b8p+0, 0x1.3a8p+0, 0x1.3ap+0,
-    0x1.39p+0, 0x1.388p+0, 0x1.378p+0, 0x1.37p+0, 0x1.36p+0, 0x1.358p+0, 0x1.35p+0,
-    0x1.34p+0, 0x1.338p+0, 0x1.328p+0, 0x1.32p+0, 0x1.31p+0, 0x1.308p+0, 0x1.3p+0,
-    0x1.2fp+0, 0x1.2e8p+0, 0x1.2d8p+0, 0x1.2dp+0, 0x1.2c8p+0, 0x1.2b8p+0, 0x1.2bp+0,
-    0x1.2ap+0, 0x1.298p+0, 0x1.29p+0, 0x1.28p+0, 0x1.278p+0, 0x1.27p+0, 0x1.26p+0,
-    0x1.258p+0, 0x1.25p+0, 0x1.24p+0, 0x1.238p+0, 0x1.23p+0, 0x1.228p+0, 0x1.218p+0,
-    0x1.21p+0, 0x1.208p+0, 0x1.2p+0, 0x1.1fp+0, 0x1.1e8p+0, 0x1.1ep+0, 0x1.1dp+0,
-    0x1.1c8p+0, 0x1.1cp+0, 0x1.1b8p+0, 0x1.1bp+0, 0x1.1ap+0, 0x1.198p+0, 0x1.19p+0,
-    0x1.188p+0, 0x1.18p+0, 0x1.17p+0, 0x1.168p+0, 0x1.16p+0, 0x1.158p+0, 0x1.15p+0,
-    0x1.14p+0, 0x1.138p+0, 0x1.13p+0, 0x1.128p+0, 0x1.12p+0, 0x1.118p+0, 0x1.11p+0,
-    0x1.1p+0, 0x1.0f8p+0, 0x1.0fp+0, 0x1.0e8p+0, 0x1.0ep+0, 0x1.0d8p+0, 0x1.0dp+0,
-    0x1.0c8p+0, 0x1.0cp+0, 0x1.0bp+0, 0x1.0a8p+0, 0x1.0ap+0, 0x1.098p+0, 0x1.09p+0,
-    0x1.088p+0, 0x1.08p+0, 0x1.078p+0, 0x1.07p+0, 0x1.068p+0, 0x1.06p+0, 0x1.058p+0,
-    0x1.05p+0, 0x1.048p+0, 0x1.04p+0, 0x1.038p+0, 0x1.03p+0, 0x1.028p+0, 0x1.02p+0,
-    0x1.018p+0, 0x1.01p+0, 0x1.008p+0, 0x1.ff8p-1, 0x1.fe8p-1, 0x1.fd8p-1, 0x1.fc8p-1,
-    0x1.fb8p-1, 0x1.fa8p-1, 0x1.f98p-1, 0x1.f88p-1, 0x1.f78p-1, 0x1.f68p-1, 0x1.f58p-1,
-    0x1.f5p-1, 0x1.f4p-1, 0x1.f3p-1, 0x1.f2p-1, 0x1.f1p-1, 0x1.fp-1, 0x1.efp-1,
-    0x1.eep-1, 0x1.edp-1, 0x1.ec8p-1, 0x1.eb8p-1, 0x1.ea8p-1, 0x1.e98p-1, 0x1.e88p-1,
-    0x1.e78p-1, 0x1.e7p-1, 0x1.e6p-1, 0x1.e5p-1, 0x1.e4p-1, 0x1.e3p-1, 0x1.e28p-1,
-    0x1.e18p-1, 0x1.e08p-1, 0x1.df8p-1, 0x1.dfp-1, 0x1.dep-1, 0x1.ddp-1, 0x1.dcp-1,
-    0x1.db8p-1, 0x1.da8p-1, 0x1.d98p-1, 0x1.d9p-1, 0x1.d8p-1, 0x1.d7p-1, 0x1.d6p-1,
-    0x1.d58p-1, 0x1.d48p-1, 0x1.d38p-1, 0x1.d3p-1, 0x1.d2p-1, 0x1.d1p-1, 0x1.d08p-1,
-    0x1.cf8p-1, 0x1.ce8p-1, 0x1.cep-1, 0x1.cdp-1, 0x1.cc8p-1, 0x1.cb8p-1, 0x1.ca8p-1,
-    0x1.cap-1, 0x1.c9p-1, 0x1.c88p-1, 0x1.c78p-1, 0x1.c68p-1, 0x1.c6p-1, 0x1.c5p-1,
-    0x1.c48p-1, 0x1.c38p-1, 0x1.c3p-1, 0x1.c2p-1, 0x1.c18p-1, 0x1.c08p-1, 0x1.bf8p-1,
-    0x1.bfp-1, 0x1.bep-1, 0x1.bd8p-1, 0x1.bc8p-1, 0x1.bcp-1, 0x1.bbp-1, 0x1.ba8p-1,
-    0x1.b98p-1, 0x1.b9p-1, 0x1.b8p-1, 0x1.b78p-1, 0x1.b68p-1, 0x1.b6p-1, 0x1.b58p-1,
-    0x1.b48p-1, 0x1.b4p-1, 0x1.b3p-1, 0x1.b28p-1, 0x1.b18p-1, 0x1.b1p-1, 0x1.bp-1,
-    0x1.af8p-1, 0x1.afp-1, 0x1.aep-1, 0x1.ad8p-1, 0x1.ac8p-1, 0x1.acp-1, 0x1.ab8p-1,
-    0x1.aa8p-1, 0x1.aap-1, 0x1.a9p-1, 0x1.a88p-1, 0x1.a8p-1, 0x1.a7p-1, 0x1.a68p-1,
-    0x1.a6p-1, 0x1.a5p-1, 0x1.a48p-1, 0x1.a4p-1, 0x1.a3p-1, 0x1.a28p-1, 0x1.a2p-1,
-    0x1.a1p-1, 0x1.a08p-1, 0x1.ap-1, 0x1.9fp-1, 0x1.9e8p-1, 0x1.9ep-1, 0x1.9dp-1,
-    0x1.9c8p-1, 0x1.9cp-1, 0x1.9bp-1, 0x1.9a8p-1, 0x1.9ap-1, 0x1.998p-1, 0x1.988p-1,
-    0x1.98p-1, 0x1.978p-1, 0x1.968p-1, 0x1.96p-1, 0x1.958p-1, 0x1.95p-1, 0x1.94p-1,
-    0x1.938p-1, 0x1.93p-1, 0x1.928p-1, 0x1.92p-1, 0x1.91p-1, 0x1.908p-1, 0x1.9p-1,
-    0x1.8f8p-1, 0x1.8e8p-1, 0x1.8ep-1, 0x1.8d8p-1, 0x1.8dp-1, 0x1.8c8p-1, 0x1.8b8p-1,
-    0x1.8bp-1, 0x1.8a8p-1, 0x1.8ap-1, 0x1.898p-1, 0x1.888p-1, 0x1.88p-1, 0x1.878p-1,
-    0x1.87p-1, 0x1.868p-1, 0x1.86p-1, 0x1.85p-1, 0x1.848p-1, 0x1.84p-1, 0x1.838p-1,
-    0x1.83p-1, 0x1.828p-1, 0x1.82p-1, 0x1.81p-1, 0x1.808p-1, 0x1.8p-1, 0x1.7f8p-1,
-    0x1.7fp-1, 0x1.7e8p-1, 0x1.7ep-1, 0x1.7d8p-1, 0x1.7c8p-1, 0x1.7cp-1, 0x1.7b8p-1,
-    0x1.7bp-1, 0x1.7a8p-1, 0x1.7ap-1, 0x1.798p-1, 0x1.79p-1, 0x1.788p-1, 0x1.78p-1,
-    0x1.778p-1, 0x1.77p-1, 0x1.76p-1, 0x1.758p-1, 0x1.75p-1, 0x1.748p-1, 0x1.74p-1,
-    0x1.738p-1, 0x1.73p-1, 0x1.728p-1, 0x1.72p-1, 0x1.718p-1, 0x1.71p-1, 0x1.708p-1,
-    0x1.7p-1, 0x1.6f8p-1, 0x1.6fp-1, 0x1.6e8p-1, 0x1.6ep-1, 0x1.6d8p-1, 0x1.6dp-1,
-    0x1.6c8p-1, 0x1.6cp-1, 0x1.6b8p-1, 0x1.6bp-1, 0x1.6a8p-1, 0x1.6ap-1,
-};
-
-/* For 362 <= i <= 724, (h,l) = _LOG_INV[i-362] is a double-double
-   approximation of -log(r) with r=INVERSE[i-362]), with h an integer multiple
-   of 2^-42, and |l| < 2^-43. The maximal difference between -log(r) and h+l
-   is bounded by 1/2 ulp(l) < 2^-97. */
-static const double _LOG_INV[363][2] = {
-    {-0x1.615ddb4becp-2, -0x1.3c7ca90bc04b2p-46},
-    {-0x1.5e87b20c29p-2, -0x1.527d18f7738fap-44},
-    {-0x1.5baf846aa2p-2, 0x1.39ae8f873fa41p-44},
-    {-0x1.58d54f86ep-2, -0x1.791f30a795215p-45},
-    {-0x1.55f9107a44p-2, 0x1.1e64778df4a62p-46},
-    {-0x1.531ac457eep-2, -0x1.df83b7d931501p-44},
-    {-0x1.503a682cb2p-2, 0x1.a68c8f16f9b5dp-45},
-    {-0x1.4ec97326p-2, -0x1.34d7aaf04d104p-45},
-    {-0x1.4be5f95778p-2, 0x1.d7c92cd9ad824p-44},
-    {-0x1.4900680401p-2, 0x1.8bccffe1a0f8cp-44},
-    {-0x1.4618bc21c6p-2, 0x1.3d82f484c84ccp-46},
-    {-0x1.432ef2a04fp-2, 0x1.fb129931715adp-44},
-    {-0x1.404308686ap-2, -0x1.f8ef43049f7d3p-44},
-    {-0x1.3d54fa5c1fp-2, -0x1.c3e1cd9a395e3p-44},
-    {-0x1.3a64c55694p-2, -0x1.7a71cbcd735dp-44},
-    {-0x1.3772662bfep-2, 0x1.e9436ac53b023p-44},
-    {-0x1.35f865c933p-2, 0x1.b07de4ea1a54ap-44},
-    {-0x1.3302c16586p-2, -0x1.6217dc2a3e08bp-44},
-    {-0x1.300aead063p-2, -0x1.42f568b75fcacp-44},
-    {-0x1.2d10dec508p-2, -0x1.60c61f7088353p-44},
-    {-0x1.2a1499f763p-2, 0x1.0dbbf51f3aadcp-44},
-    {-0x1.2895a13de8p-2, -0x1.a8d7ad24c13fp-44},
-    {-0x1.2596010df7p-2, -0x1.8e7bc224ea3e3p-44},
-    {-0x1.22941fbcf8p-2, 0x1.a6976f5eb0963p-44},
-    {-0x1.1f8ff9e48ap-2, -0x1.7946c040cbe77p-45},
-    {-0x1.1c898c169ap-2, 0x1.81410e5c62affp-44},
-    {-0x1.1b05791f08p-2, 0x1.2dd466dc55e2dp-44},
-    {-0x1.17fb98e151p-2, 0x1.a8a8ba74a2684p-44},
-    {-0x1.14ef67f887p-2, 0x1.e97a65dfc9794p-44},
-    {-0x1.136870293bp-2, 0x1.d3e8499d67123p-44},
-    {-0x1.1058bf9ae5p-2, 0x1.4ab9d817d52cdp-44},
-    {-0x1.0d46b579abp-2, -0x1.d2c81f640e1e6p-44},
-    {-0x1.0a324e2739p-2, -0x1.c6bee7ef4030ep-47},
-    {-0x1.08a73667c5p-2, -0x1.ebc1d40c5a329p-44},
-    {-0x1.058f3c703fp-2, 0x1.0e866bcd236adp-44},
-    {-0x1.0402594b4dp-2, -0x1.036b89ef42d7fp-48},
-    {-0x1.00e6c45ad5p-2, -0x1.cc68d52e01203p-50},
-    {-0x1.fb9186d5e4p-3, 0x1.d572aab993c87p-47},
-    {-0x1.f871b28956p-3, 0x1.f75fd6a526efep-44},
-    {-0x1.f22e5e72f2p-3, 0x1.f454f1417e41fp-44},
-    {-0x1.ebe61f4dd8p-3, 0x1.3d45330fdca4dp-45},
-    {-0x1.e8c0252aa6p-3, 0x1.6805b80e8e6ffp-45},
-    {-0x1.e27076e2bp-3, 0x1.a342c2af0003cp-44},
-    {-0x1.dc1bca0abep-3, -0x1.8fac1a628ccc6p-44},
-    {-0x1.d8ef91af32p-3, 0x1.5105fc364c784p-46},
-    {-0x1.d293581b6cp-3, 0x1.83270128aaa5fp-44},
-    {-0x1.cf6354e09cp-3, -0x1.771239a07d55bp-45},
-    {-0x1.c8ff7c79aap-3, 0x1.7794f689f8434p-45},
-    {-0x1.c5cba543aep-3, -0x1.0929decb454fcp-45},
-    {-0x1.bf601bb0e4p-3, -0x1.386a947c378b5p-45},
-    {-0x1.bc286742d8p-3, -0x1.9ac53f39d121cp-44},
-    {-0x1.b5b519e8fcp-3, 0x1.4b722ec011f31p-44},
-    {-0x1.af3c94e80cp-3, 0x1.a4e633fcd9066p-52},
-    {-0x1.abfe5ae462p-3, 0x1.b68f5395f139dp-44},
-    {-0x1.a57df28244p-3, -0x1.b99c8ca1d9abbp-44},
-    {-0x1.a23bc1fe2cp-3, 0x1.539cd91dc9f0bp-44},
-    {-0x1.9bb362e7ep-3, 0x1.1f2a8a1ce0ffcp-45},
-    {-0x1.986d322818p-3, -0x1.93b564dd44p-48},
-    {-0x1.91dcc8c34p-3, -0x1.7bc6abddeff46p-44},
-    {-0x1.8e928de886p-3, -0x1.a8154b13d72d5p-44},
-    {-0x1.87fa06520cp-3, -0x1.22120401202fcp-44},
-    {-0x1.84abb75866p-3, 0x1.d8daadf4e2bd2p-44},
-    {-0x1.815c0a1436p-3, 0x1.02a52f9201ce8p-44},
-    {-0x1.7ab890210ep-3, 0x1.bdb9072534a58p-45},
-    {-0x1.7764c128f2p-3, -0x1.274903479e3d1p-47},
-    {-0x1.70b8f97a1ap-3, -0x1.4ea64f6a95befp-44},
-    {-0x1.6d60fe719ep-3, 0x1.bc6e557134767p-44},
-    {-0x1.66acd4272ap-3, -0x1.aa1bdbfc6c785p-44},
-    {-0x1.6350a28aaap-3, -0x1.d5ec0ab8163afp-45},
-    {-0x1.5ff3070a7ap-3, 0x1.8586f183bebf2p-44},
-    {-0x1.59338d9982p-3, -0x1.0ba68b7555d4ap-48},
-    {-0x1.55d1ad4232p-3, -0x1.add94dda647e8p-44},
-    {-0x1.4f099f4a24p-3, 0x1.e9bf2fafeaf27p-44},
-    {-0x1.4ba36f39a6p-3, 0x1.4354bb3f219e5p-44},
-    {-0x1.483bccce6ep-3, -0x1.eea52723f6369p-46},
-    {-0x1.41682bf728p-3, 0x1.10047081f849dp-45},
-    {-0x1.3dfc2b0eccp-3, -0x1.8a72a62b8c13fp-45},
-    {-0x1.371fc201e8p-3, -0x1.ee8779b2d8abcp-44},
-    {-0x1.33af57577p-3, -0x1.c9ecca2fe72a5p-44},
-    {-0x1.303d718e48p-3, 0x1.680b5ce3ecb05p-50},
-    {-0x1.29552f82p-3, 0x1.5b967f4471dfcp-44},
-    {-0x1.25ded0abc6p-3, -0x1.5a3854f176449p-44},
-    {-0x1.2266f190a6p-3, 0x1.4d20ab840e7f6p-45},
-    {-0x1.1b72ad52f6p-3, -0x1.e80a41811a396p-45},
-    {-0x1.17f6458fcap-3, -0x1.843fad093c8dcp-45},
-    {-0x1.1478584674p-3, -0x1.563451027c75p-46},
-    {-0x1.0d77e7cd08p-3, -0x1.cb2cd2ee2f482p-44},
-    {-0x1.09f561ee72p-3, 0x1.8f3057157d1a8p-45},
-    {-0x1.0671512ca6p-3, 0x1.a47579cdc0a3dp-45},
-    {-0x1.02ebb42bf4p-3, 0x1.5a8fa5ce00e5dp-46},
-    {-0x1.f7b79fec38p-4, 0x1.10987e897ed01p-47},
-    {-0x1.f0a30c0118p-4, 0x1.d599e83368e91p-44},
-    {-0x1.e98b54967p-4, -0x1.4677489c50e97p-44},
-    {-0x1.e27076e2bp-4, 0x1.a342c2af0003cp-45},
-    {-0x1.d4313d66ccp-4, 0x1.9454379135713p-45},
-    {-0x1.cd0cdbf8cp-4, -0x1.3e14db50dd743p-44},
-    {-0x1.c5e548f5bcp-4, -0x1.d0c57585fbe06p-46},
-    {-0x1.b78c82bb1p-4, 0x1.25ef7bc3987e7p-44},
-    {-0x1.b05b49bee4p-4, -0x1.ff22c18f84a5ep-47},
-    {-0x1.a926d3a4acp-4, -0x1.563650bd22a9cp-44},
-    {-0x1.a1ef1d806p-4, -0x1.cd4176df97bcbp-44},
-    {-0x1.9ab4246204p-4, 0x1.8a64826787061p-45},
-    {-0x1.8c345d6318p-4, -0x1.b20f5acb42a66p-44},
-    {-0x1.84ef898e84p-4, 0x1.7d5cd246977c9p-44},
-    {-0x1.7da766d7bp-4, -0x1.2cc844480c89bp-44},
-    {-0x1.765bf23a6cp-4, 0x1.ecbc035c4256ap-48},
-    {-0x1.6f0d28ae58p-4, 0x1.4b4641b664613p-44},
-    {-0x1.60658a9374p-4, -0x1.0c3b1dee9c4f8p-44},
-    {-0x1.590cafdfp-4, -0x1.c284f5722abaap-44},
-    {-0x1.51b073f06p-4, -0x1.83f69278e686ap-44},
-    {-0x1.4a50d3aa1cp-4, 0x1.f7fe1308973e2p-45},
-    {-0x1.42edcbea64p-4, -0x1.bc0eeea7c9acdp-46},
-    {-0x1.341d7961bcp-4, -0x1.1d0929983761p-44},
-    {-0x1.2cb0283f5cp-4, -0x1.e1ee2ca657021p-44},
-    {-0x1.253f62f0ap-4, -0x1.416f8fb69a701p-44},
-    {-0x1.1dcb263dbp-4, -0x1.9444f5e9e8981p-44},
-    {-0x1.16536eea38p-4, 0x1.47c5e768fa309p-46},
-    {-0x1.0ed839b554p-4, 0x1.901f46d48abb4p-44},
-    {-0x1.075983599p-4, 0x1.b8ecfe4b59987p-44},
-    {-0x1.f0a30c0118p-5, 0x1.d599e83368e91p-45},
-    {-0x1.e19070c278p-5, 0x1.fea4664629e86p-45},
-    {-0x1.d276b8adbp-5, -0x1.6a423c78a64bp-46},
-    {-0x1.c355dd092p-5, -0x1.f2ccc9abf8388p-45},
-    {-0x1.b42dd71198p-5, 0x1.c827ae5d6704cp-46},
-    {-0x1.a4fe9ffa4p-5, 0x1.6e584a0402925p-44},
-    {-0x1.95c830ec9p-5, 0x1.c148297c5feb8p-45},
-    {-0x1.868a83084p-5, 0x1.2623a134ac693p-46},
-    {-0x1.77458f633p-5, 0x1.181dce586af09p-44},
-    {-0x1.58a5bafc9p-5, 0x1.b2b739570ad39p-45},
-    {-0x1.494acc34d8p-5, -0x1.11c78a56fd247p-45},
-    {-0x1.39e87b9fe8p-5, -0x1.eafd480ad9015p-44},
-    {-0x1.2a7ec2215p-5, 0x1.78ce77a9163fep-45},
-    {-0x1.1b0d98924p-5, 0x1.3401e9ae889bbp-44},
-    {-0x1.0b94f7c198p-5, 0x1.e89896f022783p-45},
-    {-0x1.f829b0e78p-6, -0x1.980267c7e09e4p-45},
-    {-0x1.d91a66c54p-6, -0x1.e61f1658cfb9ap-45},
-    {-0x1.b9fc027bp-6, 0x1.b9a010ae6922ap-44},
-    {-0x1.9ace7551dp-6, 0x1.d75d97ec7c41p-45},
-    {-0x1.7b91b07d6p-6, 0x1.3b955b602ace4p-44},
-    {-0x1.5c45a51b9p-6, 0x1.63bb6216d87d8p-45},
-    {-0x1.3cea44347p-6, 0x1.6a2c432d6a40bp-44},
-    {-0x1.1d7f7eb9fp-6, 0x1.4193a83fcc7a6p-46},
-    {-0x1.fc0a8b0fcp-7, -0x1.f1e7cf6d3a69cp-50},
-    {-0x1.bcf712c74p-7, -0x1.c25e097bd9771p-46},
-    {-0x1.7dc475f82p-7, 0x1.eb1245b5da1f5p-44},
-    {-0x1.3e7295d26p-7, 0x1.609c1ff29a114p-45},
-    {-0x1.fe02a6b1p-8, -0x1.9e23f0dda40e4p-46},
-    {-0x1.7ee11ebd8p-8, -0x1.749d3c2d23a07p-47},
-    {-0x1.ff00aa2bp-9, -0x1.0bc04a086b56ap-45},
-    {-0x1.ff802a9bp-10, 0x1.3bc661d61c5ebp-44},
-    {0x1.00200556p-10, 0x1.56224cd5f35f8p-44},
-    {0x1.809048288p-9, 0x1.85c0696a70c0cp-45},
-    {0x1.40c8a7478p-8, 0x1.e3871df070002p-46},
-    {0x1.c189cbb1p-8, -0x1.d80551258856p-44},
-    {0x1.2145e939ep-7, 0x1.e3d1238c4eap-44},
-    {0x1.61e77e8b6p-7, -0x1.8073eeaf8eaf3p-44},
-    {0x1.a2a9c6c18p-7, -0x1.f73bc4d6d3472p-44},
-    {0x1.e38ce3034p-7, -0x1.9de88a3da281ap-44},
-    {0x1.12487a55p-6, 0x1.fdbe5fed4b393p-44},
-    {0x1.32db0ea13p-6, 0x1.710cb130895fcp-45},
-    {0x1.537e3f45fp-6, 0x1.ab259d2d7f253p-45},
-    {0x1.63d617869p-6, 0x1.7abf389596542p-47},
-    {0x1.8492528c9p-6, -0x1.aa0ba325a0c34p-45},
-    {0x1.a55f548c6p-6, -0x1.de0709f2d03c9p-45},
-    {0x1.c63d2ec15p-6, -0x1.5439ce030a687p-44},
-    {0x1.e72bf2814p-6, -0x1.8d75149774d47p-45},
-    {0x1.0415d89e78p-5, -0x1.dddc7f461c516p-44},
-    {0x1.149e3e4008p-5, -0x1.2b98a9a4168fdp-44},
-    {0x1.252f32f8dp-5, 0x1.83e9ae021b67bp-45},
-    {0x1.35c8bfaa1p-5, 0x1.8357d5ef9eb35p-44},
-    {0x1.3e18c1ca08p-5, 0x1.748ed3f6e378ep-44},
-    {0x1.4ebf4334ap-5, -0x1.d9150f73be773p-45},
-    {0x1.5f6e73079p-5, -0x1.0485a8012494cp-45},
-    {0x1.70265a551p-5, -0x1.888df11fd5ce7p-45},
-    {0x1.80e7023d9p-5, -0x1.99dc16f28bf45p-44},
-    {0x1.91b073efd8p-5, -0x1.9d7c53f76ca96p-46},
-    {0x1.9a187b574p-5, -0x1.0c22e4ec4d90dp-44},
-    {0x1.aaef2d0fbp-5, 0x1.0fc1a353bb42ep-45},
-    {0x1.bbcebfc69p-5, -0x1.7bf868c317c2ap-46},
-    {0x1.ccb73cddd8p-5, 0x1.965c36e09f5fep-44},
-    {0x1.dda8adc68p-5, -0x1.1b1ac64d9e42fp-45},
-    {0x1.e624c4a0b8p-5, -0x1.0f25c74676689p-44},
-    {0x1.f723b518p-5, -0x1.d6eb0dd5610d3p-44},
-    {0x1.0415d89e74p-4, 0x1.111c05cf1d753p-46},
-    {0x1.0c9e615ac4p-4, 0x1.c2da80974d976p-45},
-    {0x1.10e45b3cbp-4, -0x1.7cf69284a3465p-44},
-    {0x1.1973bd1464p-4, 0x1.566d154f930b3p-44},
-    {0x1.2207b5c784p-4, 0x1.49d8cfc10c7bfp-44},
-    {0x1.2aa04a447p-4, 0x1.7a48ba8b1cb41p-44},
-    {0x1.2eee507b4p-4, 0x1.8081edd77c86p-47},
-    {0x1.378dd7f748p-4, 0x1.7141128f1facap-44},
-    {0x1.403207b414p-4, 0x1.6fd84aa8157cp-45},
-    {0x1.4485e03dbcp-4, 0x1.fad46e8d26ab7p-44},
-    {0x1.4d3115d208p-4, -0x1.53a2582f4e1efp-48},
-    {0x1.55e10050ep-4, 0x1.c1d740c53c72ep-47},
-    {0x1.5e95a4d978p-4, 0x1.1cb7ce1d17171p-44},
-    {0x1.62f1be7d78p-4, -0x1.179957ed63c4ep-45},
-    {0x1.6bad83c188p-4, 0x1.daf3cc08926aep-47},
-    {0x1.746e100228p-4, -0x1.126d16e1e21d2p-44},
-    {0x1.78d02263d8p-4, 0x1.69b5794b69fb7p-47},
-    {0x1.8197e2f41p-4, -0x1.c0fe460d20041p-44},
-    {0x1.8a6477a91cp-4, 0x1.c28c0af9bd6dfp-44},
-    {0x1.8ecc933aecp-4, -0x1.22f39be67f7aap-45},
-    {0x1.97a07024ccp-4, -0x1.8bcc1732093cep-48},
-    {0x1.a0792e9278p-4, -0x1.a9ce6c9ad51bfp-47},
-    {0x1.a4e7640b1cp-4, -0x1.e42b6b94407c8p-47},
-    {0x1.adc77ee5bp-4, -0x1.573b209c31904p-44},
-    {0x1.b23965a53p-4, -0x1.ff64eea137079p-49},
-    {0x1.bb20e936d8p-4, -0x1.68ba835459b8ep-44},
-    {0x1.c40d6425a4p-4, 0x1.cb1121d1930ddp-44},
-    {0x1.c885801bc4p-4, 0x1.646d1c65aacd3p-45},
-    {0x1.d179788218p-4, 0x1.36433b5efbeedp-44},
-    {0x1.d5f556592p-4, 0x1.0e239cc185469p-44},
-    {0x1.def0d8d468p-4, -0x1.24750412e9a74p-44},
-    {0x1.e7f1691a34p-4, -0x1.2c1c59bc77bfap-44},
-    {0x1.ec739830ap-4, 0x1.11fcba80cdd1p-44},
-    {0x1.f57bc7d9p-4, 0x1.76a6c9ea8b04ep-46},
-    {0x1.fa01c9db58p-4, -0x1.8f351fa48a73p-47},
-    {0x1.0188d2ecf6p-3, 0x1.3f9651cff9dfep-47},
-    {0x1.03cdc0a51ep-3, 0x1.81a9cf169fc5cp-44},
-    {0x1.08598b59e4p-3, -0x1.7e5dd7009902cp-45},
-    {0x1.0aa0691268p-3, -0x1.45519d7032129p-44},
-    {0x1.0f301717dp-3, -0x1.e09b441ae86c5p-44},
-    {0x1.13c2605c3ap-3, -0x1.cf5fdd94f6509p-45},
-    {0x1.160c8024b2p-3, 0x1.ec2d2a9009e3dp-45},
-    {0x1.1aa2b7e24p-3, -0x1.1ac38dde3b366p-44},
-    {0x1.1ceed09854p-3, -0x1.15c1c39192af9p-44},
-    {0x1.2188fd9808p-3, -0x1.b3a1e7f50c701p-44},
-    {0x1.23d712a49cp-3, 0x1.00d238fd3df5cp-46},
-    {0x1.28753bc11ap-3, 0x1.7494e359302e6p-44},
-    {0x1.2ac55095f6p-3, -0x1.d3466d0c6c8a8p-46},
-    {0x1.2f677cbbcp-3, 0x1.52b302160f40dp-44},
-    {0x1.31b994d3a4p-3, 0x1.f098ee3a5081p-44},
-    {0x1.365fcb015ap-3, -0x1.fd3a0afb9691bp-44},
-    {0x1.38b3e9e028p-3, -0x1.70ef0545c17f9p-44},
-    {0x1.3d5e3126bcp-3, 0x1.3fb2f85096c4bp-46},
-    {0x1.3fb45a5992p-3, 0x1.19713c0cae559p-44},
-    {0x1.420b32741p-3, -0x1.16282c85a0884p-46},
-    {0x1.46baf0f9f6p-3, -0x1.249cd0790841ap-46},
-    {0x1.4913d8333cp-3, -0x1.53e43558124c4p-44},
-    {0x1.4dc7b897bcp-3, 0x1.c79b60ae1ff0fp-47},
-    {0x1.5022b292f6p-3, 0x1.48a05ff36a25bp-44},
-    {0x1.54dabc261p-3, 0x1.746fee5c8d0d8p-45},
-    {0x1.5737cc9018p-3, 0x1.9baa7a6b887f6p-44},
-    {0x1.5bf406b544p-3, -0x1.27023eb68981cp-46},
-    {0x1.5e533144c2p-3, -0x1.1ce0bf3b290eap-44},
-    {0x1.60b3100b0ap-3, -0x1.71456c988f814p-44},
-    {0x1.6574ebe8c2p-3, -0x1.98c1d34f0f462p-44},
-    {0x1.67d6e9d786p-3, -0x1.11e8830a706d3p-44},
-    {0x1.6c9d07d204p-3, -0x1.c73fafd9b2dcap-50},
-    {0x1.6f0128b756p-3, 0x1.577390d31ef0fp-44},
-    {0x1.716600c914p-3, 0x1.51b157cec3838p-49},
-    {0x1.7631d82936p-3, -0x1.5e77dc7c5f3e1p-45},
-    {0x1.7898d85444p-3, 0x1.8e67be3dbaf3fp-44},
-    {0x1.7d6903caf6p-3, -0x1.4c06b17c301d7p-45},
-    {0x1.7fd22ff59ap-3, -0x1.58bebf457b7d2p-46},
-    {0x1.823c16551ap-3, 0x1.e0ddb9a631e83p-46},
-    {0x1.871213750ep-3, 0x1.328eb42f9af75p-44},
-    {0x1.897e2b17b2p-3, -0x1.96b37380cbe9ep-45},
-    {0x1.8beafeb39p-3, -0x1.73d54aae92cd1p-47},
-    {0x1.90c6db9fccp-3, -0x1.935f57718d7cap-46},
-    {0x1.9335e5d594p-3, 0x1.3115c3abd47dap-44},
-    {0x1.95a5adcf7p-3, 0x1.7f22858a0ff6fp-47},
-    {0x1.9a8778debap-3, 0x1.470fa3efec39p-44},
-    {0x1.9cf97cdcep-3, 0x1.d862f10c414e3p-44},
-    {0x1.9f6c40708ap-3, -0x1.337d94bcd3f43p-44},
-    {0x1.a454082e6ap-3, 0x1.60a77c81f7171p-44},
-    {0x1.a6c90d44b8p-3, -0x1.f63b7f037b0c6p-44},
-    {0x1.a93ed3c8aep-3, -0x1.8724350562169p-45},
-    {0x1.ae2ca6f672p-3, 0x1.7a8d5ae54f55p-44},
-    {0x1.b0a4b48fc2p-3, -0x1.2e72d5c3998edp-45},
-    {0x1.b31d8575bcp-3, 0x1.c794e562a63cbp-44},
-    {0x1.b811730b82p-3, 0x1.e90683b9cd768p-46},
-    {0x1.ba8c90ae4ap-3, 0x1.a32e7f44432dap-44},
-    {0x1.bd087383bep-3, -0x1.d4bc4595412b6p-45},
-    {0x1.c2028ab18p-3, -0x1.92e0ee55c7ac6p-45},
-    {0x1.c480c0005cp-3, 0x1.9a294d5e44e76p-44},
-    {0x1.c6ffbc6fp-3, 0x1.ee138d3a69d43p-44},
-    {0x1.c97f8079d4p-3, 0x1.3b161a8c6e6c5p-45},
-    {0x1.ce816157f2p-3, -0x1.9e0aba2099515p-45},
-    {0x1.d1037f2656p-3, -0x1.84a7e75b6f6e4p-47},
-    {0x1.d38666872p-3, -0x1.73650b38932bcp-44},
-    {0x1.d88e93fb3p-3, -0x1.75f280234bf51p-44},
-    {0x1.db13db0d48p-3, 0x1.2806a847527e6p-44},
-    {0x1.dd99edaf6ep-3, -0x1.02ec669c756ebp-44},
-    {0x1.e020cc6236p-3, -0x1.52b00adb91424p-45},
-    {0x1.e530effe72p-3, -0x1.fdbdbb13f7c18p-44},
-    {0x1.e7ba35eb78p-3, -0x1.d5eee23793649p-47},
-    {0x1.ea4449f04ap-3, 0x1.5e91663732a36p-44},
-    {0x1.eccf2c8feap-3, -0x1.bec63a3e7564p-44},
-    {0x1.ef5ade4ddp-3, -0x1.a211565bb8e11p-51},
-    {0x1.f474b134ep-3, -0x1.bae49f1df7b5ep-44},
-    {0x1.f702d36778p-3, -0x1.0819516673e23p-46},
-    {0x1.f991c6cb3cp-3, -0x1.90d04cd7cc834p-44},
-    {0x1.fc218be62p-3, 0x1.4bba46f1cf6ap-44},
-    {0x1.00a1c6addap-2, 0x1.1cd8d688b9e18p-44},
-    {0x1.01eae5626cp-2, 0x1.a43dcfade85aep-44},
-    {0x1.03346e0106p-2, 0x1.89ff8a966395cp-48},
-    {0x1.047e60cde8p-2, 0x1.dbdf10d397f3cp-45},
-    {0x1.05c8be0d96p-2, 0x1.ad0f1c77ccb58p-45},
-    {0x1.085eb8f8aep-2, 0x1.e5d513f45fe7bp-44},
-    {0x1.09aa572e6cp-2, 0x1.b50a1e1734342p-44},
-    {0x1.0af660eb9ep-2, 0x1.3c7c3f528d80ap-45},
-    {0x1.0c42d67616p-2, 0x1.7188b163ceae9p-45},
-    {0x1.0d8fb813ebp-2, 0x1.ee8c88753fa35p-46},
-    {0x1.102ac0a35dp-2, -0x1.f1fbddfdfd686p-45},
-    {0x1.1178e8227ep-2, 0x1.1ef78ce2d07f2p-44},
-    {0x1.12c77cd007p-2, 0x1.3b2948a11f797p-46},
-    {0x1.14167ef367p-2, 0x1.e0c07824daaf5p-44},
-    {0x1.1565eed456p-2, -0x1.e75adfb6aba25p-49},
-    {0x1.16b5ccbadp-2, -0x1.23299042d74bfp-44},
-    {0x1.1956d3b9bcp-2, 0x1.7d2f73ad1aa14p-45},
-    {0x1.1aa7fd638dp-2, 0x1.9f60a9616f7ap-45},
-    {0x1.1bf99635a7p-2, -0x1.1ac89575c2125p-44},
-    {0x1.1d4b9e796cp-2, 0x1.22a667c42e56dp-45},
-    {0x1.1e9e16788ap-2, -0x1.82eaed3c8b65ep-44},
-    {0x1.1ff0fe7cf4p-2, 0x1.e9d5b513ff0c1p-44},
-    {0x1.214456d0ecp-2, -0x1.caf0428b728a3p-44},
-    {0x1.23ec5991ecp-2, -0x1.6dbe448a2e522p-44},
-    {0x1.25410494e5p-2, 0x1.b1d7ac0ef77f2p-44},
-    {0x1.269621134ep-2, -0x1.1b61f10522625p-44},
-    {0x1.27ebaf58d9p-2, -0x1.b198800b4bda7p-45},
-    {0x1.2941afb187p-2, -0x1.210c2b730e28bp-44},
-    {0x1.2a982269a4p-2, -0x1.2058e557285cfp-45},
-    {0x1.2bef07cdc9p-2, 0x1.a9cfa4a5004f4p-45},
-    {0x1.2d46602addp-2, -0x1.88d0ddcd54196p-45},
-    {0x1.2ff66b04ebp-2, -0x1.8aed2541e6e2ep-44},
-    {0x1.314f1e1d36p-2, -0x1.8e27ad3213cb8p-45},
-    {0x1.32a8456512p-2, 0x1.4f928139af5d6p-47},
-    {0x1.3401e12aedp-2, -0x1.17c73556e291dp-44},
-    {0x1.355bf1bd83p-2, -0x1.ba99b8964f0e8p-45},
-    {0x1.36b6776be1p-2, 0x1.16ecdb0f177c8p-46},
-    {0x1.3811728565p-2, -0x1.a71e493a0702bp-45},
-    {0x1.396ce359bcp-2, -0x1.5839c5663663dp-47},
-    {0x1.3ac8ca38e6p-2, -0x1.d0befbc02be4ap-45},
-    {0x1.3c25277333p-2, 0x1.83b54b606bd5cp-46},
-    {0x1.3d81fb5947p-2, -0x1.22c7c2a9d37a4p-45},
-    {0x1.3edf463c17p-2, -0x1.f067c297f2c3fp-44},
-    {0x1.419b423d5fp-2, -0x1.ce379226de3ecp-44},
-    {0x1.42f9f3ff62p-2, 0x1.906440f7d3354p-44},
-    {0x1.44591e053ap-2, -0x1.6e95892923d88p-47},
-    {0x1.45b8c0a17ep-2, -0x1.d9120e7d0a853p-47},
-    {0x1.4718dc271cp-2, 0x1.06c18fb4c14c5p-44},
-    {0x1.487970e958p-2, 0x1.dc1b8465cf25fp-44},
-    {0x1.49da7f3bccp-2, 0x1.07b334daf4b9ap-44},
-    {0x1.4b3c077268p-2, -0x1.65b4681052b9fp-46},
-    {0x1.4c9e09e173p-2, -0x1.e20891b0ad8a4p-45},
-    {0x1.4e0086dd8cp-2, -0x1.4d692a1e44788p-44},
-    {0x1.4f637ebbaap-2, -0x1.fc158cb3124b9p-44},
-    {0x1.50c6f1d11cp-2, -0x1.a0e6b7e827c2cp-44},
-    {0x1.522ae0738ap-2, 0x1.ebe708164c759p-45},
-    {0x1.538f4af8f7p-2, 0x1.7ec02e45547cep-45},
-    {0x1.54f431b7bep-2, 0x1.a8954c0910952p-46},
-    {0x1.5659950695p-2, 0x1.4c5fd2badc774p-46},
-    {0x1.57bf753c8dp-2, 0x1.fadedee5d40efp-46},
-    {0x1.5925d2b113p-2, -0x1.69bf5a7a56f34p-44},
-    {0x1.5a8cadbbeep-2, -0x1.7c79b0af7ecf8p-48},
-    {0x1.5bf406b544p-2, -0x1.27023eb68981cp-45},
-    {0x1.5d5bddf596p-2, -0x1.a0b2a08a465dcp-47},
-    {0x1.5ec433d5c3p-2, 0x1.6b71a1229d17fp-44},
-    {0x1.602d08af09p-2, 0x1.ebe9176df3f65p-46},
-    {0x1.61965cdb03p-2, -0x1.f08ad603c488ep-45},
-    {0x1.630030b3abp-2, -0x1.db623e731aep-45},
-};
-
-/* The following is a degree-7 polynomial generated by Sollya
-   approximating log(1+x) for |x| < 0.00212097167968735,
-   with absolute error < 2^-79.592 and relative error < 2^-70.467
-   (see file Prel.sollya).
-   The polynomial is P[0]*x + P[1]*x^2 + ... + P[6]*x^7.
-   The algorithm assumes that the degree-1 coefficient P[0] is 1,
-   and the degree-2 coefficient P[1] is -0.5. */
-static const double P[7] = {0x1p0,                 /* degree 1 */
-                            -0x1p-1,               /* degree 2 */
-                            0x1.555555555555p-2,   /* degree 3 */
-                            -0x1.fffffffff572dp-3, /* degree 4 */
-                            0x1.999999a2d7868p-3,  /* degree 5 */
-                            -0x1.5555c0d31b08ep-3, /* degree 6 */
-                            0x1.2476b9058e396p-3,  /* degree 7 */
-};
-
-/* The following is a degree-11 polynomial generated by Sollya
-   approximating log(1+x) for |x| < 0.03125,
-   with absolute error < 2^-73.441 and relative error < 2^-67.088
-   (see file Pabs_a.sollya).
-   The polynomial is P[0]*x + P[1]*x^2 + ... + P[10]*x^11.
-   The algorithm assumes that the degree-1 coefficient P[0] is 1
-   and the degree-2 coefficient P[1] is -0.5. */
-static const double Pa[11] = {0x1p0,                /* degree 1 */
-                             -0x1p-1,               /* degree 2 */
-                             0x1.5555555555555p-2,  /* degree 3 */
-                             -0x1.ffffffffffe5fp-3, /* degree 4 */
-                             0x1.999999999aa82p-3,  /* degree 5 */
-                             -0x1.555555583a8c8p-3, /* degree 6 */
-                             0x1.2492491c359e6p-3,  /* degree 7 */
-                             -0x1.ffffc728edeeap-4, /* degree 8 */
-                             0x1.c71c961f3498p-4,   /* degree 9 */
-                             -0x1.9a82ac77c05f4p-4, /* degree 10 */
-                             0x1.74b40dd1707d3p-4,  /* degree 11 */
-};
-
-// Multiply exactly a and b, such that *hi + *lo = a * b.
-static inline void a_mul(double *hi, double *lo, double a, double b) {
-  *hi = a * b;
-  *lo = __builtin_fma(a, b, -*hi);
+static inline double twosum(double xh, double ch, double *l){
+  double s = xh + ch, d = s - xh;
+  *l = (ch - d) + (xh + (d - s));
+  return s;
 }
 
-/* put in h+l a double-double approximation of log(z)-z for
-   |z| < 0.00212097167968735, with absolute error bounded by 2^-78.25
-   (see analyze_p1(-0.00212097167968735,0.00212097167968735)
-   from accompanying file log1p.sage, which also yields |l| < 2^-69.99) */
-static void
-p_1 (double *h, double *l, double z)
-{
-  double z2h, z2l;
-  a_mul (&z2h, &z2l, z, z); /* exact: z2h+z2l = z*z */
-  double p56 = __builtin_fma (P[6], z, P[5]);
-  double p34 = __builtin_fma (P[4], z, P[3]);
-  double ph = __builtin_fma (p56, z2h, p34);
-  /* ph approximates P[3]+P[4]*z+P[5]*z^2+P[6]*z^3 */
-  ph = __builtin_fma (ph, z, P[2]);
-  /* ph approximates P[2]+P[3]*z+P[4]*z^2+P[5]*z^3+P[6]*z^4 */
-  ph *= z2h;
-  /* ph approximates P[2]*z^2+P[3]*z^3+P[4]*z^4+P[5]*z^5+P[6]*z^6 */
-  fast_two_sum (h, l, -0.5 * z2h, ph * z);
-  *l += -0.5 * z2l;
+static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
+  double sl, sh = fasttwosum(xh, yh, &sl);
+  *e = (xl + yl) + sl;
+  return sh;
 }
 
-/* put in h+l a double-double approximation of log(z)-z for
-   |z| < 0.03125, with absolute error bounded by 2^-67.14
-   (see analyze_p1a(-0.03125,0.03125) from log1p.sage) */
-static void
-p_1a (double *h, double *l, double z)
-{
-  double z2h, z2l;
-  a_mul (&z2h, &z2l, z, z);
-  double z4h = z2h * z2h;
-  double p910 = __builtin_fma (Pa[10], z, Pa[9]);
-  double p78 = __builtin_fma (Pa[8], z, Pa[7]);
-  double p56 = __builtin_fma (Pa[6], z, Pa[5]);
-  double p34 = __builtin_fma (Pa[4], z, Pa[3]);
-  double p710 = __builtin_fma (p910, z2h, p78);
-  double p36 = __builtin_fma (p56, z2h, p34);
-  double ph = __builtin_fma (p710, z4h, p36);
-  ph = __builtin_fma (ph, z, Pa[2]);
-  ph *= z2h;
-  fast_two_sum (h, l, -0.5 * z2h, ph * z);
-  *l += -0.5 * z2l;
+static inline double sum(double xh, double xl, double ch, double cl, double *l){
+  double sl, sh = twosum(xh,ch, &sl);
+  *l = (xl + cl) + sl;
+  return sh;
 }
 
-/* Given 1 <= x < 2, where x = v.f, put in h+l a double-double approximation
-   of log(2^e*x), with absolute error bounded by 2^-69.99 (details below).
+static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+  double ahhh = ch*xh;
+  *l = (cl*xh + ch*xl) + __builtin_fma(ch, xh, -ahhh);
+  return ahhh;
+}
+
+static inline double mulddd(double x, double ch, double cl, double *l){
+  double ahhh = ch*x;
+  *l = cl*x + __builtin_fma(ch, x, -ahhh);
+  return ahhh;
+}
+
+static inline double polydd(double xh, double xl, int n, const double c[][2], double *l){
+  int i = n-1;
+  double ch = fasttwosum(c[i][0], *l, l), cl = c[i][1] + *l;
+  while(--i>=0){
+    ch = muldd(xh,xl, ch,cl, &cl);
+    ch = fastsum(c[i][0],c[i][1], ch,cl, &cl);
+  }
+  *l = cl;
+  return ch;
+}
+
+static inline double polyddd(double x, int n, const double c[][2], double *l){
+  int i = n-1;
+  double ch = fasttwosum(c[i][0], *l, l), cl = c[i][1] + *l;
+  while(--i>=0){
+    ch = mulddd(x, ch,cl, &cl);
+    ch = fastsum(c[i][0],c[i][1], ch,cl, &cl);
+  }
+  *l = cl;
+  return ch;
+}
+
+static double __attribute__((noinline)) as_log1p_refine(double, double);
+
+/*
+  rt[4][16] and ln[4][16][3] are lookup tables for the quadripartite scheme
+  centered around zero.
+  -ln(rt[][]) = ln[][][2] + ln[][][1] + ln[][][0]
 */
-static void
-cr_log_fast (double *h, double *l, int e, d64u64 v)
-{
-  uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
-  /* x = m/2^52 */
-  /* if x > sqrt(2), we divide it by 2 to avoid cancellation */
-  int c = m >= 0x16a09e667f3bcd;
-  e += c; /* now -1074 <= e <= 1024 */
-  static const double cy[] = {1.0, 0.5};
-  static const uint64_t cm[] = {43, 44};
+static const double rt[4][16] = {
+  {0x1.6a09e68p+0, 0x1.5ab07ep+0, 0x1.4bfdad8p+0, 0x1.3dea65p+0,
+   0x1.306fe08p+0, 0x1.2387a7p+0, 0x1.172b84p+0, 0x1.0b5587p+0,
+   0x1p+0, 0x1.ea4afap-1, 0x1.d5818ep-1, 0x1.c199bep-1,
+   0x1.ae89f98p-1, 0x1.9c4918p-1, 0x1.8ace54p-1, 0x1.7a1147p-1},
+  {0x1.059b0dp+0, 0x1.04e5f7p+0, 0x1.04315e8p+0, 0x1.037d43p+0,
+   0x1.02c9a4p+0, 0x1.0216818p+0, 0x1.0163da8p+0, 0x1.00b1af8p+0,
+   0x1p+0, 0x1.fe9d968p-1, 0x1.fd3c228p-1, 0x1.fbdba38p-1,
+   0x1.fa7c18p-1, 0x1.f91d8p-1, 0x1.f7bfdbp-1, 0x1.f663278p-1},
+  {0x1.0058c88p+0, 0x1.004dad8p+0, 0x1.0042938p+0, 0x1.0037798p+0,
+   0x1.002c608p+0, 0x1.0021478p+0, 0x1.00162fp+0, 0x1.000b178p+0,
+   0x1p+0, 0x1.ffe9d2p-1, 0x1.ffd3a58p-1, 0x1.ffbd798p-1,
+   0x1.ffa74e8p-1, 0x1.ff91248p-1, 0x1.ff7afb8p-1, 0x1.ff64d38p-1},
+  {0x1.00058b8p+0, 0x1.0004dap+0, 0x1.0004288p+0, 0x1.0003778p+0,
+   0x1.0002c6p+0,  0x1.0002148p+0, 0x1.000163p+0, 0x1.0000b18p+0,
+   0x1p+0, 0x1.fffe9dp-1, 0x1.fffd3ap-1, 0x1.fffbd78p-1,
+   0x1.fffa748p-1, 0x1.fff9118p-1, 0x1.fff7ae8p-1, 0x1.fff64cp-1}
+};
 
-  int i = m >> cm[c];
-  double y = v.f * cy[c];
-#define OFFSET 362
-  double r = (_INVERSE - OFFSET)[i];
-  double l1 = (_LOG_INV - OFFSET)[i][0];
-  double l2 = (_LOG_INV - OFFSET)[i][1];
-  double z = __builtin_fma (r, y, -1.0); /* exact */
-  /* evaluate P(z), for |z| < 0.00212097167968735 */
-  double ph, pl;
-  p_1 (&ph, &pl, z);
+static const double ln[4][16][3] = {
+  {{0x1.61fa45b636ea2p-95, -0x1.497697cb3134p-45, -0x1.62e43033a8p-2},
+   {-0x1.42b671e5e6d5ep-93, 0x1.fc50ee605bd8p-44, -0x1.3687aa721cp-2},
+   {0x1.0cc2ea968d329p-95, 0x1.f48666c24eacp-43, -0x1.0a2b247d58p-2},
+   {-0x1.963904db0a34ep-93, -0x1.58495e50d36ap-43, -0x1.bb9d3d808p-3},
+   {0x1.337e0d9f81652p-95, 0x1.c89a0bede978p-45, -0x1.62e42f0378p-3},
+   {-0x1.1bdf53871d50bp-95, 0x1.2d67e8a0c1d7p-42, -0x1.0a2b24a1p-3},
+   {-0x1.781dd6fc4053p-98, 0x1.07a22a9e81ed8p-42, -0x1.62e43327cp-4},
+   {-0x1.84e4562b8f2f3p-96, -0x1.868afe14895p-43, -0x1.62e435baep-5},
+   {0x0p+0, 0x0p+0, 0x0p+0},
+   {-0x1.17e3ec05cde7p-96, 0x1.174a19689569p-42, 0x1.62e432b22p-5},
+   {-0x1.8067ec2a27738p-95, 0x1.111a4eadf313p-43, 0x1.62e42e4a8p-4},
+   {-0x1.60bef06b14405p-93, 0x1.dd4ec4e1d421p-43, 0x1.0a2b233f08p-3},
+   {-0x1.b18e160362c24p-94, 0x1.6bd65e8b0b7p-45, 0x1.62e43056cp-3},
+   {-0x1.c6ac3f1862a6bp-93, -0x1.0f5aad509ea8p-44, 0x1.bb9d3cbd68p-3},
+   {-0x1.dead1a4581acfp-93, -0x1.ac842de00564p-43, 0x1.0a2b244da4p-2},
+   {-0x1.96b1f2f60e3e4p-93, 0x1.9cec9a50db228p-42, 0x1.3687aa9b78p-2}},
+  {{0x1.dbd93cdc08613p-96, 0x1.96f39c49fa8ap-44, -0x1.62e423dd4p-6},
+   {-0x1.3c008f058a015p-94, -0x1.f26429af65b7p-43, -0x1.36879e514p-6},
+   {0x1.f96a86136c1d1p-93, -0x1.bfc5afb2bd378p-42, -0x1.0a2b2240cp-6},
+   {0x1.3917cea885bep-93, -0x1.421e0c297638p-46, -0x1.bb9d4b288p-7},
+   {0x1.f0f1b5d989675p-93, 0x1.92a7506c90a18p-42, -0x1.62e43c12p-7},
+   {-0x1.f7f8d6a190051p-93, -0x1.94925ae0e524p-42, -0x1.0a2b41ddp-7},
+   {0x1.ccb0919263869p-94, -0x1.0fb337ff2cf28p-42, -0x1.62e41068p-8},
+   {0x1.c9a5efe4b7c6cp-93, -0x1.966c27788d1cp-44, -0x1.62e3e4ccp-9},
+   {0x0p+0, 0x0p+0, 0x0p+0},
+   {-0x1.40288ccae8f0fp-95, -0x1.f3c5ff88d19c8p-42, 0x1.62e462b6p-9},
+   {-0x1.f7e788a87135p-94, -0x1.a9610028771cp-43, 0x1.62e44c93p-8},
+   {0x1.574cc6d3f577dp-93, 0x1.2a3a1a65aa398p-42, 0x1.0a2b1e33p-7},
+   {-0x1.56bb79b254f33p-99, -0x1.4a995b6d9ddcp-44, 0x1.62e4367cp-7},
+   {0x1.c4c209ca6783dp-94, -0x1.d7b98ef45911p-43, 0x1.bb9d449a8p-7},
+   {0x1.e9731de7f0155p-93, -0x1.de722390bbd6p-43, 0x1.0a2b1f194p-6},
+   {0x1.fadc62522444dp-96, -0x1.fd95cb835e38p-45, 0x1.3687ad114p-6}},
+  {{-0x1.1f72d2a6a460ep-95, 0x1.a25045c37c33p-43, -0x1.62e4795p-10},
+   {0x1.2847e318fd3ffp-93, -0x1.c633239e1cdc8p-42, -0x1.3686e5dcp-10},
+   {0x1.63f5750b9d826p-93, -0x1.cb15590f1cd78p-42, -0x1.0a2b6538p-10},
+   {-0x1.1382d6395c24cp-94, 0x1.7636a5400e2bp-43, -0x1.bb9bf138p-11},
+   {0x1.be4491ec20322p-94, 0x1.d0c5e2c9b6be8p-42, -0x1.62e53e5p-11},
+   {-0x1.706f04cc2c9f6p-93, -0x1.f3bc0ce9b9a08p-42, -0x1.0a2ab37p-11},
+   {0x1.ab6f41df01d7fp-93, 0x1.a7cbc9a97ba4p-44, -0x1.62e0ap-12},
+   {-0x1.67e487663ca3ep-100, -0x1.957976dc5f36p-43, -0x1.62e84fcp-13},
+   {0x0p+0, 0x0p+0, 0x0p+0},
+   {0x1.9681e48dde135p-93, -0x1.868625640a69p-43, 0x1.62e7bp-13},
+   {0x1.a2948cd558655p-93, -0x1.2ee3d96b696ap-42, 0x1.62e35f6p-12},
+   {-0x1.cfc26ccf6d0e4p-96, 0x1.53edbcf1165p-46, 0x1.0a2b4b2p-11},
+   {0x1.f68d24b9e338dp-93, 0x1.783e334613p-51, 0x1.62e4be1p-11},
+   {-0x1.f33369bf7dff1p-95, -0x1.60785f20acb2p-42, 0x1.bb9e085p-11},
+   {-0x1.685a35575eff1p-95, -0x1.5a62ec66568p-48, 0x1.0a2b94d4p-10},
+   {-0x1.4c4d1abca79bfp-95, 0x1.7ded26dc813p-46, 0x1.368810f8p-10}},
+  {{0x1.40676dea39b19p-94, 0x1.25337681fa9p-42, -0x1.62dc284p-14},
+   {-0x1.ec76c964ac8d6p-94, -0x1.504032e2ed388p-42, -0x1.367d0ecp-14},
+   {0x1.8ecaeb6d9523cp-95, 0x1.c28fde83047ep-44, -0x1.0a1dd6cp-14},
+   {-0x1.e4069214576bep-93, 0x1.58f2757976ef8p-42, -0x1.bbbcffp-15},
+   {0x1.86146d1f9b91fp-93, -0x1.d4717ca0a323p-42, -0x1.62fe138p-15},
+   {0x1.1eb44b07102c5p-93, -0x1.86ffcda25278p-43, -0x1.0a3eebp-15},
+   {-0x1.95bbb5fd5a466p-93, 0x1.1ce399729e7bp-43, -0x1.62ff0ap-16},
+   {-0x1.79059023f8767p-93, -0x1.dbf1c6a400408p-42, -0x1.62ff84p-17},
+   {0x0p+0, 0x0p+0, 0x0p+0},
+   {-0x1.b4cb08d6fd48fp-93, -0x1.db0e38e5aaa98p-42, 0x1.63007cp-17},
+   {-0x1.0e6a88bfc3838p-93, 0x1.2b1c75580439p-43, 0x1.6300f6p-16},
+   {0x1.8074feacfe49dp-94, 0x1.401bb919f14ep-42, 0x1.0a21148p-15},
+   {-0x1.f56f5f168db15p-93, -0x1.85d6f6487ce2p-44, 0x1.62e1ecp-15},
+   {0x1.9eae7e05a0143p-93, -0x1.af5d58a7c9218p-42, 0x1.bba301p-15},
+   {-0x1.a859095999ae3p-94, 0x1.590faa0883bd8p-42, 0x1.0a32298p-14},
+   {0x1.4f787e495e5ep-93, -0x1.fbb791220a18p-46, 0x1.3682f14p-14}}
+};
 
-  /* Add e*log(2) to (h,l), where -1074 <= e <= 1023, thus e has at most
-     11 bits. log2_h is an integer multiple of 2^-42, so that e*log2_h
-     is exact. */
-  static const double log2_h = 0x1.62e42fefa38p-1,
-    log2_l = 0x1.ef35793c7673p-45;
-  /* |log(2) - (h+l)| < 2^-102.01 */
-  /* let hh = e * log2_h: hh is an integer multiple of 2^-42,
-     with |hh| <= 1074*log2_h
-     = 3274082061039582*2^-42. l1 is also an integer multiple of 2^-42,
-     with |l1| <= 1524716581803*2^-42. Thus hh+l1 is an integer multiple of
-     2^-42, with 2^42*|hh+l1| <= 3275606777621385 < 2^52, thus hh+l1 is exactly
-     representable. */
+/*
+  rf[64] and lf[64][2] are lookup tables for the fast path
+  -ln(rf[][]) = lf[][1] + lf[][0]
+  values are approximately from 1/sqrt(2) to sqrt(2)
+*/
+static const double rf[64] = {
+  0x1.6816818p+0, 0x1.642c858p+0, 0x1.605816p+0, 0x1.5c98828p+0,
+  0x1.58ed23p+0, 0x1.5555558p+0, 0x1.51d07e8p+0, 0x1.4e5e0a8p+0,
+  0x1.4afd6ap+0, 0x1.47ae148p+0, 0x1.446f868p+0, 0x1.4141418p+0,
+  0x1.3e22ccp+0, 0x1.3b13b1p+0, 0x1.381381p+0, 0x1.3521cf8p+0,
+  0x1.323e348p+0, 0x1.2f684cp+0, 0x1.2c9fb5p+0, 0x1.29e4128p+0,
+  0x1.27350b8p+0, 0x1.249249p+0, 0x1.21fb78p+0, 0x1.1f7048p+0,
+  0x1.1cf06bp+0, 0x1.1a7b96p+0, 0x1.181181p+0, 0x1.15b1e6p+0,
+  0x1.135c81p+0, 0x1.111111p+0, 0x1.0ecf568p+0, 0x1.0c9715p+0,
+  0x1.0a68108p+0, 0x1.0842108p+0, 0x1.0624ddp+0, 0x1.041041p+0,
+  0x1.020408p+0, 0x1p+0, 0x1.f81f82p-1, 0x1.f07c1fp-1,
+  0x1.e9131a8p-1, 0x1.e1e1e2p-1, 0x1.dae6078p-1, 0x1.d41d42p-1,
+  0x1.cd85688p-1, 0x1.c71c72p-1, 0x1.c0e07p-1, 0x1.bacf918p-1,
+  0x1.b4e81b8p-1, 0x1.af286cp-1, 0x1.a98ef6p-1, 0x1.a41a418p-1,
+  0x1.9ec8e98p-1, 0x1.9999998p-1, 0x1.948b1p-1, 0x1.8f9c19p-1,
+  0x1.8acb91p-1, 0x1.8618618p-1, 0x1.8181818p-1, 0x1.7d05f4p-1,
+  0x1.78a4c8p-1, 0x1.745d178p-1, 0x1.702e06p-1, 0x1.6c16c18p-1
+};
 
-  double ee = e;
-  fast_two_sum (h, l, __builtin_fma (ee, log2_h, l1), z);
-  /* here |hh+l1|+|z| <= 3275606777621385*2^-42 + 0.0022 < 745
-     thus |h| < 745, and the additional error from the fast_two_sum() call is
-     bounded by 2^-105*745 < 2^-95.4. */
-  /* add ph + pl + l2 to l */
-  *l = ph + (*l + (l2 + pl));
-  /* here |ph| < 2.26e-6, |l| < ulp(h) = 2^-43, |l2| < 2^-43 and
-     |pl| < 2^-69.99, thus |l2 + pl| < 2^-42 and |*l + l2 + pl| < 2^-41.99,
-     and the rounding error on l2 + pl is bounded by 2^-95 (l2 + pl cannot
-     be > 2^-42), and that on *l + (...) by 2^-94.
-     Now |ph + (*l + (l2 + pl))| < 2.26e-6 + 2^-41.99 < 2^-18.7, thus the
-     rounding error on ph + ... is bounded by ulp(2^-18.7) = 2^-71, which
-     yields a cumulated error bound of 2^-71 + 2^-95 + 2^-94 < 2^-70.99. */
+static const double lf[64][2] = {
+  {-0x1.f2f8281bade6ap-42, -0x1.5d5bde3994p-2}, {0x1.c2843fdd367a4p-42, -0x1.522ae0438cp-2},
+  {-0x1.06c10c34c14bp-44, -0x1.4718dc171cp-2}, {0x1.cfa4e853f589p-43, -0x1.3c2526cb34p-2},
+  {-0x1.ce3ac179bd856p-42, -0x1.314f1e0534p-2}, {-0x1.b91f82deb8122p-42, -0x1.269621934cp-2},
+  {0x1.46bbb83d7163ep-42, -0x1.1bf995a9a8p-2}, {0x1.b842e5a74bdbp-42, -0x1.1178e84a8p-2},
+  {-0x1.862715e5bb534p-42, -0x1.071385f4d4p-2}, {-0x1.9bcbcbea0cdf8p-42, -0x1.f991c6eb38p-3},
+  {-0x1.01101cb605958p-43, -0x1.e530f1067p-3}, {0x1.0c38c81ad8f06p-42, -0x1.d10380b658p-3},
+  {0x1.3aa40992a6d82p-42, -0x1.bd0874c3cp-3}, {0x1.30f68780ae82ep-42, -0x1.a93ed248bp-3},
+  {-0x1.7d116989d098p-47, -0x1.95a5ac5f7p-3}, {-0x1.1e0012ba619cap-42, -0x1.823c150518p-3},
+  {0x1.54535d5671858p-43, -0x1.6f0127cf58p-3}, {-0x1.ed87db3498128p-42, -0x1.5bf407b54p-3},
+  {-0x1.aafde9c9fc39ap-42, -0x1.4913d94338p-3}, {-0x1.015868c234p-43, -0x1.365fca3158p-3},
+  {0x1.eff33f502c226p-42, -0x1.23d7126cap-3}, {0x1.b8521e874d358p-43, -0x1.1178e7228p-3},
+  {0x1.54d75afe84568p-43, -0x1.fe89129dcp-4}, {-0x1.1a813f3fa7c1ep-42, -0x1.da7278384p-4},
+  {-0x1.6c6676f40963ep-42, -0x1.b6ac8afadp-4}, {-0x1.2620b7957a7a6p-42, -0x1.9335e4d59p-4},
+  {0x1.f8ffee5598f38p-43, -0x1.700d2f4ebp-4}, {-0x1.fab0f5bf42ca2p-42, -0x1.4d311652p-4},
+  {-0x1.7a3e970b1c3a8p-44, -0x1.2aa049247p-4}, {-0x1.d030435fecb5p-43, -0x1.08598a59ep-4},
+  {0x1.35084a4fb8ab8p-43, -0x1.ccb7357dep-5}, {0x1.32f36d60b44c4p-43, -0x1.894aa1cap-5},
+  {0x1.c1bcce5be811p-45, -0x1.466ae8a2ep-5}, {0x1.777740b18714ap-42, -0x1.0415d81e8p-5},
+  {-0x1.955c057693d94p-43, -0x1.8492470c8p-6}, {0x1.4f71addb8bep-43, -0x1.020564894p-6},
+  {-0x1.bcda4e198afbp-44, -0x1.01014f588p-7}, {0x1.cp-67, 0x0p+0},
+  {-0x1.fe0df75092c5ep-42, 0x1.fc0a891p-7}, {0x1.98036ec7e0a1p-45, 0x1.f829b1e78p-6},
+  {0x1.ba010f49e5ffp-42, 0x1.774593832p-5}, {-0x1.3ab13c266d328p-42, 0x1.f0a30a012p-5},
+  {-0x1.71798573e45d4p-43, 0x1.341d78b1cp-4}, {0x1.ad32f072669fcp-42, 0x1.6f0d272e5p-4},
+  {-0x1.54e391e16ea38p-43, 0x1.a926d434bp-4}, {-0x1.a302bbaf0559p-45, 0x1.e27074e2bp-4},
+  {0x1.cb4cd66e31f3p-44, 0x1.0d77e8cd08p-3}, {-0x1.5b7a5bc474128p-44, 0x1.29552e92p-3},
+  {-0x1.7062e8135f74p-46, 0x1.44d2b5e4b8p-3}, {0x1.3d4c88fe1f4bp-43, 0x1.5ff3060a78p-3},
+  {-0x1.37b70004a6946p-42, 0x1.7ab890411p-3}, {-0x1.4a5885167c1ecp-42, 0x1.9525aa7f48p-3},
+  {0x1.ff9d5953004acp-42, 0x1.af3c940008p-3}, {0x1.a21ec41d8219cp-43, 0x1.c8ff7cf9a8p-3},
+  {-0x1.a322bf2f02ae8p-44, 0x1.e27075e2bp-3}, {0x1.f1548b8a33616p-42, 0x1.fb9186b5ep-3},
+  {0x1.0e36401f7a006p-42, 0x1.0a324e0f38p-2}, {-0x1.9f1fa55382a8ap-42, 0x1.1675cacabcp-2},
+  {-0x1.a69763deb096p-44, 0x1.22941fc0f8p-2}, {0x1.d30bc3ac91bdap-42, 0x1.2e8e2bee1p-2},
+  {0x1.7a79cf4d73b28p-44, 0x1.3a64c59694p-2}, {0x1.ec345197b22dep-42, 0x1.4618bb81c4p-2},
+  {-0x1.f4810a30aeba8p-44, 0x1.51aad7c2ep-2}, {0x1.394d2371c1d1cp-43, 0x1.5d1bdbbd8p-2}
+};
 
-  *l = __builtin_fma (ee, log2_l, *l);
-  /* let l_in be the input value of *l, and l_out the output value.
-     We have |l_in| < 2^-18.7 (from above)
-     and |e*log2_l| <= 1074*0x1.ef35793c7673p-45
-     thus |l_out| < 2^-18.69 and err(l_out) <= ulp(2^-18.69) = 2^-71 */
-
-  /* The absolute error on h + l is bounded by:
-     2^-78.25 from the error in the Sollya polynomial plus the rounding errors
-              in p_1 (&ph, &pl, z)
-     2^-91.94 for the maximal difference |e*(log(2)-(log2_h + log2_l))|
-              (|e| <= 1074 and |log(2)-(log2_h + log2_l)| < 2^-102.01)
-     2^-97 for the maximal difference |l1 + l2 - (-log(r))|
-     2^-95.4 from the fast_two_sum call
-     2^-70.99 from the *l = ph + (*l + l2) instruction
-     2^-71 from the last __builtin_fma call.
-     This gives an absolute error bounded by < 2^-69.99.
-  */
+double cr_log1p(double x){
+  b64u64_u ix = {.f = x};
+  u64 ax = ix.u<<1;
+  double ln1, ln0, eps;
+  if(__builtin_expect(ax<0x7f60000000000000ul, 1)){ // |x| < 0.0625
+    double x2 = x*x;
+    if(__builtin_expect(ax<0x7e60000000000000ul, 1)){ // |x| < 0x1p-12
+      ln1 = x;
+      eps = 0x1.6p-64*x;
+      if(__builtin_expect(ax<0x7d43360000000000ul, 1)){ // |x| < 0x1.19bp-21
+	if(ax<0x7940000000000000ul){ // |x| < 0x1p-53
+	  if(!ax) return x;
+	  return __builtin_fma(__builtin_fabs(x), -0x1p-54, x);
+	}
+	static const double c[] = {-0x1.00000000001d1p-1, 0x1.55555555558f7p-2};
+	ln0 = x2*(c[0] + x*c[1]);
+      } else {
+	static const double c[] =
+	  {-0x1.ffffffffffffdp-2, 0x1.5555555555551p-2, -0x1.000000d5555e1p-2, 0x1.99999b442f73fp-3};
+	ln0 = x2*((c[0]+x*c[1])+x2*(c[2]+x*c[3]));
+      }
+    } else {
+      static const double c[] =
+	{0x1.5555555555555p-2, -0x1p-2, 0x1.9999999999b41p-3, -0x1.555555555583bp-3,
+	 0x1.24924923f39ep-3, -0x1.fffffffe42e43p-4, 0x1.c71c75511d70bp-4, -0x1.99999de10510fp-4,
+	 0x1.7457e81b175f6p-4, -0x1.554fb43e54e0fp-4, 0x1.3ed68744f3d18p-4, -0x1.28558ad5a7ac4p-4};
+      double x3 = x2*x, x4 = x2*x2, hx = -0.5*x;
+      ln1 = __builtin_fma(hx,x,x);
+      ln0 = __builtin_fma(hx,x,x-ln1);
+      double f = ((c[0]+x*c[1])+x2*(c[2]+x*c[3])) +
+	x4*(((c[4]+x*c[5])+x2*(c[6]+x*c[7])) + x4*((c[8]+x*c[9])+x2*(c[10]+x*c[11])));
+      ln0 += x3*f;
+      eps = x3*0x1.94p-52;
+    }
+  } else { // |x| >= 0.0625
+    static const double c[] = {
+      -0x1.000000000003dp-1, 0x1.5555555554cf5p-2, -0x1.ffffffeca2939p-3, 0x1.99999a3661724p-3,
+      -0x1.555d345bfe6fdp-3, 0x1.247b887a6e5edp-3};
+    b64u64_u t, dt;
+    if(__builtin_expect((i64)ix.u<0x4340000000000000l && ix.u<0xbff0000000000000ul, 1)){
+      /* 0.0625 < x < 0x1p+53 or -1 < x < -0.0625. In the case 1 < x < 2^53
+         the fasttwosum() pre-condition is not fulfilled. But in that case
+         the 2nd operation z = s - x = s - 1 of fasttwosum() is exact, since
+         x+y <= 2^53, thus the last operation computes e = (x+y) - s, which is
+         exact by Sterbenz theorem. */
+      t.f = fasttwosum(1.0, x, &dt.f);
+    } else {
+      if(__builtin_expect(ix.u<0x4690000000000000ul, 1)){ // x < 0x1p+106
+	t.f = x; dt.f = 1;
+      } else {
+	if(__builtin_expect(ix.u<0x7ff0000000000000ul, 1)){ // x < 0x1p+1024
+	  t.f = x; dt.f = 0;
+	} else {
+	  if(ax>0xffe0000000000000ul) return x; // nan
+	  if(ix.u==0x7ff0000000000000ul) return x; // +inf
+	  if(ix.u==0xbff0000000000000ul) return -1./0.0; // -1
+	  return 0.0/0.0; // <-1
+	}
+      }
+    }
+    i64 j = t.u - 0x3fe6a00000000000l, j1 = (j>>(52-6))&0x3f, je = (j>>52), eoff = je<<52;
+    b64u64_u rs = {.f = rf[j1]};
+    if(__builtin_expect(je<1022, 1)){
+      rs.u -= eoff;
+    } else {
+      rs.u -= 1021l<<52;
+      static const double sc[] = {0x1p-1, 0x1p-2, 0x1p-3};
+      rs.f *= sc[je-1022];
+    }
+    double dh = rs.f*t.f, dl = __builtin_fma(rs.f,t.f,-dh) + rs.f*dt.f;
+    double xl, xh = fasttwosum(dh-1.0, dl, &xl), x2 = xh*xh;
+    xl += x2*((c[0] + xh*c[1]) + x2*((c[2] + xh*c[3]) + x2*(c[4] + xh*c[5])));
+    double L1 = 0x1.62e42fefa4p-1*je, L0 = -0x1.8432a1b0e2634p-43*je;
+    ln1 = lf[j1][1] + L1;
+    ln0 = lf[j1][0] + L0;
+    ln1 = fastsum(ln1, ln0, xh, xl, &ln0);
+    eps = 0x1.ap-65;
+  }
+  double lb = ln1 + (ln0 - eps), ub = ln1 + (ln0 + eps);
+  if(__builtin_expect(lb != ub, 0)) return as_log1p_refine(x, lb);
+  return lb;
 }
 
-static inline void dint_fromd (dint64_t *a, double b);
-static void log_2 (dint64_t *r, dint64_t *x);
-static inline double dint_tod (dint64_t *a);
-
-/* accurate path, using Tom Hubrecht's code below */
-static double
-cr_log1p_accurate (double x)
-{
-  dint64_t X, Y, C;
-
-#define EXCEPTIONS 38
-  static const double T[EXCEPTIONS][3] = {
-    {-0x1.ee5c09701a8e8p-9, -0x1.ef4b4d559442ep-9, -0x1.51a199b84acd9p-110},
-    {-0x1.ec50c1d0101dfp-9, -0x1.ed3e0b991b5dbp-9, 0x1.fffffffffffe6p-63},
-    {-0x1.e81621738c297p-9, -0x1.e8ff5ad035c59p-9, -0x1.fc08a7d86de44p-112},
-    {-0x1.dbd70f17ca7a7p-9, -0x1.dcb4b66956133p-9, -0x1.950be553dfc5dp-111},
-    {-0x1.c559493ed3a9p-9, -0x1.c622754f12eecp-9, 0x1.ffffffffffffcp-63},
-    {-0x1.bdd3211005ea1p-9, -0x1.be95abf29f07p-9, -0x1.480973c20c31dp-112},
-    {-0x1.97ffffffffc9dp-42, -0x1.98000000001b1p-42, -0x1.fffffffffffffp-96},
-    {-0x1.4fffffffffdb4p-42, -0x1.5000000000126p-42, 0x1.51a400000058ap-172},
-    {-0x1.1fffffffffe5p-42, -0x1.20000000000d8p-42, 0x1.6c8000000052p-173},
-    {-0x1.07ffffffffe95p-42, -0x1.08000000000b5p-42, -0x1.fffffffffffffp-96},
-    {-0x1.dfffffffffda8p-43, -0x1.e00000000012cp-43, 0x1.5f9000000041fp-174},
-    {-0x1.afffffffffe1ap-43, -0x1.b0000000000f3p-43, 0x1.cd520000004dep-175},
-    {-0x1.7fffffffffe8p-43, -0x1.80000000000cp-43, 0x1.20000000002b3p-175},
-    {-0x1.4fffffffffedap-43, -0x1.5000000000093p-43, 0x1.51a40000002c5p-176},
-    {-0x1.1ffffffffff28p-43, -0x1.200000000006cp-43, 0x1.6c8000000029p-177},
-    {-0x1.dfffffffffed4p-44, -0x1.e000000000096p-44, 0x1.5f9000000020fp-178},
-    {-0x1.affffffffff0dp-44, -0x1.b000000000079p-44, -0x1.fffffffffffffp-98},
-    {-0x1.7ffffffffff4p-44, -0x1.800000000006p-44, 0x1.200000000015ap-179},
-    {-0x1.4ffffffffff6dp-44, -0x1.5000000000049p-44, -0x1.fffffffffffffp-98},
-    {-0x1.1ffffffffff94p-44, -0x1.2000000000036p-44, 0x1.6c80000000148p-181},
-    {-0x1.dffffffffff6ap-45, -0x1.e00000000004bp-45, 0x1.5f90000000108p-182},
-    {-0x1.7ffffffffffap-45, -0x1.800000000003p-45, 0x1.20000000000adp-183},
-    {-0x1.1ffffffffffcap-45, -0x1.200000000001bp-45, 0x1.6c800000000a4p-185},
-    {-0x1.dffffffffffb5p-46, -0x1.e000000000025p-46, -0x1.fffffffffffffp-100},
-    {-0x1.7ffffffffffdp-46, -0x1.8000000000018p-46, 0x1.2000000000056p-187},
-    {-0x1.1ffffffffffe5p-46, -0x1.200000000000dp-46, -0x1.fffffffffffffp-100},
-    {-0x1.7ffffffffffe8p-47, -0x1.800000000000cp-47, 0x1.200000000002bp-191},
-    {-0x1.7fffffffffff4p-48, -0x1.8000000000006p-48, 0x1.2000000000016p-195},
-    {-0x1.7fffffffffffap-49, -0x1.8000000000003p-49, 0x1.2000000000008p-199},
-    {-0x1.7fffffffffffdp-50, -0x1.8000000000001p-50, -0x1.fffffffffffffp-104},
-    {-0x1.6a09e667f3bccp-52, -0x1.6a09e667f3bcdp-52, -0x1.278c3417a93d7p-159},
-    {0x1.8000000000003p-50, 0x1.7ffffffffffffp-50, -0x1.fffffffffffffp-104},
-    {0x1.200000000001bp-46, 0x1.1fffffffffff3p-46, -0x1.fffffffffffffp-100},
-    {0x1.e00000000004bp-46, 0x1.dffffffffffdbp-46, -0x1.fffffffffffffp-100},
-    {0x1.5000000000093p-44, 0x1.4ffffffffffb7p-44, -0x1.fffffffffffffp-98},
-    {0x1.b0000000000f3p-44, 0x1.affffffffff87p-44, -0x1.fffffffffffffp-98},
-    {0x1.080000000016bp-42, 0x1.07fffffffff4bp-42, -0x1.fffffffffffffp-96},
-    {0x1.9800000000363p-42, 0x1.97ffffffffe4fp-42, -0x1.fffffffffffffp-96},
+static double __attribute__((noinline)) as_log1p_refine(double x, double a){
+  static const double cz[][2] = {
+    {0x1.5555555555555p-2, 0x1.5555555555556p-56}, {-0x1p-2, 0x1.25558eff3c1efp-86},
+    {0x1.999999999999ap-3, -0x1.999999a91d6cap-57}, {-0x1.5555555555555p-3, -0x1.588aab185593ap-57},
+    {0x1.2492492492492p-3, 0x1.28c490abc528fp-57}
   };
-  for (int i = 0; i < EXCEPTIONS; i++)
-    if (x == T[i][0])
-      return T[i][1] + T[i][2];
-
-  /* for x > 0x1.6a5df33e01575p+101, log(x) and log1p(x) round to the same
-     value */
-  if (x > 0x1.6a5df33e01575p+101)
-  {
-    dint_fromd (&X, x);
-    log_2 (&Y, &X);
-    return dint_tod (&Y);
-  }
-
-  /* for |x| <= 0.5, we have |log(1+x)-x| < x^2, thus
-     for |x| <= 2^-54, |log(1+x)-x| < 2^-54*|x| < 1/2 ulp(x)
-     thus log(1+x) rounds to x or to the adjacent numbers */
-  if (-0x1p-53 <= x && x <= 0x1p-53)
-  {
-    /* warning: for x subnormal, x^2/2 will underflow */
-    if (-0x1p-54 <= x && x <= 0x1p-54)
-      return __builtin_fma (x, -x, x);
-    else /* 2^-54 < |x| <= 2^-53 thus 0.5*x will not underflow */
-      return __builtin_fma (x, -0.5*x, x);
-  }
-
-  /* (xh,xl) <- 1+x */
-  double xh, xl;
-  if (x > 1.0)
-    fast_two_sum (&xh, &xl, x, 1.0);
-  else
-    /* for small x, fast_two_sum is exact because the exponent difference
-       between 1 and x does not exceed 53 (we have treated |x| <= 2^-53
-       above). */
-    fast_two_sum (&xh, &xl, 1.0, x);
-
-  dint_fromd (&X, xh);
-  log_2 (&Y, &X);
-
-  /* if xl=0, we can simply return the accurate path for log(xh) */
-  if (xl == 0)
-    return dint_tod (&Y);
-
-  /* |Y-log(XH)| ~ 8e-52 */
-
-  div_dint (&C, xl, xh);
-  mul_dint (&X, &C, &C);
-  /* multiply X by -1/2 */
-  X.ex -= 1;
-  X.sgn = 0x1;
-  /* C <- C - C^2/2 */
-  add_dint (&C, &C, &X);
-  /* |C-log(1+xl/xh)| ~ 2e-64 */
-  add_dint (&Y, &Y, &C);
-
-  return dint_tod (&Y);
-}
-
-/* given x > -1, put in (h,l) a double-double approximation of log(1+x),
-   and return a bound err on the maximal absolute error so that:
-   |h + l - log(1+x)| < err.
-   We have x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
-static double
-cr_log1p_fast (double *h, double *l, double x, int e, d64u64 v)
-{
-  if (e < -5) /* e <= -6 thus |x| < 2^-5 */
-  {
-    double lo;
-    /* taken the following from the accurate path */
-    if (-0x1p-53 <= x && x <= 0x1p-53)
-    {
-      if (-0x1p-54 <= x && x <= 0x1p-54)
-        *h = __builtin_fma (x, -x, x);
-      else
-        *h = __builtin_fma (x, -0.5*x, x);
-      *l = 0;
-      return 0;
+  static const double czl[] = {
+    -0x1.fffffffffc555p-4, 0x1.c71c71c7185aap-4, -0x1.9999d44449a31p-4, 0x1.745d51f1817c7p-4
+  };
+  static const double cy[][2] = {
+    {1,0}, {-0.5, 0},
+    {0x1.5555555555555p-2, 0x1.5555555555555p-56}, {-0x1p-2, -0x1.80007ed9858b7p-107},
+    {0x1.999999999999ap-3, -0x1.9999999999991p-57}
+  };
+  static const double cl[4] = {
+    -0x1.5555555555555p-3, 0x1.2492492492492p-3, -0x1.0000000073334p-3, 0x1.c71c71c802f68p-4
+  };
+  b64u64_u ix = {.f = x};
+  double ln22, ln21, ln20;
+  u64 ax = ix.u<<1;
+  if(ax<0x7ea0000000000000ul){
+    if(ax<0x7940000000000000ul){
+      if(!ax) return x;
+      return __builtin_fma(__builtin_fabs(x), -0x1p-54, x);
     }
-    p_1a (h, &lo, x);
-    fast_two_sum (h, l, x, *h);
-    *l += lo;
-    /* from analyze_x_plus_p1a(rel=true,Xmax=2^-5.) in the accompanying file
-       log1p.sage, the relative error is bounded by 2^-61.14 with respect to
-       h. We use the fact that we don't need the return value err to be
-       positive, since we add/subtract it in the rounding test. */
-    return 0x1.d1p-62 * *h; /* 2^-61.14 < 0x1.d1p-62 */
-  }
+    double x2h = x*x, x2l = __builtin_fma(x,x,-x2h);
+    double x3l, x3h = mulddd(x,x2h, x2l, &x3l);
+    double sl = x*((czl[0] + x*czl[1]) + x2h*(czl[2] + x*czl[3]));
+    double sh = polyddd(x, 5,cz, &sl);
+    sh = muldd(sh,sl,x3h,x3l, &sl);
+    x2h *= -0.5;
+    x2l *= -0.5;
+    ln22 = x;
+    ln21 = fastsum(x2h,x2l, sh,sl, &ln20);
+  } else {
+    i64 j = __builtin_roundeven(a*0x1.71547652b82fep+16);
+    i64 i = j + 34952;
+    int j1 = (i>>12)&0xf, j2 = (i>>8)&0xf, j3 = (i>>4)&0xf, j4 = i&0xf, je = i>>16;
+    double L[3];
+    L[0] = (ln[0][j1][0] + ln[1][j2][0]) + (ln[2][j3][0] + ln[3][j4][0]);
+    L[1] = (ln[0][j1][1] + ln[1][j2][1]) + (ln[2][j3][1] + ln[3][j4][1]);
+    L[2] = (ln[0][j1][2] + ln[1][j2][2]) + (ln[2][j3][2] + ln[3][j4][2]);
 
-  /* for x > 0x1.6a5df33e01575p+101, log(x) and log1p(x) round to the same
-     value */
-  if (x > 0x1.6a5df33e01575p+101)
-  {
-    cr_log_fast (h, l, e, v);
-    return 0x1.02p-70; /* error bound from cr_log_fast: 2^-69.99 < 1.02p-70 */
-  }
-
-  /* (xh,xl) <- 1+x */
-  double xh, xl;
-  if (x > 1.0)
-    fast_two_sum (&xh, &xl, x, 1.0);
-  else
-    fast_two_sum (&xh, &xl, 1.0, x);
-
-  v.f = xh;
-  e = (v.u >> 52) - 0x3ff;
-  v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
-  cr_log_fast (h, l, e, v);
-
-  if (xl == 0) /* x+1 = xh exactly, thus we can call cr_log_fast on xh */
-    return 0x1.b6p-69; /* error bound from cr_log */
-
-  /* now xl is not zero: log(xh+xl) = log(xh) + log(1+xl/xh) */
-  double c = xl / xh; /* xh cannot be zero since xl <> 0 */
-  /* Since |xl| < ulp(xh), we have |xl| < 2^-52 |xh|,
-     thus |c| < 2^-52, and since |log(1+x)-x| < x^2 for |x| < 0.5,
-     we have |log(1+c)-c)| < c^2 < 2^-104. */
-  *l += c;
-  /* Since |l_in| < 2^-18.69 (from the analysis of cr_log_fast, see file
-     ../log/log.c), and |c| < 2^-52, we have |l| < 2^-18.68, thus the
-     rounding error in *l += c is bounded by ulp(2^-18.68) = 2^-71.
-     The total absolute error is thus bounded by:
-     0x1.b6p-69 + 2^-104 + 2^-71 < 2^-68.02. */
-
-  return 0x1.f9p-69; /* 2^-68.02 < 0x1.f9p-69 */
-}
-
-double
-cr_log1p (double x)
-{
-  d64u64 v = {.f = x};
-  int e = ((v.u >> 52) & 0x7ff) - 0x3ff;
-  if (__builtin_expect (e == 0x400 || x == 0 || x <= -1.0, 0))
-    /* case NaN/Inf, +/-0 or x <= -1 */
-  {
-    if (x <= -1.0) /* we use the fact that NaN < -1 is false */
-    {
-      /* log1p(x<-1) is NaN, log1p(-1) is -Inf and raises DivByZero */
-      if (x < -1.0)
-        return 0.0 / 0.0;
+    b64u64_u t, dt;
+    if((i64)ix.u<0x4690000000000000l && ix.u<0xbfe0000000000000ul ){
+      t.f = twosum(1.0, x, &dt.f);
+      if(__builtin_expect(!(dt.u<<1), 0)) dt.u = 0;
+    } else {
+      if(__builtin_expect((i64)ix.u>=0x4690000000000000l, 0))
+	t.f = x;
       else
-        return 1.0 / -0.0;
+	t.f = 1 + x;
+      dt.u = 0;
     }
-    return x; /* +/-0, NaN or +Inf */
+    t.u -= (long)je<<52;
+
+    double t12 = rt[0][j1]*rt[1][j2], t34 = rt[2][j3]*rt[3][j4];
+    double th = t12*t34, tl = __builtin_fma(t12,t34,-th);
+    double dh = th*t.f, dl = __builtin_fma(th,t.f,-dh);
+    double sh = tl*t.f, sl = __builtin_fma(tl,t.f,-sh);
+    double xl, xh = fasttwosum(dh-1, dl, &xl);
+    xh = fastsum(xh, xl, sh, sl, &xl);
+    if(dt.u){
+      dt.u -= (long)je<<52;
+      double ddh = th*dt.f, ddl = __builtin_fma(th,dt.f,-ddh) + tl*dt.f;
+      xh = fastsum(xh, xl, ddh, ddl, &xl);
+    }
+    sl = xh*((cl[0] + xh*cl[1]) + (xh*xh)*(cl[2] + xh*cl[3]));
+    sh = polydd(xh,xl, 5,cy, &sl);
+    sh = muldd(xh,xl, sh,sl, &sl);
+    if(je){
+      ln22 = 0x1.62e42fefa4p-1*je; ln21 = -0x1.8432a1b0e28p-43*je; ln20 = 0x1.cc01f97b57a08p-87*je;
+      ln22 += L[2];
+      ln21 = fastsum(ln21, ln20, L[1], L[0], &ln20);
+    } else {
+      ln22 = L[2];
+      ln21 = L[1];
+      ln20 = L[0];
+    }
+    ln21 = sum(ln21, ln20, sh, sl, &ln20);
   }
-  /* now x > -1 */
-  /* normalize v in [1,2) */
-  v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
-  /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
-  double h, l, err;
-  err = cr_log1p_fast (&h, &l, x, e, v);
+  ln22 = fasttwosum(ln22,ln21, &ln21);
+  ln21 = fasttwosum(ln21,ln20, &ln20);
 
-  double left = h + (l - err), right = h + (l + err);
-  if (left == right)
-    return left;
-  return cr_log1p_accurate (x);
-}
-
-/* the following code was copied from Tom Hubrecht's implementation of
-   correctly rounded pow for CORE-MATH */
-
-// Approximation for the second iteration
-static inline void p_2(dint64_t *r, dint64_t *z) {
-  cp_dint(r, &P_2[0]);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[1], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[2], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[3], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[4], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[5], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[6], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[7], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[8], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[9], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[10], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[11], r);
-
-  mul_dint(r, z, r);
-  add_dint(r, &P_2[12], r);
-
-  mul_dint(r, z, r);
-}
-
-static void log_2(dint64_t *r, dint64_t *x) {
-  int64_t E = x->ex;
-
-  // Find the lookup index
-  uint16_t i = x->hi >> 55;
-
-  if (x->hi > 0xb504f333f9de6484) {
-    E++;
-    i = i >> 1;
+  b64u64_u t = {.f = ln21};
+  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+    b64u64_u w = {.f = ln20};
+    if((w.u^t.u)>>63)
+      t.u--;
+    else
+      t.u++;
+    ln21 = t.f;
   }
-
-  x->ex = x->ex - E;
-
-  dint64_t z;
-  mul_dint(&z, x, &_INVERSE_2[i - 128]);
-
-  add_dint(&z, &M_ONE, &z);
-
-  // E·log(2)
-  mul_dint_2(r, E, &LOG2);
-
-  dint64_t p;
-
-  p_2(&p, &z);
-
-  add_dint(&p, &_LOG_INV_2[i - 128], &p);
-
-  add_dint(r, &p, r);
-}
-
-// Convert a dint64_t value to a double
-// assuming the input is not in the subnormal range
-static inline double dint_tod(dint64_t *a) {
-
-  f64_u r = {.u = (a->hi >> 11) | (0x3ffl << 52)};
-  /* r contains the upper 53 bits of a->hi, 1 <= r < 2 */
-
-  double rd = 0.0;
-  /* if round bit is 1, add 2^-53 */
-  if ((a->hi >> 10) & 0x1)
-    rd += 0x1p-53;
-
-  /* if trailing bits after the rounding bit are non zero, add 2^-54 */
-  if (a->hi & 0x3ff || a->lo)
-    rd += 0x1p-54;
-
-  r.u = r.u | a->sgn << 63;
-  r.f += (a->sgn == 0) ? rd : -rd;
-
-  f64_u e;
-
-  /* For log, the result is always in the normal range,
-     thus a->ex > -1023. Similarly, we cannot have a->ex > 1023. */
-
-  e.u = ((a->ex + 1023) & 0x7ff) << 52;
-
-  return r.f * e.f;
+  return ln22 + ln21;
 }
