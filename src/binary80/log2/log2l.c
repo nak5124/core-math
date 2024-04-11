@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x8p-2l
+#define TRACE 0x2.80db343f62ef7b4p-16385l
 
 #include <assert.h>
 #include <stdio.h>
@@ -420,12 +420,13 @@ long double
 cr_log2l (long double x)
 {
   b96u96_u t = {.f = x};
+  // if (x == TRACE) printf ("e=%x m=%lx\n", t.e, t.m);
   int ex = t.e, e = ex - 0x3fff;
   if (__builtin_expect(!ex, 0)) // x=+0 or positive subnormal
   {
     if (!t.m) return (long double) -1.0 / 0.0; // x=+0
     int k = __builtin_clzll (t.m);
-    e -= k;
+    e -= k - 1;
     t.m <<= k;
   }
   if (__builtin_expect(ex >= 0x7fff, 0)) // x<=0 or Inf or NaN
@@ -448,5 +449,7 @@ cr_log2l (long double x)
   if (left == right)
     return left;
 
+  /* FIXME: when removing -1 here, also remove the check in check_special.c
+     and .. /support/check_worst_uni.c */
   return -1;
 }
