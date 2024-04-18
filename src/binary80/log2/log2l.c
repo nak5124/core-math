@@ -416,40 +416,6 @@ fast_path (double *h, double *l, long double x, int e)
    */
 }
 
-/* given h, l with |h + l - log2(x)| < 2^-84,
-   return non-zero if o(h+l) = o(log2(x)) as a long double */
-static int
-rounding_test (double h, double l)
-{
-  /* we have |l| < 2^-36.99, and we want to know if l-err and l+err
-     round to the same value, for err = 0x1.c1p-85 < 2^-84 */
-  b64u64_u th = {.f = h}, tl = {.f = l};
-  int eh = (th.u << 1) >> 53; // unbiased exponent
-  int el = (tl.u << 1) >> 53; // unbiased exponent, el <= 986
-  int lbits = 64 - (eh - el); // number of bits of l contributing to result
-                              // when h+l is considered as long double
-  int rb = 52 - lbits;        // position in l of the (final result) round bit
-  /* for 2^-37 <= |l| < 2^-36, i.e., el=986, 2^-84 corresponds to 2^5 ulps,
-     thus for any el it corresponds to 2^(991-el) ulps */
-  int sh = 991 - el; // 2^-84 corresponds to 2^sh ulp(l), with sh >= 5
-  if (sh >= rb || lbits < 0)
-    /* If sh >= rb, adding/subtracting 2^sh will modify the round bit.
-       If lbits < 0, l is so tiny that only contributes to result,
-       in this case we cannot round for directed modes. */
-    return 0;
-  /* Now sh < rb, and since sh >= 5, this means 5 < rb.
-     We can round (for all rounding modes) if when adding or subtracting
-     2^sh ulps from l, bit rb does not change, i.e., if all bits from
-     sh to rb-1 are different from 000...000 or 111...111. */
-
-  // since lbits >= 0, rb <= 52
-  // since sh < rb and rb <= 52, sh < 52 (and also 5 <= sh)
-  uint64_t g = tl.u >> sh;
-  uint64_t mask = (1ul << (rb - sh)) - 1ul;
-  g = g & mask;
-  return g != 0 && g != mask;
-}
-
 long double
 cr_log2l (long double x)
 {
@@ -477,8 +443,11 @@ cr_log2l (long double x)
 
   double h, l;
   fast_path (&h, &l, t.f, e);
-  if (rounding_test (h, l))
-    return (long double) h + (long double) l;
+  long double H = h, L = l;
+  const long double err = 0x1.c1p-85l;
+  long double left = H + (L - err), right = H + (L + err);
+  if (left == right)
+    return left;
 
   /* FIXME: when removing -1 here, also remove the check in check_special.c
      and .. /support/check_worst_uni.c */
