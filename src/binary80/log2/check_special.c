@@ -78,7 +78,7 @@ check (long double x)
   long double y1 = ref_log2l (x);
   fesetround (rnd1[rnd]);
   long double y2 = cr_log2l (x);
-  if (y2 != -1 && !is_equal (y1, y2))
+  if (!is_equal (y1, y2))
   {
     printf ("FAIL x=%La ref=%La z=%La\n", x, y1, y2);
     fflush (stdout);

@@ -203,9 +203,45 @@ def analyzeP():
    print ("err=", log(err)/log(2.))
    print ("lmax=", l.abs().upper())
 
-   
-
-
-
-         
-      
+# T1acc()
+# (0.00903320312500000000, 0.990966796875000000, 1.00854492187500000)
+def T1acc():
+   print ("static const long double T1acc[64][3] = {")
+   maxerr = 0
+   Zmin = Zmax = 1
+   for i in [-37..26]:
+      if i >= 0:
+         xmin = R64(1 + i/64)
+         xmax = R64(1 + (i+1)/64).nextbelow()
+      else:
+         xmin = R64(1 + i/128)
+         xmax = R64(1 + (i+1)/128).nextbelow()
+      inv = R64(2)/(xmin+xmax)
+      zmin = abs(inv*xmin-1)
+      zmax = abs(inv*xmax-1)
+      z = max(zmin, zmax)
+      e = ceil(log(z)/log(2.))
+      # inv*x should be an integer multiple of 2^(e-64)
+      assert xmin.ulp()==xmax.ulp(), "xmin.ulp()==xmax.ulp()"
+      u = xmin.ulp()
+      eu = round(log(u)/log(2.)) # x is an integer multiple of 2^eu
+      # inv should be an integer multiple of 2^(e-64-eu)
+      e = e-64-eu
+      xl = R64(floor(inv/2^e)*2^e)
+      xh = R64(ceil(inv/2^e)*2^e)
+      zl = max(abs(xl*xmin-1),abs(xl*xmax-1))
+      zh = max(abs(xh*xmin-1),abs(xh*xmax-1))
+      if zl<zh:
+         x = xl
+      else:
+         x = xh
+      Zmin = min(Zmin,x*xmin)
+      Zmax = max(Zmax,x*xmax)
+      maxerr = max(maxerr, min(zl,zh))  
+      X = x.exact_rational()
+      h = R64(n(-log(X)/log(2),200))
+      H = h.exact_rational()
+      l = R64(n(-log(X)/log(2)-H,200))
+      print ("   {" + get_hex(x) + ", " + get_hex(h) + "l, " + get_hex(l) + "l}, /* i=" + str(i) + " */")
+   print ("};")
+   return maxerr, Zmin, Zmax
