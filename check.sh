@@ -123,7 +123,9 @@ case "$KIND" in
         "$MAKE" $QUIET -C "$DIR" check_special
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
-            $CORE_MATH_LAUNCHER "$DIR/check_special" "$MODE" "${ARGS[@]}"
+            # we also give xxx.wc in input to check --special since some
+	    # functions use it (for example log2)
+            $CORE_MATH_LAUNCHER "$DIR/check_special" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
         done
         ;;
     --exact)
