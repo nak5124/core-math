@@ -32,6 +32,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <mpfr.h>
 #ifndef CORE_MATH_NO_OPENMP
 #include <omp.h>
 #endif
@@ -120,6 +121,53 @@ is_equal (long double x, long double y)
   return v.e == w.e && v.m == w.m; // ensures +0 and -0 differ
 }
 
+// return 1 if failure, 0 otherwise
+static int
+check (long double x)
+{
+  ref_init();
+  ref_fesetround(rnd);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
+  long double z1 = ref_function_under_test(x);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+  fesetround(rnd1[rnd]);
+  feclearexcept (FE_INEXACT);
+  long double z2 = cr_function_under_test(x);
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
+  /* Note: the test z1 != z2 would not distinguish +0 and -0. */
+  if (is_equal (z1, z2) == 0) {
+    printf("FAIL x=%La ref=%La z=%La\n", x, z1, z2);
+    fflush(stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+  if ((inex1 == 0) && (inex2 != 0))
+  {
+    printf ("Spurious inexact exception for x=%La\n", x);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x=%La\n", x);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+  return 0;
+}
+
 void
 doloop(void)
 {
@@ -132,38 +180,15 @@ doloop(void)
 #pragma omp parallel for reduction(+: failures,tests)
 #endif
   for (int i = 0; i < count; i++) {
-    ref_init();
-    ref_fesetround(rnd);
-    fesetround(rnd1[rnd]);
     long double x = items[i];
-    long double z1 = ref_function_under_test(x);
-    long double z2 = cr_function_under_test(x);
     tests ++;
-    /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-    if (is_equal (z1, z2) == 0) {
-      printf("FAIL x=%La ref=%La z=%La\n", x, z1, z2);
-      fflush(stdout);
-#ifdef DO_NOT_ABORT
+    if (check (x))
       failures ++;
-#else
-      exit(1);
-#endif
-    }
 #ifdef WORST_SYMMETRIC
-    x = -x;
-    z1 = ref_function_under_test(x);
-    z2 = cr_function_under_test(x);
     tests ++;
-    if (is_equal (z1, z2) == 0) {
-      printf("FAIL x=%La ref=%La z=%La\n", x, z1, z2);
-      fflush(stdout);
-#ifdef DO_NOT_ABORT
+    if (check (-x))
       failures ++;
-#else
-      exit(1);
 #endif
-    }
-#endif /* WORST_SYMMETRIC */
   }
 
   free(items);
