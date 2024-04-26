@@ -93,13 +93,13 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
-  if ((inex_y == 0) & (inex_z != 0))
+  if ((inex_y == 0) && (inex_z != 0))
   {
     printf ("Spurious inexact exception for x=%a\n", x);
     fflush (stdout);
     if (!keep) exit (1);
   }
-  if ((inex_y != 0) & (inex_z == 0))
+  if ((inex_y != 0) && (inex_z == 0))
   {
     printf ("Missing inexact exception for x=%a\n", x);
     fflush (stdout);
