@@ -281,4 +281,4 @@ def doit_bacsel(e,k,t0=None,t1=None,neg=false):
    for i in range(k):
       u0 = t0+h*i
       u1 = min(t0+h*(i+1),t1)
-      print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 24 64")
+      print ("sbatch ./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 30 64")
