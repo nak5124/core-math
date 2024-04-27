@@ -182,7 +182,7 @@ static const double c[] = {-0x1p-1, 0x1.555555555553p-2, -0x1.fffffffffffap-3, 0
       
 double cr_acosh(double x){
   b64u64_u ix = {.f = x};
-  if(__builtin_expect(ix.u<=0x3ff0000000000000ul, 0)){
+  if(__builtin_expect((int64_t)ix.u<=0x3ff0000000000000l, 0)){
     if(ix.u==0x3ff0000000000000ul) return 0;
     errno = EDOM;
     return __builtin_nan("x<1");
