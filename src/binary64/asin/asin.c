@@ -221,6 +221,7 @@ static double asin_acc(double x){
   } else {
     rnd = 0;
   }
+  volatile double k0 = 1.0, __attribute__((unused)) k = k0 + 0x1p-1022;
   t.u = (fi.b[1]>>(11-nz))+(((u64)se-nz)<<52|xsign|rnd);
   return t.f;
 }
@@ -547,6 +548,7 @@ double cr_asin(double x){
   } else {
     rnd = 0;
   }
+  volatile double k0 = 1.0, __attribute__((unused)) k = k0 + 0x1p-1022;
   t.u = ((fi.b[1]>>(11-nz))+((u64)(e-nz)<<52|rnd))|xsign;
   return t.f;
 }
