@@ -149,7 +149,7 @@ check (double x)
   }
   if ((inex1 == 0) && (inex2 != 0))
   {
-    printf ("Spurious inexact exception for x=%la\n", x);
+    printf ("Spurious inexact exception for x=%la (y=%la)\n", x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return 1;
@@ -159,7 +159,7 @@ check (double x)
   }
   if ((inex1 != 0) && (inex2 == 0))
   {
-    printf ("Missing inexact exception for x=%la\n", x);
+    printf ("Missing inexact exception for x=%la (y=%la)\n", x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return 1;
