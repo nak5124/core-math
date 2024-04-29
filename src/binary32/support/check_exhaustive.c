@@ -82,8 +82,8 @@ doit (uint32_t n)
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
-  fexcept_t inex_z;
   z = cr_function_under_test (x);
+  fexcept_t inex_z;
   fegetexceptflag (&inex_z, FE_INEXACT);
   /* Note: the test y != z would not distinguish +0 and -0, instead we compare
      the 32-bit encodings. */
