@@ -58,6 +58,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <fenv.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -1179,9 +1180,12 @@ static void exp_3 (qint64_t *r, qint64_t *x) {
   Can return 1 only when (x,y) are in the set S from [4]:
   (a) either y is an integer, 2 <= y <= 34, or
   (b) x=2^E*m with m odd and y = 2^F*n with -5 <= F < 0, n odd, 3 <= n <= 34
+
+  If the result is exact (in binary64), resets the inexact flag to flagp.
 */
 static char
-exact_pow (double *r, double x, double y, const dint64_t *z) {
+exact_pow (double *r, double x, double y, const dint64_t *z, fexcept_t *flagp)
+{
   int64_t _s = z->sgn ? -1 : 1;
 
   // Check if x = 2^E
@@ -1197,6 +1201,8 @@ exact_pow (double *r, double x, double y, const dint64_t *z) {
       *r = z->sgn ? -1.0 : 1.0;
       pow2(r, (int64_t)G);
 
+      // restore inexact flag
+      fesetexceptflag (flagp, FE_INEXACT);
       return 1;
     }
     return 0;
@@ -1249,6 +1255,8 @@ exact_pow (double *r, double x, double y, const dint64_t *z) {
       *r = (double)((k >> (g - G)) * _s);
       pow2(r, g);
 
+      // restore inexact flag
+      fesetexceptflag (flagp, FE_INEXACT);
       return 1;
     }
     return 0;
@@ -1282,6 +1290,9 @@ exact_pow (double *r, double x, double y, const dint64_t *z) {
   int64_t G = E * (n << F);
   pow2(r, G);
 
+  // restore inexact flag
+  if (k >> 53)
+    fesetexceptflag (flagp, FE_INEXACT);
   return 1;
 }
 
@@ -1484,6 +1495,10 @@ double cr_pow (double x, double y) {
 
   double lh, ll;
 
+  // save inexact flag
+  fexcept_t flagp;
+  fegetexceptflag (&flagp, FE_INEXACT);
+
   // approximate log(x)
   int cancel = log_1 (&lh, &ll, x);
 
@@ -1645,7 +1660,7 @@ double cr_pow (double x, double y) {
   // Detect rounding boundary cases
   double e;
 
-  if (exact_pow (&e, x, y, &R))
+  if (exact_pow (&e, x, y, &R, &flagp))
     return e;
 #endif /* ENABLE_EXACT */
 #endif /* ENABLE_ZIV2 */
