@@ -552,8 +552,10 @@ static long double fast_path (int *needmoreaccuracy, long double x){
   return v.f;
 }
 
+// flagp is the saved inexact flag before the fast path
 static void
-accurate_path (long double *h, long double *l, long double x)
+accurate_path (long double *h, long double *l, long double x,
+               fexcept_t flagp)
 {
 #define EXCEPTIONS 152
 static const long double exceptions[EXCEPTIONS][3] = {
@@ -724,6 +726,7 @@ static const long double exceptions[EXCEPTIONS][3] = {
   long double r = x - (long double) k * 0x1p-15L;
   int32_t i = (k + 538869760) & 32767;
   int32_t e = (k - i) >> 15;
+  // x = 2^15*e + 2^10*i2 + 2^15*i1 + i0 + r
   int32_t i0 = i & 0x1f, i1 = (i >> 5) & 0x1f, i2 = i >> 10;
   Pacc (h, l, r);
   long double hh, ll;
@@ -756,6 +759,8 @@ static const long double exceptions[EXCEPTIONS][3] = {
     *h = __builtin_fmal (hh, __builtin_ldexpl (1.0L, e), *h);
     *l = 0;
   }
+  if (r == 0)
+    fesetexceptflag (&flagp, FE_INEXACT); // restore inexact flag
 }
 
 long double
@@ -793,12 +798,16 @@ cr_exp2l (long double x)
       return __builtin_fmal (x, -x, 0x1p0L);
   }
 
+  // save inexact flag
+  fexcept_t flagp;
+  fegetexceptflag (&flagp, FE_INEXACT);
+
   // now -16446 < x < -0x1.71547652b82fe176p-65 or 0x1.71547652b82fe176p-64 < x < 16384
   long double h;
   int needmoreaccuracy;
   h = fast_path (&needmoreaccuracy, x);
   if(__builtin_expect(!needmoreaccuracy, 1)) return h;
   long double l;
-  accurate_path (&h, &l, x);
+  accurate_path (&h, &l, x, flagp);
   return h + l;
 }
