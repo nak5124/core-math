@@ -270,6 +270,7 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
 double cr_exp2(double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
+  if(__builtin_expect(ax == 0, 0)) return 1.0;
   if(__builtin_expect(ax >= 0x8120000000000000ul, 0)){
     if(ax  > 0xffe0000000000000ul) return x;
     if(ax == 0xffe0000000000000ul) return (ix.u>>63)?0.0:x;
@@ -285,6 +286,7 @@ double cr_exp2(double x){
       }
     }
   }
+  u64 m = ix.u<<12, ex = (ax>>53) - 0x3ff, frac = ex>>63 | m<<ex;
   double sx = 4096.0*x, fx = __builtin_roundeven(sx), z = sx - fx, z2 = z*z;
   long k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
@@ -295,17 +297,21 @@ double cr_exp2(double x){
   double tz = th*z, fh = th, fl = tz*((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + tl;
   double eps = 1.64e-19;
   if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){
-    double ub = fh + (fl + eps), lb = fh + (fl - eps);
-    if(__builtin_expect( ub != lb, 0)) return as_exp2_accurate(x);
-    fh = as_ldexp(lb, ie);
+    if( __builtin_expect(frac, 1)){
+      double ub = fh + (fl + eps); fh += fl - eps;
+      if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
+    }
+    fh = as_ldexp(fh, ie);
   } else {
     ix.u = (1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
-    double ub = fh + (fl + eps), lb = fh + (fl - eps);
-    if(__builtin_expect( ub != lb, 0)) return as_exp2_accurate(x);
-    fh = as_todenormal(lb);
+    if(__builtin_expect(frac, 1)){
+      double ub = fh + (fl + eps); fh += fl - eps;
+      if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
+    }
+    fh = as_todenormal(fh);
   }
   return fh;
 }

@@ -1,6 +1,6 @@
 /* Check correctness of bivariate binary32 function on worst cases.
 
-Copyright (c) 2022 Stéphane Glondu, Inria.
+Copyright (c) 2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -32,6 +32,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <mpfr.h>
 #include <omp.h>
 
 #include "function_under_test.h"
@@ -91,6 +92,25 @@ asuint (float f)
   return u.i;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+static inline int
+is_equal (float x, float y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint (x) == asuint (y);
+}
+
 int tests = 0, failures = 0;
 
 static void
@@ -100,13 +120,36 @@ check (float x, float y)
   tests ++;
   ref_init();
   ref_fesetround(rnd);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   float z1 = ref_function_under_test(x, y);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround(rnd1[rnd]);
+  feclearexcept (FE_INEXACT);
   float z2 = cr_function_under_test(x, y);
-  if (asuint (z1) != asuint (z2)) {
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
+  if (! is_equal (z1, z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
 #pragma omp atomic update
+    failures ++;
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if ((inex1 == 0) && (inex2 != 0))
+  {
+    printf ("Spurious inexact exception for x=%a y=%a\n", x, y);
+    fflush (stdout);
+    failures ++;
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x=%a y=%a\n", x, y);
+    fflush (stdout);
     failures ++;
 #ifndef DO_NOT_ABORT
     exit(1);
