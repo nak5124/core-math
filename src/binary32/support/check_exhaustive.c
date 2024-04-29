@@ -30,6 +30,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <mpfr.h>
 #ifndef NO_OPENMP
 #include <omp.h>
 #endif
@@ -76,14 +77,31 @@ doit (uint32_t n)
   x = asfloat (n);
   ref_init ();
   ref_fesetround (rnd);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   y = ref_function_under_test (x);
+  mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround (rnd1[rnd]);
+  feclearexcept (FE_INEXACT);
   z = cr_function_under_test (x);
+  fexcept_t inex_z;
+  fegetexceptflag (&inex_z, FE_INEXACT);
   /* Note: the test y != z would not distinguish +0 and -0, instead we compare
      the 32-bit encodings. */
   if (asuint (y) != asuint (z))
   {
     printf ("FAIL x=%a ref=%a y=%a\n", x, y, z);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if ((inex_y == 0) && (inex_z != 0))
+  {
+    printf ("Spurious inexact exception for x=%a\n", x);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if ((inex_y != 0) && (inex_z == 0))
+  {
+    printf ("Missing inexact exception for x=%a\n", x);
     fflush (stdout);
     if (!keep) exit (1);
   }

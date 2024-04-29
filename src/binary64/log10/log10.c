@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <fenv.h>
 #include "dint.h"
 
 // Warning: clang also defines __GNUC__
@@ -668,13 +669,14 @@ static inline void dint_fromd (dint64_t *a, double b);
 static void accurate_log (dint64_t *r, dint64_t *x);
 static inline double dint_tod (dint64_t *a);
 
-/* accurate path, using Tom Hubrecht's code below (adapted for log10) */
+/* Accurate path, using Tom Hubrecht's code below (adapted for log10).
+   flagp stores the inexact flag before the fast path. */
 static double
-cr_log10_accurate (double x)
+cr_log10_accurate (double x, fexcept_t flagp)
 {
   dint64_t X, Y;
 
-#define EXCEPTIONS 19
+#define EXCEPTIONS 23
   static const double T[EXCEPTIONS][3] = {
     { 0x1p0, 0, 0 }, /* 1 */
     { 0x1.4p+3, 1, 0 }, /* 10 */
@@ -685,25 +687,28 @@ cr_log10_accurate (double x)
     { 0x1.e848p+19, 6, 0 }, /* 10^6 */
     { 0x1.312dp+23, 7, 0 }, /* 10^7 */
     { 0x1.7d784p+26, 8, 0 }, /* 10^8 */
-    /* the accurate code returns the correct rounding for 10^9,
-       whatever the rounding mode */
+    { 0x1.dcd65p+29, 9, 0 }, /* 10^9 */
     { 0x1.2a05f2p+33, 10, 0 }, /* 10^10 */
-    /* same for 10^11 */
+    { 0x1.74876e8p+36, 11, 0 }, /* 10^11 */
     { 0x1.d1a94a2p+39, 12, 0 }, /* 10^12 */
     { 0x1.2309ce54p+43, 13, 0 }, /* 10^13 */
-    /* same for 10^14 */
+    { 0x1.6bcc41e9p+46, 14, 0 }, /* 10^14 */
     { 0x1.c6bf52634p+49, 15, 0 }, /* 10^15 */
     { 0x1.1c37937e08p+53, 16, 0 }, /* 10^16 */
     { 0x1.6345785d8ap+56, 17, 0 }, /* 10^17 */
-    /* same for 10^18 */
+    { 0x1.bc16d674ec8p+59, 18, 0 }, /* 10^18 */
     { 0x1.158e460913dp+63, 19, 0 }, /* 10^19 */
     { 0x1.5af1d78b58c4p+66, 20, 0 }, /* 10^20 */
     { 0x1.b1ae4d6e2ef5p+69, 21, 0 }, /* 10^21 */
     { 0x1.0f0cf064dd592p+73, 22, 0 }, /* 10^22 */
   };
-  for (int i = 0; i < 19; i++)
+  for (int i = 0; i < EXCEPTIONS; i++)
     if (x == T[i][0])
+    {
+      // restore inexact flag
+      fesetexceptflag (&flagp, FE_INEXACT);
       return T[i][1] + T[i][2];
+    }
 
   dint_fromd (&X, x);
   /* x = (-1)^sgn*2^ex*(hi/2^63+lo/2^127) */
@@ -736,6 +741,11 @@ cr_log10 (double x)
       e = (v.u >> 52) - 0x3ff - 52;
     }
   }
+
+  // save inexact flag
+  fexcept_t flagp;
+  fegetexceptflag (&flagp, FE_INEXACT);
+
   /* now x > 0 */
   /* normalize v in [1,2) */
   v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
@@ -750,9 +760,21 @@ cr_log10 (double x)
 
   double left = h + (l - err), right = h + (l + err);
   if (left == right)
+  {
+    /* For x = 10^n for 0 <= n <= 22 and rounding to nearest, we should
+       return n without a spurious inexact exception. */
+    d64u64 w = {.f = left};
+    if (__builtin_expect ((w.u << 16) == 0, 0))
+    {
+      static const double pow10[] = { 0x1p+0, 0x1.4p+3, 0x1.9p+6, 0x1.f4p+9, 0x1.388p+13, 0x1.86ap+16, 0x1.e848p+19, 0x1.312dp+23, 0x1.7d784p+26, 0x1.dcd65p+29, 0x1.2a05f2p+33, 0x1.74876e8p+36, 0x1.d1a94a2p+39, 0x1.2309ce54p+43, 0x1.6bcc41e9p+46, 0x1.c6bf52634p+49, 0x1.1c37937e08p+53, 0x1.6345785d8ap+56, 0x1.bc16d674ec8p+59, 0x1.158e460913dp+63, 0x1.5af1d78b58c4p+66, 0x1.b1ae4d6e2ef5p+69, 0x1.0f0cf064dd592p+73 };
+      if (x == pow10[(int) left])
+        fesetexceptflag (&flagp, FE_INEXACT);
+    }
     return left;
+  }
+
   /* the probability of failure of the fast path is about 2^-11.5 */
-  return cr_log10_accurate (x);
+  return cr_log10_accurate (x, flagp);
 }
 
 /* the following code was copied from Tom Hubrecht's implementation of

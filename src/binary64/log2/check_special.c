@@ -32,6 +32,7 @@ SOFTWARE.
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -82,6 +83,96 @@ check (double x)
   }
 }
 
+typedef union { double f; uint64_t i; } d64u64;
+
+static void
+readstdin(double **result, int *count)
+{
+  char *buf = NULL;
+  size_t buflength = 0;
+  ssize_t n;
+  int allocated = 512;
+
+  *count = 0;
+  if (NULL == (*result = malloc(allocated * sizeof(double)))) {
+    fprintf(stderr, "malloc failed\n");
+    exit(1);
+  }
+
+  while ((n = getline(&buf, &buflength, stdin)) >= 0) {
+    if (n > 0 && buf[0] == '#') continue;
+    if (*count >= allocated) {
+      int newsize = 2 * allocated;
+      double *newresult = realloc(*result, newsize * sizeof(double));
+      if (NULL == newresult) {
+        fprintf(stderr, "realloc(%d) failed\n", newsize);
+        exit(1);
+      }
+      allocated = newsize;
+      *result = newresult;
+    }
+    double *item = *result + *count;
+    // special code for snan, since glibc does not read them
+    if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
+    {
+      /* According to IEEE 754-2019, qNaN's have 1 as upper bit of their
+         52-bit significand, and sNaN's have 0 */
+      d64u64 u = {.i = 0x7ff4000000000000};
+      *item = u.f;
+      (*count)++;
+    }
+    else if (strncmp (buf, "-snan", 5) == 0)
+    {
+      d64u64 u = {.i = 0xfff4000000000000};
+      *item = u.f;
+      (*count)++;
+    }
+    else if (sscanf(buf, "%la", item) == 1)
+      (*count)++;
+  }
+}
+
+/* check scaled worst-cases from log2.wc */
+static void
+check_scaled_worst_cases (void)
+{
+  double *items;
+  int count, tests, failures;
+  readstdin (&items, &count);
+#ifndef CORE_MATH_NO_OPENMP
+#pragma omp parallel for reduction(+: failures,tests)
+#endif
+  for (int i = 0; i < count; i++) {
+    ref_init();
+    ref_fesetround(rnd);
+    fesetround(rnd1[rnd]);
+    double x1 = items[i];
+    if (!isnan (x1) && 2 * x1 != x1) // is is not NaN nor +/Inf nor +/-0
+      {
+        int e;
+        double x0 = frexp (x1, &e);
+        for (e = -1074; e <= 1024; e++)
+          {
+            double x = ldexp (x0, e);
+            double z1 = ref_log2 (x);
+            double z2 = cr_log2 (x);
+            tests ++;
+            /* Note: the test z1 != z2 would not distinguish +0 and -0. */
+            if (z1 != z2) {
+              printf("FAIL x1=%la x=%la ref=%la z=%la\n", x1, x, z1, z2);
+              fflush(stdout);
+#ifdef DO_NOT_ABORT
+              failures ++;
+#else
+              exit(1);
+#endif
+            }
+        }
+    }
+  }
+  free (items);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -126,6 +217,9 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
+  printf ("Checking scaled worst cases...\n");
+  check_scaled_worst_cases ();
+
 #define K 1000000000UL /* total number of tests */
 #define BUF_SIZE 1000
 
@@ -134,6 +228,7 @@ main (int argc, char *argv[])
   
   double buf[BUF_SIZE];
   uint64_t N = K / BUF_SIZE;
+  printf ("Checking random numbers...\n");
   for (uint64_t n = 0; n < N; n++)
   {
     /* warning: lrand48 is not thread-safe, thus we put it outside

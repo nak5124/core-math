@@ -32,6 +32,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <mpfr.h>
 #include <omp.h>
 
 #include "function_under_test.h"
@@ -148,9 +149,14 @@ check (double x, double y)
   tests ++;
   ref_init();
   ref_fesetround(rnd);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   double z1 = ref_function_under_test(x, y);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround(rnd1[rnd]);
+  feclearexcept (FE_INEXACT);
   double z2 = cr_function_under_test(x, y);
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
 #ifndef EXCHANGE_X_Y
@@ -159,7 +165,25 @@ check (double x, double y)
     printf("FAIL y=%la x=%la ref=%la z=%la\n", x, y, z1, z2);
 #endif
     fflush(stdout);
+#ifndef DO_NOT_ABORT
     exit(1);
+#endif
+  }
+  if ((inex1 == 0) && (inex2 != 0))
+  {
+    printf ("Spurious inexact exception for x=%la y=%la (z=%la)\n", x, y, z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x=%la y=%la (z=%la)\n", x, y, z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
   }
 }
 

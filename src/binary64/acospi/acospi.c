@@ -909,13 +909,14 @@ slow_path (double x)
 double
 cr_acospi (double x)
 {
-  union_t u,v;
+  union_t u, v;
   int32_t k;
   u.x = x;
   u.i[1] &= 0x7fffffff; /* set sign bit to 0 */
   double absx = u.x;
   k = u.i[1];
   if (k < 0x3fe80000) { /* |x| < 0.75 */
+    if (__builtin_expect (k == 0 && u.i[0] == 0, 0)) return 0.5;
     /* approximate acos(x) by pi/2 +/- p(x-xmid), where [0,0.75) is split
        into 192 sub-intervals */
     v.x = 1.0 + absx; /* 1 <= v.x < 2 */

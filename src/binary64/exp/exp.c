@@ -270,6 +270,7 @@ static double __attribute__((noinline)) as_exp_accurate(double x){
 double cr_exp(double x){
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~0ul>>1);
+  if(__builtin_expect(aix == 0, 0)) return 1.0;
   if(__builtin_expect(aix>=0x40862e42fefa39f0ul, 0)){
     if(aix>0x7ff0000000000000ul) return x;
     if(aix==0x7ff0000000000000ul){
