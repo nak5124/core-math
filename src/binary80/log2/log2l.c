@@ -689,16 +689,15 @@ Pacc (long double *ph, long double *pl, long double xh, long double xl)
 static long double
 accurate_path (long double x, int e, long double x0)
 {
-#define EXCEPTIONS 1
+#define EXCEPTIONS 3
 static const long double exceptions[EXCEPTIONS][3] = {
   {0x1.5e5a8e406ecbb63ap-1L, -0x1.183bd6ff6d533df2p-1L, 0x1.fffffffffffffffep-66L},
+  {0xe.27db35c267b8a5cp-260L, -0x1.002d3b8dd1c2c526p+8L, 0x1.fffffffffffffffep-57L},
+  {0xf.67cd32484077681p-260L, -0x1.000dfc267901af96p+8L, 0x1.fffffffffffffffep-57L},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x0 == exceptions[i][0])
-      {
-        printf ("exception %d\n", i);
         return exceptions[i][1] + exceptions[i][2];
-      }
 
   // check powers of 2
   if (x == 1.0L)
@@ -772,7 +771,8 @@ cr_log2l (long double x)
   t.e = 0x3fff; // normalize t.f in [1,2)
 
   // now x is normal and x > 0, x = t.m/2^63 * 2^e
-  if (__builtin_expect(t.m>>63==0, 0)) return as_log2_exact(e);
+  if (__builtin_expect(t.m == 0x8000000000000000ul, 0))
+    return as_log2_exact(e);
 
   double h, l;
   fast_path (&h, &l, t.f, e);
