@@ -685,19 +685,37 @@ Pacc (long double *ph, long double *pl, long double xh, long double xl)
   d_mul (ph, pl, *ph, *pl, xh, xl);
 }
 
-// return log2(x0) corretly rounded for 1 <= x < 2, where x0 = 2^e*x
+// return log2(x0) correctly rounded for 1 <= x < 2, where x0 = 2^e*x
 static long double
 accurate_path (long double x, int e, long double x0)
 {
 #define EXCEPTIONS 3
 static const long double exceptions[EXCEPTIONS][3] = {
   {0x1.5e5a8e406ecbb63ap-1L, -0x1.183bd6ff6d533df2p-1L, 0x1.fffffffffffffffep-66L},
-  {0xe.27db35c267b8a5cp-260L, -0x1.002d3b8dd1c2c526p+8L, 0x1.fffffffffffffffep-57L},
-  {0xf.67cd32484077681p-260L, -0x1.000dfc267901af96p+8L, 0x1.fffffffffffffffep-57L},
+  {0xb.392b2c29379a63dp-6L, -0x1.417b39b22f4c25a2p+1L, -0x1.fffffffffffffffep-64L},
+  {0xb.392b2c29379a63dp-7L, -0x1.c17b39b22f4c25a2p+1L, -0x1.fffffffffffffffep-64L},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x0 == exceptions[i][0])
         return exceptions[i][1] + exceptions[i][2];
+
+  /* "generic" worst case 0xe.27db35c267b8a5c*2^e for -515 <= e <= -260 */
+  if (x == 0xe.27db35c267b8a5cp-3L && (-512 <= e && e <= -257))
+  {
+    long double h = -0x1.002d3b8dd1c2c526p+8L;
+    long double l = 0x1.fffffffffffffffep-57L;
+    h = h + (long double) (e + 257);
+    return h + l;
+  }
+
+  /* "generic" worst case 0xf.67cd32484077681*2^e for -515 <= e <= -260 */
+  if (x == 0xf.67cd32484077681p-3L && (-512 <= e && e <= -257))
+  {
+    long double h = -0x1.000dfc267901af96p+8L;
+    long double l = 0x1.fffffffffffffffep-57L;
+    h = h + (long double) (e + 257);
+    return h + l;
+  }
 
   // check powers of 2
   if (x == 1.0L)

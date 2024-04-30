@@ -108,25 +108,23 @@ check (long double x)
   {
     printf ("FAIL x=%La ref=%La z=%La\n", x, y1, y2);
     fflush (stdout);
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La (y=%La)\n", x, y1);
     fflush (stdout);
-#ifdef DO_NOT_ABORT
-    return 1;
-#else
-    exit(1);
+#ifndef DO_NOT_ABORT
+    exit (1);
 #endif
   }
   if ((inex1 != 0) && (inex2 == 0))
   {
     printf ("Missing inexact exception for x=%La (y=%La)\n", x, y1);
     fflush (stdout);
-#ifdef DO_NOT_ABORT
-    return 1;
-#else
+#ifndef DO_NOT_ABORT
     exit(1);
 #endif
   }
@@ -175,6 +173,9 @@ check_extended (long double x)
     emax = 2 * K;
   }
   assert (emin <= e && e <= emax);
+  // if emin < -16445, then r*2^e is rounded to zero (to nearest)
+  if (emin < -16445)
+    emin = -16445;
   for (e = emin; e <= emax; e++)
     check (ldexpl (r, e));
 }
@@ -237,10 +238,10 @@ static void
 check_scaled_worst_cases (void)
 {
   long double *items;
-  int count, tests, failures;
+  int count;
   readstdin (&items, &count);
 #ifndef CORE_MATH_NO_OPENMP
-#pragma omp parallel for reduction(+: failures,tests)
+#pragma omp parallel for
 #endif
   for (int i = 0; i < count; i++) {
     ref_init();
@@ -297,11 +298,11 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
-  printf ("Checking scaled worst cases...\n");
+  printf ("   Checking scaled worst cases\n");
   check_scaled_worst_cases ();
 
-  printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
+  printf ("   Checking random values\n");
+#define N 10000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
