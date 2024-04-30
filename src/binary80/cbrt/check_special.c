@@ -29,6 +29,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <mpfr.h>
 #include <unistd.h>
 #include <math.h> // for ldexpl, cbrtl
 
@@ -73,38 +74,44 @@ is_equal (long double x, long double y)
   return v.e == w.e && v.m == w.m; // ensures +0 and -0 differ
 }
 
-// return non-zero if y^3 = x exactly (might clobber inexact flag)
-static int
-is_exact (long double x, long double y)
-{
-  fexcept_t flagp;
-  feclearexcept (FE_INEXACT);
-  long double z = y * y * y;
-  fegetexceptflag (&flagp, FE_INEXACT);
-  return flagp == 0;
-}
-
 static void
 check (long double x)
 {
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   long double y1 = ref_cbrtl (x);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround (rnd1[rnd]);
-  fexcept_t flagp;
   feclearexcept (FE_INEXACT);
   long double y2 = cr_cbrtl (x);
-  fegetexceptflag (&flagp, FE_INEXACT);
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
   if (! is_equal (y1, y2))
   {
     printf ("FAIL x=%La ref=%La z=%La\n", x, y1, y2);
     fflush (stdout);
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
-  // check that inexact flag is not set for exact values
-  if (is_exact (x, y1) && flagp)
+  if ((inex1 == 0) && (inex2 != 0))
   {
-    printf ("Error: inexact flag set for x=%La\n", x);
+    printf ("Spurious inexact exception for x=%La (y=%La)\n", x, y1);
     fflush (stdout);
-    exit (1);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x=%La (y=%La)\n", x, y1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
   }
 }
 
