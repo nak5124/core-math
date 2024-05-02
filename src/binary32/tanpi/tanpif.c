@@ -97,7 +97,7 @@ float cr_tanpif(float x){
   return r;
 }
 
-#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+#ifndef SKIP_C_FUNC_REDEF // icx provides this function
 /* just to compile since glibc does not contain this function */
 float tanpif(float x){
   return cr_tanpif(x);

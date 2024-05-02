@@ -76,7 +76,7 @@ extern float invsqrtf (float);
 float rsqrtf(float x){
   return invsqrtf (x);
 }
-#else
+#else if !defined(SKIP_C_FUNC_REDEF)
 /* rsqrt function is not in glibc so define it here just to compile tests */
 float rsqrtf(float x){
   return cr_rsqrtf(x);

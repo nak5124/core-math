@@ -1065,7 +1065,7 @@ cr_acospi (double x)
   }
 }
 
-#ifndef __INTEL_CLANG_COMPILER
+#ifndef SKIP_C_FUNC_REDEF
 /* just to compile since glibc does not provide this function */
 double acospi (double x)
 {
