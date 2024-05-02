@@ -54,6 +54,12 @@ SOFTWARE.
    This code corresponds to reference [5].       
 */
 
+/* if HONOR_INEXACT is defined, honor the inexact flag:
+ - generate an inexact exception when the result is inexact
+ - don't generate a spurious inexact exception when the result is exact
+*/
+#define HONOR_INEXACT
+
 #include "pow.h"
 #include <stdio.h>
 #include <stdint.h>
@@ -1180,11 +1186,9 @@ static void exp_3 (qint64_t *r, qint64_t *x) {
   Can return 1 only when (x,y) are in the set S from [4]:
   (a) either y is an integer, 2 <= y <= 34, or
   (b) x=2^E*m with m odd and y = 2^F*n with -5 <= F < 0, n odd, 3 <= n <= 34
-
-  If the result is exact (in binary64), resets the inexact flag to flagp.
 */
 static char
-exact_pow (double *r, double x, double y, const dint64_t *z, fexcept_t *flagp)
+exact_pow (double *r, double x, double y, const dint64_t *z)
 {
   int64_t _s = z->sgn ? -1 : 1;
 
@@ -1201,8 +1205,6 @@ exact_pow (double *r, double x, double y, const dint64_t *z, fexcept_t *flagp)
       *r = z->sgn ? -1.0 : 1.0;
       pow2(r, (int64_t)G);
 
-      // restore inexact flag
-      fesetexceptflag (flagp, FE_INEXACT);
       return 1;
     }
     return 0;
@@ -1255,8 +1257,6 @@ exact_pow (double *r, double x, double y, const dint64_t *z, fexcept_t *flagp)
       *r = (double)((k >> (g - G)) * _s);
       pow2(r, g);
 
-      // restore inexact flag
-      fesetexceptflag (flagp, FE_INEXACT);
       return 1;
     }
     return 0;
@@ -1290,10 +1290,133 @@ exact_pow (double *r, double x, double y, const dint64_t *z, fexcept_t *flagp)
   int64_t G = E * (n << F);
   pow2(r, G);
 
-  // restore inexact flag
-  if (k >> 53)
-    fesetexceptflag (flagp, FE_INEXACT);
   return 1;
+}
+
+// return non-zero if x^y is exact
+static int
+is_exact (double x, double y)
+{
+  // xmax[y-2] for 2<=y<=33 is the largest m such that m^y fits in 53 bits
+  static const uint64_t xmax[] = { 94906265, 208063, 9741, 1552, 456, 190, 98,
+                                   59, 39, 28, 21, 16, 13, 11, 9, 8, 7, 6, 6,
+                                   5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3 };
+  if (is_int (y)) {
+    /* let x = m*2^e with m an odd integer, x^y is exact when
+       - y = 0 or y = 1
+       - m = 1 or -1 and -1074 <= e*y < 1024
+       - if |x| is not a power of 2, 2 <= y <= 33 and
+         m^y should fit in 53 bits
+    */
+    
+    f64_u v = {.f = x};
+    uint64_t m = 0x10000000000000ul | (v.u & 0xffffffffffffful);
+    int64_t e = ((v.u << 1) >> 53) - 0x433;
+    int t = __builtin_ctzl (m);
+    m = m >> t;
+    e += t;
+    // x = m*2^e
+    if (y == 0 || y == 1)
+      return 1;
+    if (m == 1)
+      return -1074 <= y * e && y * e < 1024;
+    // now for y < 0 or 33 < y it cannot be exact
+    if (y < 0 || 33 < y)
+      return 0;
+    // now 2 <= y <= 33
+    int y_int = (int) y;
+    if (m > xmax[y_int - 2])
+      return 0;
+    // |x^y| = m^y * 2^(e*y)
+    uint64_t my = m * m;
+    while (y_int-- > 2)
+      my = my * m;
+    t = 64 - __builtin_clzl (m);
+    // 2^(t-1) <= m^y < 2^t thus 2^(e*y + t - 1) <= |x^y| < 2^(e*y + t)
+    int64_t ez = e * y_int + t;
+    if (ez <= -1074 || 1024 < ez)
+      return 0;
+    // since m is odd, x^y is an odd multiple of 2^(e*y)
+    return e * y_int >= -1074;
+  } 
+
+  /* All cases such that x^y might be exact are:
+     (a) y<0: x=1 or (x=2^e and |y|=n*2^-k with 2^k dividing e)
+     (b) y>0: y=n*2^f with 5 <= f <= -1 and 1 <= n <= 33.
+     In all cases, the low 42 bits of the encoding of y are zero,
+     thus we use that for an early exit test. */
+
+  f64_u w = {.f = y};
+  if (__builtin_expect (w.u << 22, 1)) return 0;
+  uint64_t n = 0x10000000000000ul | (w.u & 0xffffffffffffful);
+  int64_t f = ((w.u << 1) >> 53) - 0x433;
+  int t = __builtin_ctzl (n);
+  n = n >> t;
+  f += t;
+  // |y| = n*2^f with n odd
+
+  f64_u v = {.f = x};
+  uint64_t m = v.u & 0xffffffffffffful;
+  int64_t e = ((v.u << 1) >> 53) - 0x433;
+  if (e >= -1074)
+    m |= 0x10000000000000ul;
+  else
+    e++;
+  t = __builtin_ctzl (m);
+  m = m >> t;
+  e += t;
+  // |x| = m*2^e with m odd
+
+  /* if y < 0 and y is not an integer, the only case where x^y might be
+     exact is when y = -n/2^k and x = 2^e with 2^k dividing e */
+  if (y < 0)
+  {
+    if (m != 1) return 0;
+    // y = -2^f thus k = -f
+    if (x == 1) return 1;
+    // now e <> 0
+    t = __builtin_ctzl (e);
+    if (-f > t) return 0; // 2^k does not divide e
+    int64_t ez = (-e >> (-f)) * n;
+    return -1074 <= ez && ez < 1024;
+  }
+
+  /* now y > 0, y is not a integer, y = n*2^f with n odd and f < 0.
+     Since x^(n*2^f) = (x^(2^f))^n, and n is odd, necessarily
+     x is an exact (2^k)th power with k=-f.
+     This implies x is a square. Since x = m*2^e with m odd,
+     necessarily m is a square, and e is even. */
+  while (f++) {
+    // try to extract a square from m*2^e
+    if (e&1) return 0;
+    e = e / 2;
+    double dm = (double) m;
+    double s = __builtin_round (__builtin_sqrt (dm));
+    if (s * s != dm)
+      return 0;
+    /* The above call of sqrt() might set the inexact flag, but in case
+       it happens, m is not a square, thus x^y cannot be exact. */
+    m = (uint64_t) s;
+  }
+
+  // Now |x^y| = (m*2^e)^n with n an odd integer
+  // now for 33 < n it cannot be exact
+  if (33 < n)
+    return 0;
+  // now 2 <= n <= 33
+  if (m > xmax[n - 2])
+    return 0;
+  // |x^y| = m^n * 2^(e*n)
+  uint64_t my = m * m;
+  while (n-- > 2)
+    my = my * m;
+  t = 64 - __builtin_clzl (my);
+  // 2^(t-1) <= m^n < 2^t thus 2^(e*n + t - 1) <= |x^n| < 2^(e*n + t)
+  int64_t ez = e * n + t;
+  if (ez <= -1074 || 1024 < ez)
+    return 0;
+  // since m is odd, x^y is an odd multiple of 2^(e*y)
+  return e * (int) n >= -1074;
 }
 
 // Correctly rounded power function
@@ -1495,9 +1618,11 @@ double cr_pow (double x, double y) {
 
   double lh, ll;
 
-  // save inexact flag
   fexcept_t flagp;
+#ifdef HONOR_INEXACT
+  // save inexact flag
   fegetexceptflag (&flagp, FE_INEXACT);
+#endif
 
   // approximate log(x)
   int cancel = log_1 (&lh, &ll, x);
@@ -1519,9 +1644,6 @@ double cr_pow (double x, double y) {
   exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
-  /* Define ROUNDING_IS_TO_NEAREST_EVEN if the rounding mode is static and
-     to nearest-even, to use Ziv's rounding test instead. */
-#ifndef ROUNDING_IS_TO_NEAREST_EVEN
   /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
      phase_1 from reference [5]. */
   static const double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
@@ -1533,59 +1655,31 @@ double cr_pow (double x, double y) {
   /* if res_h < 0, we have res_max < res_min, but since we only check
      equality between res_min and res_max, it does not matter */
 
+#ifdef HONOR_INEXACT
+  if (is_exact (x, y))
+    // restore inexact flag
+    fesetexceptflag (&flagp, FE_INEXACT);
+#endif
+
   if (res_min == res_max)
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
        to avoid double-rounding issues */
     return res_max;
   /* the idea of returning res_max instead of res_min is due to Laurent
      Théry: it is better in case of underflow since res_max = +0 always. */
-#else
-  /* From Theorem 2.1 of [6], if the rounding is to nearest-even, we can
-     replace the rounding test by yh = RN(yh + RN(yl*e)) ==> yh = RN(y),
-     where yh = res_h, yl = res_l, and
-     e = RU((1+2^-p)/(1-err-2^(p+1)*err)), where err is the relative error:
-     yh + yl = y * (1 + alpha) with |alpha| <= err [Equation (2) from [6]].
-     The reference [5] does not express the relative error in that form,
-     but instead in equation (9) from [5]:
-     |eh + el - x^y| <= tau * eh (*)
-     with tau = 2^-63.7977 if x < 1/sqrt(2) or sqrt(2) < 2, and
-     tau = 2^-57.5798 otherwise.
-     Then we get alpha = tau * eh/x^y, and since |el/eh| < 2^-41.7
-     (Lemma 7 of [5]), we get:
-     From (*) we get: eh <= x^y + |el| + tau * eh
-                         <= x^y + (2^-41.7 + tau)*eh
-     thus eh/x^y <= 1/(1-2^-41.7-tau).
-     It follows we can take alpha = RU(tau/(1-2^-41.7-tau)),
-     thus we can take err = 2^-63.7976 if x < 1/sqrt(2) or sqrt(2) < 2,
-     and err = 2^-57.5797 otherwise. We can thus take
-     e = 0x1.0049b8d09331fp+0 if x < 1/sqrt(2) or sqrt(2) < 2, and
-     e = 0x1.175d93c9061b1p+0 otherwise. */
-  static double err[] = { 0x1.0049b8d09331fp+0, 0x1.175d93c9061b1p+0 };
-  /* Warning: we should make sure no FMA is used to compute
-     res_h + res_l * err! */
-  /* Reference [6] requires that yh+yl rounds to yl. */
-  fast_two_sum (&res_h, &res_l, res_h, res_l);
-  double res = res_l * err[cancel];
-  if (res_h == res_h + res)
-    return res;
-#endif
 
   // Easy cases
-  if (y == 1.0) {
+  if (y == 1.0)
     return s * x;
-  }
-
-  if (y == 2.0) {
+  
+  if (y == 2.0)
     return x * x;
-  }
 
-  if (y == 0.5) {
+  if (y == 0.5)
     return sqrt(x);
-  }
 
-  if (y == 0.0) {
+  if (y == 0.0)
     return 1.0;
-  }
 #endif /* ENABLE_FP */
 
   uint64_t rd; // used in the 2nd and 3rd phases
@@ -1660,7 +1754,7 @@ double cr_pow (double x, double y) {
   // Detect rounding boundary cases
   double e;
 
-  if (exact_pow (&e, x, y, &R, &flagp))
+  if (exact_pow (&e, x, y, &R))
     return e;
 #endif /* ENABLE_EXACT */
 #endif /* ENABLE_ZIV2 */
