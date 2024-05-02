@@ -1297,25 +1297,40 @@ exact_pow (double *r, double x, double y, const dint64_t *z)
 static int
 is_exact (double x, double y)
 {
+  /* All cases such that x^y might be exact are:
+     (a) |x| = 1
+     (b) y integer, 0 <= y <= 33
+     (c) y<0: x=1 or (x=2^e and |y|=n*2^-k with 2^k dividing e)
+     (d) y>0: y=n*2^f with 5 <= f <= -1 and 1 <= n <= 33
+     In cases (b)-(d), the low 42 bits of the encoding of y are zero,
+     thus we use that for an early exit test. */
+
+  f64_u v = {.f = x}, w = {.f = y};
+  if (__builtin_expect ((v.u << 1) != 0x7fe0000000000000ul &&
+                        (w.u << 22) != 0, 1))
+    return 0;
+
   // xmax[y-2] for 2<=y<=33 is the largest m such that m^y fits in 53 bits
   static const uint64_t xmax[] = { 94906265, 208063, 9741, 1552, 456, 190, 98,
                                    59, 39, 28, 21, 16, 13, 11, 9, 8, 7, 6, 6,
                                    5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3 };
-  if (is_int (y)) {
+  if (y >= 0 && is_int (y)) {
     /* let x = m*2^e with m an odd integer, x^y is exact when
        - y = 0 or y = 1
        - m = 1 or -1 and -1074 <= e*y < 1024
        - if |x| is not a power of 2, 2 <= y <= 33 and
          m^y should fit in 53 bits
     */
-    
-    f64_u v = {.f = x};
-    uint64_t m = 0x10000000000000ul | (v.u & 0xffffffffffffful);
+    uint64_t m = v.u & 0xffffffffffffful;
     int64_t e = ((v.u << 1) >> 53) - 0x433;
+    if (e >= -1074)
+      m |= 0x10000000000000ul;
+    else // subnormal numbers
+      e++;
     int t = __builtin_ctzl (m);
     m = m >> t;
     e += t;
-    // x = m*2^e
+    /* For normal numbers, we have x = m*2^e. */
     if (y == 0 || y == 1)
       return 1;
     if (m == 1)
@@ -1340,27 +1355,22 @@ is_exact (double x, double y)
     return e * y_int >= -1074;
   } 
 
-  /* All cases such that x^y might be exact are:
-     (a) y<0: x=1 or (x=2^e and |y|=n*2^-k with 2^k dividing e)
-     (b) y>0: y=n*2^f with 5 <= f <= -1 and 1 <= n <= 33.
-     In all cases, the low 42 bits of the encoding of y are zero,
-     thus we use that for an early exit test. */
-
-  f64_u w = {.f = y};
-  if (__builtin_expect (w.u << 22, 1)) return 0;
-  uint64_t n = 0x10000000000000ul | (w.u & 0xffffffffffffful);
+  uint64_t n = w.u & 0xffffffffffffful;
   int64_t f = ((w.u << 1) >> 53) - 0x433;
+  if (f >= -1074)
+    n |= 0x10000000000000ul;
+  else // subnormal numbers
+    f++;
   int t = __builtin_ctzl (n);
   n = n >> t;
   f += t;
   // |y| = n*2^f with n odd
 
-  f64_u v = {.f = x};
   uint64_t m = v.u & 0xffffffffffffful;
   int64_t e = ((v.u << 1) >> 53) - 0x433;
   if (e >= -1074)
     m |= 0x10000000000000ul;
-  else
+  else // subnormal numbers
     e++;
   t = __builtin_ctzl (m);
   m = m >> t;
