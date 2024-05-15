@@ -212,7 +212,7 @@ double cr_sinpi(double x){
   double er = 5.5e-19;
   double r = sl + sh*(z2*fc) + ch*(z*fs);
   double lb = (r - er) + sh, ub = (r + er) + sh;
-  if(lb == ub) return lb;
+  if(__builtin_expect(lb == ub,1)) return lb;
   return as_sinpi_refine(iq, z);
 }
 

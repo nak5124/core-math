@@ -380,6 +380,6 @@ double cr_sinh(double x){
   rh *= __builtin_copysign(1, x);
   rl *= __builtin_copysign(1, x);
   rh += rl;
-  if(ml<=16 || eh-el>103) return as_sinh_database(x, rh);
+  if(__builtin_expect(ml<=16 || eh-el>103, 0)) return as_sinh_database(x, rh);
   return rh;
 }

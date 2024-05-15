@@ -1504,9 +1504,6 @@ double cr_pow (double x, double y) {
   exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
-  /* Define ROUNDING_IS_TO_NEAREST_EVEN if the rounding mode is static and
-     to nearest-even, to use Ziv's rounding test instead. */
-#ifndef ROUNDING_IS_TO_NEAREST_EVEN
   /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
      phase_1 from reference [5]. */
   static const double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
@@ -1518,42 +1515,12 @@ double cr_pow (double x, double y) {
   /* if res_h < 0, we have res_max < res_min, but since we only check
      equality between res_min and res_max, it does not matter */
 
-  if (res_min == res_max)
+  if (__builtin_expect (res_min == res_max, 1))
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
        to avoid double-rounding issues */
     return res_max;
   /* the idea of returning res_max instead of res_min is due to Laurent
      Théry: it is better in case of underflow since res_max = +0 always. */
-#else
-  /* From Theorem 2.1 of [6], if the rounding is to nearest-even, we can
-     replace the rounding test by yh = RN(yh + RN(yl*e)) ==> yh = RN(y),
-     where yh = res_h, yl = res_l, and
-     e = RU((1+2^-p)/(1-err-2^(p+1)*err)), where err is the relative error:
-     yh + yl = y * (1 + alpha) with |alpha| <= err [Equation (2) from [6]].
-     The reference [5] does not express the relative error in that form,
-     but instead in equation (9) from [5]:
-     |eh + el - x^y| <= tau * eh (*)
-     with tau = 2^-63.7977 if x < 1/sqrt(2) or sqrt(2) < 2, and
-     tau = 2^-57.5798 otherwise.
-     Then we get alpha = tau * eh/x^y, and since |el/eh| < 2^-41.7
-     (Lemma 7 of [5]), we get:
-     From (*) we get: eh <= x^y + |el| + tau * eh
-                         <= x^y + (2^-41.7 + tau)*eh
-     thus eh/x^y <= 1/(1-2^-41.7-tau).
-     It follows we can take alpha = RU(tau/(1-2^-41.7-tau)),
-     thus we can take err = 2^-63.7976 if x < 1/sqrt(2) or sqrt(2) < 2,
-     and err = 2^-57.5797 otherwise. We can thus take
-     e = 0x1.0049b8d09331fp+0 if x < 1/sqrt(2) or sqrt(2) < 2, and
-     e = 0x1.175d93c9061b1p+0 otherwise. */
-  static double err[] = { 0x1.0049b8d09331fp+0, 0x1.175d93c9061b1p+0 };
-  /* Warning: we should make sure no FMA is used to compute
-     res_h + res_l * err! */
-  /* Reference [6] requires that yh+yl rounds to yl. */
-  fast_two_sum (&res_h, &res_l, res_h, res_l);
-  double res = res_l * err[cancel];
-  if (res_h == res_h + res)
-    return res;
-#endif
 
   // Easy cases
   if (y == 1.0) {
