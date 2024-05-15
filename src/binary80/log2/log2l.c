@@ -61,7 +61,7 @@ typedef union {
 
 typedef union {double f;uint64_t u;} b64u64_u;
 
-static long double __attribute__((noinline)) as_log2_exact(int e){return e;}
+static long double __attribute__((noinline)) log2_exact (int e) {return e;}
 
 // Multiply exactly a and b, such that *hi + *lo = a * b.
 static inline void a_mul_double (double *hi, double *lo, double a, double b) {
@@ -689,11 +689,14 @@ Pacc (long double *ph, long double *pl, long double xh, long double xl)
 static long double
 accurate_path (long double x, int e, long double x0)
 {
-#define EXCEPTIONS 3
+#define EXCEPTIONS 6
 static const long double exceptions[EXCEPTIONS][3] = {
   {0x1.5e5a8e406ecbb63ap-1L, -0x1.183bd6ff6d533df2p-1L, 0x1.fffffffffffffffep-66L},
   {0xb.392b2c29379a63dp-6L, -0x1.417b39b22f4c25a2p+1L, -0x1.fffffffffffffffep-64L},
   {0xb.392b2c29379a63dp-7L, -0x1.c17b39b22f4c25a2p+1L, -0x1.fffffffffffffffep-64L},
+  {0xb.392b2c29379a63dp+0L, 0x1.be84c64dd0b3da5ep+1L, -0x1.fffffffffffffffep-64L},
+  {0xb.392b2c29379a63dp-1L, 0x1.3e84c64dd0b3da5ep+1L, -0x1.fffffffffffffffep-64L},
+  {0xa.f2d47203765db1dp-3L, 0x1.cf8852012559841ep-2L, -0x1.c2329a79bc19a76cp-131L},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x0 == exceptions[i][0])
@@ -708,12 +711,30 @@ static const long double exceptions[EXCEPTIONS][3] = {
     return h + l;
   }
 
+  /* "generic" worst case 0xe.27db35c267b8a5c*2^e for 253 <= e <= 508 */
+  if (x == 0xe.27db35c267b8a5cp-3L && (256 <= e && e <= 511))
+  {
+    long double h = 0x1.ffd2c4722e3d3adap+8L;
+    long double l = 0x1.fffffffffffffffep-57L;
+    h = h + (long double) (e - 511);
+    return h + l;
+  }
+
   /* "generic" worst case 0xf.67cd32484077681*2^e for -515 <= e <= -260 */
   if (x == 0xf.67cd32484077681p-3L && (-512 <= e && e <= -257))
   {
     long double h = -0x1.000dfc267901af96p+8L;
     long double l = 0x1.fffffffffffffffep-57L;
     h = h + (long double) (e + 257);
+    return h + l;
+  }
+
+  /* "generic" worst case 0xf.67cd32484077681*2^e for 253 <= e <= 508 */
+  if (x == 0xf.67cd32484077681p-3L && (256 <= e && e <= 511))
+  {
+    long double h = 0x1.fff203d986fe506ap+8L;
+    long double l = 0x1.fffffffffffffffep-57L;
+    h = h + (long double) (e - 511);
     return h + l;
   }
 
@@ -772,14 +793,14 @@ cr_log2l (long double x)
 {
   b96u96_u t = {.f = x};
   int ex = t.e, e = ex - 0x3fff;
-  if (__builtin_expect(!ex, 0)) // x=+0 or positive subnormal
+  if (__builtin_expect (!ex, 0)) // x=+0 or positive subnormal
   {
     if (!t.m) return (long double) -1.0 / 0.0; // x=+0
     int k = __builtin_clzll (t.m);
     e -= k - 1;
     t.m <<= k;
   }
-  if (__builtin_expect(ex >= 0x7fff, 0)) // x<=0 or Inf or NaN
+  if (__builtin_expect (ex >= 0x7fff, 0)) // x<=0 or Inf or NaN
   {
     if (!t.m) return (long double) -1.0 / 0.0; // x=-0
     if (t.m == (1ul << 63) && (ex == 0x7fff)) return x; // x=+Inf
@@ -789,15 +810,15 @@ cr_log2l (long double x)
   t.e = 0x3fff; // normalize t.f in [1,2)
 
   // now x is normal and x > 0, x = t.m/2^63 * 2^e
-  if (__builtin_expect(t.m == 0x8000000000000000ul, 0))
-    return as_log2_exact(e);
+  if (__builtin_expect (t.m == 0x8000000000000000ul, 0))
+    return log2_exact (e);
 
   double h, l;
   fast_path (&h, &l, t.f, e);
   long double H = h, L = l;
   const long double err = 0x1.c1p-85l;
   long double left = H + (L - err), right = H + (L + err);
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
 
   return accurate_path (t.f, e, x);
