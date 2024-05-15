@@ -254,7 +254,7 @@ double cr_asinh(double x){
   ll *= __builtin_copysign(1, x);
   double eps = 1.63e-19;
   double lb = lh + (ll - eps), ub = lh + (ll + eps);
-  if(lb == ub) return lb;
+  if (lb == ub) return lb;
   if(ax<0x1p-2) return as_asinh_zero(x,x2h,x2l);
   return as_asinh_refine(x, ah, al, 0x1.71547652b82fep+0*__builtin_fabs(lb));
 }

@@ -2245,7 +2245,7 @@ cr_tan (double x)
   double h, l, err;
   err = tan_fast (&h, &l, x);
   double left  = h + (l - err), right = h + (l + err);
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
 
   return tan_accurate (x);

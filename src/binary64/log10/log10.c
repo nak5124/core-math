@@ -759,7 +759,7 @@ cr_log10 (double x)
   static const double err = 0x1.04p-69;
 
   double left = h + (l - err), right = h + (l + err);
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
   {
     /* For x = 10^n for 0 <= n <= 22 and rounding to nearest, we should
        return n without a spurious inexact exception. */

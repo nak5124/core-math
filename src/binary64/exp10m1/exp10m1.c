@@ -1119,7 +1119,7 @@ cr_exp10m1 (double x)
   err = exp10m1_fast (&h, &l, x, ax <= 0x3fb0000000000000lu);
   double left = h + (l - err);
   double right = h + (l + err);
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
 
   return exp10m1_accurate (x);

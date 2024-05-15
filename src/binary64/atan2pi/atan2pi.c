@@ -817,7 +817,7 @@ double cr_atan2pi (double y, double x)
     err = atan2pi_fast (&h, &l, y, x);
     double left =  h + __builtin_fma (h, -err, l);
     double right = h + __builtin_fma (h, +err, l);
-    if (left == right)
+    if (__builtin_expect (left == right, 1))
       return left;
   }
 

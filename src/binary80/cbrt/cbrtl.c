@@ -361,7 +361,7 @@ cr_cbrtl (long double x)
   long double err = fast_path (&h, &l, &e, x);
   long double left = h + (l - err);
   long double right = h + (l + err);
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
   {
     // multiply left by 2^e
     b96u96_u r = {.f = left};
