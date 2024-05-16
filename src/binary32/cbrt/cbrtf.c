@@ -33,7 +33,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-#define INEXACTFLAG 0
+#define INEXACTFLAG 1 // honor inexact exception
 #if INEXACTFLAG!=0
 #  include <x86intrin.h> /* for the x86 architecture with SSE to rise the inexact flag only when the root is indeed inexact */
 #endif
