@@ -670,8 +670,8 @@ cr_log (double x)
   /* normalize v in [1,2) */
   v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
-  if (__builtin_expect (e == 0 && v.u == 0x3ff0000000000000ul, 0))
-    return 0; // log(1) = 0, avoids spurious inexact exception
+  if (__builtin_expect (v.u == 0x3ff0000000000000ul && e == 0, 0))
+    return 0;
   double h, l;
   cr_log_fast (&h, &l, e, v);
 
