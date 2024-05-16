@@ -54,17 +54,17 @@ SOFTWARE.
    This code corresponds to reference [5].       
 */
 
-/* if HONOR_INEXACT is defined, honor the inexact flag:
- - generate an inexact exception when the result is inexact
- - don't generate a spurious inexact exception when the result is exact
-*/
-#define HONOR_INEXACT
-
 #include "pow.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#ifdef __x86_64__
+#include <x86intrin.h>
+#define FLAG_T uint32_t
+#else
 #include <fenv.h>
+#define FLAG_T fexcept_t
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -81,6 +81,28 @@ SOFTWARE.
 #define ENABLE_ZIV2 (POW_ITERATION & 0x2)
 #define ENABLE_EXACT (POW_ITERATION & 0x4)
 #define ENABLE_ZIV3 (POW_ITERATION & 0x8)
+
+static FLAG_T
+get_flag (void)
+{
+#ifdef __x86_64__
+  return _mm_getcsr ();
+#else
+  fexcept_t flag;
+  fegetexceptflag (&flag, FE_INEXACT);
+  return flag;
+#endif
+}
+
+static void
+set_flag (FLAG_T flag)
+{
+#ifdef __x86_64__
+  _mm_setcsr (flag);
+#else
+  fesetexceptflag (&flag, FE_INEXACT);
+#endif
+}
 
 /***************** polynomial approximations of exp(z) ***********************/
 
@@ -1628,11 +1650,7 @@ double cr_pow (double x, double y) {
 
   double lh, ll;
 
-  fexcept_t flagp;
-#ifdef HONOR_INEXACT
-  // save inexact flag
-  fegetexceptflag (&flagp, FE_INEXACT);
-#endif
+  FLAG_T flag = get_flag ();
 
   // approximate log(x)
   int cancel = log_1 (&lh, &ll, x);
@@ -1665,11 +1683,9 @@ double cr_pow (double x, double y) {
   /* if res_h < 0, we have res_max < res_min, but since we only check
      equality between res_min and res_max, it does not matter */
 
-#ifdef HONOR_INEXACT
   if (is_exact (x, y))
     // restore inexact flag
-    fesetexceptflag (&flagp, FE_INEXACT);
-#endif
+    set_flag (flag);
 
   if (__builtin_expect (res_min == res_max, 1))
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
