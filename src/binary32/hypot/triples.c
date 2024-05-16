@@ -31,6 +31,7 @@ SOFTWARE.
 #include <fenv.h>
 #include <assert.h>
 #include <omp.h>
+#include <mpfr.h>
 
 float cr_hypotf (float, float);
 float ref_hypot (float, float);
@@ -58,13 +59,34 @@ check_aux (float x, float y)
   float z1, z2;
   ref_init();
   ref_fesetround(rnd);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   z1 = ref_hypot(x, y);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround(rnd1[rnd]);
+  feclearexcept (FE_INEXACT);
   z2 = cr_hypotf(x, y);
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
   if (asuint (z1) != asuint (z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
     exit(1);
+  }
+  if ((inex1 == 0) && (inex2 != 0))
+  {
+    printf ("Spurious inexact exception for x=%a y=%a\n", x, y);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x=%a y=%a\n", x, y);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
   }
 }
 
