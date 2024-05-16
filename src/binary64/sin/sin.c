@@ -2023,7 +2023,7 @@ cr_sin (double x)
   double left  = h + (l - err), right = h + (l + err);
   /* With SC[] from ./buildSC 15 we get 1100 failures out of 50000000
      random tests, i.e., about 0.002%. */
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
 
   return sin_accurate (x);

@@ -70,6 +70,7 @@ float cr_rsqrtf(float x){
   return (1.0/xd)*__builtin_sqrt(xd);
 }
 
+#ifndef SKIP_C_FUNC_REDEF
 #ifdef __INTEL_CLANG_COMPILER
 // rsqrt is called invsqrt with icx
 extern float invsqrtf (float);
@@ -81,4 +82,5 @@ float rsqrtf(float x){
 float rsqrtf(float x){
   return cr_rsqrtf(x);
 }
+#endif
 #endif

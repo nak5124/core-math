@@ -978,7 +978,7 @@ cr_acospi (double x)
     
     static const double err = 0x1.c0p-63; // acospi_specific, 2^-62.195 < 0x1.c0p-63
     double left  = u + (v - err), right = u + (v + err);
-    if (left != right)
+    if (__builtin_expect (left != right, 0))
       return slow_path (x); /* hard to round case */
     return left;
   }
@@ -1046,7 +1046,7 @@ cr_acospi (double x)
 
     static const double err = 0x1.13p-66; // acospi_specific, 2^-65.898 < 0x1.13p-66
     double left  = u + (v - err), right = u + (v + err);
-    if (left != right)
+    if (__builtin_expect (left != right, 0))
       return slow_path (x); /* hard to round case */
     return left;
   }    /*   else  if (k < 0x3ff00000)    */
@@ -1065,7 +1065,7 @@ cr_acospi (double x)
   }
 }
 
-#ifndef __INTEL_CLANG_COMPILER
+#ifndef SKIP_C_FUNC_REDEF
 /* just to compile since glibc does not provide this function */
 double acospi (double x)
 {

@@ -1671,7 +1671,7 @@ double cr_pow (double x, double y) {
     fesetexceptflag (&flagp, FE_INEXACT);
 #endif
 
-  if (res_min == res_max)
+  if (__builtin_expect (res_min == res_max, 1))
     /* when res_min * ex is in the subnormal range, exp_1() returns NaN
        to avoid double-rounding issues */
     return res_max;

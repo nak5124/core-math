@@ -684,7 +684,7 @@ cr_erf (double x)
   v.u ^= t.u & SIGN_MASK;
   double left = u.f + __builtin_fma (err, -u.f, v.f);
   double right = u.f + __builtin_fma (err, u.f, v.f);
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
 
   cr_erf_accurate (&h, &l, z);
