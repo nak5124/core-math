@@ -12,9 +12,7 @@ static inline int doloop (void)
   for (uint32_t n = nmin; n <= nmax; n++)
   {
     doit (n);
-    // also check -x
-    float x = asfloat (n);
-    doit (asuint (-x));
+    doit (n | 0x80000000); // also test negative numbers
   }
   printf ("all ok\n");
   return 0;
