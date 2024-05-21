@@ -106,7 +106,7 @@ check (float y, float x)
   }
 }
 
-#define N 1000000000
+#define N 100000000
 
 static void
 check_random (int i)

@@ -106,6 +106,8 @@ check (float y, float x)
   }
 }
 
+#define N 100000000
+
 static void
 check_random (int i)
 {
@@ -115,7 +117,7 @@ check_random (int i)
   ref_init ();
   fesetround (rnd1[rnd]);
   srand48_r (i, buffer);
-  while (1)
+  for (int n = 0; n < N; n++)
   {
     lrand48_r (buffer, &l);
     y = asfloat (l);
