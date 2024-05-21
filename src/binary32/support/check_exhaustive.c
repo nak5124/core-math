@@ -30,6 +30,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <math.h>
 #include <mpfr.h>
 #ifndef NO_OPENMP
 #include <omp.h>
@@ -70,6 +71,16 @@ asuint (float f)
   return u.i;
 }
 
+static int
+is_equal (float y1, float y2)
+{
+  if (isnan (y1))
+    return isnan (y2);
+  if (isnan (y2))
+    return isnan (y1);
+  return asuint (y1) == asuint (y2);
+}
+
 void
 doit (uint32_t n)
 {
@@ -87,7 +98,7 @@ doit (uint32_t n)
   fegetexceptflag (&inex_z, FE_INEXACT);
   /* Note: the test y != z would not distinguish +0 and -0, instead we compare
      the 32-bit encodings. */
-  if (asuint (y) != asuint (z))
+  if (!is_equal (y, z))
   {
     printf ("FAIL x=%a ref=%a y=%a\n", x, y, z);
     fflush (stdout);

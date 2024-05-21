@@ -3,6 +3,7 @@
 
 void doit (uint32_t n);
 static inline uint32_t asuint (float f);
+static inline float asfloat (uint32_t f);
 
 static inline int doloop (void)
 {
@@ -11,6 +12,9 @@ static inline int doloop (void)
   for (uint32_t n = nmin; n <= nmax; n++)
   {
     doit (n);
+    // also check -x
+    float x = asfloat (n);
+    doit (asuint (-x));
   }
   printf ("all ok\n");
   return 0;
