@@ -1,4 +1,4 @@
-/* Correctly rounded log2l function for binary64 values.
+/* Correctly rounded log2l function for binary80 floating point format.
 
 Copyright (c) 2024 Alexei Sibidanov and Paul Zimmermann
 
@@ -336,17 +336,17 @@ P (double *h, double *l, double xh, double xl)
 /* put in h+l an approximation of e + log2(x) for 1 <= x < 2
    with |h + l - (e + log2(x))| < 2^-84.19 and |l| < 2^-36.99 */
 static void
-fast_path (double *h, double *l, long double x, int e)
+fast_path (double *h, double *l, unsigned long vm, int e)
 {
   /* convert x to double-double representation xh + xl, where xh is a
      multiple of 2^-38, thus is representable on 39 bits */
-  b96u96_u v = {.f = x};
-  b64u64_u th = {.u = (0x3fful<<52) | ((v.m >> 25) << 14)};
-  b64u64_u tl = {.u = (0x3d9ul<<52) | ((v.m << 39) >> 12)};
+
+  b64u64_u th = {.u = (0x3fful<<52) | ((vm >> 25) << 14)};
+  b64u64_u tl = {.u = (0x3d9ul<<52) | ((vm << 39) >> 12)};
   double xh = th.f, xl = tl.f - 0x1p-38;
   // 1 <= xh < 2 and 0 <= xl < 2^-38
 
-  int i = (th.u << 12) >> 58; // 0 <= i < 2^6
+  long i = (vm << 1) >> 58; // 0 <= i < 2^6
   if (i > 26)
   {
     xh = xh * 0.5;
@@ -686,8 +686,8 @@ Pacc (long double *ph, long double *pl, long double xh, long double xl)
 }
 
 // return log2(x0) correctly rounded for 1 <= x < 2, where x0 = 2^e*x
-static long double
-accurate_path (long double x, int e, long double x0)
+static long double __attribute__((noinline))
+accurate_path (long double x0)
 {
 #define EXCEPTIONS 6
 static const long double exceptions[EXCEPTIONS][3] = {
@@ -702,48 +702,30 @@ static const long double exceptions[EXCEPTIONS][3] = {
     if (x0 == exceptions[i][0])
         return exceptions[i][1] + exceptions[i][2];
 
-  /* "generic" worst case 0xe.27db35c267b8a5c*2^e for -515 <= e <= -260 */
-  if (x == 0xe.27db35c267b8a5cp-3L && (-512 <= e && e <= -257))
+  b96u96_u t = {.f = x0};
+  int ex = t.e, e = ex - 0x3fff;
+  if (__builtin_expect (!ex, 0)) // positive subnormal
   {
-    long double h = -0x1.002d3b8dd1c2c526p+8L;
-    long double l = 0x1.fffffffffffffffep-57L;
-    h = h + (long double) (e + 257);
-    return h + l;
+    int k = __builtin_clzll (t.m);
+    e -= k - 1;
+    t.m <<= k;
   }
+  t.e = 0x3fff; // normalize t.f in [1,2)
+  long double x = t.f;
 
-  /* "generic" worst case 0xe.27db35c267b8a5c*2^e for 253 <= e <= 508 */
-  if (x == 0xe.27db35c267b8a5cp-3L && (256 <= e && e <= 511))
-  {
-    long double h = 0x1.ffd2c4722e3d3adap+8L;
-    long double l = 0x1.fffffffffffffffep-57L;
-    h = h + (long double) (e - 511);
-    return h + l;
+  static const uint64_t Ex[] =
+    {0xe27db35c267b8a5c, 0xe27db35c267b8a5c, 0xf67cd32484077681, 0xf67cd32484077681};
+  static const int eEx[] = {-257, 511, -257, 511};
+  static const long double rEx[] =
+    {-0x1.002d3b8dd1c2c526p+8L, 0x1.ffd2c4722e3d3adap+8L,
+     -0x1.000dfc267901af96p+8L, 0x1.fff203d986fe506ap+8L};
+  /* "generic" worst cases */
+  for (int i = 0; i < 4; i++){
+    if (t.m == Ex[i] && (eEx[i] - 255 <= e && e <= eEx[i]))
+      return (rEx[i] + (e - eEx[i])) + 0x1p-57L;
   }
-
-  /* "generic" worst case 0xf.67cd32484077681*2^e for -515 <= e <= -260 */
-  if (x == 0xf.67cd32484077681p-3L && (-512 <= e && e <= -257))
-  {
-    long double h = -0x1.000dfc267901af96p+8L;
-    long double l = 0x1.fffffffffffffffep-57L;
-    h = h + (long double) (e + 257);
-    return h + l;
-  }
-
-  /* "generic" worst case 0xf.67cd32484077681*2^e for 253 <= e <= 508 */
-  if (x == 0xf.67cd32484077681p-3L && (256 <= e && e <= 511))
-  {
-    long double h = 0x1.fff203d986fe506ap+8L;
-    long double l = 0x1.fffffffffffffffep-57L;
-    h = h + (long double) (e - 511);
-    return h + l;
-  }
-
-  // check powers of 2
-  if (x == 1.0L)
-    return (long double) e;
   
-  b96u96_u v = {.f = x};
-  int i = (v.m >> 57) - 0x40;
+  int i = (t.m >> 57) - 0x40;
   // 0 <= i < 2^6, with 1+i/64 <= x < 1+(i+1)/64
   if (i > 26)
   {
@@ -757,13 +739,13 @@ static const long double exceptions[EXCEPTIONS][3] = {
   const long double *ti = T1acc[i + 37];
   a_mul (&xh, &xl, x, ti[0]);
   // 0.992248 < xh + xl < 1.007753
-  v.f = xh;
+  t.f = xh;
 
   int j;
   if (xh >= 1)
-    j = (v.m >> 51) - 0x1000; // 0 <= j <= 31, 1 <= x < 1+(j+1)/2^12
+    j = (t.m >> 51) - 0x1000; // 0 <= j <= 31, 1 <= x < 1+(j+1)/2^12
   else
-    j = (v.m >> 52) - 0x1000; // -32 <= j < 0, 1+j/2^12 <= x < 1+(j+1)/2^12
+    j = (t.m >> 52) - 0x1000; // -32 <= j < 0, 1+j/2^12 <= x < 1+(j+1)/2^12
   const long double *tj = T2acc[j + 32];
   s_mul (&xh, &xl, xh, xl, tj[0]);
   // 0.999876941205002367 <= xh+xl <= 1.00012315926142037
@@ -793,33 +775,29 @@ cr_log2l (long double x)
 {
   b96u96_u t = {.f = x};
   int ex = t.e, e = ex - 0x3fff;
-  if (__builtin_expect (!ex, 0)) // x=+0 or positive subnormal
+  if (__builtin_expect ((ex&0x7fff)==0, 0)) // x=+-0 or positive subnormal
   {
-    if (!t.m) return (long double) -1.0 / 0.0; // x=+0
+    if (!t.m) return (long double) -1.0 / 0.0; // x=+-0
     int k = __builtin_clzll (t.m);
     e -= k - 1;
     t.m <<= k;
   }
   if (__builtin_expect (ex >= 0x7fff, 0)) // x<=0 or Inf or NaN
   {
-    if (!t.m) return (long double) -1.0 / 0.0; // x=-0
     if (t.m == (1ul << 63) && (ex == 0x7fff)) return x; // x=+Inf
-    return 0.0 / 0.0; // x < 0 or qNaN or sNaN
+    return 0.0L / 0.0L; // x < 0 or qNaN or sNaN
   }
 
-  t.e = 0x3fff; // normalize t.f in [1,2)
-
   // now x is normal and x > 0, x = t.m/2^63 * 2^e
-  if (__builtin_expect (t.m == 0x8000000000000000ul, 0))
-    return log2_exact (e);
+  if (__builtin_expect (!(t.m<<1), 0)) return log2_exact (e);
 
   double h, l;
-  fast_path (&h, &l, t.f, e);
+  fast_path (&h, &l, t.m, e);
   long double H = h, L = l;
   const long double err = 0x1.c1p-85l;
   long double left = H + (L - err), right = H + (L + err);
   if (__builtin_expect (left == right, 1))
     return left;
 
-  return accurate_path (t.f, e, x);
+  return accurate_path (x);
 }
