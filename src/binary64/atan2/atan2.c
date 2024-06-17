@@ -237,6 +237,17 @@ atan2_accurate (double y, double x)
     div_tint_d (z, x, y);
   else
     div_tint_d (z, y, x);
+
+  // when |y/x| < 2^-27, x > 0, atan(y/x) rounds to the same value as y/x pertubed by a small
+  // amount towards zero
+  if (inv == 0 && x > 0 && z->ex <= -27)
+    {
+      z->h --;
+      z->m = ~ (uint64_t) 0;
+      z->l = ~ (uint64_t) 1;
+      return tint_tod (z, 1, y, x);
+    }
+
   // below when we write y/x it should be read x/y when |x/y| < 1
   // |z - y/x| < 2^-185.53 * |z| (relative error from div_tint_d)
   // the rational approximation is only for z > 0, it is not antisymmetric
