@@ -98,6 +98,11 @@ float cr_atan2pif(float y, float x){
     }
     if(!(ux>>31)) return 0.0f*sgnf[uy>>31];
   }
+  if(__builtin_expect(ax==ay, 0)){
+    static const float s[] = {0.25,0.75,-0.25,-0.75};
+    uint32_t i = (uy>>31)*2 + (ux>>31);
+    return s[i];
+  }
   uint32_t gt = ay>ax, i = (uy>>31)*4 + (ux>>31)*2 + gt;
   
   double zx = x, zy = y;
@@ -171,7 +176,7 @@ float cr_atan2pif(float y, float x){
   return r;
 }
 
-#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+#ifndef SKIP_C_FUNC_REDEF // icx provides this function
 /* just to compile since glibc does not contain this function */
 float atan2pif(float x, float y){
   return cr_atan2pif(x, y);

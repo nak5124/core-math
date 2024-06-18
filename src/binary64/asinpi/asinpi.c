@@ -700,7 +700,7 @@ double cr_asinpi(double x){
   return t.f;
 }
 
-#ifndef __INTEL_CLANG_COMPILER
+#ifndef SKIP_C_FUNC_REDEF
 /* just to compile since glibc does not have asinpi */
 double asinpi (double x){
   return asin (x) / M_PI;

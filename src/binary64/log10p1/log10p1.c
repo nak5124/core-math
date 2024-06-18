@@ -1464,7 +1464,7 @@ cr_log10p1 (double x)
   err = cr_log10p1_fast (&h, &l, x, e, v);
 
   double left = h + (l - err), right = h + (l + err);
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
 
   return cr_log10p1_accurate (x);

@@ -85,6 +85,14 @@ dint_zero_p (const dint64_t *a)
   return a->hi == 0;
 }
 
+#if 0
+// Prints a dint64_t value for debugging purposes
+static inline void print_dint(const dint64_t *a) {
+  printf("{.hi=0x%lx, .lo=0x%lx, .ex=%ld, .sgn=0x%lx}\n", a->hi, a->lo, a->ex,
+         a->sgn);
+}
+#endif
+
 static inline int cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
 
 static inline int cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
@@ -1966,8 +1974,11 @@ sin_accurate (double x)
     {
       static const double exceptions[][3] = {
         {0x1.e0000000001c2p-20, 0x1.dfffffffff02ep-20, 0x1.dcba692492527p-146},
+        /* the following worst case was reported by Erik E., it has 68
+           identical bits after the round bit */
+        {0x1.6ac5b262ca1ffp+849, 0x1p+0, -0x1.2b089ea1e692bp-123},
       };
-      for (int i = 0; i < 1; i++)
+      for (int i = 0; i < 2; i++)
         {
           if (__builtin_fabs (x) == exceptions[i][0])
             return (x > 0) ? exceptions[i][1] + exceptions[i][2]
@@ -2023,7 +2034,7 @@ cr_sin (double x)
   double left  = h + (l - err), right = h + (l + err);
   /* With SC[] from ./buildSC 15 we get 1100 failures out of 50000000
      random tests, i.e., about 0.002%. */
-  if (left == right)
+  if (__builtin_expect (left == right, 1))
     return left;
 
   return sin_accurate (x);

@@ -363,7 +363,7 @@ double cr_tanpi(double x){
   return res;
 }
 
-#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+#ifndef SKIP_C_FUNC_REDEF // icx provides this function
 /* just to compile since glibc does not provide this function */
 double tanpi(double x){
   return tan(M_PI*x);

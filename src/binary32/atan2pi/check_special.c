@@ -73,15 +73,40 @@ static void
 check (float y, float x)
 {
   float z, t;
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   t = ref_atan2pi (y, x, rnd);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+  feclearexcept (FE_INEXACT);
   z = cr_atan2pif (y, x);
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
   if ((isnan (t) && !isnan(z)) || (!isnan (t) && isnan(z)) ||
       (!isnan (t) && !isnan(z) && z != t))
   {
     printf ("FAIL y=%a x=%a ref=%a z=%a\n", y, x, t, z);
-    exit (1);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if ((inex1 == 0) && (inex2 != 0))
+  {
+    printf ("Spurious inexact exception for x=%a y=%a\n", x, y);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x=%a y=%a\n", x, y);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
   }
 }
+
+#define N 100000000
 
 static void
 check_random (int i)
@@ -92,7 +117,7 @@ check_random (int i)
   ref_init ();
   fesetround (rnd1[rnd]);
   srand48_r (i, buffer);
-  while (1)
+  for (int n = 0; n < N; n++)
   {
     lrand48_r (buffer, &l);
     y = asfloat (l);

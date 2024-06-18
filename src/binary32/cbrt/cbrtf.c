@@ -33,7 +33,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-#define INEXACTFLAG 0
+#define INEXACTFLAG 1 // honor inexact exception
 #if INEXACTFLAG!=0
 #  include <x86intrin.h> /* for the x86 architecture with SSE to rise the inexact flag only when the root is indeed inexact */
 #endif
@@ -70,7 +70,15 @@ float cr_cbrtf (float x){
   double f = ((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])) + r0;
   double r = f * cvt2.f;
   float ub = r, lb = r - cvt2.f*1.4182e-9;
-  if(__builtin_expect(ub==lb, 1)) return ub;
+  if(__builtin_expect(ub==lb, 1)){
+#if INEXACTFLAG!=0
+    cvt2.f = r;
+    if(__builtin_expect((cvt2.u&(0x1fffffl<<24)) == 0, 0)){
+      _mm_setcsr(flag); /* restore MXCSR Control/Status Register for exact roots to get rid of the inexact flag if risen inside the function */
+    }
+#endif
+    return ub;
+  }
   const double u0 = -0x1.ab16ec65d138fp+3;
   double h = f*f*f - z;
   f -= (f*r0*u0)*h;

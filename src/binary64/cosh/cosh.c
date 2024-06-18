@@ -336,6 +336,6 @@ double cr_cosh(double x){
   b64u64_u uh = {.f = rh}, ul = {.f = rl};
   long eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
   rh += rl;
-  if(ml<=16 || eh-el>103) return as_cosh_database(x, rh);
+  if(__builtin_expect(ml<=16 || eh-el>103,0)) return as_cosh_database(x, rh);
   return rh;
 }

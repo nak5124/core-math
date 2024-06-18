@@ -562,3 +562,39 @@ def read_hrcases_powint(f,reduce=false):
          l.append((x,y))
    f.close()
    return l
+
+# generate exact cases with y < 0
+def check_exact(file=None):
+   nsols = 0
+   if file!=None:
+      file = open(file,"w")
+   for k in [1..10]:
+      tmin = ceil(-1074/2^k)
+      tmax = floor(1023/2^k)
+      for t in [tmin..tmax]:
+         if t==0:
+            continue # case x = 1
+         e = t*2^k
+         x = RR(2^e)
+         y0 = RR(-2^-k)
+         # x^y0 = 2^(-e*2^-k) = 2^(-t)
+         # if y=n*y0, x^y = 2^(-n*t)
+         if t<0:
+            nmin = ceil(-1074/-t)
+            nmax = floor(1023/-t)
+         else:
+            nmin = ceil(1023/-t)
+            nmax = floor(-1074/-t)
+         # we want y < 0
+         nmin = max(1,nmin)
+         for n in [nmin..nmax]:
+            y = n*y0
+            if file==None:
+               print (get_hex(x), get_hex(y))
+            else:
+               file.write(get_hex(x) + "," + get_hex(y) + "\n")
+            nsols += 1
+   if file!=None:
+      file.close()
+   return nsols
+

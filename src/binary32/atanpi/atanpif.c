@@ -83,7 +83,7 @@ float cr_atanpif(float x){
   return r;
 }
 
-#ifndef __INTEL_CLANG_COMPILER // icx provides this function
+#ifndef SKIP_C_FUNC_REDEF // icx provides this function
 /* just to compile since glibc does not contain this function */
 float atanpif(float x){
   return cr_atanpif(x);
