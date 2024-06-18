@@ -69,14 +69,6 @@ static inline void a_mul_double (double *hi, double *lo, double a, double b) {
   *lo = __builtin_fma (a, b, -*hi);
 }
 
-// Multiply (approximately) ah + al by b, and put the result in hi + lo
-static inline void s_mul_double (double *hi, double *lo, double ah, double al,
-                                 double b)
-{
-  a_mul_double (hi, lo, ah, b);
-  *lo = __builtin_fma (al, b, *lo);
-}
-
 // Returns (ah + al) * (bh + bl) - (al * bl)
 // We can ignore al * bl when assuming al <= ulp(ah) and bl <= ulp(bh)
 static inline void d_mul_double (double *hi, double *lo, double ah, double al,
