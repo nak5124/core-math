@@ -238,13 +238,13 @@ atan2_accurate (double y, double x)
   else
     div_tint_d (z, y, x);
 
-  // when |y/x| < 2^-27, x > 0, atan(y/x) rounds to the same value as y/x pertubed by a small
-  // amount towards zero
+  // when |y/x| < 2^-27, x > 0, atan(y/x) rounds to the same value as y/x
+  // pertubed by a small amount towards zero (here we subtract 2 to z->l)
   if (inv == 0 && x > 0 && z->ex <= -27)
     {
-      z->h --;
-      z->m = ~ (uint64_t) 0;
-      z->l = ~ (uint64_t) 1;
+      z->l -= 2;
+      z->m -= (z->l < 2);
+      z->h -= (z->m < 1);
       return tint_tod (z, 1, y, x);
     }
 
