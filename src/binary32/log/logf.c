@@ -26,11 +26,6 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
-#include <fenv.h>
-
-#ifdef __x86_64__
-#include <x86intrin.h>
-#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -38,24 +33,6 @@ SOFTWARE.
 #endif
 
 #pragma STDC FENV_ACCESS ON
-
-static inline void get_flags (fexcept_t *flagp)
-{
-#ifdef __x86_64__
-  *flagp = _mm_getcsr ();
-#else
-  fegetexceptflag (flagp, FE_ALL_EXCEPT);
-#endif
-}
-
-static inline void set_flags (const fexcept_t *flagp)
-{
-#ifdef __x86_64__
-  _mm_setcsr (*flagp);
-#else
-  fesetexceptflag (flagp, FE_ALL_EXCEPT);
-#endif
-}
 
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
@@ -78,8 +55,6 @@ static __attribute__((noinline)) float as_special(float x){
 }
 
 float cr_logf(float x){
-  fexcept_t flag;
-  get_flags (&flag);
   static const double tr[] = {
     0x1p+0, 0x1.f81f82p-1, 0x1.f07c1fp-1, 0x1.e9131acp-1,
     0x1.e1e1e1ep-1, 0x1.dae6077p-1, 0x1.d41d41dp-1, 0x1.cd85689p-1,
@@ -128,6 +103,7 @@ float cr_logf(float x){
     ux <<= n;
     ux -= n<<23;
   }
+  if(__builtin_expect(ux == 127u<<23, 0)) return 0.0f;
   uint32_t m = ux&((1<<23)-1), j = (m + (1<<(23-7)))>>(23-6);
   int32_t e = ((int32_t)ux>>23)-127;
   b64u64_u tz = {.u = ((uint64_t)m|(1023l<<23))<<(52-23)};
@@ -137,7 +113,6 @@ float cr_logf(float x){
   if(__builtin_expect(ub != lb, 0)){
     double f = z2*((c[0] + z*c[1]) + z2*((c[2] + z*c[3]) + z2*(c[4] + z*c[5] + z2*c[6])));
     if(__builtin_expect(__builtin_fabsf(x-1.0f)<0x1p-10f, 0)) {
-      if (x == 1.0f) { set_flags (&flag); return 0.0f; }
       return z + f;
     }
     f -= 0x1.0ca86c3898dp-49*e;
