@@ -6,9 +6,9 @@ static inline uint32_t asuint (float f);
 
 static inline int doloop (void)
 {
-  /* acos is defined over [-1,1] */
-  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1p0f);
-#pragma omp parallel for schedule(dynamic,1024)
+  /* acos is defined over [-1,1] but we test it over the full range */
+  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);
+#pragma omp parallel for
   for (uint32_t n = nmin; n <= nmax; n++)
   {
     doit (n);

@@ -6,7 +6,7 @@ static inline uint32_t asuint (float f);
 
 static inline int doloop (void)
 {
-  uint32_t nmin = asuint (0x0p0), nmax = asuint (0x1p0f);
+  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);
 #pragma omp parallel for
   for (uint32_t n = nmin; n <= nmax; n++)
   {
