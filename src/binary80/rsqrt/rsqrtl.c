@@ -49,7 +49,12 @@ cr_rsqrtl (long double x)
 
   // check NaN, Inf, 0
   if (__builtin_expect (e == 32767 || (e == 0 && v.m == 0), 0))
-    return x;
+  {
+    if (x == 0) return 1.0L / x; // +0 and -0
+    if (x < 0) return x / x;     // -Inf
+    if (x > 0) return +0L;       // Inf
+    return x;                    // NaN
+  }
 
   // save inexact flag
   fexcept_t flagp;
