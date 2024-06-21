@@ -238,9 +238,12 @@ atan2_accurate (double y, double x)
   else
     div_tint_d (z, y, x);
 
-  // when |y/x| < 2^-27, x > 0, atan(y/x) rounds to the same value as y/x
-  // pertubed by a small amount towards zero (here we subtract 2 to z->l)
-  if (inv == 0 && x > 0 && z->ex <= -27)
+  /* When |y/x| < 2^-27, x > 0, atan(y/x) rounds to the same value as y/x
+     pertubed by a small amount towards zero (here we subtract 2 to z->l).
+     But since the Taylor expansion of atan(t) is t - t^3/3 + O(t^5),
+     we have a relative error bounded by t^2/2 for t small enough.
+     We thus need |y/x| < 2^-96 so that this error is less than 1 ulp. */
+  if (inv == 0 && x > 0 && z->ex <= -96)
     {
       z->l -= 2;
       z->m -= (z->l < 2);
