@@ -46,8 +46,10 @@ float cr_atanf(float x){
     return __builtin_copysign(pi2,(double)x); // inf
   }
   if (__builtin_expect(e<127-13, 0)){
-    if (__builtin_expect(e<127-25, 0))
+    if (__builtin_expect(e<127-25, 0)){
+      if(!(t.u<<1)) return x;
       return __builtin_fmaf(-x, __builtin_fabsf(x), x);
+    }
     return __builtin_fmaf(-0x1.5555555555555p-2f*x, x*x, x);
   }
   /* now |x| >= 0x1p-13 */
