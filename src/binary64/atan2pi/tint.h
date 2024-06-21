@@ -350,8 +350,9 @@ static inline void tint_fromd (tint_t *a, double x)
 }
 
 // convert a to a double with correct rouding
-// err is a bound in ulps on the maximal error on a->l
-// y,x are the inputs of atan2 (in case we can't round correctly)
+// If err=0, we are converting a double value.
+// Otherwise, err is a bound in ulps on the maximal error on a->l
+// y,x are the inputs of atan2pi (in case we can't round correctly)
 static inline double
 tint_tod (const tint_t *a, uint64_t err, double y, double x)
 {
@@ -392,7 +393,11 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
     ex += sh;
   }
   double h = hh >> 11, l; // significant bits from a->h
-  if (low < 0x400)
+  /* If err=0, we are converting a double value, thus low=0, and the
+     conversion is exact. */
+  if (err == 0)
+    l = 0;
+  else if (low < 0x400)
     l = 0.25; // round to zero
   else if (low > 0x400)
     l = 0.75; // round away

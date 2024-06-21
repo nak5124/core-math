@@ -32,6 +32,10 @@ SOFTWARE.
 float
 ref_rsqrt (float x)
 {
+  /* mpfr_rec_sqrt differs from IEEE 754-2019: IEEE 754-2019 says that
+     rsqrt(-0) should give -Inf, whereas mpfr_rec_sqrt(-0) gives +Inf */
+  if (x == 0.0f && 1.0f / x < 0.0f)
+    return 1.0f / x;
   mpfr_t y;
   mpfr_init2 (y, 24);
   mpfr_set_flt (y, x, MPFR_RNDN);

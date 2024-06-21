@@ -84,7 +84,10 @@ float cr_log1pf(float x) {
   b32u32_u t = {.f = x};
   uint32_t ux = t.u, ax = ux&(~0u>>1);
   if(__builtin_expect(ax<0x3c880000, 1)){
-    if(__builtin_expect(ax<0x33000000, 0)) return __builtin_fmaf(x,-x,x);
+    if(__builtin_expect(ax<0x33000000, 0)){
+      if(!ax) return x;
+      return __builtin_fmaf(x,-x,x);
+    }
     double z2 = z*z, z4 = z2*z2;
     double f = z2*((b[1] + z*b[2]) + z2*(b[3] + z*b[4]) + z4*((b[5] + z*b[6]) + z2*b[7]));
     b64u64_u r = {.f = z + f};

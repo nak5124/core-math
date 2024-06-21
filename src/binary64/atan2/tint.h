@@ -351,11 +351,13 @@ static inline void tint_fromd (tint_t *a, double x)
 }
 
 // convert a to a double with correct rouding
-// err is a bound in ulps on the maximal error on a->l
+// If err=0, we are converting a double value.
+// Otherwise, err is a bound in ulps on the maximal error on a->l
 // y,x are the inputs of atan2 (in case we can't round correctly)
 static inline double
 tint_tod (const tint_t *a, uint64_t err, double y, double x)
 {
+  int bug = a->h == 0x80f5b274315ba7ff && a->m == 0xffffffffffffffff && a->l == 0xffffffffffffffff && a->ex == -1028;
   if (a->ex >= 1025) // overflow: |a| >= 2^1024
     return a->sgn ? -0x1p1023 - 0x1p1023 : 0x1p1023 + 0x1p1023;
   if (a->ex <= -1074) // underflow: |a| < 2^-1074
@@ -386,14 +388,20 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
   if (ex <= -1022) // subnormal case
   {
     int sh = -1021 - ex; // 1 <= sh <= 52
-    ll = (mm << (64 - sh)) | (ll >> sh);
+    if (bug) printf ("sh=%d\n", sh);
+    ll = (mm << (64 - sh)) | (ll >> sh) | (ll > 0);
     mm = (hh << (64 - sh)) | (mm >> sh);
     hh = hh >> sh;
     low = hh & 0x7ff;
     ex += sh;
+    if (bug) printf ("hh=%lx mm=%lx ll=%lx low=%lx ex=%d\n", hh, mm, ll, low, ex);
   }
   double h = hh >> 11, l; // significant bits from a->h
-  if (low < 0x400)
+  /* If err=0, we are converting a double value, thus low=0, and the
+     conversion is exact. */
+  if (err == 0)
+    l = 0;
+  else if (low < 0x400)
     l = 0.25; // round to zero
   else if (low > 0x400)
     l = 0.75; // round away

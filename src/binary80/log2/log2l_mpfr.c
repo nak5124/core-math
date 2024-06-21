@@ -1,6 +1,6 @@
-/* Correctly-rounded reciprocal square root of binary64 value.
+/* Correctly-rounded log2l of binary64 value.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2024 Paul Zimmermann (Inria)
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -27,19 +27,19 @@ SOFTWARE.
 #include <mpfr.h>
 #include "fenv_mpfr.h"
 
-/* code from MPFR */
-double
-ref_rsqrt (double x)
+/* reference function using MPFR */
+long double
+ref_log2l (long double x)
 {
-  /* mpfr_rec_sqrt differs from IEEE 754-2019: IEEE 754-2019 says that
-     rsqrt(-0) should give -Inf, whereas mpfr_rec_sqrt(-0) gives +Inf */
-  if (x == 0.0 && 1.0 / x < 0)
-    return 1.0 / x;
   mpfr_t y;
-  mpfr_init2 (y, 53);
-  mpfr_set_d (y, x, MPFR_RNDN);
-  mpfr_rec_sqrt (y, y, rnd2[rnd]);
-  double ret = mpfr_get_d (y, MPFR_RNDN);
+  mpfr_exp_t emin = mpfr_get_emin ();
+  mpfr_set_emin (-16444);
+  mpfr_init2 (y, 64);
+  mpfr_set_ld (y, x, MPFR_RNDN);
+  mpfr_log2 (y, y, rnd2[rnd]);
+  // no need to call mpfr_subnormalize
+  long double ret = mpfr_get_ld (y, MPFR_RNDN);
   mpfr_clear (y);
+  mpfr_set_emin (emin);
   return ret;
 }
