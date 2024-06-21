@@ -9,3 +9,6 @@
 0x1p0
 0x1p-2
 0x1p2
+# subnormal numbers
+0x0.000000000000002p-16385
+
