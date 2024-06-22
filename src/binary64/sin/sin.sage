@@ -1106,3 +1106,30 @@ def statall(f):
             l2.append(((t0,e),(t1,e)))
    l = l2
    return l
+
+# return x in (2^(e-1),2^e) such that is closest to a multiple of pi/2
+# if parity="even", x should be an even multiple of pi/2 (sin(x) near 0)
+# if parity="odd", x should be an odd multiple of pi/2 (sin(x) near 1)
+def wc(e,parity="any"):
+   x = n(2^(e-53)/(pi/2),e+200)
+   l = continued_fraction(x)
+   bestq = None
+   for pq in l.convergents():
+      p = pq.numer()
+      q = pq.denom()
+      # 2^(e-53)/(pi/2) ~ p/q
+      # thus q*2^(e-53) ~ p*pi/2
+      while q<2^52:
+         p = p*2
+         q = q*2
+      if parity=="even" and is_odd(p):
+         continue
+      if parity=="odd" and is_even(p):
+         continue
+      if q<2^53:
+         bestq = q
+   if bestq==None:
+      return RR(0)
+   q = bestq
+   x = RR(q*2^(e-53))
+   return x

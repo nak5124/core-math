@@ -1,6 +1,6 @@
 /* Correctly-rounded logarithm function for binary32 value.
 
-Copyright (c) 2023 Alexei Sibidanov.
+Copyright (c) 2023-2024 Alexei Sibidanov and Paul Zimmermann.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -103,6 +103,7 @@ float cr_logf(float x){
     ux <<= n;
     ux -= n<<23;
   }
+  if(__builtin_expect(ux == 127u<<23, 0)) return 0.0f;
   uint32_t m = ux&((1<<23)-1), j = (m + (1<<(23-7)))>>(23-6);
   int32_t e = ((int32_t)ux>>23)-127;
   b64u64_u tz = {.u = ((uint64_t)m|(1023l<<23))<<(52-23)};
@@ -112,7 +113,6 @@ float cr_logf(float x){
   if(__builtin_expect(ub != lb, 0)){
     double f = z2*((c[0] + z*c[1]) + z2*((c[2] + z*c[3]) + z2*(c[4] + z*c[5] + z2*c[6])));
     if(__builtin_expect(__builtin_fabsf(x-1.0f)<0x1p-10f, 0)) {
-      if(x == 1.0f) return 0.0f;
       return z + f;
     }
     f -= 0x1.0ca86c3898dp-49*e;
