@@ -52,11 +52,11 @@ static inline void a_mul_double (double *hi, double *lo, double a, double b) {
 }
 
 /* put in (h+l)*2^e an approximation of 1/sqrt(x) where x = vm/2^63*2^(e-16383)
-   with |h + l - 1/sqrt(x))| < XXX */
+   with |h + l - 1/sqrt(xr))| < 2^-97.654, where xr is the reduced operand,
+   1/2 <= xr < 2. */
 static void
-fast_path (double *h, double *l, unsigned long vm, int *e, long double x0)
+fast_path (double *h, double *l, unsigned long vm, int *e)
 {
-  // if (x0 == TRACE) printf ("vm=%lx e=%d\n", vm, *e);
   /* convert vm/2^63 to a double-double representation xh + xl */
   b64u64_u th = {.u = (0x3fful<<52) | (vm >> 11)};
   b64u64_u tl = {.u = (0x3cbul<<52) | ((vm << 53) >> 12)};
@@ -75,21 +75,70 @@ fast_path (double *h, double *l, unsigned long vm, int *e, long double x0)
   
   *e = - (*e / 2);
   
-  // 1/sqrt(x) = 1/sqrt(xh+xl)*2^e with 1/2 <= xh + xl < 2
+  // 1/sqrt(x) = 1/sqrt(xh+xl)*2^e with 1/2 <= xh, xh + xl < 2
 
   double yh, yl;
-  yh = 1.0 / __builtin_sqrt (xh);
+  yh = 1.0 / __builtin_sqrt (xh); // 1/2 <= yh <= 2
+  /* Let s == __builtin_sqrt (xh), we have s = sqrt(xh) * (1 + eps1)
+     with |eps1| < 2^-52.
+     Then yh = 1/s * (1 + eps2) with |eps2| < 2^-52, thus
+          yh = 1/sqrt(xh) * (1 + eps2)/(1 + eps1)
+             = 1/sqrt(xh) * (1 + eps3) with |eps3| < 2^-50.999 */
 
-  // perform one step of Newton iteration: y' = y - y/2 * (x * y^2 - 1)
+  /* Perform one step of Newton iteration: y' = y - y/2 * (x * y^2 - 1).
+     Let e = x*y^2-1 and e' = x*y'^2-1. Since y' = y - y/2*e, we deduce:
+     y'^2 = y^2 - y^2*e + y^2/4*e^2
+     x*y'^2-1 = (x*y^2-1) - x*y^2*e + x*y^2/4*e^2
+     e' = e - x*y^2*e + x*y^2/4*e^2
+        = (1-x*y^2)*e + x*y^2/4*e^2
+        = e^2 + x*y^2/4*e^2
+        = e^2 * (1 + (e+1)/4)
+     Using y=yh, we obtain:
+     e = (xh+xl)/xh * (1+eps3)^2 - 1
+       = (1+eps3)^2 - 1 + xl/xh*(1+eps3)^2
+     thus since |xl/xh| < 2^-52:
+     |e| <= 2^-49.677.
+     If we plug in e' = e^2 * (1 + (e+1)/4) we obtain:
+     |e'| < 2^-99.032. */
+
   double zh, zl;
-  a_mul_double (&zh, &zl, yh, yh); // zh+zl = yh^2
+  a_mul_double (&zh, &zl, yh, yh); // zh+zl = yh^2, exact
+  // since 1/2 <= yh <= 2, 1/4 <= zh+zl <= 4, with |zl| < ulp(zh) <= 2^-51
   // x * y^2 - 1 = (x * zh - 1) + x * zl
   yl = __builtin_fma (xh, zh, -1.0);
-  yl = __builtin_fma (xl, zh, yl);
+  /* since yh = 1/sqrt(xh) * (1 + eps3), yh^2 = 1/xh * (1+eps3)^2,
+     thus (zh+zl)*xh = (1+eps3)^2
+     |zh*xh-1| <= |zl*xh| + (1+eps3)^2 - 1
+               <= 2^-51*2 + 2^-49.998 <= 2^-48.998
+     we deduce that |yl| < 2^-48, and the rounding error of the above fma
+     is bounded by ulp(2^-48.998) = 2^-101. */
   yl = __builtin_fma (xh, zl, yl);
+  /* |xh| <= 2, |zl| <= 2^-51, and |yl| <= 2^-48.998 thus the new value of
+     yl is < 2*2^-51 + 2^-48.998 <= 2^-48.413, and the rounding error of the
+     above fma is bounded by ulp(2^-48.413) = 2^-101 again. */
+  // add xl * zh
+  yl = __builtin_fma (xl, zh, yl);
+  /* |xl| <= 2^-52, |zh| <= 4 and |yl| <= 2^-48.413, thus the new value of
+     yl is < 2^-52*4 + 2^-48.413 <= 2^-47.998, and the rounding error of the
+     above fma is bounded by ulp(2^-47.998) = 2^-100.
+     We neglected the term xl*zl which is bounded by 2^-52*2^-51, thus
+     induces an error of at most 2^-103.
+     The absolute error on yl is bounded by:
+     2^-101 + 2^-101 + 2^-100 + 2^-103 < 2^-98.912. */
   yl = yh * yl * -0.5;
+  /* since |yh| <= 2 and |yl| <= 2^-47.998, the new value of yl is bounded by
+     2^-47.998 too, and the rounding error in this last multiplication (the
+     multiplication by -0.5 is exact) is bounded by ulp(2^-47.998) = 2^-100.
+     The total error is bounded by:
+     * 2^-99.032 for the mathematical error e' (see above)
+     * 2^-98.912 for the error induced by the rounding error on the previous
+       value of yl (multiplied by yh with |yh| <= 2 and by 0.5)
+     * 2^-100 for the rounding error in this last operation
+     This gives an absolute error bounded by:
 
-  // yh+yl approximates 1/sqrt(xh+xl) with about 106 bits of accuracy
+     |yh + yl - 1/sqrt(xh + xl)| < 2^-99.032 + 2^-98.912 + 2^-100 < 2^-97.654
+  */
+
   *h = yh;
   *l = yl;
 }
@@ -139,10 +188,10 @@ cr_rsqrtl (long double x)
   }
 
   double h, l;
-  fast_path (&h, &l, v.m, &e, x);
+  fast_path (&h, &l, v.m, &e);
   // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   long double H = h, L = l;
-  const long double err = 0x1p-100L;
+  const long double err = 0x1.46p-98L; // 2^-97.654 < 0x1.46p-98
   long double left = H + (L - err), right = H + (L + err);
   // printf ("left=%La right=%La\n", left, right);
   if (__builtin_expect (left == right, 1))
