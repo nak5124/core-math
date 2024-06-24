@@ -11,4 +11,7 @@
 0x1p2
 # subnormal numbers
 0x0.000000000000002p-16385
-
+# non-regression values
+0xe.94572fbe31f2f2fp-16385
+0x9.8003bb2d200784p-16385
+0x1.8003bb2d200784p-16385

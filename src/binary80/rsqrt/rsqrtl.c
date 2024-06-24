@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x0.000000000000002p-16385L
+#define TRACE 0x1.8003bb2d200784p-16385L
 
 #include <stdint.h>
 #include <fenv.h>
@@ -54,8 +54,9 @@ static inline void a_mul_double (double *hi, double *lo, double a, double b) {
 /* put in (h+l)*2^e an approximation of 1/sqrt(x) where x = vm/2^63*2^(e-16383)
    with |h + l - 1/sqrt(x))| < XXX */
 static void
-fast_path (double *h, double *l, unsigned long vm, int *e)
+fast_path (double *h, double *l, unsigned long vm, int *e, long double x0)
 {
+  // if (x0 == TRACE) printf ("vm=%lx e=%d\n", vm, *e);
   /* convert vm/2^63 to a double-double representation xh + xl */
   b64u64_u th = {.u = (0x3fful<<52) | (vm >> 11)};
   b64u64_u tl = {.u = (0x3cbul<<52) | ((vm << 53) >> 12)};
@@ -99,13 +100,15 @@ cr_rsqrtl (long double x)
   b96u96_u v = {.f = x};
   int e = v.e & 0x7fff;
 
+  // if (x == TRACE) printf ("cr_rsqrtl: x=%La e=%d\n", x, e);
+
   // check NaN, Inf, 0
-  if (__builtin_expect (e == 32767 || (e == 0 && v.m == 0), 0))
+  if (__builtin_expect (x < 0 || e == 32767 || (e == 0 && v.m == 0), 0))
   {
-    if (x == 0) return 1.0L / x; // +0 and -0
-    if (x < 0) return x / x;     // -Inf
-    if (x > 0) return +0L;       // Inf
-    return x;                    // NaN
+    if (x == 0) return 1.0L / x;   // x=+0 and x=-0
+    if (x < 0) return 0.0L / 0.0L; // x<0: rsqrt(x)=NaN
+    if (x > 0) return +0L;         // x=Inf
+    return x;                      // x=NaN
   }
 
   //  if (x == TRACE) printf ("v.m=%lx e=%d\n", v.m, e);
@@ -129,10 +132,15 @@ cr_rsqrtl (long double x)
       v.e = 16383 + (16445 - cnt) / 2;
       return v.f;
     }
+    // normalize subnormal numbers not of the form 2^(2k)
+    cnt = __builtin_clzll (v.m);
+    v.m <<= cnt;
+    e -= cnt - 1;
   }
 
   double h, l;
-  fast_path (&h, &l, v.m, &e);
+  fast_path (&h, &l, v.m, &e, x);
+  // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   long double H = h, L = l;
   const long double err = 0x1p-100L;
   long double left = H + (L - err), right = H + (L + err);
