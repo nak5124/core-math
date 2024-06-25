@@ -1,6 +1,6 @@
 /* Fast 192-bit arithmetic routines.
 
-Copyright (c) 2023 Paul Zimmermann
+Copyright (c) 2023-2024 Paul Zimmermann and Alexei Sibidanov
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -25,6 +25,9 @@ SOFTWARE.
 */
 
 #include <stdlib.h>
+#if defined(__x86_64__)
+#include <x86intrin.h>
+#endif
 
 typedef unsigned __int128 u128;
 
@@ -350,6 +353,24 @@ static inline void tint_fromd (tint_t *a, double x)
   a->m = a->l = 0;
 }
 
+// copied from ../exp/exp.c
+static inline double as_ldexp(double x, int64_t i){
+#ifdef __x86_64__
+    __m128i sb; sb[0] = i<<52;
+#if defined(__clang__)
+    __m128d r = _mm_set_sd(x);
+#else
+    __m128d r; asm("":"=x"(r):"0"(x));
+#endif
+    r = (__m128d)_mm_add_epi64(sb, (__m128i)r);
+    return r[0];
+#else
+    b64u64_u ix = {.f = x};
+    ix.u += i<<52;
+    return ix.f;
+#endif
+}
+
 // convert a to a double with correct rouding
 // If err=0, we are converting a double value.
 // Otherwise, err is a bound in ulps on the maximal error on a->l
@@ -417,7 +438,7 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
   h = __builtin_fma (l, s, s * h);
   h *= 0x1p-52;
   // now -1021 <= ex <= 1024, thus 2^(ex-1) does not underflow/overflow
-  return h * __builtin_ldexp (1.0, ex - 1);
+  return h * as_ldexp (1.0, ex - 1);
 }
 
 /* Put in r an approximation of 1/A, assuming A is not zero.
