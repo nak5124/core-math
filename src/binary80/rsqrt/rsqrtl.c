@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include <stdio.h> // FIXME: to be removed in final version
 #include <stdint.h>
+#include <math.h> // for sqrtl
 #include <fenv.h>
 
 // Warning: clang also defines __GNUC__
@@ -234,6 +235,14 @@ static const long double exceptions[EXCEPTIONS][3] = {
   return h + l;
 }
 
+static long double
+my_ldexpl (long double x, int e)
+{
+  b96u96_u v = {.f = x};
+  v.e += e;
+  return v.f;
+}
+
 long double
 cr_rsqrtl (long double x)
 {
@@ -286,7 +295,7 @@ cr_rsqrtl (long double x)
   long double left = H + (L - err), right = H + (L + err);
   // printf ("left=%La right=%La\n", left, right);
   if (__builtin_expect (left == right, 1))
-    return __builtin_ldexpl (left, e);
+    return my_ldexpl (left, e);
 
   // if (x == TRACE) printf ("fast path failed\n");
 
@@ -294,5 +303,12 @@ cr_rsqrtl (long double x)
   // v.f is the reduced argument, with 1/2 <= v.f < 2
 
   left = accurate_path (H, L, v.f);
-  return __builtin_ldexpl (left, e);
+  return my_ldexpl (left, e);
 }
+
+#if !defined(SKIP_C_FUNC_REDEF)
+/* rsqrtl function is not in glibc so define it here just to compile tests */
+long double rsqrtl (long double x){
+  return 1.0L / sqrtl (x);
+}
+#endif
