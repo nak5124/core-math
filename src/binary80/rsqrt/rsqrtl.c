@@ -24,8 +24,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#define TRACE 0x1.8003bb2d200784p-16385L
+/* References:
+   [1] Note on the Veltkamp/Dekker Algorithms with Directed Roundings,
+       Paul Zimmermann, https://inria.hal.science/hal-04480440, February 2024.
+*/
 
+#define TRACE 0x8.000000000000001p-5L
+
+#include <stdio.h> // FIXME: to be removed in final version
 #include <stdint.h>
 #include <fenv.h>
 
@@ -53,14 +59,16 @@ static inline void a_mul_double (double *hi, double *lo, double a, double b) {
 
 /* put in (h+l)*2^e an approximation of 1/sqrt(x) where x = vm/2^63*2^(e-16383)
    with |h + l - 1/sqrt(xr))| < 2^-97.654, where xr is the reduced operand,
-   1/2 <= xr < 2. */
-static void
+   1/2 <= xr < 2.
+   Return 0 if 1 <= xr < 2, and 1 if 1/2 <= xr < 1. */
+static int
 fast_path (double *h, double *l, unsigned long vm, int *e)
 {
   /* convert vm/2^63 to a double-double representation xh + xl */
   b64u64_u th = {.u = (0x3fful<<52) | (vm >> 11)};
   b64u64_u tl = {.u = (0x3cbul<<52) | ((vm << 53) >> 12)};
   double xh = th.f, xl = tl.f - 0x1p-52;
+  int div = 0;
   // 1 <= xh < 2 and 0 <= xl < 2^-52
 
   *e -= 16383; // unbias e
@@ -70,10 +78,10 @@ fast_path (double *h, double *l, unsigned long vm, int *e)
   {
     xh = xh * 0.5;
     xl = xl * 0.5;
-    (*e) ++;
+    div = 1;
   }
   
-  *e = - (*e / 2);
+  *e = - ((*e + div) / 2);
   
   // 1/sqrt(x) = 1/sqrt(xh+xl)*2^e with 1/2 <= xh, xh + xl < 2
 
@@ -141,6 +149,89 @@ fast_path (double *h, double *l, unsigned long vm, int *e)
 
   *h = yh;
   *l = yl;
+
+  return div;
+}
+
+/* s + t <- a + b, assuming |a| >= |b| */
+static inline void
+fast_two_sum (long double *s, long double *t, long double a, long double b)
+{
+  *s = a + b;
+  long double e = *s - a;
+  *t = b - e;
+}
+
+// Veltkamp's splitting: split x into xh + xl such that
+// x = xh + xl exactly
+// xh fits in 32 bits and |xh| <= 2^e if 2^(e-1) <= |x| < 2^e
+// xl fits in 32 bits and |xl| < 2^(e-32)
+// See reference [1].
+static inline void
+split (long double *xh, long double *xl, long double x)
+{
+  static const long double C = 0x1.00000001p+32L;
+  long double gamma = C * x;
+  long double delta = x - gamma;
+  *xh = gamma + delta;
+  *xl = x - *xh;
+}
+
+/* Dekker's algorithm: rh + rl = u * v
+   Reference: Algorithm Mul12 from reference [2], pages 21-22.
+   See also reference [3], Veltkamp splitting (Algorithm 4.9) and
+   Dekker's product (Algorithm 4.10).
+   The Handbook only mentions rounding to nearest, but Veltkamp's and
+   Dekker's algorithms also work for directed roundings.
+   See reference [1].
+*/
+static inline void
+a_mul (long double *rh, long double *rl, long double u, long double v)
+{
+  long double u1, u2, v1, v2;
+  split (&u1, &u2, u);
+  split (&v1, &v2, v);
+  *rh = u * v;
+  *rl = (((u1 * v1 - *rh) + u1 * v2) + u2 * v1) + u2 * v2;
+}
+
+// Return in hi+lo a 128-bit approximation of (ah + al) * b
+static inline void
+s_mul (long double *hi, long double *lo, long double ah, long double al,
+       long double b) {
+  a_mul (hi, lo, ah, b); // exact
+  *lo += al * b;
+}
+
+/* given x the reduced argument, 1/2 <= xr < 2, and h+l the approximation
+   computed by the fast path, with |h+l - 1/sqrt(x)| < 2^-97.654, returns
+   the correctly rounded value of 1/sqrt(x) */
+static long double
+accurate_path (long double h, long double l, long double x)
+{
+#define EXCEPTIONS 1  
+static const long double exceptions[EXCEPTIONS][3] = {
+  {0x8.000000000000001p-3L, 0x1.fffffffffffffffep-1L, 0x1.7ffffffffffffffep-128L},
+  };
+  for (int i = 0; i < EXCEPTIONS; i++)
+    if (x == exceptions[i][0])
+        return exceptions[i][1] + exceptions[i][2];
+  // first normalize h+l
+  fast_two_sum (&h, &l, h, l);
+
+  // perform one step of Newton iteration y' = y - y/2 * (x * y^2 - 1)
+  // where y = h+l
+  long double zh, zl;
+  a_mul (&zh, &zl, h, h);
+  zl += 2.0L * h * l;
+  // zh+zl approximates y^2 = (h+l)^2 with about 128 bits of accuracy
+
+  long double uh, ul;
+  s_mul (&uh, &ul, zh, zl, x);
+  // uh+ul approximates x*y^2 with about 128 bits of accuracy
+  ul = (uh - 1.0L) + ul; // error term x * y^2 - 1
+  l = l - h * ul * 0.5L;
+  return h + l;
 }
 
 long double
@@ -188,7 +279,7 @@ cr_rsqrtl (long double x)
   }
 
   double h, l;
-  fast_path (&h, &l, v.m, &e);
+  int div = fast_path (&h, &l, v.m, &e);
   // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
   long double H = h, L = l;
   const long double err = 0x1.46p-98L; // 2^-97.654 < 0x1.46p-98
@@ -197,5 +288,11 @@ cr_rsqrtl (long double x)
   if (__builtin_expect (left == right, 1))
     return __builtin_ldexpl (left, e);
 
-  return x;
+  // if (x == TRACE) printf ("fast path failed\n");
+
+  v.e = 16383 - div;
+  // v.f is the reduced argument, with 1/2 <= v.f < 2
+
+  left = accurate_path (H, L, v.f);
+  return __builtin_ldexpl (left, e);
 }
