@@ -807,13 +807,13 @@ cr_exp2l (long double x)
     // identify and return exact results immediately
     int k = e - 16382;
     if( k>0 && __builtin_expect((v.m<<k) == 0, 0)){
-      k = v.m>>(64-k);
-      if(k<16383){
+      int sgn = -(v.e>>15);
+      k = ((v.m>>(64-k))^sgn) - sgn;
+      if(k>-16383){
 	v.m = 1ul<<63;
-	int sgn = -(v.e>>15);
-	v.e = (k^sgn) - sgn + 16383;
-      } else {
-	v.m = 1ul<<(16445-k);
+	v.e = k + 16383;
+      } else { // denormal
+	v.m = 1ul<<(16445+k);
 	v.e = 0;
       }
       return v.f;
