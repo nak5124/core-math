@@ -97,6 +97,13 @@ get_random ()
   return v.f;
 }
 
+static void
+check_exact (void)
+{
+  for (int e = -16445; e < 16384; e++)
+    check ((long double) e);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -141,6 +148,9 @@ main (int argc, char *argv[])
 
   ref_init();
   ref_fesetround (rnd);
+
+  printf ("Checking exact cases\n");
+  check_exact ();
 
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
