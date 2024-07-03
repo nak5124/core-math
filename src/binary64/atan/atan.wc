@@ -54612,8 +54612,8 @@
 +0
 -0
 # values contributed by Erik E. <evonatarius@gmail.com>
-0x1p+1024
--0x1p+1024
+# 0x1p+1024 # not representable
+# -0x1p+1024 # not representable
 0x1.fffffffffffffp+1023
 -0x1.fffffffffffffp+1023
 0x1.ef21eb6c163e3p+55
