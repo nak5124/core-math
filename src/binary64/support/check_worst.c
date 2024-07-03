@@ -105,7 +105,6 @@ readstdin(double2 **result, int *count)
       while (*buf++ != ',');
       if (sscanf_snan (buf, &(*item)[1]) == 1)
         (*count)++;
-      printf ("x=%la y=%la\n", (*item)[0], (*item)[1]);
     }
   }
 }
