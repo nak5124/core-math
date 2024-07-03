@@ -102,8 +102,9 @@ readstdin(double2 **result, int *count)
       (*count)++;
     else if (sscanf_snan (buf, &(*item)[0]) == 1)
     {
-      while (*buf++ != ',');
-      if (sscanf_snan (buf, &(*item)[1]) == 1)
+      char *tbuf = buf;
+      while (*tbuf++ != ',');
+      if (sscanf_snan (tbuf, &(*item)[1]) == 1)
         (*count)++;
     }
   }
