@@ -93,7 +93,13 @@ get_random ()
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
   v.m |= (uint64_t) rand () << 62;
-  v.e = rand () & 65535;
+  v.e = rand () & 0xffff;
+  // if e is not 0 nor 0x7fff nor 0xffff, m should have its msb set
+  uint64_t t = v.e != 0 && v.e != 0x7fff && v.e != 0xffff;
+  v.m |= t << 63;
+  // if e is 0, m should have its msb cleared
+  if (v.e == 0)
+    v.m = (v.m << 1) >> 1;
   return v.f;
 }
 
