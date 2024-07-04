@@ -147,6 +147,94 @@ check_exact (void)
   }
 }
 
+static void
+readstdin(long double **result, int *count)
+{
+  char *buf = NULL;
+  size_t buflength = 0;
+  ssize_t n;
+  int allocated = 512;
+
+  *count = 0;
+  if (NULL == (*result = malloc(allocated * sizeof(long double)))) {
+    fprintf(stderr, "malloc failed\n");
+    exit(1);
+  }
+
+  while ((n = getline(&buf, &buflength, stdin)) >= 0) {
+    if (n > 0 && buf[0] == '#') continue;
+    if (*count >= allocated) {
+      int newsize = 2 * allocated;
+      long double *newresult = realloc(*result, newsize * sizeof(long double));
+      if (NULL == newresult) {
+        fprintf(stderr, "realloc(%d) failed\n", newsize);
+        exit(1);
+      }
+      allocated = newsize;
+      *result = newresult;
+    }
+    long double *item = *result + *count;
+    // special code for snan, since glibc does not read them
+    if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
+    {
+      b80u80_t v;
+      // +snan has encoding m=2^63+1, e=32767 (for example)
+      v.e = 0x7fff;
+      v.m = 0x8000000000000001ul;
+      *item = v.f;
+      (*count)++;
+    }
+    else if (strncmp (buf, "-snan", 5) == 0)
+    {
+      b80u80_t v;
+      // -snan has encoding m=2^63+1, e=65535 (for example)
+      v.e = 0xffff;
+      v.m = 0x8000000000000001ul;
+      *item = v.f;
+      (*count)++;
+    }
+    else if (sscanf(buf, "%La", item) == 1)
+    {
+      (*count)++;
+    }
+  }
+}
+
+/* for worst-cases in [0.5,2), check all values x*2^(2k) that are in
+   [2^-16445, 2^16384) */
+static void
+check_extended (long double x)
+{
+  if (is_nan (x) || x < 0.5L || 2.0L <= x) // avoid NaN and x not in [0.5,2)
+    return;
+
+  int e, emin, emax;
+  emin = -16444;
+  emax = 16384;
+  for (e = emin; e <= emax; e+=2)
+    check (ldexpl (x, e));
+}
+
+/* check scaled worst-cases from rsqrtl.wc */
+static void
+check_scaled_worst_cases (void)
+{
+  long double *items;
+  int count;
+  readstdin (&items, &count);
+#ifndef CORE_MATH_NO_OPENMP
+#pragma omp parallel for
+#endif
+  for (int i = 0; i < count; i++) {
+    ref_init();
+    ref_fesetround(rnd);
+    fesetround(rnd1[rnd]);
+    long double x = items[i];
+    check_extended (x);
+  }
+  free (items);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -194,6 +282,9 @@ main (int argc, char *argv[])
 
   printf ("Checking exact values\n");
   check_exact ();
+
+  printf ("Checking scaled worst cases\n");
+  check_scaled_worst_cases ();
 
   printf ("Checking random values\n");
 #define N 1000000000UL /* total number of tests */

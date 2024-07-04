@@ -210,9 +210,10 @@ s_mul (long double *hi, long double *lo, long double ah, long double al,
 static long double
 accurate_path (long double h, long double l, long double x)
 {
-#define EXCEPTIONS 1  
+#define EXCEPTIONS 2
 static const long double exceptions[EXCEPTIONS][3] = {
   {0x8.000000000000001p-3L, 0x1.fffffffffffffffep-1L, 0x1.7ffffffffffffffep-128L},
+  {0xb.f1e6df54f659c6ap-3L, 0x1.a302422442449fc4p-1L, -0x1.4b1708fa59d3638ep-129L},
   };
   for (int i = 0; i < EXCEPTIONS; i++)
     if (x == exceptions[i][0])
