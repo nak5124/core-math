@@ -25,8 +25,21 @@ SOFTWARE. */
 
 #include <mpfr.h>
 #include "fenv_mpfr.h"
+#include <stdint.h>
+
+typedef uint64_t u64;
+typedef union {double f; u64 u;} b64u64_u;
 
 double ref_hypot (double x, double y){
+  b64u64_u xi = {.f = x}, yi = {.f = y};
+  if((xi.u<<1)<(0xffful<<52) && (xi.u<<1)>(0x7fful<<53)){ // x = sNAN
+    xi.u |= 1l<<51; // make it quite NAN
+    return xi.f; // return qNAN
+  }
+  if((yi.u<<1)<(0xffful<<52) && (yi.u<<1)>(0x7fful<<53)){ // y = sNAN
+    yi.u |= 1l<<51; // make it quite NAN
+    return yi.f; // return qNAN
+  }
   mpfr_t xm, ym, zm;
   mpfr_set_emin (-1073);
   mpfr_init2 (xm, 53);
