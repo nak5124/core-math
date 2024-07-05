@@ -92,7 +92,14 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y){
   int le = yi.u>>52;
   b64u64_u ri = {.f = __builtin_sqrt(x*x + y*y)};
   const int bs = 3;
-  u64 rm = (ri.u&(~0ul>>12))|1l<<52; int re = (ri.u>>52)-0x3ff;
+  u64 rm = (ri.u&(~0ul>>12)); int re = (ri.u>>52)-0x3ff;
+  if(__builtin_expect(rm,1)){
+    rm |= 1l<<52;
+    rm--;
+  } else {
+    rm = ~0ul>>11;
+    re--;
+  }
   bm <<= bs;
   u64 m2 = bm*bm;
   int de = be-le;
@@ -164,10 +171,9 @@ double cr_hypot(double x, double y){
   }
   double u = __builtin_fmax(x,y), v = __builtin_fmin(x,y);
   b64u64_u xd = {.f = u}, yd = {.f = v};
-  u64 de = xd.u - yd.u;
-  if(__builtin_expect(de>(27l<<52),0)) return __builtin_fma(0x1p-27, v, u);
   ey = yd.u;
   if(__builtin_expect(!(ey>>52),0)){
+    if(!yd.u) return xd.f;
     ex = xd.u;
     if(__builtin_expect(!(ex>>52),0)){
       if(!ex) return 0;
@@ -180,6 +186,8 @@ double cr_hypot(double x, double y){
     b64u64_u t = {.u = ey};
     yd.f = t.f;
   }
+  u64 de = xd.u - yd.u;
+  if(__builtin_expect(de>(27l<<52),0)) return __builtin_fma(0x1p-27, v, u);
   i64 off = (0x3ffl<<52) - (xd.u & emsk);
   xd.u += off;
   yd.u += off;
