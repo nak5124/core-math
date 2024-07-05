@@ -1,7 +1,7 @@
 # -*- makefile -*-
 
 PERF_DEFINES := \
-  -DTYPE_UNDER_TEST=$(TYPE_UNDER_TEST) \
+  -DTYPE_UNDER_TEST="$(TYPE_UNDER_TEST)" \
   -Dcr_function_under_test=cr_$(FUNCTION_UNDER_TEST) \
   -Dfunction_under_test=$(FUNCTION_UNDER_TEST)
 

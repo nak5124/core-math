@@ -47,7 +47,7 @@ int rnd;
 
 typedef long double ldouble2[2];
 
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u96_t;
+typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 
 /* scanf %La from buf, allowing snan, +snan and -snan */
 static int
