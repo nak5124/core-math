@@ -62,8 +62,8 @@ check (long double x, long double y)
   mpfr_init2 (X, 64);
   mpfr_init2 (Y, 64);
   mpfr_init2 (Z, 64);
-  mpfr_set_d (X, x, MPFR_RNDN);
-  mpfr_set_d (Y, y, MPFR_RNDN);
+  mpfr_set_ld (X, x, MPFR_RNDN);
+  mpfr_set_ld (Y, y, MPFR_RNDN);
   z = cr_powl (x, y);
   t = ref_powl (x, y);
 	mpfr_clear (X);
@@ -129,6 +129,7 @@ main (int argc, char *argv[])
     }
 	ref_init();
 	ref_fesetround(rnd);
+	fesetround(rnd1[rnd]);
   printf ("Checking random values\n");
 
 	long int total = 0, fails = 0, giveups = 0;
@@ -140,7 +141,8 @@ main (int argc, char *argv[])
 #pragma omp parallel for reduction (+: total,fails,giveups)
 	for(uint64_t n = 0; n < N; n++) {
 		ref_init();
-		ref_fesetround (rnd);
+		ref_fesetround(rnd);
+		fesetround(rnd1[rnd]);
 		long double x = get_random(), y = get_random();
 		int j = check(x, y);
 		if(j == 2) {

@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <fenv.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef __x86_64__
 #include <x86intrin.h>
@@ -15,6 +16,13 @@
 #else
 #define POWL_DPRINTF(...)
 #endif
+
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
 
 typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 typedef union {
@@ -97,7 +105,7 @@ static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	b80u80_t cvt_x = {.f = x};
-	int extra_int = (cvt_x.e&0x7fff) - 16383; // We don't have to mask : x >= +0
+	int extra_int = (cvt_x.e&0x7fff) - 16383;
 	cvt_x.e = 16383; // New wanted exponent
 	x = cvt_x.f;
 
@@ -120,13 +128,15 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	b64u64_t cvt_w = {.f = w};
 	double logwh, logwl;
 
-	if(__builtin_expect(w == 2., 0)) {logwh = extra_int + 1; logwl = 0;}
-	else {
+	if(__builtin_expect(w == 2., 0)) {
+		logwh = extra_int + 1; logwl = 0;
+	} else {
 		double ex;
 		logwh = t[(cvt_w.u>>42) & 0x3ff][0]; logwl = t[(cvt_w.u>>42) & 0x3ff][1];
 		fast_two_sum(&logwh, &ex, extra_int, logwh);
 		logwl += ex;
 	}
+
 	/* We could construct the tables in such a way that logwh + extra_int is
 	   exact. However, this would waste 14 bits of precision when extra_int is
 	   0, and even more for small values of logw. This chain of operation is
@@ -151,7 +161,6 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	double lorderh, lorderl;
 	fast_two_sum(&lorderh, &lorderl, 0x1.8p+1, tsqh);
 	lorderl += tsql + (-0x1.00c47fd09p-68); // I think we still are normalized
-	//add22(&lorderh, &lorderl, 0x1.8p+1, -0x1.dc61e618p-75, tsqh, tsql);
 
 	double scaleh, scalel;
 	d_mul(&scaleh, &scalel, 0x1.ec709dc3a03fdp-1, 0x1.d28197e2ad4ccp-55, th, tl);
@@ -161,18 +170,20 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	POWL_DPRINTF("get_hex(R(2*atanh(t)/ln(2) - "SAGE_DD"))\n", lorderh, lorderl);
 
 	double yh = y; double yl = y - (long double)(yh);
-	fast_two_sum(rh, rl, logwh, logwl);
-	*rl += lorderh + lorderl;
-	//add22(rh, rl, logwh, logwl, lorderh, lorderl);
+	fast_two_sum(rh, rl, logwh, lorderh);
+	*rl += logwl + lorderl;
+
+	POWL_DPRINTF("get_hex(R(log2(x)) - "SAGE_DD")\n", *rh, *rl);
 	d_mul(rh, rl, *rh, *rl, yh, yl);
 }
 
+/* computes 2^(xh + xl), assuming |xl| <= ulp(xh) and |xh| < 2^31 */
 static inline
 long double exp2d(double xh, double xl) {
 	b64u64_t cvt = {.f = xh};
 	bool do_red	= cvt.e >= -20 + 0x3ff;
 
-	static const double C = 0x1.8p+32;
+	static const double C = 0x1.8p+32; // ulp is 2^-20
 	b64u64_t y = {.f = xh + C};
 	uint64_t fracpart = y.u;
 	int16_t extra_exponent = y.u>>20;
@@ -283,6 +294,8 @@ long double exp2d(double xh, double xl) {
 		ml ^= (1ul << 63);
 	} else if(rm==FE_UPWARD) { // round to +inf
 		mh += 1;
+		// This is as if ml had a trailing 1.
+		// We are not precise up to an LSB of ml anyway.
 	}
 
 	// This branch can only be taken if wanted_exponent != 0
@@ -301,7 +314,7 @@ long double exp2d(double xh, double xl) {
 
 	b80u80_t v;	
 	v.m = mh; // mantissa
-	v.e = wanted_exponent; //extra_exponent + 0x3c00 + eh; // exponent
+	v.e = wanted_exponent; // exponent
 	
 	/*bool b1 = false;//(uint64_t)(ml + eps) <= (uint64_t)(2*eps); 
 
@@ -322,9 +335,9 @@ long double exp2d(double xh, double xl) {
 	return v.f;
 }
 
-static
+inline static
 bool is_integer(long double x) {
-	b80u80_t cvt = {.f = x};
+	const b80u80_t cvt = {.f = x};
 	int e = (cvt.e & 0x7fff) - 16383;
 	if(e >= 63) { // Ulp is 2^(e - 63) >= 1
 		return true;
@@ -334,21 +347,22 @@ bool is_integer(long double x) {
 	// low bits must be 0
 }
 
-static bool is_odd_integer(long double x) {
-	b80u80_t cvt = {.f = x};
+inline static
+int is_odd_integer(long double x) {
+	const b80u80_t cvt = {.f = x};
 	if((cvt.e&0x7fff) - 16383 >= 64) return false;
 	else return is_integer(x) && (cvt.m & (1ul << (63 - (cvt.e&0x7fff) + 16383)));
 }
 
-inline
-static int isnan(long double x) {
-  b80u80_t v = {.f = x};
+inline static
+int isnan(long double x) {
+  const b80u80_t v = {.f = x};
   return ((v.e&0x7fff) == 0x7fff && (v.m != (1ul << 63)));
 }
 
-inline
-static int issnan(long double x) {
-	b80u80_t v = {.f = x};
+inline static
+int issnan(long double x) {
+	const b80u80_t v = {.f = x};
 	return isnan(x) && (!((v.m>>62)&1));
 }
 
@@ -356,24 +370,24 @@ long double cr_powl(long double x, long double y) {
 
 	const b80u80_t cvt_x = {.f = x}, cvt_y = {.f = y};
 	if(__builtin_expect(issnan(x) || issnan(y), 0)) {
-		return x + y; // Returns a quiet NaN, raises invalid operation
+		feraiseexcept(FE_INVALID);
+		return __builtin_nanl(""); // Returns a quiet NaN, raises invalid operation
 	}  
 
-	if(__builtin_expect(cvt_y.m == 0, 0)) return 1.L;
-	if(__builtin_expect(cvt_x.m == 0x8000000000000000ul
-		&& cvt_x.e == 16383, 0)) return 1.L;
+	if(__builtin_expect(cvt_y.m == 0 || x == 1.L, 0)) return 1.L;
 
-	int x_exp = (cvt_x.e&0x7fff) - 16383;
-	long double sign = ((cvt_x.e>>15) & is_odd_integer(y)) ? -1.L : 1.L;
+	const int x_exp = (cvt_x.e&0x7fff) - 16383;
+	const int y_exp = (cvt_y.e&0x7fff) - 16383;
+	const long double sign = ((cvt_x.e>>15) & is_odd_integer(y)) ? -1.L : 1.L;
 
-	if(__builtin_expect(isnan(x), 0)) return x + x; // Check for NaN, quiet it.
-	if(__builtin_expect(isnan(y), 0)) return y + y;
+	// Return a quiet NaN
+	if(__builtin_expect(isnan(x) || isnan(y), 0)) return __builtin_nanl("");
 
-	static long double inf = __builtin_infl();	
+	static const long double inf = __builtin_infl();	
 	if(__builtin_expect(cvt_x.m == 0, 0)) { // x = +- 0
-		if(cvt_y.e>>15) { // Need to raise divide_by_zero if odd_integer here
-			if(is_odd_integer(y)) {return sign * 1./0.;}
-			else { return sign * inf; }
+		if(cvt_y.e>>15) { // y < 0
+			if(cvt_y.e != 0xffff) {feraiseexcept(FE_DIVBYZERO);} // If y != -inf
+			return sign * inf;
 		} else {
 			return sign * 0L;
 		}
@@ -381,7 +395,8 @@ long double cr_powl(long double x, long double y) {
 
 	// -inf < x < 0
 	if(__builtin_expect(cvt_x.e >= 1<<15 && cvt_x.e != 0xffff, 0)) {
-		if(!is_integer(y)) {return 0.L/0.L;} // Raises invalid exception
+		if(!is_integer(y)) // Note that +-infty are (even) integers here
+			{feraiseexcept(FE_INVALID); return __builtin_nanl("");}
 		if(__builtin_expect(x == -1L, 0)) {
 			return sign;
 		}
@@ -389,22 +404,31 @@ long double cr_powl(long double x, long double y) {
 
 	// Now, the handling of forbidden values has been done
 	// and the sign of the result computed in sign. We treat x as |x|.
-	
-	if((x_exp < 0) ^ (cvt_y.e >> 15)) { // 2^s with s < 0
-		if(__builtin_expect((cvt_y.e&0x7fff) == 0x7fff, 0) ||
-		   __builtin_expect((cvt_x.e&0x7fff) == 0x7fff, 0)) { // s == +-inf
-			return sign * 0L;
-		} else if(__builtin_expect((cvt_y.e&0x7fff) - 16383 >= 79, 0)) {
-			return sign * 0x1p-16445L * .5L;
-		}
-	} else { // 2^s with s > 0
-		if(__builtin_expect((cvt_y.e&0x7fff) == 0x7fff, 0) ||
-	     __builtin_expect((cvt_x.e&0x7fff) == 0x7fff, 0)) { // s == +-inf
-			return sign * inf;
-		} else if(__builtin_expect((cvt_y.e&0x7fff) - 16383 >= 79, 0)) {
-			return sign * (0x1p16383L + 0x1p16383L);
-		}
+
+	if(__builtin_expect((cvt_x.e&0x7fff) == 0x7fff, 0)) { // x = +-inf
+		if(cvt_y.e>>15) {return sign * 0L;} else {return sign * inf;}
 	}
+
+	bool lt1 = (x_exp < 0) ^ (cvt_y.e>>15); // x^y = 2^s with s < 0
+	// If y is that big, necessarily |yln2(x)| >= 2^15
+	// Note that sign == 1 here because y is a (possibly infinite) even integer
+	if(__builtin_expect(y_exp >= 79, 0)) {
+		if(__builtin_expect(y_exp == 0x7fff - 16383, 0)) { // y = +-infty
+			if(lt1) {return 0L;}
+			else {return inf;}
+		} else {
+			if(lt1) {return 0x1p-16445L * .5L;}
+			else { return 0x1p16383L + 0x1p16383L;}
+		}
+	} else if(__builtin_expect(y_exp <= -81, 0)) {
+		if(lt1) {return 1.L - 0x1p-65L;}
+		else    {return 1.L + 0x1p-65L;}
+	}
+
+	/* Note that log2|x| < 2^15. Therefore, if |y| < 2^-80 we have
+	   |ylog2|x|| <= 2^-65, which ensures that 2^(ylog2|x|) rounds the same way as
+	   1 + sgn(ylog2|x|) * 1p-16445L.
+	*/
 
 	// Automatic giveup if x subnormal
 	if(__builtin_expect((int64_t)cvt_x.m < 0, 1)) {
@@ -413,7 +437,15 @@ long double cr_powl(long double x, long double y) {
 		POWL_DPRINTF("y="SAGE_RE"\n",y);
 		compute_log2pow(&rh, &rl, x, y);
 		POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
-		long double r = exp2d(rh, rl);
+		long double r;
+		if(__builtin_expect(rh <= -16446, 0)) {
+			return sign * 0x1p-16445L * .5L;
+		} else if(__builtin_expect(rh >= 16383.5, 0)) {
+			return sign * 0x1p16383L + sign * 0x1p16383L;
+		} else {
+			// TODO Directed roundings change depending on sign in exp2d
+			r = exp2d(rh, rl);
+		}
 		POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
 		return sign * r;
 	} else {return -1.;}
