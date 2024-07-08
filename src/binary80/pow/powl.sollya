@@ -1,16 +1,13 @@
-n = 7;
-
 pretty = proc(u) {
   return ~(floor(u*1000)/1000);
 };
 
-d = [-1/2^10, 1/2^10];
-f = log2(1 + x)/x;
+prec=512;
+d = [0, 1/2^11]; // 1024 entries -> 16kB LUT...
+f = 2*atanh(x)/(x * log(2) * 0x1.ec709dc3a03fd74a065f8ab533p-1);
 w = 1;
-p = remez(f, n, d, w);
-pf = fpminimax(f, n, [|106, 106, 106, 53, 53, 53, 53, 53|],
-	d, absolute, floating, 0, p);
-err_p = -log2(dirtyinfnorm(pf*w-f, d));
+p = fpminimax(f, [|0,2,4,6|], [|106,106,53,53|], d);
+err_p = -log2(dirtyinfnorm(p/f - 1, d));
 print( pretty(err_p));
 display = hexadecimal;
-print(pf);
+print(p);

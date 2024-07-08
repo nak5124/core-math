@@ -1,4 +1,10 @@
 #include <stdint.h>
+#include <fenv.h>
+#include <stdbool.h>
+
+#ifdef __x86_64__
+#include <x86intrin.h>
+#endif
 
 #ifdef POWL_DEBUG
 #include <stdio.h>
@@ -11,16 +17,31 @@
 #endif
 
 typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
-typedef union {double f; uint64_t u;} b64u64_t;
+typedef union {
+	double f;
+	struct __attribute__((packed)) {uint64_t m:52;uint32_t e:11;uint32_t s:1;};
+	uint64_t u;
+} b64u64_t;
+
+static inline int get_rounding_mode (void)
+{
+#ifdef __x86_64__
+  const unsigned flagp = _mm_getcsr ();
+  return (flagp&(3<<13))>>3;
+#else
+  return fegetround ();
+#endif
+}
 
 /* Split a number of exponent 0 into a w part on 11 bits and an a part
 	 on 53 bits.
 */
 static inline
 void split(double* w, double* a, long double x) {
-	static const double C = 0x1.8p+42; // ulp(C) = 2^-10
-	*w = ((double)x + C) - C; // we get in w the bits of weight 1,...,2^-10
-	*a = (double)x - *w; 
+	static const long double C = 0x1.8p+53L; // ulp(C) = 2^-10
+	long double y = (x + C) - C; // we get in w the bits of weight 1,...,2^-10
+	*w = y;
+	*a = x - y; 
 }
 
 static inline
@@ -31,25 +52,20 @@ void add22(double* zh, double* zl, double xh, double xl, double yh, double yl) {
 	*zh = r+s;
 	*zl = (r - (*zh)) + s;
 }
-/* Computes an approximation of a/b. Latency ~32 cycles. */
+
+/* Computes an approximation of a/(bh+bl). Latency ~32 cycles. */
 static inline
-void s_div(double* rh, double* rl, double a, double b) {
-	*rh = a/b;
-	*rl = __builtin_fma(-b, *rh, a)/b;
+void s_div(double* rh, double* rl, double a, double bh, double bl) {
+	*rh = a/bh;
+	double eh = __builtin_fma(-bh, *rh, a);
+	*rl = __builtin_fma(-bl, *rh, eh)/bh;
 }
 
 static inline
-void s_long_div(double* rh, double* rl, long double a, long double b) {
-	long double k = a/b;
-
-	// The result is correct to 2^-64 bits.
-	double kh = k; double kl = k - (long double)kh;
-	// This goes back to SSE I think
-	double err = __builtin_fma(kl, (double)b, (double)(kh*b - a));
-	kl -= err/b;
-
-	*rh = kh;
-	*rl = kl;
+void fast_two_sum(double* rh, double* rl, double a, double b) {
+	*rh = a + b;
+	double e = *rh - a;
+	*rl = b - e;
 }
 
 static inline
@@ -69,77 +85,237 @@ void d_mul(double* rh, double* rl, double ah, double al,
 
 #include "powl_tables.h"
 
+
+/* Computes an approximation of ylog2(x) under the following conditions :
+
+- x and y are not NaN, +-inf
+- x is at least the smallest positive normal number
+
+If |ylog2(x)| > 16383, one of the outputs may be +-inf.
+*/
 static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	b80u80_t cvt_x = {.f = x};
-	int extra_int = (cvt_x.e&0x7fff) - 16383;
+	int extra_int = cvt_x.e - 16383; // We don't have to mask : x >= +0
 	POWL_DPRINTF("extra_int=%d\n", extra_int);
 	// This may not be efficient, but we avoid overflow/underflow problems.
 	// Note that x starts in memory so this should not be too expensive.
 
-	x = __builtin_ldexpl(1, -extra_int) * x; // Scale x
+	cvt_x.e = 16383; // New wanted exponent
+	x = cvt_x.f; // Scale x. This assumes x is NOT a denormal.
 	double w,a; split(&w, &a, x);
+
+	// Note that on modern processors, an fma is as expensive as an add.
+	double denomh, denoml;
+	denomh = __builtin_fma(2,w,a);
+	double e = __builtin_fma(2,w,-denomh); // -a - deltah
+	denoml = e + a;
+
+	//fast_two_sum(&denomh, &denoml, 2*w, a);
 	POWL_DPRINTF("w="SAGE_RR"\n",w);
+	POWL_DPRINTF("a="SAGE_RR"\n",a);
+	POWL_DPRINTF("get_hex(w + a - "SAGE_RE")\n", x);
 
 	b64u64_t cvt_w = {.f = w};
 	double logwh, logwl;
 	logwh = t[(cvt_w.u>>42) & 0x3ff][0]; logwl = t[(cvt_w.u>>42) & 0x3ff][1];
-	logwh += (double)extra_int; // exact
-
-	/* To test : if we can shoulder an 80-bit division,
-	   we can use the improved polynomial. This comes at a ~20 cycle penalty.
-	   OTOH, directly using a/w means we have to sum the first 3 terms as dds
-	   but makes a better use of pipelining.
-
-	   Sollya gives a polynomial for log2(1+x)/x accurate to 2^-89.5.
-	   This translates to a final relative error bound which gives 2^-10
-	   probability to break out of the fastpath.
-	   If we use the improved polynomial, we can aim for ~10 more bits of
-	   precision OR the same precision but tables 2x smaller LUTs.
-
-	   TODO Use Tang's algorithm ? May save on computation time.
+	double ex;
+	fast_two_sum(&logwh, &ex, extra_int, logwh);
+	logwl += ex;
+	/* We could construct the tables in such a way that logwh + extra_int is
+	   exact. However, this would waste 14 bits of precision when extra_int is
+	   0, and even more for small values of logw. This chain of operation is
+	   not parallelisable and has latency ~16cycles. We can expect this is hidden
+	   in the division latency.
 	*/
-	double th, tl; s_div(&th, &tl, a, w);
-	double t2h, t2l; d_mul(&t2h, &t2l, th, tl, th, tl);
-	double t4 = t2h * t2h;
+	POWL_DPRINTF("get_hex(R(log2(w*2^%d) - "SAGE_DD"))\n",extra_int,logwh,logwl);
+	
+	double th, tl; s_div(&th, &tl, a, denomh, denoml);
+	POWL_DPRINTF("t="SAGE_DD"\n", th, tl);
+	POWL_DPRINTF("get_hex(R(t - a/(2*w + a)))\n");
 
-	// Addition and fma throughput is .5 CPI. We can expect order01 and order23's
-	// first two ops to run in parallel, with total latency 4*6 + 16 = 40
-	double ord01h, ord01l; d_mul(&ord01h, &ord01l, th, tl,
-	                             0x1.71547652b82fep+0, 0x1.777d0ffd4eca8p-56);
-	add22(&ord01h, &ord01l, logwh, logwl, ord01h, ord01l);
-
-	double ord23h, ord23l; d_mul(&ord23h, &ord23l, th, tl,
-	                             -0x1.71547652b82fep-1, -0x1.777d11aa72848p-57);
-	add22(&ord23h, &ord23l, 0x1.ec709dc3a03fdp-2, 0x1.d3231f5394554p-56,
-	                        ord23h, ord23l);
-
-	// We can expect the products here to execute concurrently as the high order
-	// fmas.
-	d_mul(&ord23h, &ord23l, t2h, t2l, ord23h, ord23l);
-	add22(&ord01h, &ord01l, ord01h, ord01l, ord23h, ord23l);
-
-	double acc = __builtin_fma(th,0x1.a6178bb07904cp-3,-0x1.ec709dc3f6604p-3);
-	double bcc = __builtin_fma(th,0x1.2776c50ef8f2cp-2,-0x1.71547652b82fep-2);
-	acc =  __builtin_fma(t2h, acc, bcc);
-	acc *= t4;
-
-	ord01l = __builtin_fma(t4, acc, ord01l);
-	ord01l = __builtin_fma(t4, t4*-0x1.7151a1efb867p-3, ord01l);
-	// Maybe we need a Fast2Sum here
-
-	/*If y rounds to +-infty as a double, then, given that
-		|log2(x)| >~ 2^-64 for x != 1, we had in fact |ylog2(x)| >> 16383.
+	/* Evaluation strategy :
+	   2/(ln 2) * t (1 + t^2/3 + t^4/5 + t^6/7)
+	   = (2/3ln2) * t * (3 + t^2 + 3/5t^4 + 3/7t^6)
 	*/
-	double yh = y; double yl = y - (long double)yh;
-	d_mul(&ord01h, &ord01l, yh, yl, ord01h, ord01l);
-	*rh = ord01h; *rl = ord01l;
+	double tsqh, tsql; d_mul(&tsqh, &tsql, th, tl, th, tl);
+
+	double highorder = tsqh * tsqh;
+	highorder *= __builtin_fma(tsqh, 0x1.b6db7860d5f78p-2, 0x1.333333333325ep-1);
+
+	double lorderh, lorderl;
+	fast_two_sum(&lorderh, &lorderl, 0x1.8p+1, tsqh);
+	lorderl += tsql + (-0x1.00c47fd09p-68); // I think we still are normalized
+	//add22(&lorderh, &lorderl, 0x1.8p+1, -0x1.dc61e618p-75, tsqh, tsql);
+
+	double scaleh, scalel;
+	d_mul(&scaleh, &scalel, 0x1.ec709dc3a03fdp-1, 0x1.d28197e2ad4ccp-55, th, tl);
+	lorderl += highorder; /* Highorder <~= 2^-48 */
+	d_mul(&lorderh, &lorderl, lorderh, lorderl, scaleh, scalel);
+
+	POWL_DPRINTF("get_hex(R(2*atanh(t)/ln(2) - "SAGE_DD"))\n", lorderh, lorderl);
+
+	double yh = y; double yl = y - (long double)(yh);
+	fast_two_sum(rh, rl, logwh, logwl);
+	*rl += lorderh + lorderl;
+	//add22(rh, rl, logwh, logwl, lorderh, lorderl);
+	d_mul(rh, rl, *rh, *rl, yh, yl);
 }
 
-//static inline
-//void exp2(double* rh, double* rl, double xh, double xl) {
-	/* More or less the same as exp's implementation */
-//}
+static inline
+long double exp2d(double xh, double xl) {
+	b64u64_t cvt = {.f = xh};
+	bool do_red	= cvt.e >= -20 + 0x3ff;
+
+	static const double C = 0x1.8p+32;
+	b64u64_t y = {.f = xh + C};
+	uint64_t fracpart = y.u;
+	int16_t extra_exponent = y.u>>20;
+
+	double rem = xh - (y.f - C);
+	if(__builtin_expect(do_red, 1))
+		fast_two_sum(&xh,&xl,rem,xl);
+
+	int i0 = fracpart & 0x1f;
+	int i1 = (fracpart >> 5) & 0x1f;
+	int i2 = (fracpart >> 10) & 0x1f;
+	int i3 = (fracpart >> 15) & 0x1f;
+
+	double frcp_acc0_l, frcp_acc0_h, frcp_acc2_h, frcp_acc2_l;
+	double xs_pow2_h, xs_pow2_l;
+
+	d_mul(&frcp_acc0_h, &frcp_acc0_l,
+		t0[i0][0], t0[i0][1],   // 2^(i0/2^20)
+		t1[i1][0], t1[i1][1]);  // 2^(i1/2^15)
+	d_mul(&frcp_acc2_h, &frcp_acc2_l,
+		t2[i2][0], t2[i2][1],   // 2^(i2/2^10)
+		t3[i3][0], t3[i3][1]);  // 2^(i3/2^5)
+	d_mul(&xs_pow2_h, &xs_pow2_l, frcp_acc0_h, frcp_acc0_l,
+		frcp_acc2_h, frcp_acc2_l);
+
+	double xsq = xh * xh;
+	double orders23 = xsq * __builtin_fma(xh,0x1.c6b08d704a1cdp-5,
+		0x1.ebfbdff82c696p-3);
+
+	double order1h, order1l;
+	static const double coeff1h = 0x1.62e42fefa39efp-1;
+	static const double coeff1l = 0x1.abc9e3b369936p-56;
+	d_mul(&order1h, &order1l, xh, xl, coeff1h, coeff1l);
+
+	double finalh, finall;
+	fast_two_sum(&finalh, &finall, 1, orders23);
+
+	double tmp;
+	fast_two_sum(&finalh, &tmp, finalh, order1h);
+
+	finall = tmp + (finall + order1l);
+
+	if(__builtin_expect(do_red,1)) {
+		d_mul(&finalh, &finall, finalh, finall, xs_pow2_h, xs_pow2_l);
+	} else {
+		extra_exponent = 0;
+	}
+
+	const unsigned rm = get_rounding_mode();
+	b64u64_t th = {.f = finalh}, tl = {.f = finall};
+	long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
+	// the high part is always positive, the low part can be positive or negative
+	// represent the mantissa of the low part in two's complement format
+	long ml = (tl.u&~(0xfffl<<52))|1l<<52, sgnl = -(tl.u>>63);
+	ml = (ml^sgnl) - sgnl;
+	int64_t mlt;
+	long sh = de-11;
+	if(__builtin_expect(sh>63,0)){
+		mlt = sgnl;
+		if(__builtin_expect(sh-64>63,0))
+			ml = sgnl;
+    		else
+		ml >>= sh-64;
+	} else {
+		mlt = ml>>sh;
+		ml <<= 64-sh;
+	}
+	// construct the mantissa of the long double number
+	uint64_t mh = ((th.u<<11)|1l<<63);
+	int64_t eps = (mh >> (87 - 64));
+	
+	mh += mlt;
+	if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
+					     // can unset the msb so shift the
+					     // number back
+		mh = mh<<1 | (uint64_t)ml>>63;
+		ml <<= 1;
+		extra_exponent--;
+		eps <<= 1;
+	}
+
+	int wanted_exponent = extra_exponent + 0x3c00 + eh;
+	POWL_DPRINTF("wanted exponent : %x\n", wanted_exponent);
+	POWL_DPRINTF("mh||ml = %lx%lx\n", mh, ml);
+
+	if(__builtin_expect(wanted_exponent <= 0, 0)) {
+		int shiftby = 1 - wanted_exponent;
+
+		if(__builtin_expect(shiftby == 64, 0)) {
+			return 0x1p-16445L * .75L;
+		}
+
+		if(__builtin_expect(shiftby > 64, 0)) {	
+				return 0x1p-16445L * .25L;
+		}
+		ml = (uint64_t)ml >> shiftby;
+		ml |= mh << (64 - shiftby);
+		mh >>= shiftby;	
+		eps >>= shiftby;
+		wanted_exponent = 0;
+
+		POWL_DPRINTF("Shifting by %u\n", shiftby);
+		POWL_DPRINTF("mh||ml = %lx%lx\n", mh, ml);
+	}
+
+	if(rm==FE_TONEAREST){ // round to nearest
+		mh += (uint64_t)ml>>63;
+		ml ^= (1ul << 63);
+	} else if(rm==FE_UPWARD) { // round to +inf
+		mh += 1;
+	}
+
+	// This branch can only be taken if wanted_exponent != 0
+  // Else we simply cannot have an overflow
+	if(__builtin_expect(!mh, 0)) {
+		ml = ml/2; // Signed semantics matter
+	  eps >>= 1;
+		mh = 1ull << 63;
+	  wanted_exponent++;	
+	}
+
+	// We had a denormal but rounding made it into the smallest normal
+	if(__builtin_expect((mh>>63) && !wanted_exponent, 0)) {
+		wanted_exponent = 1;	
+	}
+
+	b80u80_t v;	
+	v.m = mh; // mantissa
+	v.e = wanted_exponent; //extra_exponent + 0x3c00 + eh; // exponent
+	
+	/*bool b1 = false;//(uint64_t)(ml + eps) <= (uint64_t)(2*eps); 
+
+	// Denormals *inside* the computation don't seem to pause a problem
+	// given the error analysis (we used absolute bounds mostly)
+	// rounding test
+  *is_accurate = b1;
+	if(__builtin_expect(b1, 0)) {
+		ri->fracpart = fracpart;
+		ri->xs = y.f - C; // Being careful with the double rounding, we've done that
+		ri->extra_exponent = extra_exponent;
+	}*/
+
+	// Infinity output case
+	if(__builtin_expect(wanted_exponent >= 32767, 0)) {
+		return 0x1p16383L + 0x1p16383L;
+	}
+	return v.f;
+}
 
 long double cr_powl(long double x, long double y) {
 	double rh, rl;
@@ -147,5 +323,7 @@ long double cr_powl(long double x, long double y) {
 	POWL_DPRINTF("y="SAGE_RE"\n",y);
 	compute_log2pow(&rh, &rl, x, y);
 	POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
-	return rl;
+	long double r = exp2d(rh, rl);
+	POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
+	return r;
 }
