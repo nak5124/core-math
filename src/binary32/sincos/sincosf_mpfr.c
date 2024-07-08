@@ -36,7 +36,13 @@ ref_sincos (float x, float *s, float *c)
   mpfr_init2 (y, 24);
   mpfr_init2 (z, 24);
   mpfr_set_flt (y, x, MPFR_RNDN);
-  mpfr_sin_cos (y, z, y, rnd2[rnd]);
+  int inex = mpfr_sin_cos (y, z, y, rnd2[rnd]);
+  int inex_sin = inex & 3;
+  int inex_cos = inex >> 2;
+  inex_sin = (inex_sin == 0) ? 0 : (inex_sin == 1) ? 1 : -1;
+  inex_cos = (inex_cos == 0) ? 0 : (inex_cos == 1) ? 1 : -1;
+  mpfr_subnormalize (y, inex_sin, rnd2[rnd]);
+  mpfr_subnormalize (z, inex_cos, rnd2[rnd]);
   float u = mpfr_get_flt (y, MPFR_RNDN);
   *s = u;
   float v = mpfr_get_flt (z, MPFR_RNDN);
