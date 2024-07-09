@@ -362,6 +362,29 @@ check_triples_subnormal (void)
     }
 }
 
+// check k values below/above each power of 2
+static void
+check_near_power_two (int k)
+{
+  double min, max;
+  min = max = 1.0;
+  for (int i = 0; i < k; i++)
+  {
+    min = nextafter (min, 0.5);
+    max = nextafter (max, 2.0);
+  }
+  for (int ex = -1074; ex <= 1024; ex++)
+    // since "check" also checks y,x, we only test for ey <= ex
+    for (int ey = -1074; ey <= ex; ey++)
+    {
+      double x, y;
+      for (x = min; x <= max; x = nextafter (x, 2.0))
+        for (y = min; y <= max; y = nextafter (y, 2.0))
+          // "check" also checks various signs
+          check (ldexp (x, ex), ldexp (y, ey));
+    }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -403,6 +426,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking values near 2^e\n");
+  check_near_power_two (10);
 
   printf ("Checking exact subnormal values\n");
   check_triples_subnormal ();
