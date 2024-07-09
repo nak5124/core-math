@@ -373,6 +373,7 @@ check_near_power_two (int k)
     min = nextafter (min, 0.5);
     max = nextafter (max, 2.0);
   }
+#pragma omp parallel for
   for (int ex = -1074; ex <= 1024; ex++)
     // since "check" also checks y,x, we only test for ey <= ex
     for (int ey = -1074; ey <= ex; ey++)
