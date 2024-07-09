@@ -427,6 +427,10 @@ main (int argc, char *argv[])
         }
     }
 
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+
   printf ("Checking values near 2^e\n");
   check_near_power_two (10);
 
