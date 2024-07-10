@@ -63,16 +63,14 @@ get_random ()
   b80u80_t v;
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) rand () << 62;
-  v.e = rand () & 65535;
-  // if e != 0x7fff or 0xffff, check m is normalized
-  if (v.e != 0x7fff && v.e != 0xffff)
-    v.m |= 1ul << 63;
-  /* if e = 0, m should has its most significand bit cleared,
-     otherwise this is a "pseudo-denormal",
-     see https://en.wikipedia.org/wiki/Extended_precision */
-  if (v.e == 0)
-    v.m &= ~(1ul << 63);
+  v.m |= (uint64_t) (rand () & 1) << 62;
+  // the low 63 bits of m are random
+  v.e = rand () & 0xffff;
+  // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
+  // significant bit set, otherwise it should be cleared
+  // cf https://en.wikipedia.org/wiki/Extended_precision
+  uint64_t t = (v.e & 0x7fff) != 0;
+  v.m |= t << 63;
   return v.f;
 }
 
