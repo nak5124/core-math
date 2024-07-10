@@ -158,6 +158,10 @@ float cr_powf(float x0, float y0){
     {0x1.78p-5, -0x1.8d66c5313a71dp-14}, {0x1.74p-6, 0x1.f7430ee200ep-17}, {0x0p+0, 0x0p+0}
   };
 
+  // check for x=NaN or y=NaN
+  if (__builtin_expect (x0 != x0 || y0 != y0, 0))
+    return __builtin_nanf ("");
+
   if(__builtin_expect(x0 < 0.0f, 0))
     if(!isint(y0)) return __builtin_nanf("");
   if(x0 == 0.0f){

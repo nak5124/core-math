@@ -193,7 +193,7 @@ doloop(void)
   }
 
   free(items);
-  printf("%d tests, %d failures\n", tests, failures);
+  printf("%d tests, %d failure(s)\n", tests, failures);
 }
 
 int
