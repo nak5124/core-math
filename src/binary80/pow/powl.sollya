@@ -2,11 +2,12 @@ pretty = proc(u) {
   return ~(floor(u*1000)/1000);
 };
 
-prec=512;
-d = [0, 1/2^11]; // 1024 entries -> 16kB LUT...
-f = 2*atanh(x)/(x * log(2) * 0x1.ec709dc3a03fd74a065f8ab533p-1);
+prec=1024;
+R = 1/2^14;
+d = [-R, R];
+f = 2*atanh(x)/(x * log(2) * 0x1.ec709dc3a03fd6d345b4285c3b8p-1);
 w = 1;
-p = fpminimax(f, [|0,2,4,6|], [|106,106,53,53|], d);
+p = fpminimax(f, [|0,2,4|], [|106,53,53,53|], d);
 err_p = -log2(dirtyinfnorm(p/f - 1, d));
 print( pretty(err_p));
 display = hexadecimal;

@@ -26,12 +26,12 @@ get_random ()
 {
 	b80u80_t v;
   v.m = rand ();
-  v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) rand () << 62;
+  v.m |= (uint64_t) rand () << 32;
   v.e = rand () & 0xffff;
-  // if e is not 0 nor 0x7fff nor 0xffff, m should have its msb set
-  uint64_t t = v.e != 0 && v.e != 0x7fff && v.e != 0xffff;
-  v.m |= t << 63;
+  // If v is not a denormal, m should have its msb set,
+	// otherwise it should be cleared
+  uint64_t t = (v.e&0x7fff) != 0;
+  v.m = (t << 63) | (v.m & ~(1ul<<63));
   return v.f;
 }
 

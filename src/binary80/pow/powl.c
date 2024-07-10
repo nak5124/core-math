@@ -41,16 +41,16 @@ static inline int get_rounding_mode (void)
 #endif
 }
 
-/* Split a number of exponent 0 into a w part on 11 bits and an a part
-	 on 53 bits.
+/* Split a number of exponent 0 into 2 parts on 32 bits
 */
 static inline
-void split(double* w, double* a, long double x) {
-	static const long double C = 0x1.8p+53L; // ulp(C) = 2^-10
-	long double y = (x + C) - C; // we get in w the bits of weight 1,...,2^-10
-	*w = y;
-	*a = x - y; 
+void split(double* rh, double* rl, long double x) {
+	static double C = 0x1.8p+32; // ulp(C)=2^-32 once cast to 80 bits
+	long double y = (x + C) - C;
+	*rh = y;
+	*rl = x - y;	
 }
+
 
 static inline
 void add22(double* zh, double* zl, double xh, double xl, double yh, double yl) {
@@ -61,11 +61,12 @@ void add22(double* zh, double* zl, double xh, double xl, double yh, double yl) {
 	*zl = (r - (*zh)) + s;
 }
 
-/* Computes an approximation of a/(bh+bl). Latency ~32 cycles. */
+/* Computes an approximation of a/(bh+bl). Latency ~36 cycles.
+*/
 static inline
-void s_div(double* rh, double* rl, double a, double bh, double bl) {
-	*rh = a/bh;
-	double eh = __builtin_fma(-bh, *rh, a);
+void s_div(double* rh, double* rl, double ah, double al, double bh, double bl) {
+	*rh = ah/bh;
+	double eh = __builtin_fma(-bh, *rh, ah) + al;
 	*rl = __builtin_fma(-bl, *rh, eh)/bh;
 }
 
@@ -85,10 +86,10 @@ void a_mul(double* rh, double* rl, double a, double b) {
 static inline
 void d_mul(double* rh, double* rl, double ah, double al,
                                    double bh, double bl)
-{ double s;
-	a_mul(rh, &s, ah, bh);
-	double t = __builtin_fma(al, bh, s);
-	*rl = __builtin_fma(ah, bl, t);
+{ double p;
+	a_mul(rh, &p, ah, bh);
+	double q = __builtin_fma(al, bh, p);
+	*rl = __builtin_fma(ah, bl, q);
 }
 
 #include "powl_tables.h"
@@ -98,84 +99,139 @@ void d_mul(double* rh, double* rl, double ah, double al,
 
 - 2^(-65-15) <= |y| < 2^(65 + 14)
 - |x| is at least the smallest positive normal number
-
-If |ylog2(x)| > 16383, one of the outputs may be +-inf.
 */
 static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
-
 	b80u80_t cvt_x = {.f = x};
 	int extra_int = (cvt_x.e&0x7fff) - 16383;
 	cvt_x.e = 16383; // New wanted exponent
 	x = cvt_x.f;
 
-	POWL_DPRINTF("extra_int=%d\n", extra_int);
-	// This may not be efficient, but we avoid overflow/underflow problems.
-	// Note that x starts in memory so this should not be too expensive.
-	double w,a; split(&w, &a, x); // Note that w can be exactly 2
+	double xh, xl; // a (resp b) bits
+	split(&xh, &xl, x);
 
-	// Note that on modern processors, an fma is as expensive as an add.
-	double denomh, denoml;
-	denomh = __builtin_fma(2,w,a);
-	double e = __builtin_fma(2,w,-denomh); // -a - deltah
-	denoml = e + a;
+	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
+	// Uses the high 7 bits of x's mantissa.
+	lut_t l = coarse[cvt_x.m>>56 & 0x7f];
+	POWL_DPRINTF("key=0x%lx\n", (cvt_x.m>>56 & 0x7f));
 
-	//fast_two_sum(&denomh, &denoml, 2*w, a);
-	POWL_DPRINTF("w="SAGE_RR"\n",w);
-	POWL_DPRINTF("a="SAGE_RR"\n",a);
-	POWL_DPRINTF("get_hex(w + a - "SAGE_RE")\n", x);
+	// Since we will be summing with an int, to avoid catastrophic cancellatiob
+	// we encode |mlogr| <= 1/2, using l.z = 0 or 1.
+	double r1      = l.r; // on m=9 bits
+	double mlogr1h = l.mlogrh;
+	double mlogr1l = l.mlogrl;
+	extra_int     += l.z;
 
-	b64u64_t cvt_w = {.f = w};
-	double logwh, logwl;
-
-	if(__builtin_expect(w == 2., 0)) {
-		logwh = extra_int + 1; logwl = 0;
-	} else {
-		double ex;
-		logwh = t[(cvt_w.u>>42) & 0x3ff][0]; logwl = t[(cvt_w.u>>42) & 0x3ff][1];
-		fast_two_sum(&logwh, &ex, extra_int, logwh);
-		logwl += ex;
-	}
-
-	/* We could construct the tables in such a way that logwh + extra_int is
-	   exact. However, this would waste 14 bits of precision when extra_int is
-	   0, and even more for small values of logw. This chain of operation is
-	   not parallelisable and has latency ~16cycles. We can expect this is hidden
-	   in the division latency.
-	*/
-	POWL_DPRINTF("get_hex(R(log2(w*2^%d) - "SAGE_DD"))\n",extra_int,logwh,logwl);
+	POWL_DPRINTF("r1 = " SAGE_RR "\n", r1);
 	
-	double th, tl; s_div(&th, &tl, a, denomh, denoml);
-	POWL_DPRINTF("t="SAGE_DD"\n", th, tl);
-	POWL_DPRINTF("get_hex(R(t - a/(2*w + a)))\n");
+	if(l.z) {xh/=2; xl/=2; POWL_DPRINTF("sx = sx/2\nei+=1\n");}
+	xh *= r1; xl *= r1; // a + m, b + m bits
+	POWL_DPRINTF("get_hex(R(abs("SAGE_RR" - 1)))\n", xh);
+	/* Note that now |xh - 1| <= 1p-7 (say)
+	   Therefore, xh's mantissa (without leading 1) is either
+	   1.00000 00p or 1.11111 1q.
+	   We skip the first 5 bits of the mantissa and use the 7 next to index
+	   another lookup table. A quarter of the table is wasted!!
 
-	/* Evaluation strategy :
-	   2/(ln 2) * t (1 + t^2/3 + t^4/5 + t^6/7)
-	   = (2/3ln2) * t * (3 + t^2 + 3/5t^4 + 3/7t^6)
+		 We're looking at 1 + 2^-(5+7)k, 1 + 2^-(5+7)(k+1) when the high bit of k is
+	   0. Else we're looking at 1 - 2^-7 + 2^(-6-7)*k', 1 - 2^-6 + 2^-13(k'+1)
+
+	   We encode |mlogr2| <= 1p-8, with l.z having weight 1p-7 to avoid
+	   cancellation once more.
+
+	   Idea : mlogr <- mlogr1 + mlogr2 does not lose a lot of precision
+	   Then extra_int*2^e + mlogr does not lose a lot of precision either
+	   (by Sterbenz, in hard cases the FastTwoSum *will* be exact!)
 	*/
-	double tsqh, tsql; d_mul(&tsqh, &tsql, th, tl, th, tl);
 
-	double highorder = tsqh * tsqh;
-	highorder *= __builtin_fma(tsqh, 0x1.b6db7860d5f78p-2, 0x1.333333333325ep-1);
+	b64u64_t cvt_xh = {.f = xh};
+	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f];
+	// bit 52 goes to 6+5 = 11. Bits 11 - 8
+	POWL_DPRINTF("key2 = 0x%lx\n", (cvt_xh.u>>40 & 0x7f));
+	double r2 = l2.r; // On m2=14 bits
+	double mlogr2h = l2.mlogrh;
+	double mlogr2l = l2.mlogrl;
+	extra_int *= (1<<7); extra_int += l2.z;
+	POWL_DPRINTF("r2 = " SAGE_RR "\n", r2);
+
+	double scaled_eint = extra_int;
+	scaled_eint *= __builtin_ldexp(1, -7);
+
+	double mlogrh, mlogrl;
+	add22(&mlogrh, &mlogrl, mlogr1h, mlogr1l, mlogr2h, mlogr2l);
+	POWL_DPRINTF("get_hex(R(-log2(r1)-" SAGE_DD"))\n", mlogr1h, mlogr1l);
+	POWL_DPRINTF("get_hex(R(-log2(r2)-" SAGE_DD"))\n", mlogr2h, mlogr2l);
+
+	double e;
+	fast_two_sum(&mlogrh, &e, scaled_eint, mlogrh);
+	mlogrl += e;
+	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
+		mlogrh, mlogrl);
+
+	// |x| <= 1p-13
+	xh = __builtin_fma(r2, xh, -1); xl *= r2; // exact
+	fast_two_sum(&xh, &xl, xh, xl); // Maybe fast_sum ?
+	POWL_DPRINTF("get_hex(R(r1*r2*sx - 1 - "SAGE_DD"))\n", xh, xl);
+	POWL_DPRINTF("s = r1*r2*sx - 1\n");
+	POWL_DPRINTF("get_hex(s)\n");
+
+	// FIXME probably much smarter to do; compare with naïve evaluation
+	double denomh, denoml;
+	fast_two_sum(&denomh, &denoml, 2, xh);
+	denoml += xl;
+
+	double th, tl; s_div(&th, &tl, xh,xl, denomh, denoml);
+	POWL_DPRINTF("t="SAGE_DD"\n", th, tl);
+	POWL_DPRINTF("get_hex(t)\n");
+	POWL_DPRINTF("get_hex(R(t - s/(s + 2)))\n");
+
+	/* We use a minimax polynomial for 2*ath(t)/(log(2)*t),
+	   a1t + a2t^3 + a3t^5. We compute it like so :
+	     ath(t) = a2 * t * (c1 + t^2_h(1 + c2t^2) + t^2_l)
+	   Sollya gives a polynomial with relative error 2^-91.8
+	   [-R, R] with R = 1/2^14
+	*/
+
+	double tsqh, tsql; d_mul(&tsqh, &tsql, th, tl, th, tl);
+	/* Relative error on the order of 2^-100 on t
+	   We can expect tsqh ~ 2^-28, tsql ~ 2^-80
+	*/
+
+	double highorder = __builtin_fma(0x1.33333347c5789p-1, tsqh, 1);
+	// Neglecting tsql brings an error ~2^-81 on highotder, so a relative
+	// error ~2^-109 once multiplied by c1
+
+	double hoh, hol; a_mul(&hoh, &hol, highorder, tsqh);	
 
 	double lorderh, lorderl;
-	fast_two_sum(&lorderh, &lorderl, 0x1.8p+1, tsqh);
-	lorderl += tsql + (-0x1.00c47fd09p-68); // I think we still are normalized
+	double low = 0x1.724886cb97a6p-57 + tsql; // Rounding error <= 2^-100
 
-	double scaleh, scalel;
-	d_mul(&scaleh, &scalel, 0x1.ec709dc3a03fdp-1, 0x1.d28197e2ad4ccp-55, th, tl);
-	lorderl += highorder; /* Highorder <~= 2^-48 */
-	d_mul(&lorderh, &lorderl, lorderh, lorderl, scaleh, scalel);
+	fast_two_sum(&lorderh, &lorderl, 0x1.8p+1, hoh);
+	lorderl += hol + low;
+
+	double scaleh, scalel; //--------(a2h)----- a2 --------(a2l)------\/
+	d_mul(&scaleh, &scalel, 0x1.ec709dc3a03fdp-1, 0x1.b4d16d0a170eep-55, th, tl);
+	/* Relative error ~< 2^-100 */
+
+	d_mul(&lorderh, &lorderl, scaleh, scalel, lorderh, lorderl);
+	/*
+	  The relative error induced by t not being a/(2*w+a) exactly is computed
+	  (through the log-derivative) to be bounded by expm1(rho2/(1 - R^2)). Indeed
+	  ath((1 + rho2)t)/ath(t) <= exp(rho2 * sup_[0,R](d/ds (ln(ath(t + st)))))
+	*/
 
 	POWL_DPRINTF("get_hex(R(2*atanh(t)/ln(2) - "SAGE_DD"))\n", lorderh, lorderl);
 
 	double yh = y; double yl = y - (long double)(yh);
-	fast_two_sum(rh, rl, logwh, lorderh);
-	*rl += logwl + lorderl;
+
+	// Lose AT MOST 1 bit of precision :)
+	add22(rh, rl, mlogrh, mlogrl, lorderh, lorderl);
 
 	POWL_DPRINTF("get_hex(R(log2(x)) - "SAGE_DD")\n", *rh, *rl);
 	d_mul(rh, rl, *rh, *rl, yh, yl);
+
 }
+
 
 /* computes 2^(xh + xl), assuming |xl| <= ulp(xh) and |xh| < 2^31 */
 static inline
@@ -447,6 +503,6 @@ long double cr_powl(long double x, long double y) {
 			r = exp2d(rh, rl);
 		}
 		POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
-		return sign * r;
+		return r;
 	} else {return -1.;}
 }
