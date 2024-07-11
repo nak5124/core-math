@@ -1573,7 +1573,9 @@
 0x1.ffffffffffff3p-1
 0x1.ffffffffffff4p-1
 0x1.ffffffffffff7p-1
-# worst cases from https://www.vinc17.net/research/testlibm/hrcases/hrcases-trig.xz (some might be duplicates with the above)
+# worst cases from
+# https://www.vinc17.net/research/testlibm/hrcases/hrcases-trig.xz
+# (some might be duplicates with the above)
 0x1.f845e88d26c1ep-1
 0x1.f23e0c2c04de4p-1
 0x1.f22771f73b4c8p-1

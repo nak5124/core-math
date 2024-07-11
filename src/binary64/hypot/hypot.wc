@@ -4,7 +4,8 @@
 0x1.6p-45,0x1.2c2fc595456a7p-71
 # from https://hal-ens-lyon.archives-ouvertes.fr/ensl-01527202/document:
 0x1.87de29ce10f34p-14,0x1.0000002d413cdp+0
-# from https://gitlab.inria.fr/zimmerma/math_accuracy/-/blob/master/binary64/check_sample2.c
+# from
+# gitlab.inria.fr/zimmerma/math_accuracy/blob/master/binary64/check_sample2.c
 0x0.603e52daf0bfdp-1022,-0x0.a622d0a9a433bp-1022
 0x0.19deaac345ffap-1022,0x0.92c8727c389b6p-1022
 -0x0.fffffffffffffp-1022,0x0.0000000000001p-1022
