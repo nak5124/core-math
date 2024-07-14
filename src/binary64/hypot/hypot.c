@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
+#include <x86intrin.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -83,7 +84,7 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
    and fits in a 128-bit integer, so the approximation is squared (which
    also fits in a 128-bit integer), compared and adjusted if necessary using
    the exact value of x^2+y^2. */
-static double  __attribute__((noinline)) as_hypot_hard(double x, double y){
+static double  __attribute__((noinline)) as_hypot_hard(double x, double y, unsigned flag){
   double op = 1.0 + 0x1p-54, om = 1.0 - 0x1p-54;
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 bm = (xi.u&(~0ul>>12))|1l<<52;
@@ -93,12 +94,14 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y){
   b64u64_u ri = {.f = __builtin_sqrt(x*x + y*y)};
   const int bs = 3;
   u64 rm = (ri.u&(~0ul>>12)); int re = (ri.u>>52)-0x3ff;
-  if(__builtin_expect(rm,1)){
-    rm |= 1l<<52;
-    rm--;
-  } else {
-    rm = ~0ul>>11;
-    re--;
+  for(int i=0;i<2;i++){
+    if(__builtin_expect(rm,1)){
+      rm |= 1l<<52;
+      rm--;
+    } else {
+      rm = ~0ul>>11;
+      re--;
+    }
   }
   bm <<= bs;
   u64 m2 = bm*bm;
@@ -114,31 +117,29 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y){
     m2 |= !!(lm2 << (128 + ls));
   }
   int k = bs+re, sr = 2*k+1;
-  u64 tm = rm << k, rm2 = tm*tm;
-  i64 D = m2 - rm2, pD, sD = D>>63, um = (rm^sD) - sD, rms = um<<sr, drm = sD + 1;
-  u64 off = 1<<2*k, off2 = off<<1, dd = rms + off;
-  rm -= drm;
-  drm += sD;
+  i64 D;
   do {
-    pD = D;
-    rm += drm;
-    D -= dd;
-    dd += off2;
-  } while(__builtin_expect((D^pD)>0, 0));
-  pD = (sD&D)+(~sD&pD);
-  if(__builtin_expect(pD != 0, 1)){
+    rm += 1 + (rm>=(1l<<53));
+    u64 tm = rm << k, rm2 = tm*tm;
+    D = m2 - rm2;
+  } while(D>0);
+  if(D==0){
+    _mm_setcsr(flag);
+  } else {
     if(__builtin_expect(op == om, 1)){
-      u64 t = (rm<<2) + 1;
-      unsigned s = 2*k - 2;
-      i64 rms1 = t<<s;
-      i64 sum = pD - rms1;
-      if(__builtin_expect(sum, 1))
-	rm += (sum>>63) + 1;
+      u64 tm = (rm << k) - (1<<(k-(rm<=(1l<<53))));
+      D = m2 - tm*tm;
+      if(__builtin_expect(D, 1))
+	rm += D>>63;
       else
-	rm += rm&1;
+	rm -= rm&1;
     } else {
-      rm += op>1.0;
+      rm -= (op==1)<<(rm>(1l<<53));
     }
+  }
+  if(rm>=(1ul<<53)){
+    rm >>= 1;
+    re ++;
   }
 
   i64 e = be - 1 + re;
@@ -154,6 +155,7 @@ static double __attribute__((noinline)) as_hypot_overflow(){
 }
 
 double cr_hypot(double x, double y){
+  volatile unsigned flag = _mm_getcsr();
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 emsk = 0x7ffl<<52, ex = xi.u&emsk, ey = yi.u&emsk;
   /* emsk corresponds to the upper bits of NaN and Inf (apart the sign bit) */
@@ -206,7 +208,7 @@ double cr_hypot(double x, double y){
   u64 aidr = ey + (0x3fel<<52) - ex;
   u64 mid = (aidr - 0x3c90000000000000 + 16)>>5;
   if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ul || aidr>0x3c9fffffffffff80ul, 0)) 
-    thd.f = as_hypot_hard(x,y);
+    thd.f = as_hypot_hard(x,y,flag);
   thd.u -= off;
   if(__builtin_expect(thd.u>=(0x7fful<<52), 0)) return as_hypot_overflow();
   return thd.f;
