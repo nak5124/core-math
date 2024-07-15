@@ -375,6 +375,9 @@ check_near_power_two (int k)
   }
 #pragma omp parallel for
   for (int ex = -1074; ex <= 1024; ex++)
+  {
+    // since emin,emax are thread-local, we need to initialize them here
+    ref_init ();
     // since "check" also checks y,x, we only test for ey <= ex
     for (int ey = -1074; ey <= ex; ey++)
     {
@@ -384,6 +387,7 @@ check_near_power_two (int k)
           // "check" also checks various signs
           check (ldexp (x, ex), ldexp (y, ey));
     }
+  }
 }
 
 int
