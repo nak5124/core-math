@@ -116,7 +116,7 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, unsig
     m2 += lm2 >> -ls;
     m2 |= !!(lm2 << (128 + ls));
   }
-  int k = bs+re, sr = 2*k+1;
+  int k = bs+re;
   i64 D;
   do {
     rm += 1 + (rm>=(1l<<53));
