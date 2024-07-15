@@ -134,7 +134,7 @@ main (int argc, char *argv[])
 
 	long int total = 0, fails = 0, giveups = 0;
 
-#define N 1000000UL /* total number of tests */
+#define N 100000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
