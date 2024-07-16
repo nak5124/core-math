@@ -1,4 +1,4 @@
-/* Correctly rounded exp2l function for binary64 values.
+/* Correctly rounded exp2l function for binary80 values.
 
 Copyright (c) 2024 Alexei Sibidanov and Paul Zimmermann
 

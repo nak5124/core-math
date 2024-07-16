@@ -1,4 +1,4 @@
-/* Correctly-rounded exp2l of binary64 value.
+/* Correctly-rounded exp2l of binary80 value.
 
 Copyright (c) 2024 Paul Zimmermann (Inria)
 
