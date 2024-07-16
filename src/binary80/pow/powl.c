@@ -692,12 +692,14 @@ int is_odd_integer(long double x) {
 	else return is_integer(x) && (cvt.m & (1ul << (63 - (cvt.e&0x7fff) + 16383)));
 }
 
+// return non-zero iff x is a NaN
 inline static
 int isnan(long double x) {
   const b80u80_t v = {.f = x};
   return ((v.e&0x7fff) == 0x7fff && (v.m != (1ul << 63)));
 }
 
+// return non-zero iff x is a signaling NaN
 inline static
 int issnan(long double x) {
 	const b80u80_t v = {.f = x};
@@ -707,19 +709,25 @@ int issnan(long double x) {
 long double cr_powl(long double x, long double y) {
 
 	const b80u80_t cvt_x = {.f = x}, cvt_y = {.f = y};
-	if(__builtin_expect(issnan(x) || issnan(y), 0)) {
-		feraiseexcept(FE_INVALID);
-		return __builtin_nanl(""); // Returns a quiet NaN, raises invalid operation
+
+	if(__builtin_expect(isnan(x) || isnan(y), 0)) {
+          if (issnan (x) || issnan (y))
+          {
+            feraiseexcept(FE_INVALID);
+            return __builtin_nanl(""); // Returns a quiet NaN, raises invalid operation
+          }
+          // qNaN^0 = 1^qNaN = 1
+          if (__builtin_expect(cvt_y.m == 0 || x == 1.L, 0)) return 1.L;
+          // Return a quiet NaN
+          return __builtin_nanl("");
 	}  
 
+        // x^0 = 1^y = 1
 	if(__builtin_expect(cvt_y.m == 0 || x == 1.L, 0)) return 1.L;
 
 	const int x_exp = (cvt_x.e&0x7fff) - 16383;
 	const int y_exp = (cvt_y.e&0x7fff) - 16383;
 	const long double sign = ((cvt_x.e>>15) & is_odd_integer(y)) ? -1.L : 1.L;
-
-	// Return a quiet NaN
-	if(__builtin_expect(isnan(x) || isnan(y), 0)) return __builtin_nanl("");
 
 	static const long double inf = __builtin_infl();	
 	if(__builtin_expect(cvt_x.m == 0, 0)) { // x = +- 0
