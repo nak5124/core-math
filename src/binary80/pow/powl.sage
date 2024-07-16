@@ -125,8 +125,8 @@ def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
 # real 23m9.451s, user 1349m14.649s on tartine (64 cores)
 # check_S(out="/tmp/in",width=2^42,m=165,t=22,d=3)
 # real 13m20.221s, user 759m31.122s on tartine (64 cores)
-# check_S(out="/tmp/in",width=2^44,m=165,t=29,d=4) ***
-# real 4m25.815s, user 233m15.848s
+# check_S(out="/tmp/in",width=2^45,m=165,t=29,d=4) ***
+# real 7m23.300s, user 411m14.889s
 # check_S(out="/tmp/in",width=2^45,m=165,t=30,d=4)
 # real 7m58.439s, user 445m35.797s
 # check_S(out="/tmp/in",width=2^44,m=165,t=28,d=5)

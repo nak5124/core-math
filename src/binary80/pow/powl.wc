@@ -323,3 +323,7 @@ snan,snan
 -0x1.fffffffffffffffep+16383,-0x1p-16382
 -0x1.fffffffffffffffep+16383,-1
 -0x1.fffffffffffffffep+16383,-0x1.fffffffffffffffep+16383
+# non-regression tests
+0x8p+61,y=0x8p-9
+# the following has 62 identical bits after the round bit
+0xc.000000000000001p-4,0x2p+0
