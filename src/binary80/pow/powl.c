@@ -981,10 +981,10 @@ long double cr_powl(long double x, long double y) {
 		long double r;
 		if(__builtin_expect(rh <= -16445.2, 0)) {
 			return (sign * 0x1p-16445L) * .5L;
-		} else if(__builtin_expect(rh >= 16383.5, 0)) {
-			return sign * 0x1p16383L + sign * 0x1p16383L;
+		} else if(__builtin_expect(rh >= 16384.5, 0)) {
+                  return sign * 0x1p16383L + sign * 0x1p16383L;
 	  } else if(__builtin_expect(rh < 0x1p-66 && rh > -0x1p-66, 0)) {
-		  return sign * 1.L + sign*rh;
+		  return sign * 1.L + sign * rh;
 	    // If |rh| is sufficiently small, even with the error margin we know
 	    // how x^y rounds.
 		} else {
