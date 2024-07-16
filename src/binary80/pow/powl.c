@@ -685,11 +685,19 @@ bool is_integer(long double x) {
 	// low bits must be 0
 }
 
+// return non-zero iff x is an odd integer
 inline static
 int is_odd_integer(long double x) {
 	const b80u80_t cvt = {.f = x};
-	if((cvt.e&0x7fff) - 16383 >= 64) return false;
-	else return is_integer(x) && (cvt.m & (1ul << (63 - (cvt.e&0x7fff) + 16383)));
+        int e = (cvt.e&0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
+	if (e >= 64) return false; // ulp(x) >= ulp(2^64) = 2 thus x is even
+        // bit 0 of cvt.m has weight 2^(e-63)
+        // thus bit 63-e corresponds to weight 1
+        // we need the low 64-e bits to equal 1000...000
+        if (e <= -1) return false; // |x| < 1
+        // now 0 <= e <= 63
+        uint64_t u = cvt.m << e;
+        return u == (uint64_t) 1 << 63;
 }
 
 // return non-zero iff x is a NaN
@@ -726,7 +734,10 @@ long double cr_powl(long double x, long double y) {
 	if(__builtin_expect(cvt_y.m == 0 || x == 1.L, 0)) return 1.L;
 
 	const int x_exp = (cvt_x.e&0x7fff) - 16383;
+        // 2^x_exp <= |x| < 2^(x_exp+1)
 	const int y_exp = (cvt_y.e&0x7fff) - 16383;
+        // 2^y_exp <= y < 2^(y_exp+1)
+
 	const long double sign = ((cvt_x.e>>15) & is_odd_integer(y)) ? -1.L : 1.L;
 
 	static const long double inf = __builtin_infl();	
