@@ -27037,4 +27037,6 @@ snan,snan
 -0x1.ffffffffffffdp+769,-0x1.ffffffffffff2p+793
 0x1.ffffffffffffdp+769,-0x1.ffffffffffff2p+793
 -0x1.ffffffffffff2p+793,0x1.ffffffffffffdp+769
-
+# non-regression tests
+0x1.0226b902291p+52,0x1.000000000252p+52
+0x1.fffffffffffffp+1023,0x1p+998
