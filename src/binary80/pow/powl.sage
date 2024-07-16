@@ -70,19 +70,22 @@ def get_finetbl(m = 14, L = 7):
 			minimizer = 1 
 			minr = max(R(abs(nl - 1)),R(abs(nh - 1)))
 		minlog = R(-log2(minimizer))
-		if(R(-log2(R(minimizer))) >= 2**-7):
-			z = 1
-			minlog = R(-log2(R(minimizer)) - 2**-7)
-		else:
-			if(R(-log2(R(minimizer))) <= -2**-7):
-				z = -1
-				minlog = R(-log2(R(minimizer)) + 2**-7)
-			else:
-				z = 0
+		#if(R(-log2(R(minimizer))) >= 2**-7):
+		#	z = 1
+		#	minlog = R(-log2(R(minimizer)) - 2**-7)
+		#else:
+		#	if(R(-log2(R(minimizer))) <= -2**-7):
+		#		z = -1
+		#		minlog = R(-log2(R(minimizer)) + 2**-7)
+		#	else:
+		z = 0
 		maxmin = max(maxmin, minr)
-		print ("{" + get_hex(Rm(minimizer))
-				+ ", " + print_dd(minlog) + ", "
-				+ str(z) + "}, //" + get_hex(R(nl)) +","+ get_hex(R(nh)) + "(" + hex(i) + ")")
+		if i // 2**(L-2) == 1:
+			print("{0,0,0,0},")
+		else:
+			print ("{" + get_hex(Rm(minimizer))
+					+ ", " + print_dd(minlog) + ", "
+					+ str(z) + "}, //" + get_hex(R(nl)) +","+ get_hex(R(nh)) + "(" + hex(i) + ")")
 	print("};")
 	print(get_hex(maxmin))
 
