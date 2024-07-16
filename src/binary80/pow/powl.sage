@@ -27,6 +27,13 @@ def get_coarsetbl(m = 9, L = 7):
 			if(valr < minr):
 				minr = valr
 				minimizer = r.exact_rational()
+		if(minimizer <= 2**(-.5)):
+			z = 1
+			nh/=2
+			nl/=2
+			rl*=2
+			rh*=2
+			minimizer *= 2
 		if(rl <= 1 and 1 <= rh):
 			minimizer = 1
 			minr = max(R(abs(nl - 1)),R(abs(nh - 1)))

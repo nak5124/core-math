@@ -177,7 +177,7 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	*/
 
 	double xsqh, xsql; d_mul(&xsqh, &xsql, xh, xl, xh, xl);
-	// FIXME directly analyze the absolute errors.
+	// FIXME directly analyze the absolute errors ?
 	/* Expanding the d_mul call we get that :
 	   - |p| <= 2^-52|xh^2|
 	   - |xh*xl+p| <= 2^-51|xh^2| so that |q| <= 2^-50.999|xh^2| and q's rounding
@@ -342,7 +342,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	/* If l.z is 1, then |x*r1 - 1| <= 0x1p-7.
 	   If l.z is 0, then |(x/2)*r1 - 1| <= 0x1p-7.
 	   In all cases, |mlogr1h + mlogr1l approximates log2(r1) with relative error
-	   at most 2^-107. Note that |mlogr1h+mlogr1l| <= .505.
+	   at most 2^-107. Note that |mlogr1h+mlogr1l| < .5
 	   The tables are constructed in such a way that r fits in 9 mantissa bits.
 	*/
 	double r1      = l.r;
@@ -382,26 +382,63 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   iv) |mlogr2h+mlogr2l| <= 2^-8.
 	*/
 
-	double mlogrh, mlogrl;
-	high_sum(&mlogrh, &mlogrl, extra_int, mlogr1h, mlogr1l);
-	//add22(&mlogrh, &mlogrl, mlogr1h, mlogr1l, mlogr2h, mlogr2l);
 	POWL_DPRINTF("get_hex(R(-log2(r1)-" SAGE_DD"))\n", mlogr1h, mlogr1l);
 	POWL_DPRINTF("get_hex(R(-log2(r2)-" SAGE_DD"))\n", mlogr2h, mlogr2l);
+	
+	double mlogrh, mlogrl;
+	high_sum(&mlogrh, &mlogrl, extra_int, mlogr1h, mlogr1l);
+	/* Since |mlogr1h + mlogr1l| < .5, we indeed have extra_int = 0 or
+	   |extra_int| > |mlogr1h|. If extra_int=0 everything is exact.
+	   Assume the opposite case. Expanding the high_sum call, this implies
+	   that the fast_two_sum introduces only an error 2^-105|mlogrh| and that
+	   the low part of its result is at most 2^-52|mlogrh|. Notice that
+	   |mlogrh| >= .5 > |mlogr1h| so that
+	   2^-52|mlogrh| >= 2^-52|mlogr1h|>=|mlogr1l|.
+	   This implies that the final sum of high_sum is at most 2^-51|mlogrh|
+	   and that its rounding error is at most 2^-103|mlogrh|.
 
-	//high_sum(&mlogrh, &mlogrl, scaled_eint, mlogrh, mlogrl);
-	add22(&mlogrh, &mlogrl, mlogrh, mlogrl, mlogr2h, mlogr2l);
-	/* If extra_int was not 0, then mlogrh + mlogrl >= 1/2 which implies that
-	   |mlogrh| >= |mlogr2h|. If extra_int was 0, then either mlogr1 = 0 (in which
-	   case everything is exact) or |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h|
-	   This ensures that the arguments are in the right order.
+	   The total rounding error is at most
+	     (2^-103+2^-105)|mlogrh| <= 2^-102.678|mlogrh|.
+	*/
 
-	   Sketch : If |mlogr| >= 2|mlogr2| the analysis goes well (this is always
-	   true when extra_int != 0).  If this is not the case then we can only be
-	   in a few different cases for mlogr1, mlogr2, which we need to manually
-	   check (a few bits get cancelled).
+	high_sum(&mlogr2h, &mlogr2l, mlogrh, mlogr2h, mlogr2l);
+	mlogr2l += mlogrl;
+	/* Let us prove that |mlogrh| has at least the binade of |mlogr2h|.
+	   If extra_int != 0, this is obvious because |mlogrh+mlogrl| >= .5.
+	   Assume extra_int = 0. Then mlogrh = mlogr1h and looking at the tables
+	   we see that mlogrh >= 2^-7, 2^-6 > mlogr2h which allows us to conclude.
+
+	   Let us call (rh, rl) the result of the high_sum and t the intermediate
+	   low part. Expanding high_sum, the previous argument shows that the
+	   fast_two_sum only creates an error 2^-105|rh|; also, |t| <= 2^-52|rh|.
+	   In the last sum, notice that |mlogr2l| <= 2^-52|mlogr2h| <= 2^(-52+5)|rh|.
+	   The +5 is because as many as 5 bits may cancel computing |rh|, and is
+	   obtained by looking at the tables (the 5 results from
+	   0x1.6a0e8140311aap-7 + (-0x1.6fe50b6ef0851p-7) )
+
+	   Therefore, |mlogr2l + t| <= (2^-47+2^-52)|rh| <= 2^-46.955|rh|. This
+	   implies that |rl| <= 2^-46.955|rh| and that the rounding error of the
+	   high_sum's final sum is at most 2^-98.955|rh|.
+
+	   Note that the last sum is at most
+	     |rl| + 2^-51|mlogrh| <= (2^-46.955 + 2^-46)|rh|
+	   we get in the end |mlogr2l| <= 2^-45.399|mlogr2h| and a rounding error
+	   of at most 2^-97.399|mlogr2h|.
+
+	   These steps of computation created an error at most
+	     (2^-98.955 + 2^-97.399 + 2^-105)|mlogr2h|;
+	   Propagating the previous errors gives another error term at most
+	     2^5(2^-107 + 2^-107 + 2^-102.678)|mlogr2h|
+	   (the 2^-107 comes from the table's finite precision). We thus get a
+	   total relative error of at most 2^-96.227|mlogr2h|. 
 	*/
 	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
-		mlogrh, mlogrl);
+		mlogr2h, mlogr2l);
+	fast_two_sum(&mlogr2h, &mlogr2l, mlogr2h, mlogr2l);
+	/* This renormalization incurs a relative error at most 2^-105. The total
+	   relative error becomes at most 2^-96.223. This ensures
+	   |mlogr2l| <= 2^-52|mlogr2h|.
+	*/
 
 	// |xh| <= 1p-12
 	xh = __builtin_fma(r2, xh, -1); xl *= r2;
@@ -415,22 +452,66 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	   Note that without the two_sum, we have no guarantees on the relative
 	   sizes of xh and xl but both are small (approx. xh <= 2^-12, xl <= 2^-33).
-	   this may be enough ?
+	   this may be enough ? (probably not)
 	*/
 	POWL_DPRINTF("get_hex(R(r1*r2*sx - 1 - "SAGE_DD"))\n", xh, xl);
 	POWL_DPRINTF("s = r1*r2*sx - 1\n");
 	POWL_DPRINTF("get_hex(s)\n");
 
 	polyeval(rh, rl, xh, xl);
+	/* By polyeval's error analysis, rh + rl gets an estimate of log2(1+x)
+	   with relative error at most 2^-98.429. Furthermore |rl|<=2^-49.066|rh|.
+	*/
+
+	high_sum(rh, rl, mlogr2h,*rh,*rl);
+	*rl += mlogr2l;
+	/* Let us call rh', rl' the results of the computation, rh and rl the inputs.
+	   Note that if mlogr2h != 0, then |mlogr2h| >= 0x1.5p-12 (manual check).
+	   Given the argument above, this implies |mlogr2h| has at least the
+	   binade of |rh|.
+
+	   Expanding the high_sum call and calling t the fast_two_sum result's low
+	   part, the previous argument ensures that the fast_two_sum creates an error
+	   at most 2^-105|rh'| and that |t| <= 2^-52|rh'|. In the last sum, notice
+	   that |rl + t| <= 2^-52|rh'| + 2^-49.066|rh|. Now, since
+	   2^-11.469/|0x1.5p-12 - 2^-11.469| <= 2^3.447, we have |rh| <= 2^3.447|rh'|
+	   and thus |rl + t| <= (2^-52+2^-49.066*2^3.447)|rh'|. This shows that after
+	   the high sum, |rl'| <= 2^-45.601|rh'| and that the associated rounding
+	   error is at most 2^-97.601|rh'|.
+
+	   We compute that 0x1.5p-12/|0x1.5p-12 - 2^-11.469| <= 2^3.309
+	   The sum on the last line is thus at most
+	     2^-45.601|rh'| + 2^3.309*2^-52|rh'| <= 2^-45.440|rh'|
+	   which implies that in the end |rl'| <= 2^-45.439|rh'| and that the
+	   associated rounding error is at most 2^-97.539|rh'|.
+
+	   These steps of computation created an error at most
+	     (2^-97.601 + 2^-105 + 2^-97.539)|rh'|.
+	   Propagating the previous errors gives another error term at most
+	     (2^3.309*2^-96.223 + 2^3.447*2^-98.429)|rh'|.
+	   The total relative error computing log2(1 + x) is therefore at most
+	   2^-92.515. Also, |rl'| <= 2^-45.439|rh'|.
+	*/
 
 	double yh = y; double yl = y - (long double)(yh);
-	/* If mlogr != 0 then |mlogrh| >= 1.6p-12 >= 1.01p-12 >= |rh|
-	*/
-	add22(rh, rl, mlogrh, mlogrl, *rh, *rl);
-
 	POWL_DPRINTF("get_hex(R(log2(x)) - "SAGE_DD")\n", *rh, *rl);
-	d_mul(rh, rl, *rh, *rl, yh, yl);
-
+	d_mul(rh, rl, yh, yl, *rh, *rl);
+	/* Let us call again rh', rl' the output values for rh and rl, and rh and rl
+	   the input values. The relative error on log2(1 + x) propagates, creating
+	   an intrinsic relative error of 2^-92.515.
+	   Expanding the d_mul call, we see that |p| <= 2^-52|yh*rh|; then
+	     - |yl*rh + p| <= 2^-52|yh*rh| + 2^-52|yh*rh| <= 2^-51|yh*rh|.
+	       This ensures |q| <= 2^-51|yh*rh|. Also, the associated
+	       rounding error is at most 2^-103|yh*rh|.
+	     - |yh*rl + q| <= (2^-45.439 + 2^-51)|yh*rh|. This ensures that 
+	       |rl'| <= 2^-45.408|rh'| and that the associated rounding error is
+	       at most 2^-97.408|rh'|.
+	     - the error produced by neglecting |yl*rl| is at most
+	       2^-52*2^-45.439|yh*rh|.
+	   The total error up to this step is therefore at most
+	     (2^-52*2^-45.439 + 2^-97.408 + 2^-103 + 2^-92.515)|yh*rh|
+		 or at most 2^-92.421|rh'|. We also have |rl'| <= 2^-45.408|rh|.
+	*/
 }
 
 
