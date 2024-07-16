@@ -95,7 +95,7 @@ def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
    command += str(m) + " -t " + str(t) + " -t0 " + str(t0)
    command += " -t1 " + str(t1) + " -y " + get_hex(y) + " -e_in " + str(e)
    command += " -d " + str(d) + " -alpha " + str(alpha)
-   command += " -nthreads " + str(nthreads)
+   command += " -nthreads " + str(nthreads) + " -v"
    if out==None:
       print (command)
    else:
@@ -108,14 +108,22 @@ def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
 # (b) x,y with y of the form n/2^F with 3 <= n <= 41, n odd, 1 <= F <= 5
 #     (F <= 5 because starting from an odd integer of at most 65 bits,
 #      you can take at most 5 square roots while keeping an integer)
-# t0=2^63+2^62
-# check_S(out="/tmp/in",width=2^30,m=55)
-# real 2m36.614s, user 27m47.121s on tartine
+# check_S(out="/tmp/in",width=2^30,m=55) # with t0=2^63+2^62
 # *** x,y=0xc.000000000000001p-4,0x2p+0, distance is: 5.421010862e-20 (-m 64)
-# check_S(out="/tmp/in",width=2^31,m=64)
-# real 3m31.956s, user 28m51.734s
-# check_S(out="/tmp/in",width=2^40,m=64)
-# real 36m48.652s, user 764m39.762s
+# check_S(out="/tmp/in",width=2^41,m=64)
+# real 19m8.149s, user 1108m52.587s on tartine (64 cores)
+# check_S(out="/tmp/in",width=2^42,m=64)
+# real 27m38.904s, user 1617m43.970s on tartine (64 cores)
+# check_S(out="/tmp/in",width=2^42,m=165,t=22)
+# real 23m9.451s, user 1349m14.649s on tartine (64 cores)
+# check_S(out="/tmp/in",width=2^42,m=165,t=22,d=3)
+# real 13m20.221s, user 759m31.122s on tartine (64 cores)
+# check_S(out="/tmp/in",width=2^44,m=165,t=29,d=4) ***
+# real 4m25.815s, user 233m15.848s
+# check_S(out="/tmp/in",width=2^45,m=165,t=30,d=4)
+# real 7m58.439s, user 445m35.797s
+# check_S(out="/tmp/in",width=2^44,m=165,t=28,d=5)
+# real 6m15.299s, user 343m11.966s
 def check_S(m=55,t=20,width=2^30,d=2,alpha=2,nthreads=64,out=None):
    if out != None:
       out = open(out,"w")
@@ -133,3 +141,63 @@ def check_S(m=55,t=20,width=2^30,d=2,alpha=2,nthreads=64,out=None):
             print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads)
    if out != None:
       out.close()
+
+def print_xy(out,x,y):
+   if abs(x) >= RR(2^16384) or abs(x) < RR(2^-16445):
+      return 0
+   s = get_hex(x) + "," + get_hex(y)
+   if out==None:
+      print (s)
+   else:
+      out.write(s + "\n")
+   return 1
+
+# check exact values for x=2^n and y=m/2^k with m odd, k >= 6
+# this gives 988254 (x,y) pairs to check
+def check_pow2(out=None):
+   if out != None:
+      out = open(out,"w")
+   # if x = 2^n, then x^y = 2^(n*m/2^k) thus n should be multiple of 2^k
+   nsols = 0
+   for k in range(6,16446):
+      # positive n
+      for n in range(2^k,16446,2^k):
+         assert n%(2^k)==0, "n%(2^k)==0"
+         e = n//(2^k)
+         # x^y = 2^(e*m)
+         for m in range(1,floor(16445/e)+1,2):
+            x = RR(2^n)
+            y = RR(m/2^k)
+            nsols += print_xy(out,x,y)
+            nsols += print_xy(out,1/x,-y)
+      # negative n
+      for n in range(-2^k,-16446,-2^k):
+         assert n%(2^k)==0, "n%(2^k)==0"
+         e = n//(2^k)
+         # x^y = 2^(e*m)
+         for m in range(1,floor(16445/abs(e))+1,2):
+            x = RR(2^n)
+            y = RR(m/2^k)
+            nsols += print_xy(out,x,y)
+            nsols += print_xy(out,1/x,-y)
+   if out != None:
+      out.close()
+   return nsols
+
+# split binade [2^(e-1),2^e) into k blocks for y
+def doit_bacsel(y,e,k,t0=None,t1=None,neg=false):
+   if t0==None:
+      if neg:
+         t0 = -2^64+1
+      else:
+         t0 = 2^63
+   if t1==None:
+      if neg:
+         t1 = -2^63+1
+      else:
+         t1 = 2^64
+   h = ceil((t1-t0)/k)
+   for i in range(k):
+      u0 = t0+h*i
+      u1 = min(t0+h*(i+1),t1)
+      print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 24 64 " + y)

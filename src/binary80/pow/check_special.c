@@ -6,6 +6,7 @@
 #include <mpfr.h>
 #include <omp.h>
 #include <unistd.h>
+#include <math.h>
 
 void doloop (int, int);
 extern long double cr_powl (long double, long double);
@@ -86,6 +87,49 @@ check (long double x, long double y)
 	return 0;
 }
 
+// check x=2^n and y, return 1 iff x is in the long double range
+static int
+check_pow2_aux (int n, long double y)
+{
+  if (n < -16445 || 16384 <= n)
+    return 0;
+  long double x = ldexpl (1.0L, n);
+  check (x, y);
+  return 1;
+}
+
+// check exact values for x=2^n and y=m/2^k with m odd, k >= 6
+static void
+check_pow2 (void)
+{
+  int nsols = 0;
+  // since n should be a multiple of 2^k and n <= 16445, we have k <= 14
+  for (int k = 6; k <= 14; k++)
+  {
+    int K = 1 << k;
+    // positive n
+    for (int n = K; n <= 16445; n += K)
+    {
+      int e = n / K;
+      for (int m = 1; m * e <= 16445; m += 2)
+      {
+        nsols += check_pow2_aux (n, ldexpl ((long double) m, -k));
+        nsols += check_pow2_aux (-n, -ldexpl ((long double) m, -k));
+      }
+    }
+    // negative n
+    for (int n = -K; n >= -16445; n -= K)
+    {
+      int e = n / K;
+      for (int m = 1; m * (-e) <= 16445; m += 2)
+      {
+        nsols += check_pow2_aux (n, ldexpl ((long double) m, -k));
+        nsols += check_pow2_aux (-n, -ldexpl ((long double) m, -k));
+      }
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -127,9 +171,14 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
-	ref_init();
-	ref_fesetround(rnd);
-	fesetround(rnd1[rnd]);
+
+  ref_init();
+  ref_fesetround(rnd);
+  fesetround(rnd1[rnd]);
+
+  printf ("Checking x=2^k\n");
+  check_pow2 ();
+
   printf ("Checking random values\n");
 
 	long int total = 0, fails = 0, giveups = 0;
