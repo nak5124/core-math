@@ -676,13 +676,17 @@ long double exp2d(double xh, double xl) {
 inline static
 bool is_integer(long double x) {
 	const b80u80_t cvt = {.f = x};
-	int e = (cvt.e & 0x7fff) - 16383;
-	if(e >= 63) { // Ulp is 2^(e - 63) >= 1
-		return true;
-	} else if(e >= -1) {
-		return !(cvt.m & (-1ul >> (e + 1)));
-	} else {return false;}
-	// low bits must be 0
+	int e = (cvt.e & 0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
+	if (e >= 63) return true; // ulp(x) >= ulp(2^63) = 1 thus x is integer
+        else if (e <= -1) return false; // |x| < 1
+        // bit 0 of cvt.m has weight 2^(e-63)
+        // thus bit 62-e corresponds to weight 1/2
+        // we need the low 63-e bits to equal 000...000
+        // now 0 <= e <= 62
+        else {
+          uint64_t u = cvt.m << (e + 1);
+          return u == 0;
+        }
 }
 
 // return non-zero iff x is an odd integer
@@ -691,13 +695,15 @@ int is_odd_integer(long double x) {
 	const b80u80_t cvt = {.f = x};
         int e = (cvt.e&0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
 	if (e >= 64) return false; // ulp(x) >= ulp(2^64) = 2 thus x is even
+        else if (e <= -1) return false; // |x| < 1
         // bit 0 of cvt.m has weight 2^(e-63)
         // thus bit 63-e corresponds to weight 1
         // we need the low 64-e bits to equal 1000...000
-        if (e <= -1) return false; // |x| < 1
         // now 0 <= e <= 63
-        uint64_t u = cvt.m << e;
-        return u == (uint64_t) 1 << 63;
+        else {
+          uint64_t u = cvt.m << e;
+          return u == (uint64_t) 1 << 63;
+        }
 }
 
 // return non-zero iff x is a NaN
@@ -743,7 +749,7 @@ long double cr_powl(long double x, long double y) {
 	static const long double inf = __builtin_infl();	
 	if(__builtin_expect(cvt_x.m == 0, 0)) { // x = +- 0
 		if(cvt_y.e>>15) { // y < 0
-			if(cvt_y.e != 0xffff) {feraiseexcept(FE_DIVBYZERO);} // If y != -inf
+			if(cvt_y.e != 0xffff) feraiseexcept(FE_DIVBYZERO); // If y != -inf
 			return sign * inf;
 		} else {
 			return sign * 0L;
