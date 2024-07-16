@@ -67,28 +67,31 @@ static inline int get_rounding_mode (void)
 #endif
 }
 
-/* Split a number of exponent 0 into a high part on 34 bits an a low part on
-31 bits exactly.
-*/
+/* Split a number of exponent 0 (1 <= |x| < 2)
+   into a high part on 33 bits and a low part on 31 bits exactly. */
 static inline
 void split(double* rh, double* rl, long double x) {
-	static double C = 0x1.8p+31; // ulp(C)=2^-32 once cast to 80 bits
+	static long double C = 0x1.8p+31L; // ulp(C)=2^-32
 	long double y = (x + C) - C;
-	/* Given the relative sizes of C and x, x + C has the binade of C. Therefore,
-	   the difference is exact. Furthermore, ulp(x + C) = ulp(C) = 2^-63*2^31
-	   = 2^-32. The rounding error in x + C is therefore less than 2^-32.
+	/* Given the relative sizes of C and x, x + C has the same binade as C.
+           Therefore, the difference is exact. Furthermore,
+           ulp(x + C) = ulp(C) = 2^-32.
+           The rounding error in x + C is therefore less than 2^-32.
 	   Thus, |x - y| < 2^-32. Note that since 2^31 <= x + C < 2^32 and the
 	   difference is exact, y is a multiple of ulp(x + C) = 2^-32.
-	   Since |y| < 4 given |x - y|, this ensures y fits in
-	   32 - (-1) + 1 = 34 bits.
-	*/
+           Since |x| < 2, and the roundings are monotonous, x + C is bounded
+           by the values obtained with |x| = 2, namely 0x1.7ffffffcp+31 and
+           0x1.80000004p+31, and likely for y, namely -2 and 2.
+           Since y is a multiple of 2^-32, this ensures y = k*2^-32
+           with |k| <= 2^-33, thus y fits in 33 bits.
+           (If |y| = 2, it trivially fits.) */
 	*rh = y; // This conversion is exact by the argument above.
 	*rl = x - y;
 	/* 
-		|x - y| < 2^-32. Note that x and y are both multiples of 2^-63; therefore
-	  x - y is too. This implies that x - y fits in 63 - 33 + 1 = 31
-	  mantissa bits and that the difference is exact.
-	*/
+           |x - y| < 2^-32. Note that x and y are both multiples of
+           ulp_64(1) = 2^-63; therefore x - y too. This implies that
+           x - y = l*2^-63 with |l| < 2^31, thus rl fits in 31 bits,
+           and the difference is exact. */
 }
 
 
@@ -347,15 +350,17 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 
 /* Computes an approximation of ylog2|x| under the following conditions :
 
-- 2^(-65-15) <= |y| < 2^(65 + 14)
-- |x| is at least the smallest positive normal number
+- 2^-80 <= |y| < 2^78
+- |x| >= 2^-16382 (the smallest positive normal number)
 */
 static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	b80u80_t cvt_x = {.f = x};
 	int extra_int = (cvt_x.e&0x7fff) - 16383;
+        // extra_int >= -16382
 	cvt_x.e = 16383; // New wanted exponent
 	x = cvt_x.f;
+        // original x = 2^extra_int * x
 
 	double xh, xl; // a (resp b) bits
 	split(&xh, &xl, x);
