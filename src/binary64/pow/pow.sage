@@ -598,3 +598,40 @@ def check_exact(file=None):
       file.close()
    return nsols
 
+def print_xy(out,x,y):
+   if abs(x) >= RR(2^1024) or abs(x) < RR(2^-1074):
+      return
+   s = get_hex(x) + "," + get_hex(y)
+   if out==None:
+      print (s)
+   else:
+      out.write(s + "\n")
+
+# check exact values for x=2^n and y=m/2^k with m odd, k >= 6
+def check_pow2(out=None):
+   if out != None:
+      out = open(out,"w")
+   # if x = 2^n, then x^y = 2^(n*m/2^k) thus n should be multiple of 2^k
+   for k in range(6,1075):
+      # positive n
+      for n in range(2^k,1075,2^k):
+         assert n%(2^k)==0, "n%(2^k)==0"
+         e = n//(2^k)
+         # x^y = 2^(e*m)
+         for m in range(1,floor(1074/e)+1,2):
+            x = RR(2^n)
+            y = RR(m/2^k)
+            print_xy(out,x,y)
+            print_xy(out,1/x,-y)
+      # negative n
+      for n in range(-2^k,-1075,-2^k):
+         assert n%(2^k)==0, "n%(2^k)==0"
+         e = n//(2^k)
+         # x^y = 2^(e*m)
+         for m in range(1,floor(1074/abs(e))+1,2):
+            x = RR(2^n)
+            y = RR(m/2^k)
+            print_xy(out,x,y)
+            print_xy(out,1/x,-y)
+   if out != None:
+      out.close()
