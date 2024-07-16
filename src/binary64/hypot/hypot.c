@@ -92,16 +92,15 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, unsig
   int be = xi.u>>52;
   int le = yi.u>>52;
   b64u64_u ri = {.f = __builtin_sqrt(x*x + y*y)};
-  const int bs = 3;
+  const int bs = 2;
   u64 rm = (ri.u&(~0ul>>12)); int re = (ri.u>>52)-0x3ff;
-  for(int i=0;i<2;i++){
-    if(__builtin_expect(rm,1)){
-      rm |= 1l<<52;
-      rm--;
-    } else {
+  rm |= 1l<<52;
+  for(int i=0;i<3;i++){
+    if(__builtin_expect(rm == 1l<<52,1)){
       rm = ~0ul>>11;
       re--;
-    }
+    } else
+      rm--;
   }
   bm <<= bs;
   u64 m2 = bm*bm;
