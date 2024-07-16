@@ -1,3 +1,29 @@
+/* Correctly rounded powl function for binary80 values.
+
+Copyright (c) 2024 Sélène Corbineau and Paul Zimmermann
+
+This file is part of the CORE-MATH project
+(https://core-math.gitlabpages.inria.fr/).
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #include <stdint.h>
 #include <fenv.h>
 #include <stdbool.h>
@@ -691,7 +717,7 @@ bool is_integer(long double x) {
 
 // return non-zero iff x is an odd integer
 inline static
-int is_odd_integer(long double x) {
+bool is_odd_integer(long double x) {
 	const b80u80_t cvt = {.f = x};
         int e = (cvt.e&0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
 	if (e >= 64) return false; // ulp(x) >= ulp(2^64) = 2 thus x is even
@@ -742,7 +768,7 @@ long double cr_powl(long double x, long double y) {
 	const int x_exp = (cvt_x.e&0x7fff) - 16383;
         // 2^x_exp <= |x| < 2^(x_exp+1)
 	const int y_exp = (cvt_y.e&0x7fff) - 16383;
-        // 2^y_exp <= y < 2^(y_exp+1)
+        // 2^y_exp <= |y| < 2^(y_exp+1)
 
 	const long double sign = ((cvt_x.e>>15) & is_odd_integer(y)) ? -1.L : 1.L;
 
@@ -768,30 +794,32 @@ long double cr_powl(long double x, long double y) {
 	// Now, the handling of forbidden values has been done
 	// and the sign of the result computed in sign. We treat x as |x|.
 
-	if(__builtin_expect((cvt_x.e&0x7fff) == 0x7fff, 0)) { // x = +-inf
-		if(cvt_y.e>>15) {return sign * 0L;} else {return sign * inf;}
-	}
+	if(__builtin_expect((cvt_x.e&0x7fff) == 0x7fff, 0)) // x = +-inf
+          return sign * ((cvt_y.e>>15) ? 0L : inf);
 
-	bool lt1 = (x_exp < 0) ^ (cvt_y.e>>15); // x^y = 2^s with s < 0
-	// If y is that big, necessarily |yln2(x)| >= 2^15
-	// Note that sign == 1 here because y is a (possibly infinite) even integer
-	if(__builtin_expect(y_exp >= 79, 0)) {
-		if(__builtin_expect(y_exp == 0x7fff - 16383, 0)) { // y = +-infty
-			if(lt1) {return 0L;}
-			else {return inf;}
-		} else {
-			if(lt1) {return 0x1p-16445L * .5L;}
-			else { return 0x1p16383L + 0x1p16383L;}
-		}
+	bool lt1 = (x_exp < 0) ^ (cvt_y.e>>15);
+        // x^y = 2^s with s < 0 (we have already dealt wuth x=1
+        // thus x_exp >= 0 implies x > 1)
+
+	if(__builtin_expect(y_exp >= 78, 0)) {
+          /* For |y| >= 2^78, since |x| <> 1, the smallest value of
+             |y * log2(x)| is attained for x = 1 - 2^-64, and is > 23637,
+             thus |x^y| is smaller than the smallest positive subnormal
+             2^-16445, or largest than MAX_LDBL = 2^16384*(1-2^-64). */
+          // |y| >= 2^78 implies y is a (possibly infinite) even integer
+		if(__builtin_expect(y_exp == 0x7fff - 16383, 0)) // y = +-infty
+                  return (lt1) ? 0L : inf;
+		else
+                  return (lt1) ? 0x1p-16445L * .5L : 0x1p16383L + 0x1p16383L;
 	} else if(__builtin_expect(y_exp <= -81, 0)) {
-		if(lt1) {return 1.L - 0x1p-65L;}
-		else    {return 1.L + 0x1p-65L;}
+          /* For y_exp <= -81, we have |y| < 2^-80,
+             thus since |log2(x)| <= 16445, we have |y*log2(x)| < 0x1.00f4p-66.
+             Since for |t| <= 0x1.71547652b82fe176p-65, 2^t rounds to 1
+             to nearest, we can deduce the correct rounding. */
+          return (lt1) ? 1.L - 0x1p-65L : 1.L + 0x1p-65L;
 	}
 
-	/* Note that log2|x| < 2^15. Therefore, if |y| < 2^-80 we have
-	   |ylog2|x|| <= 2^-65, which ensures that 2^(ylog2|x|) rounds the same way as
-	   1 + sgn(ylog2|x|) * 1p-16445L.
-	*/
+        // now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 
 	// Automatic giveup if x subnormal
 	if(__builtin_expect((int64_t)cvt_x.m < 0, 1)) {
@@ -799,6 +827,7 @@ long double cr_powl(long double x, long double y) {
 		POWL_DPRINTF("x="SAGE_RE"\n",x);
 		POWL_DPRINTF("y="SAGE_RE"\n",y);
 		compute_log2pow(&rh, &rl, x, y);
+                // rh + rl approximates y*log2(x0
 		POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
 		long double r;
 		if(__builtin_expect(rh <= -16446, 0)) {
@@ -811,5 +840,5 @@ long double cr_powl(long double x, long double y) {
 		}
 		POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
 		return r;
-	} else {return -1.;}
+	} else {return -1.;} // x subnormal
 }
