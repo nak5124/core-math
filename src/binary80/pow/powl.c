@@ -386,10 +386,13 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	
 	if(l.z) {xh/=2; xl/=2; POWL_DPRINTF("sx = sx/2\nei+=1\n");}
 	xh *= r1; xl *= r1;
-        // the above multiplications are exact
-        // now xh fits in 42 bits at most, xl in 40.
-        // more precisely xh is a multiple of 2^-32 if z=0,
-        // and of 2^-33 if z=1
+        /* The above multiplications are exact.
+           now xh fits in 42 bits at most, xl in 40.
+           More precisely the initial xh was a multiple of 2^-32 if z=0,
+           and of 2^-33 if z=1. Since r1 is a multiple of 2^-9 for z=0,
+           and of 2^-8 for z=1, then the new value of xh is a multiple
+           of 2^-41 in all cases.
+        */
 
 	POWL_DPRINTF("get_hex(R(abs("SAGE_RR" - 1)))\n", xh);
 	/* Note that now |xh - 1| <= 1p-7
@@ -416,7 +419,10 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   ii) r2 fits in 13 bits
 	   iii) mlogr2h + mlogr2l approximates -log2(r2) with
 	        relative error at most 2^-107.27
-	   iv) |mlogr2h+mlogr2l| <= 2^-8.
+	   iv) |mlogr2h+mlogr2l| < 2^-6.47
+           Since r2 is a multiple of 2^-13, xh*r2 is a multiple of 2^-54,
+           and since |r2*xh - 1| <= 2^-12, then r2*xh - 1 is representable
+           exactly on 42 bits.
 	*/
 
 	POWL_DPRINTF("get_hex(R(-log2(r1)-" SAGE_DD"))\n", mlogr1h, mlogr1l);
