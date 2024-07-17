@@ -375,31 +375,34 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   If l.z is 1, then |(x/2)*r1 - 1| <= 0x1p-7.
 	   In all cases, mlogr1h + mlogr1 approximates -log2(r1) with
            relative error < 2^-107.22. Note that |mlogr1h+mlogr1l| < .5
-	   The tables are constructed in such a way that r fits in 9 mantissa bits.
+	   The tables are constructed in such a way that r fits in 9 bits.
 	*/
 	double r1      = l.r;
 	double mlogr1h = l.mlogrh;
 	double mlogr1l = l.mlogrl;
-	extra_int     += l.z;
+	extra_int     += l.z;      // if z=1, we consider x/2
 
 	POWL_DPRINTF("r1 = " SAGE_RR "\n", r1);
 	
 	if(l.z) {xh/=2; xl/=2; POWL_DPRINTF("sx = sx/2\nei+=1\n");}
-	xh *= r1; xl *= r1; // xh fits in 43 bits at most, xl in 40.
+	xh *= r1; xl *= r1;
+        // the above multiplications are exact
+        // now xh fits in 42 bits at most, xl in 40.
 
 	POWL_DPRINTF("get_hex(R(abs("SAGE_RR" - 1)))\n", xh);
-	/* Note that now |xh - 1| <= 1p-7 (say)
-	   Therefore, xh's mantissa is either
+	/* Note that now |xh - 1| <= 1p-7
+	   Therefore, xh's mantissa (seen as a 53-bit integer) is either
 	   1.00000 00p or 1.11111 1q.
-	   We skip the first 6 bits of the mantissa and use the 7 next to index
-	   another lookup table. A quarter of the table is wasted!
+	   We skip the upper 6 bits of the mantissa and use the next 7 bits
+           to index another lookup table. A quarter of the table is wasted!
 
-		 We're looking at 1 + 2^-(5+7)k, 1 + 2^-(5+7)(k+1) when the high bit of k is
-	   0. Else we're looking at 1 - 2^-7 + 2^(-6-7)*k', 1 - 2^-6 + 2^-13(k'+1)
+           We're looking at 1 + 2^-12*k, 1 + 2^-12*(k+1) for 0 <= k < 32.
+	   Else we're looking at 1 - 2^-6 + 2^-13*k', 1 - 2^-6 + 2^-13*(k'+1)
+           for 64 <= k' < 128.
 	*/
 
 	b64u64_t cvt_xh = {.f = xh};
-	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f];
+	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f]; // k' = (cvt_xh.u>>40) & 0x7f
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
 	POWL_DPRINTF("key2 = 0x%lx\n", (cvt_xh.u>>40 & 0x7f));
 	double r2 = l2.r;

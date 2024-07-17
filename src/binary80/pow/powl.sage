@@ -17,8 +17,11 @@ def get_hl(minimizer):
       err = abs(err/h)
    return h, l, err
 
+# see comments in powl_tables.h
 # get_coarsetbl()
 # 0x1p-7 -107.225895411898
+# m is the number of bits of r1[i]
+# L is the length of the table
 def get_coarsetbl(m = 9, L = 7):
 	Rm = RealField(m)
 	R  = RealField(106)
@@ -67,57 +70,56 @@ def get_coarsetbl(m = 9, L = 7):
 	print("};")
 	print(get_hex(maxmin), log(maxerr)/log(2.))
 
+# m is the number of bits of r2[i]
+# L is the length of the table
+# get_finetbl()
+# 0x1p-12 -107.099645409682
 def get_finetbl(m = 14, L = 7):
 	Rm = RealField(m)
 	R  = RealField(106)
 	maxmin = -1
 	print("static const _Alignas(16)")
 	print("lut_t fine[" + str(2**L) + "] = {")
-	for i in range(2**L):
-		# if i < 2**L-1 then x is in range 1 + i/2**(5+L), 1 + (i+1)/2**(5+L)
-		# else x is in range 1 - 1/2**7 + (i-2**(L-1))/2**(6+L),
-		# 1 - 1/2**7 + (i + 1 - 2**(L - 1))/2**(6+L)
-		if(i < 2**(L-1)):
-			nh = 1 + (i + 1)/2**(5+L)
-			nl = 1 + i/2**(5+L)
+	maxerr = 0
+	for i in range(2^L):
+		# if i < 2^L-1 then x is in range 1 + i/2^(5+L), 1 + (i+1)/2^(5+L)
+		# else x is in range 1 - 1/2^7 + (i-2^(L-1))/2^(6+L),
+		# 1 - 1/2^7 + (i+1-2^(L-1))/2^(6+L)
+		if(i < 2^(L-1)):
+			nh = 1 + (i + 1)/2^(5+L)
+			nl = 1 + i/2^(5+L)
 		else:
-			nh = 1 - 1/2**7 + (i - 2**(L-1) + 1)/2**(6+L)
-			nl = 1 - 1/2**7 + (i - 2**(L-1))/2**(6+L)
+			nh = 1 - 1/2^7 + (i - 2^(L-1) + 1)/2^(6+L)
+			nl = 1 - 1/2^7 + (i - 2^(L-1))/2^(6+L)
 		rl = Rm(RealField(m, rnd='RNDD')(1/nh))
 		rh = Rm(RealField(m, rnd='RNDU')(1/nl))
-		r = rl.nextbelow()
 		minr = 20
 		minimizer = 0
+		r = rl
 		while(r <= rh):
-			r = r.nextabove()
 			valr = max(
 				R(abs(r.exact_rational()*nl - 1)),
 				R(abs(r.exact_rational()*nh - 1))) 
 			if(valr < minr):
 				minr = valr
 				minimizer = r.exact_rational()
+			r = r.nextabove()
 		if(rl <= 1 and 1 <= rh):
 			minimizer = 1 
 			minr = max(R(abs(nl - 1)),R(abs(nh - 1)))
 		minlog = R(-log2(minimizer))
-		#if(R(-log2(R(minimizer))) >= 2**-7):
-		#	z = 1
-		#	minlog = R(-log2(R(minimizer)) - 2**-7)
-		#else:
-		#	if(R(-log2(R(minimizer))) <= -2**-7):
-		#		z = -1
-		#		minlog = R(-log2(R(minimizer)) + 2**-7)
-		#	else:
 		z = 0
 		maxmin = max(maxmin, minr)
-		if i // 2**(L-2) == 1:
-			print("{0,0,0,0},")
+		h, l, err = get_hl (minimizer)
+		maxerr = max(maxerr, err)
+		if i // 2**(L-2) == 1: # unused entries
+			print("{0,0,0,0}, // unused")
 		else:
 			print ("{" + get_hex(Rm(minimizer))
-					+ ", " + print_dd(minlog) + ", "
+				+ ", " + get_hex(h) + ", " + get_hex(l) + ", "
 					+ str(z) + "}, //" + get_hex(R(nl)) +","+ get_hex(R(nh)) + "(" + hex(i) + ")")
 	print("};")
-	print(get_hex(maxmin))
+	print(get_hex(maxmin), log(maxerr)/log(2.))
 
 def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
    y = R64(y)
