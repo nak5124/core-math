@@ -166,7 +166,7 @@ long double cr_rsqrtl (long double x){
   h -= dh;
   i128 Dr = (i128)h*-(i64)r;
   i64 dr = Dr>>35;
-  v.e = 0x3fef + (0x401e - e) / 2;
+  v.e = 0x1fff + (0x7ffe - e) / 2;
   v.m = (r<<32) + (dr>>26);
   if(__builtin_expect((((dr^rn)+1)&((1<<26)-1))<3,0)){ // rounding test
     // a*r^2 has to fit into 3*64 = 192 bit since first ~60 bit are
