@@ -68,7 +68,7 @@ static inline int get_rounding_mode (void)
 }
 
 /* Split a number of exponent 0 (1 <= |x| < 2)
-   into a high part on 33 bits and a low part on 31 bits exactly. */
+   into a high part fitting in 33 bits and a low part fitting in 31 bits. */
 static inline
 void split(double* rh, double* rl, long double x) {
 	static long double C = 0x1.8p+31L; // ulp(C)=2^-32
@@ -351,7 +351,7 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 /* Computes an approximation of ylog2|x| under the following conditions :
 
 - 2^-80 <= |y| < 2^78
-- |x| >= 2^-16382 (the smallest positive normal number)
+- x is normal, i.e., |x| >= 2^-16382
 */
 static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
@@ -364,16 +364,17 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	double xh, xl; // a (resp b) bits
 	split(&xh, &xl, x);
+        // x = xh + xl with xh on 33 bits and xl on 31 bits
 
 	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
 	lut_t l = coarse[cvt_x.m>>56 & 0x7f];
 	POWL_DPRINTF("key=0x%lx\n", (cvt_x.m>>56 & 0x7f));
 
-	/* If l.z is 1, then |x*r1 - 1| <= 0x1p-7.
-	   If l.z is 0, then |(x/2)*r1 - 1| <= 0x1p-7.
-	   In all cases, |mlogr1h + mlogr1l approximates log2(r1) with relative error
-	   at most 2^-107. Note that |mlogr1h+mlogr1l| < .5
+	/* If l.z is 0, then |x*r1 - 1| <= 0x1p-7.
+	   If l.z is 1, then |(x/2)*r1 - 1| <= 0x1p-7.
+	   In all cases, mlogr1h + mlogr1 approximates -log2(r1) with
+           relative error < 2^-107.22. Note that |mlogr1h+mlogr1l| < .5
 	   The tables are constructed in such a way that r fits in 9 mantissa bits.
 	*/
 	double r1      = l.r;
@@ -985,8 +986,7 @@ long double cr_powl(long double x, long double y) {
 
         // now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 
-	// Automatic giveup if x subnormal
-	if(__builtin_expect((int64_t)cvt_x.m < 0, 1)) {
+	if(__builtin_expect((int64_t)cvt_x.m < 0, 1)) { // x is normal
 		double rh, rl;
 		POWL_DPRINTF("x="SAGE_RE"\n",x);
 		POWL_DPRINTF("y="SAGE_RE"\n",y);

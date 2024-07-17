@@ -1,44 +1,71 @@
+def print_dd(x):
+  y = RR(x)
+  z = RR(x - y.exact_rational())
+  return get_hex(y) + ", " + get_hex(z)
+
+def get_hl(minimizer):
+   prec = 200
+   h = RR(n(-log2(minimizer),prec))
+   H = h.exact_rational()
+   l = RR(n(-log2(minimizer) - H,prec))
+   L = l.exact_rational()
+   assert abs(H+L) <= 0.5, "abs(H+L) <= 0.5"
+   err = n(-log2(minimizer) - H - L,prec)
+   if h==0:
+      assert err==0, "err=0"
+   else:
+      err = abs(err/h)
+   return h, l, err
+
+# get_coarsetbl()
+# 0x1p-7 -107.225895411898
 def get_coarsetbl(m = 9, L = 7):
 	Rm = RealField(m)
 	R  = RealField(106)
 	maxmin = -1
+	maxerr = 0 # maximal absolute error
 	print("static const _Alignas(16)")
 	print("lut_t coarse[" + str(2**L) + "] = {")
 	for i in range(2**L):
 		# x is in range 1 + i/2**L, 1 + (i+1)/2**L
 		# we want to minimise |xr - 1| on that interval
 		z = 0
-		nh = 1 + (i + 1)/2**L
-		nl = 1 + i/2**L
-		rl = Rm(RealField(m, rnd='RNDD')(1/nh))
-		rh = Rm(RealField(m, rnd='RNDU')(1/nl))
-		r = rl.nextbelow()
+		nh = 1 + (i + 1)/2**L # largest x in interval
+		nl = 1 + i/2**L       # smallest x in interval
+		rl = Rm(RealField(m, rnd='RNDD')(1/nh)) # lower bound for r
+		rh = Rm(RealField(m, rnd='RNDU')(1/nl)) # upper bound for r
 		minr = 20
 		minimizer = 0
+		r = rl
 		while(r <= rh):
-			r = r.nextabove()
 			valr = max(
 				R(abs(r.exact_rational()*nl - 1)),
 				R(abs(r.exact_rational()*nh - 1)))
 			if(valr < minr):
 				minr = valr
 				minimizer = r.exact_rational()
-		if(minimizer <= 2**(-.5)):
-			z = 1
+			r = r.nextabove()
+		if(minimizer <= 2**(-.5)): # r <= 1/sqrt(2) thus x >= sqrt(2)
+			z = 1 # we consider x/2
+			# divide x by 2
 			nh/=2
 			nl/=2
+			# multiply r by 2
 			rl*=2
 			rh*=2
 			minimizer *= 2
+                # around 1, fix r to 1
 		if(rl <= 1 and 1 <= rh):
 			minimizer = 1
 			minr = max(R(abs(nl - 1)),R(abs(nh - 1)))
 		maxmin = max(maxmin, minr)
+		h, l, err = get_hl (minimizer)
+		maxerr = max(maxerr, err)
 		print ("{" + get_hex(Rm(minimizer)) + ", "
-				+ print_dd(R(-log2(R(minimizer)))) + "," 
+				+ get_hex(h) + ", " + get_hex(l) + ","
 				+ str(z) + "},//" + get_hex(R(minr)))
 	print("};")
-	print(get_hex(maxmin))
+	print(get_hex(maxmin), log(maxerr)/log(2.))
 
 def get_finetbl(m = 14, L = 7):
 	Rm = RealField(m)
