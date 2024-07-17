@@ -35,6 +35,8 @@ SOFTWARE.
 #include <stdint.h>
 #include <math.h> // for sqrtl
 #include <fenv.h>
+#include <x86intrin.h>
+#include <quadmath.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -50,266 +52,182 @@ typedef union {
   {uint64_t m; uint32_t e:16; uint32_t empty:16;};
 } b96u96_u;
 
+typedef int64_t i64;
+typedef uint64_t u64;
+typedef unsigned __int128 u128;
+typedef __int128 i128;
 typedef union {double f;uint64_t u;} b64u64_u;
 
-// Multiply exactly a and b, such that *hi + *lo = a * b.
-static inline void a_mul_double (double *hi, double *lo, double a, double b) {
-  *hi = a * b;
-  *lo = __builtin_fma (a, b, -*hi);
-}
-
-/* put in (h+l)*2^e an approximation of 1/sqrt(x) where x = vm/2^63*2^(e-16383)
-   with |h + l - 1/sqrt(xr))| < 2^-97.654, where xr is the reduced operand,
-   1/2 <= xr < 2.
-   Return 0 if 1 <= xr < 2, and 1 if 1/2 <= xr < 1. */
-static int
-fast_path (double *h, double *l, unsigned long vm, int *e)
-{
-  /* convert vm/2^63 to a double-double representation xh + xl */
-  b64u64_u th = {.u = (0x3fful<<52) | (vm >> 11)};
-  b64u64_u tl = {.u = (0x3cbul<<52) | ((vm << 53) >> 12)};
-  double xh = th.f, xl = tl.f - 0x1p-52;
-  int div = 0;
-  // 1 <= xh < 2 and 0 <= xl < 2^-52
-
-  *e -= 16383; // unbias e
-
-  // if e is odd, divide xh,xl by 2
-  if (*e & 1)
-  {
-    xh = xh * 0.5;
-    xl = xl * 0.5;
-    div = 1;
-  }
-  
-  *e = - ((*e + div) / 2);
-  
-  // 1/sqrt(x) = 1/sqrt(xh+xl)*2^e with 1/2 <= xh, xh + xl < 2
-
-  double yh, yl;
-  yh = 1.0 / __builtin_sqrt (xh); // 1/2 <= yh <= 2
-  /* Let s == __builtin_sqrt (xh), we have s = sqrt(xh) * (1 + eps1)
-     with |eps1| < 2^-52.
-     Then yh = 1/s * (1 + eps2) with |eps2| < 2^-52, thus
-          yh = 1/sqrt(xh) * (1 + eps2)/(1 + eps1)
-             = 1/sqrt(xh) * (1 + eps3) with |eps3| < 2^-50.999 */
-
-  /* Perform one step of Newton iteration: y' = y - y/2 * (x * y^2 - 1).
-     Let e = x*y^2-1 and e' = x*y'^2-1. Since y' = y - y/2*e, we deduce:
-     y'^2 = y^2 - y^2*e + y^2/4*e^2
-     x*y'^2-1 = (x*y^2-1) - x*y^2*e + x*y^2/4*e^2
-     e' = e - x*y^2*e + x*y^2/4*e^2
-        = (1-x*y^2)*e + x*y^2/4*e^2
-        = e^2 + x*y^2/4*e^2
-        = e^2 * (1 + (e+1)/4)
-     Using y=yh, we obtain:
-     e = (xh+xl)/xh * (1+eps3)^2 - 1
-       = (1+eps3)^2 - 1 + xl/xh*(1+eps3)^2
-     thus since |xl/xh| < 2^-52:
-     |e| <= 2^-49.677.
-     If we plug in e' = e^2 * (1 + (e+1)/4) we obtain:
-     |e'| < 2^-99.032. */
-
-  double zh, zl;
-  a_mul_double (&zh, &zl, yh, yh); // zh+zl = yh^2, exact
-  // since 1/2 <= yh <= 2, 1/4 <= zh+zl <= 4, with |zl| < ulp(zh) <= 2^-51
-  // x * y^2 - 1 = (x * zh - 1) + x * zl
-  yl = __builtin_fma (xh, zh, -1.0);
-  /* since yh = 1/sqrt(xh) * (1 + eps3), yh^2 = 1/xh * (1+eps3)^2,
-     thus (zh+zl)*xh = (1+eps3)^2
-     |zh*xh-1| <= |zl*xh| + (1+eps3)^2 - 1
-               <= 2^-51*2 + 2^-49.998 <= 2^-48.998
-     we deduce that |yl| < 2^-48, and the rounding error of the above fma
-     is bounded by ulp(2^-48.998) = 2^-101. */
-  yl = __builtin_fma (xh, zl, yl);
-  /* |xh| <= 2, |zl| <= 2^-51, and |yl| <= 2^-48.998 thus the new value of
-     yl is < 2*2^-51 + 2^-48.998 <= 2^-48.413, and the rounding error of the
-     above fma is bounded by ulp(2^-48.413) = 2^-101 again. */
-  // add xl * zh
-  yl = __builtin_fma (xl, zh, yl);
-  /* |xl| <= 2^-52, |zh| <= 4 and |yl| <= 2^-48.413, thus the new value of
-     yl is < 2^-52*4 + 2^-48.413 <= 2^-47.998, and the rounding error of the
-     above fma is bounded by ulp(2^-47.998) = 2^-100.
-     We neglected the term xl*zl which is bounded by 2^-52*2^-51, thus
-     induces an error of at most 2^-103.
-     The absolute error on yl is bounded by:
-     2^-101 + 2^-101 + 2^-100 + 2^-103 < 2^-98.912. */
-  yl = yh * yl * -0.5;
-  /* since |yh| <= 2 and |yl| <= 2^-47.998, the new value of yl is bounded by
-     2^-47.998 too, and the rounding error in this last multiplication (the
-     multiplication by -0.5 is exact) is bounded by ulp(2^-47.998) = 2^-100.
-     The total error is bounded by:
-     * 2^-99.032 for the mathematical error e' (see above)
-     * 2^-98.912 for the error induced by the rounding error on the previous
-       value of yl (multiplied by yh with |yh| <= 2 and by 0.5)
-     * 2^-100 for the rounding error in this last operation
-     This gives an absolute error bounded by:
-
-     |yh + yl - 1/sqrt(xh + xl)| < 2^-99.032 + 2^-98.912 + 2^-100 < 2^-97.654
-  */
-
-  *h = yh;
-  *l = yl;
-
-  return div;
-}
-
-/* s + t <- a + b, assuming |a| >= |b| */
-static inline void
-fast_two_sum (long double *s, long double *t, long double a, long double b)
-{
-  *s = a + b;
-  long double e = *s - a;
-  *t = b - e;
-}
-
-// Veltkamp's splitting: split x into xh + xl such that
-// x = xh + xl exactly
-// xh fits in 32 bits and |xh| <= 2^e if 2^(e-1) <= |x| < 2^e
-// xl fits in 32 bits and |xl| < 2^(e-32)
-// See reference [1].
-static inline void
-split (long double *xh, long double *xl, long double x)
-{
-  static const long double C = 0x1.00000001p+32L;
-  long double gamma = C * x;
-  long double delta = x - gamma;
-  *xh = gamma + delta;
-  *xl = x - *xh;
-}
-
-/* Dekker's algorithm: rh + rl = u * v
-   Reference: Algorithm Mul12 from reference [2], pages 21-22.
-   See also reference [3], Veltkamp splitting (Algorithm 4.9) and
-   Dekker's product (Algorithm 4.10).
-   The Handbook only mentions rounding to nearest, but Veltkamp's and
-   Dekker's algorithms also work for directed roundings.
-   See reference [1].
-*/
-static inline void
-a_mul (long double *rh, long double *rl, long double u, long double v)
-{
-  long double u1, u2, v1, v2;
-  split (&u1, &u2, u);
-  split (&v1, &v2, v);
-  *rh = u * v;
-  *rl = (((u1 * v1 - *rh) + u1 * v2) + u2 * v1) + u2 * v2;
-}
-
-// Return in hi+lo a 128-bit approximation of (ah + al) * b
-static inline void
-s_mul (long double *hi, long double *lo, long double ah, long double al,
-       long double b) {
-  a_mul (hi, lo, ah, b); // exact
-  *lo += al * b;
-}
-
-/* given x the reduced argument, 1/2 <= xr < 2, and h+l the approximation
-   computed by the fast path, with |h+l - 1/sqrt(x)| < 2^-97.654, returns
-   the correctly rounded value of 1/sqrt(x) */
-static long double
-accurate_path (long double h, long double l, long double x)
-{
-#define EXCEPTIONS 2
-static const long double exceptions[EXCEPTIONS][3] = {
-  {0x8.000000000000001p-3L, 0x1.fffffffffffffffep-1L, 0x1.7ffffffffffffffep-128L},
-  {0xb.f1e6df54f659c6ap-3L, 0x1.a302422442449fc4p-1L, -0x1.4b1708fa59d3638ep-129L},
-  };
-  for (int i = 0; i < EXCEPTIONS; i++)
-    if (x == exceptions[i][0])
-        return exceptions[i][1] + exceptions[i][2];
-  // first normalize h+l
-  fast_two_sum (&h, &l, h, l);
-
-  // perform one step of Newton iteration y' = y - y/2 * (x * y^2 - 1)
-  // where y = h+l
-  long double zh, zl;
-  a_mul (&zh, &zl, h, h);
-  zl += 2.0L * h * l;
-  // zh+zl approximates y^2 = (h+l)^2 with about 128 bits of accuracy
-
-  long double uh, ul;
-  s_mul (&uh, &ul, zh, zl, x);
-  // uh+ul approximates x*y^2 with about 128 bits of accuracy
-  ul = (uh - 1.0L) + ul; // error term x * y^2 - 1
-  l = l - h * ul * 0.5L;
-  return h + l;
-}
-
-static long double
-my_ldexpl (long double x, int e)
-{
-  b96u96_u v = {.f = x};
-  v.e += e;
-  return v.f;
-}
-
-long double
-cr_rsqrtl (long double x)
-{
+long double cr_rsqrtl (long double x){
   b96u96_u v = {.f = x};
   int e = v.e & 0x7fff;
-
-  // if (x == TRACE) printf ("cr_rsqrtl: x=%La e=%d\n", x, e);
-
-  // check NaN, Inf, 0
-  if (__builtin_expect (x < 0 || e == 32767 || (e == 0 && v.m == 0), 0))
-  {
-    if (x == 0) return 1.0L / x;   // x=+0 and x=-0
-    if (x < 0) return 0.0L / 0.0L; // x<0: rsqrt(x)=NaN
-    if (x > 0) return +0L;         // x=Inf
-    return x;                      // x=NaN
+  // check NaN, Inf, 0 and normalize subnormals
+  if (__builtin_expect (v.e >= 0x7fff || v.e == 0, 0)){
+    if (e == 0 ){
+      if(!v.m)
+	return 1.0L / x;   // x=+0 and x=-0
+      else {
+	int cnt = __builtin_clzll (v.m);
+	v.m <<= cnt;
+	e -= cnt - 1;
+      }
+    } else {
+      if (v.e > 0x8000) return 0.0L / 0.0L; // x<0: rsqrt(x)=NaN
+      if (e == 0x7fff && !(v.m<<1)) return +0L;         // x=Inf
+      return x;                      // x=NaN
+    }
   }
-
-  //  if (x == TRACE) printf ("v.m=%lx e=%d\n", v.m, e);
-
   // rsqrt(x) is exact iff x = 2^(2k)
-  if (__builtin_expect (e == 0 || (v.m == 0x8000000000000000 && (e & 1)), 0))
-  {
-    if (e > 0) // normal numbers
-    {
-      // for x=1, e=16383
-      v.e = 16383 + (16383 - e) / 2;
-      return v.f;
-    }
-    // case e=0: subnormal numbers
-    // x = 2^(2k) iff v.m == 2^(2t+1)
-    int cnt = __builtin_ctzll (v.m);
-    if ((cnt & 1) && (v.m == ((uint64_t) 1 << cnt)))
-    {
-      v.m = 0x8000000000000000ul;
-      // x = 2^(-16445+cnt)
-      v.e = 16383 + (16445 - cnt) / 2;
-      return v.f;
-    }
-    // normalize subnormal numbers not of the form 2^(2k)
-    cnt = __builtin_clzll (v.m);
-    v.m <<= cnt;
-    e -= cnt - 1;
+  if (__builtin_expect (!(v.m<<1) && (e & 1), 0)){
+    v.e = 16383 + (16383 - e) / 2;
+    return v.f;
   }
-
-  double h, l;
-  int div = fast_path (&h, &l, v.m, &e);
-  // if (x == TRACE) printf ("h=%la l=%la\n", h, l);
-  long double H = h, L = l;
-  const long double err = 0x1.46p-98L; // 2^-97.654 < 0x1.46p-98
-  long double left = H + (L - err), right = H + (L + err);
-  // printf ("left=%La right=%La\n", left, right);
-  if (__builtin_expect (left == right, 1))
-    return my_ldexpl (left, e);
-
-  // if (x == TRACE) printf ("fast path failed\n");
-
-  v.e = 16383 - div;
-  // v.f is the reduced argument, with 1/2 <= v.f < 2
-
-  left = accurate_path (H, L, v.f);
-  return my_ldexpl (left, e);
+  float op = 1.0f + 0x1p-25f, om = 1.0f - 0x1p-25f;
+  long rn = op==om, ru = op>1.0f; // figure out a rounding mode
+  rn <<= 25;
+  // cubic approximation of 1/sqrt(x) in 64 regions in [1,2]
+  static const unsigned T[][4] = {
+    {0xffffffff, 0x3ffffde0, 0x17feab03, 0x9bb5b6e}, 
+    {0xfe05ec45, 0x3e875b9f, 0x17152b51, 0x938bf8f}, 
+    {0xfc176441, 0x3d1cefaa, 0x1637e8e1, 0x8bed008}, 
+    {0xfa33f940, 0x3bbffca8, 0x156613a9, 0x84cdb43}, 
+    {0xf85b4246, 0x3a6fd1bd, 0x149eec46, 0x7e24038}, 
+    {0xf68cdbaf, 0x392bc98a, 0x13e1c268, 0x77e6ca6}, 
+    {0xf4c866d6, 0x37f34948, 0x132df373, 0x720db8e}, 
+    {0xf30d89c7, 0x36c5bff8, 0x1282e940, 0x6c913d0}, 
+    {0xf15beef0, 0x35a2a59f, 0x11e01902, 0x676a6f9}, 
+    {0xefb344dc, 0x34897aa0, 0x11450245, 0x6293031}, 
+    {0xee133df5, 0x3379c719, 0x10b12e06, 0x5e05344}, 
+    {0xec7b9047, 0x32731a52, 0x10242de6, 0x59bbbd0}, 
+    {0xeaebf548, 0x31750a3c, 0xf9d9b6f, 0x55b1c7d}, 
+    {0xe96429a7, 0x307f32f2, 0xf1d1769, 0x51e2e59}, 
+    {0xe7e3ed19, 0x2f913653, 0xea24941, 0x4e4b037}, 
+    {0xe66b022f, 0x2eaabb90, 0xe2cde82, 0x4ae6628}, 
+    {0xe4f92e2e, 0x2dcb6eda, 0xdbc8a51, 0x47b1904}, 
+    {0xe38e38e3, 0x2cf30104, 0xd510501, 0x44a95f6}, 
+    {0xe229ec87, 0x2c212735, 0xcea0ba5, 0x41cae1a}, 
+    {0xe0cc1597, 0x2b559aa1, 0xc875fb9, 0x3f13626}, 
+    {0xdf7482b8, 0x2a901845, 0xc28c6c4, 0x3c80617}, 
+    {0xde230497, 0x29d060a5, 0xbce0a0e, 0x3a0f8e9}, 
+    {0xdcd76dd3, 0x29163796, 0xb76f656, 0x37bec57}, 
+    {0xdb9192dc, 0x28616409, 0xb235b93, 0x358c09e}, 
+    {0xda5149e1, 0x27b1afd5, 0xad30cb5, 0x3375847}, 
+    {0xd9166ab7, 0x2706e78e, 0xa85df6d, 0x31797f9}, 
+    {0xd7e0cec3, 0x2660da57, 0xa3babff, 0x2f96648}, 
+    {0xd6b050e8, 0x25bf59be, 0x9f44d10, 0x2dcab92}, 
+    {0xd584cd74, 0x25223993, 0x9af9f79, 0x2c151d9}, 
+    {0xd45e220d, 0x24894fc8, 0x96d8227, 0x2a7449f}, 
+    {0xd33c2da1, 0x23f47453, 0x92dd5f0, 0x28e70cc}, 
+    {0xd21ed057, 0x2363810b, 0x8f07d75, 0x276c490}, 
+    {0xd105eb80, 0x22d65192, 0x8b55d01, 0x2602f49}, 
+    {0xcff1618b, 0x224cc339, 0x87c5a70, 0x24aa16f}, 
+    {0xcee115f2, 0x21c6b4e6, 0x8455d12, 0x2360c7b}, 
+    {0xcdd4ed36, 0x21440701, 0x8104d91, 0x22262d8}, 
+    {0xcccccccd, 0x20c49b5c, 0x7dd15e1, 0x20f97cd}, 
+    {0xcbc89b18, 0x20485520, 0x7aba124, 0x1fd9f71}, 
+    {0xcac83f5c, 0x1fcf18bc, 0x77bdb9c, 0x1ec6e99}, 
+    {0xc9cba1b4, 0x1f58cbd1, 0x74db295, 0x1dbfacc}, 
+    {0xc8d2ab0a, 0x1ee55526, 0x7211458, 0x1cc3a34}, 
+    {0xc7dd450e, 0x1e749c94, 0x6f5f018, 0x1bd2396}, 
+    {0xc6eb5a2b, 0x1e068af9, 0x6cc35e7, 0x1aeae46}, 
+    {0xc5fcd583, 0x1d9b0a2f, 0x6a3d6a7, 0x1a0d21a}, 
+    {0xc511a2e6, 0x1d3204f7, 0x67cc3fd, 0x1938767}, 
+    {0xc429aec8, 0x1ccb66f7, 0x656f047, 0x186c6f4}, 
+    {0xc344e63f, 0x1c671ca6, 0x6324e90, 0x17a89f2}, 
+    {0xc26336f8, 0x1c051346, 0x60ed285, 0x16ec9f9}, 
+    {0xc1848f35, 0x1ba538db, 0x5ec706e, 0x16380fc}, 
+    {0xc0a8ddc3, 0x1b477c1e, 0x5cb1d25, 0x158a948}, 
+    {0xbfd011f8, 0x1aebcc78, 0x5aace0a, 0x14e3d7c}, 
+    {0xbefa1bac, 0x1a9219f5, 0x58b7902, 0x1443881}, 
+    {0xbe26eb32, 0x1a3a5542, 0x56d1469, 0x13a958b}, 
+    {0xbd567158, 0x19e46fa2, 0x54f970e, 0x131500f}, 
+    {0xbc889f5e, 0x19905ae5, 0x532f82f, 0x12863c3}, 
+    {0xbbbd66f4, 0x193e0968, 0x5172f70, 0x11fcc96}, 
+    {0xbaf4ba35, 0x18ed6e09, 0x4fc34d7, 0x11786b0}, 
+    {0xba2e8ba3, 0x189e7c20, 0x4e200c4, 0x10f8e6e}, 
+    {0xb96ace23, 0x18512782, 0x4c88bf1, 0x107e05b}, 
+    {0xb8a974fa, 0x18056470, 0x4afcf6a, 0x1007932}, 
+    {0xb7ea73ca, 0x17bb279b, 0x497c489, 0xf955db}, 
+    {0xb72dbe8b, 0x1772661c, 0x48064f3, 0xf27362}, 
+    {0xb673498f, 0x172b156e, 0x469aa93, 0xebcefe}, 
+    {0xb5bb0976, 0x16e52b6d, 0x4538f98, 0xe56607}, 
+  };
+  
+  u64 a = v.m;
+  unsigned j=(a>>(64-7))&63, dj = (a>>(64-7-32));
+  u64 sc = (e&1)?0x100000000ul:0xb504f335ul; // scale factors 1 and 1/sqrt(2)
+  u64 c0 = T[j][0], c1 = T[j][1], c2 = T[j][2], c3 = T[j][3]; // polynomial coefficients
+  // get an initial approximation r with ~30 bits precision
+  u64 dj2 = dj*(u64)dj>>32, r = sc*((c0 - (dj*c1>>37)) + (dj2*(c2 - (dj*c3>>37))>>42))>>32, r2 = r*r;
+  u128 H = (r2<<(1-(e&1)))*(u128)a; // a*r^2
+  i64 h = H>>35, hh = h>>33; //  h = a*r^2 - 1
+  // one Newton iteration with x_next = x - x*(h/2 - 3/8*h^2) which provides ~90 bits
+  u64 h2 = hh*hh, dh = 3*h2>>28;
+  h -= dh;
+  i128 Dr = (i128)h*-(i64)r;
+  i64 dr = Dr>>35;
+  v.e = 0x3fef + (0x401e - e) / 2;
+  v.m = (r<<32) + (dr>>26);
+  if(__builtin_expect((((dr^rn)+1)&((1<<26)-1))<3,0)){ // rounding test
+    // a*r^2 has to fit into 3*64 = 192 bit since first ~60 bit are
+    // known just use 128 bit of the tail to evaluate the correctly
+    // rounded result
+    r = v.m + ((dr>>25)&1); // initial estimation (round-to-nearest)
+    if(r<(1ul<<62)) r = ~0ul; // if the estimation is in the next binade bring it back
+    u128 Ra = r*(u128)a;
+    u64 Rah = Ra>>64, Ral = Ra;
+    u128 Hh = Rah*(u128)r;
+    u128 Hl = Ral*(u128)r;
+    Hh += Hl>>64;
+    i64 h1 = Hh>>4;
+    u64 h0 = Hh<<60|(u64)Hl>>4;
+    i128 H = (i128)h1<<64|h0, dH = Ra>>3;
+    u64 ddH = a>>3;
+    // scan adding or subtracting 1 from r until the result is floor(1/sqrt(x))
+    if(H<0){
+      dH += ddH>>1;
+      i128 pH;
+      do {
+	pH = H;
+	H += dH;
+	if(H>=0) break;
+	r ++;
+	dH += ddH;
+      } while (1);
+      H = pH;
+      dH -= ddH>>1;
+    } else {
+      dH -= ddH>>1;
+      do {
+	H -= dH;
+	r --;
+	dH -= ddH;
+	if(H<0) break;
+      } while (1);
+      dH += ddH>>1;
+    }
+    // now r = floor(1/sqrt(x))
+    if(rn){ // round-to-nearest
+      H += (dH>>1) + (ddH>>3);
+      v.m = r + (H<0);
+    } else { // directional modes
+      v.m = r + ru;
+    }
+    if(__builtin_expect(!v.m, 0)){ // check that the result goes to the next binade
+      v.m = 1ul<<63;
+      v.e ++;
+    }
+    return v.f;
+  }
+  v.m += (!!(dr&rn))|ru;
+  return v.f;
 }
 
 #if !defined(SKIP_C_FUNC_REDEF)
 /* rsqrtl function is not in glibc so define it here just to compile tests */
 long double rsqrtl (long double x){
+  long double ir = 1.0L/x;
+  return ir*sqrtl(x);
   return 1.0L / sqrtl (x);
 }
 #endif
