@@ -3,13 +3,13 @@ def print_dd(x):
   z = RR(x - y.exact_rational())
   return get_hex(y) + ", " + get_hex(z)
 
+# compute a double-double approximation h+l of -log2(minimizer)
 def get_hl(minimizer):
    prec = 200
    h = RR(n(-log2(minimizer),prec))
    H = h.exact_rational()
    l = RR(n(-log2(minimizer) - H,prec))
    L = l.exact_rational()
-   assert abs(H+L) <= 0.5, "abs(H+L) <= 0.5"
    err = n(-log2(minimizer) - H - L,prec)
    if h==0:
       assert err==0, "err=0"
@@ -19,7 +19,7 @@ def get_hl(minimizer):
 
 # see comments in powl_tables.h
 # get_coarsetbl()
-# 0x1p-7 -107.225895411898
+# 0x1p-7 -107.225895411898 0.496174262004249
 # m is the number of bits of r1[i]
 # L is the length of the table
 def get_coarsetbl(m = 9, L = 7):
@@ -27,6 +27,7 @@ def get_coarsetbl(m = 9, L = 7):
 	R  = RealField(106)
 	maxmin = -1
 	maxerr = 0 # maximal absolute error
+	maxhl = 0  # maximal value of |h+l|
 	print("static const _Alignas(16)")
 	print("lut_t coarse[" + str(2**L) + "] = {")
 	for i in range(2**L):
@@ -63,24 +64,26 @@ def get_coarsetbl(m = 9, L = 7):
 			minr = max(R(abs(nl - 1)),R(abs(nh - 1)))
 		maxmin = max(maxmin, minr)
 		h, l, err = get_hl (minimizer)
+		maxhl = max(maxhl, abs(h+l))
 		maxerr = max(maxerr, err)
 		print ("{" + get_hex(Rm(minimizer)) + ", "
 				+ get_hex(h) + ", " + get_hex(l) + ","
 				+ str(z) + "},//" + get_hex(R(minr)))
 	print("};")
-	print(get_hex(maxmin), log(maxerr)/log(2.))
+	print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
 
 # m is the number of bits of r2[i]
 # L is the length of the table
 # get_finetbl()
-# 0x1p-12 -107.099645409682
-def get_finetbl(m = 14, L = 7):
+# 0x1p-12 -107.270397599854 0.0112272554232541
+def get_finetbl(m = 13, L = 7):
 	Rm = RealField(m)
 	R  = RealField(106)
 	maxmin = -1
 	print("static const _Alignas(16)")
 	print("lut_t fine[" + str(2**L) + "] = {")
 	maxerr = 0
+	maxhl = 0
 	for i in range(2^L):
 		# if i < 2^L-1 then x is in range 1 + i/2^(5+L), 1 + (i+1)/2^(5+L)
 		# else x is in range 1 - 1/2^7 + (i-2^(L-1))/2^(6+L),
@@ -115,11 +118,12 @@ def get_finetbl(m = 14, L = 7):
 		if i // 2**(L-2) == 1: # unused entries
 			print("{0,0,0,0}, // unused")
 		else:
+			maxhl = max(maxhl, abs(h+l))
 			print ("{" + get_hex(Rm(minimizer))
 				+ ", " + get_hex(h) + ", " + get_hex(l) + ", "
 					+ str(z) + "}, //" + get_hex(R(nl)) +","+ get_hex(R(nh)) + "(" + hex(i) + ")")
 	print("};")
-	print(get_hex(maxmin), log(maxerr)/log(2.))
+	print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
 
 def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
    y = R64(y)

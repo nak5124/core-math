@@ -388,6 +388,8 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	xh *= r1; xl *= r1;
         // the above multiplications are exact
         // now xh fits in 42 bits at most, xl in 40.
+        // more precisely xh is a multiple of 2^-32 if z=0,
+        // and of 2^-33 if z=1
 
 	POWL_DPRINTF("get_hex(R(abs("SAGE_RR" - 1)))\n", xh);
 	/* Note that now |xh - 1| <= 1p-7
@@ -413,7 +415,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   i)  |r2*xh - 1| <= 2^-12
 	   ii) r2 fits in 13 bits
 	   iii) mlogr2h + mlogr2l approximates -log2(r2) with
-	        relative error at most 2^-107.
+	        relative error at most 2^-107.27
 	   iv) |mlogr2h+mlogr2l| <= 2^-8.
 	*/
 
