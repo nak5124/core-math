@@ -548,7 +548,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 /* computes 2^(xh + xl), assuming |xl| <= ulp(xh) and |xh| < 2^31 */
 static inline
-long double exp2d(double xh, double xl) {
+int exp2d(double* resh, double* resl, double xh, double xl) {
 	b64u64_t cvt = {.f = xh};
 	bool do_red	= cvt.e >= -20 + 0x3ff;
 
@@ -740,10 +740,18 @@ long double exp2d(double xh, double xl) {
 	  /* The only error made is rho3, the total relative error is 2^-86.242. */
 		extra_exponent = 0;
 	}
+	*resh = finalh;
+	*resl = finall;
+	return extra_exponent;
+}
 
-	const unsigned rm = get_rounding_mode();
-	b64u64_t th = {.f = finalh}, tl = {.f = finall};
-	POWL_DPRINTF("finalh = %a\nfinall = %a\n", finalh, finall);
+/* Rounding and rounding test for the fastpath*/
+inline static
+long double fastpath_roundtest(double rh, double rl,int extra_exp,
+                               bool invert, bool* fail) {
+	unsigned rm = get_rounding_mode();
+	b64u64_t th = {.f = rh}, tl = {.f = rl};
+	POWL_DPRINTF("rh = %a\nrl = %a\n", rh, rl);
 	long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
 	// the high part is always positive, the low part can be positive or negative
 	// represent the mantissa of the low part in two's complement format
@@ -785,11 +793,11 @@ long double exp2d(double xh, double xl) {
 					     // number back
 		mh = mh<<1 | (uint64_t)ml>>63;
 		ml <<= 1;
-		extra_exponent--;
+		extra_exp--;
 		eps <<= 1;
 	}
 
-	int wanted_exponent = extra_exponent + 0x3c00 + eh;
+	int wanted_exponent = extra_exp + 0x3c00 + eh;
 	POWL_DPRINTF("wanted exponent : %x\n", wanted_exponent);
 	POWL_DPRINTF("mh||ml = %lx%lx\n", mh, ml);
 
@@ -816,7 +824,7 @@ long double exp2d(double xh, double xl) {
 	if(rm==FE_TONEAREST){ // round to nearest
 		mh += (uint64_t)ml>>63;
 		ml ^= (1ul << 63);
-	} else if(rm==FE_UPWARD) { // round to +inf
+	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
 		mh += 1;
 		// This is as if ml had a trailing 1.
 		// We are not precise up to an LSB of ml anyway.
@@ -839,11 +847,10 @@ long double exp2d(double xh, double xl) {
 	b80u80_t v;	
 	v.m = mh; // mantissa
 	v.e = wanted_exponent; // exponent
-	
+	if(__builtin_expect(invert, 0)) {v.e += (1<<16);}
 	bool b1 = (uint64_t)(ml + eps) <= (uint64_t)(2*eps); 
-	if(__builtin_expect(b1, 0)) {
-		return -1.L; // giveup.
-	}
+	*fail = b1;
+
 	// Denormals *inside* the computation don't seem to pause a problem
 	// given the error analysis (we used absolute bounds mostly)
 	// rounding test
@@ -926,6 +933,7 @@ long double cr_powl(long double x, long double y) {
 	const int y_exp = (cvt_y.e&0x7fff) - 16383;
         // 2^y_exp <= |y| < 2^(y_exp+1)
 
+	bool invert = (cvt_x.e>>15) & is_odd_integer(y);
 	const long double sign = ((cvt_x.e>>15) & is_odd_integer(y)) ? -1.L : 1.L;
 
 	static const long double inf = __builtin_infl();	
@@ -983,7 +991,7 @@ long double cr_powl(long double x, long double y) {
 		POWL_DPRINTF("x="SAGE_RE"\n",x);
 		POWL_DPRINTF("y="SAGE_RE"\n",y);
 		compute_log2pow(&rh, &rl, x, y);
-                // rh + rl approximates y*log2(x0
+    // rh + rl approximates y*log2(x)
 		POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
 		long double r;
 		if(__builtin_expect(rh <= -16445.2, 0)) {
@@ -995,8 +1003,11 @@ long double cr_powl(long double x, long double y) {
 	    // If |rh| is sufficiently small, even with the error margin we know
 	    // how x^y rounds.
 		} else {
-			// TODO Directed roundings change depending on sign in exp2d
-			r = exp2d(rh, rl);
+			double resh, resl;
+			int extra_exponent = exp2d(&resh, &resl, rh, rl);
+			bool fail = false;
+			r = fastpath_roundtest(resh, resl, extra_exponent, invert, &fail);
+			if(__builtin_expect(fail, 0)) {return -1.;}
 		}
 		POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
 		return r;
