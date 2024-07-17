@@ -10,10 +10,6 @@ def get_coarsetbl(m = 9, L = 7):
 		z = 0
 		nh = 1 + (i + 1)/2**L
 		nl = 1 + i/2**L
-		if(1 + i/2**L >= 2**.5):
-			z = 1
-			nh /= 2
-			nl /= 2
 		rl = Rm(RealField(m, rnd='RNDD')(1/nh))
 		rh = Rm(RealField(m, rnd='RNDU')(1/nl))
 		r = rl.nextbelow()
@@ -40,7 +36,7 @@ def get_coarsetbl(m = 9, L = 7):
 		maxmin = max(maxmin, minr)
 		print ("{" + get_hex(Rm(minimizer)) + ", "
 				+ print_dd(R(-log2(R(minimizer)))) + "," 
-				+ str(z) + "},")
+				+ str(z) + "},//" + get_hex(R(minr)))
 	print("};")
 	print(get_hex(maxmin))
 

@@ -768,7 +768,14 @@ long double exp2d(double xh, double xl) {
 	}
 	// construct the mantissa of the long double number
 	uint64_t mh = ((th.u<<11)|1l<<63);
-	int64_t eps = (mh >> (86 - 64));
+	/* The evaluation of 2^(yln2(1+x)) was precise to 2^(-86.240) relative error.
+	   Since yln2(1+x) was computed to 2^(-92.421) relative error, and must be
+	   less than 2^14 lest the result be infinite, yln2(1+x) was known to
+	   2^-78.421. This implies an additional relative error of 2^-78.949. The
+	   total relative error computing x^y is therefore at most
+	   2^-78.949 + 2^-92.421 + 2^-92.421*2^-78.949 = 2^-78.948
+	*/
+	int64_t eps = (mh >> (78 - 64));
 	POWL_DPRINTF("tl_u = %016lx\n", tl.u);
 	POWL_DPRINTF("ml = %016lx\n", ml);
 	
