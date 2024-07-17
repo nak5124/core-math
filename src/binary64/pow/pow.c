@@ -1332,6 +1332,9 @@ is_exact (double x, double y)
                         (w.u << 22) != 0, 1))
     return 0;
 
+  if (__builtin_expect ((v.u << 1) == 0x7fe0000000000000ul, 0)) // |x| = 1
+    return 1;
+
   // xmax[y] for 1<=y<=33 is the largest m such that m^y fits in 53 bits
   static const uint64_t xmax[] = { 0, 0xffffffffffffffff,
                                    94906265, 208063, 9741, 1552, 456, 190, 98,
@@ -1406,7 +1409,6 @@ is_exact (double x, double y)
   {
     if (m != 1) return 0;
     // y = -2^f thus k = -f
-    if (x == 1) return 1;
     // now e <> 0
     t = __builtin_ctzl (e);
     if (-f > t) return 0; // 2^k does not divide e
