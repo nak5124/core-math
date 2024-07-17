@@ -25,6 +25,7 @@ def get_hl(minimizer):
 def get_coarsetbl(m = 9, L = 7):
 	Rm = RealField(m)
 	R  = RealField(106)
+	T = dict()
 	maxmin = -1
 	maxerr = 0 # maximal absolute error
 	maxhl = 0  # maximal value of |h+l|
@@ -66,11 +67,13 @@ def get_coarsetbl(m = 9, L = 7):
 		h, l, err = get_hl (minimizer)
 		maxhl = max(maxhl, abs(h+l))
 		maxerr = max(maxerr, err)
+		T[i] = (h, l)
 		print ("{" + get_hex(Rm(minimizer)) + ", "
 				+ get_hex(h) + ", " + get_hex(l) + ","
 				+ str(z) + "},//" + get_hex(R(minr)))
 	print("};")
 	print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
+	return T
 
 # m is the number of bits of r2[i]
 # L is the length of the table
@@ -79,6 +82,7 @@ def get_coarsetbl(m = 9, L = 7):
 def get_finetbl(m = 13, L = 7):
 	Rm = RealField(m)
 	R  = RealField(106)
+	T = dict()
 	maxmin = -1
 	print("static const _Alignas(16)")
 	print("lut_t fine[" + str(2**L) + "] = {")
@@ -114,6 +118,7 @@ def get_finetbl(m = 13, L = 7):
 		z = 0
 		maxmin = max(maxmin, minr)
 		h, l, err = get_hl (minimizer)
+		T[i] = (h,l)
 		maxerr = max(maxerr, err)
 		if i // 2**(L-2) == 1: # unused entries
 			print("{0,0,0,0}, // unused")
@@ -124,6 +129,40 @@ def get_finetbl(m = 13, L = 7):
 					+ str(z) + "}, //" + get_hex(R(nl)) +","+ get_hex(R(nh)) + "(" + hex(i) + ")")
 	print("};")
 	print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
+	return T
+
+def fast_two_sum(a,b):
+   assert a==0 or abs(a)>=abs(b), "a==0 or abs(a)>=abs(b)"
+   rh = a + b
+   e = rh - a
+   rl = b - e
+   return rh, rl
+
+def high_sum(a,bh,bl):
+   rh, e = fast_two_sum (a, bh)
+   rl = bl + e
+   return rh, rl
+
+# analyse_first_high_sum(extra_int=1)
+# extra_int= 2048.00000000000 r= RNDU i1= 51 err= -105.003076194750
+def analyse_first_high_sum():
+   T1 = get_coarsetbl()
+   maxerr = 0
+   for extra_int in range(-16382,16384):
+      for r in 'NZUD':
+         R = RealField(53,rnd='RND'+r)
+         extra_int = R(extra_int)
+         for i1 in range(128):
+            mlogr1h = R(T1[i1][0])
+            mlogr1l = R(T1[i1][1])
+            mlogrh, mlogrl = high_sum (extra_int, mlogr1h, mlogr1l)
+            a = mlogrh.exact_rational() + mlogrl.exact_rational()
+            b = mlogr1h.exact_rational() + mlogr1l.exact_rational()
+            b += extra_int.exact_rational()
+            err = abs(a-b)/mlogrh
+            if err>maxerr:
+               maxerr = err
+               print ("extra_int=", extra_int, "r=", 'RND'+r, "i1=", i1, "err=", log(err)/log(2.))
 
 def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
    y = R64(y)

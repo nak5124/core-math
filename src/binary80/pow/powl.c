@@ -357,7 +357,7 @@ static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	b80u80_t cvt_x = {.f = x};
 	int extra_int = (cvt_x.e&0x7fff) - 16383;
-        // extra_int >= -16382
+        // -16382 <= extra_int <= 16383
 	cvt_x.e = 16383; // New wanted exponent
 	x = cvt_x.f;
         // original x = 2^extra_int * x
@@ -431,30 +431,41 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	double mlogrh, mlogrl;
 	high_sum(&mlogrh, &mlogrl, extra_int, mlogr1h, mlogr1l);
 	/* Since |mlogr1h + mlogr1l| < .5, we indeed have extra_int = 0 or
-	   |extra_int| > |mlogr1h|. If extra_int=0 everything is exact.
-	   Assume the opposite case. Expanding the high_sum call, this implies
-	   that the fast_two_sum introduces only an error 2^-105|mlogrh| and that
-	   the low part of its result is at most 2^-52|mlogrh|. Notice that
-	   |mlogrh| >= .5 > |mlogr1h| so that
-	   2^-52|mlogrh| >= 2^-52|mlogr1h|>=|mlogr1l|.
-	   This implies that the final sum of high_sum is at most 2^-51|mlogrh|
+	   |extra_int| > |mlogr1h|. If extra_int=0 everything is exact,
+           and we get mlogrh=mlogr1h, mlogrl=mlogr1l.
+	   Assume |extra_int| >= 1. Expanding the high_sum call, this implies
+	   that the fast_two_sum introduces an error <= 2^-105|mlogrh| and
+           that the low part of its result is at most 2^-52|mlogrh|. Notice
+           that |mlogrh| >= .5 > |mlogr1h| so that
+	   2^-52|mlogrh| >= 2^-52|mlogr1h| >= |mlogr1l|.
+	   This implies that the "rl" sum of high_sum is at most 2^-51|mlogrh|
 	   and that its rounding error is at most 2^-103|mlogrh|.
 
 	   The total rounding error is at most
-	     (2^-103+2^-105)|mlogrh| <= 2^-102.678|mlogrh|.
+	     (2^-103+2^-105)|mlogrh| <= 2^-102.678 |mlogrh|:
+             
+             |mlogrh + mlogrl - (extra_int + mlogr1h + mlogr1l)|
+             <= 2^-102.678 |mlogrh|.
 	*/
 
 	high_sum(&mlogr2h, &mlogr2l, mlogrh, mlogr2h, mlogr2l);
 	mlogr2l += mlogrl;
-	/* Let us prove that |mlogrh| has at least the binade of |mlogr2h|.
-	   If extra_int != 0, this is obvious because |mlogrh+mlogrl| >= .5.
-	   Assume extra_int = 0. Then mlogrh = mlogr1h and looking at the tables
-	   we see that mlogrh >= 2^-7, 2^-6 > mlogr2h which allows us to conclude.
+	/* Let us prove that unless it is zero, |mlogrh| is in the same binade
+           of |mlogr2h| or in a larger binade (so that the fast_two_sum
+           condition is fulfilled).
+	   If extra_int != 0, this is obvious because |mlogrh+mlogrl| >= .5,
+           and |mlogr2h| < 2^-6.47.
+	   Assume extra_int = 0. Then mlogrh = mlogr1h and looking at the
+           tables we see that mlogr1h = 0 or
+           |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h| which allows us to
+           conclude.
 
-	   Let us call (rh, rl) the result of the high_sum and t the intermediate
-	   low part. Expanding high_sum, the previous argument shows that the
-	   fast_two_sum only creates an error 2^-105|rh|; also, |t| <= 2^-52|rh|.
-	   In the last sum, notice that |mlogr2l| <= 2^-52|mlogr2h| <= 2^(-52+5)|rh|.
+	   Let us call (rh, rl) the result of the high_sum and t the value of
+           mlogr2l before the addition mlogr2l += mlogrl.
+           Expanding high_sum, the previous argument shows that the
+	   fast_two_sum yields an error <= 2^-105|rh| and |t| <= 2^-52|rh|.
+	   In the last sum, notice that
+           |mlogr2l| <= 2^-53|mlogr2h| <= 2^(-52+5)|rh|.
 	   The +5 is because as many as 5 bits may cancel computing |rh|, and is
 	   obtained by looking at the tables (the 5 results from
 	   0x1.6a0e8140311aap-7 + (-0x1.6fe50b6ef0851p-7) )
