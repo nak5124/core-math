@@ -7,6 +7,16 @@
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
 # worst cases computed by BaCSeL (commit d3b3820) with at least 43 identical
 # bits after the round bit (-m 44 with bacsel). We only include positive
 # values since we have defined WORST_SYMMETRIC. These worst cases are in

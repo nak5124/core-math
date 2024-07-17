@@ -118329,6 +118329,16 @@
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
 # corner values used in the code (and not present above)
 -0x1.7744f8f74e94cp+2
 -0x1.7744f8f74e94bp+2

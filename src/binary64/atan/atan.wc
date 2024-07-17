@@ -54611,6 +54611,16 @@
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
 # values contributed by Erik E. <evonatarius@gmail.com>
 # 0x1p+1024 # not representable
 # -0x1p+1024 # not representable

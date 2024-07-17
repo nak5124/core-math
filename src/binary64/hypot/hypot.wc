@@ -34,7 +34,7 @@
 0x0.2c2671b3c16b3p-1022,0x0.bb9f8fecba9adp-1022
 0x1.de036c1638f33p-337,-0x1.77f5e5b806406p-357
 # special and extremal values
-snan,snan
++snan,+snan
 +snan,+nan
 +snan,+inf
 +snan,+0
