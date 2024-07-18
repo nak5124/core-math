@@ -498,14 +498,19 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   These steps of computation created an error at most
 	     (2^-105 + 2^-98.007 + 2^-95.701) |mlogr12h|
              < 2^-95.433 |mlogr12h|
-	   Propagating the previous errors gives another error term at most
+	   Propagating the previous absolute errors gives:
+           2^-102.678 |mlogrh| + 2^-107.22 |mlogr1h| + 2^-107.27 |mlogr2h|
+           where 2^-102.678 |mlogrh| comes from the first high_sum() call,
+           2^-107.22 |mlogr1h| comes from the accuracy of the coarse[] table,
+           and 2^-107.27 |mlogr2h| comes from the accuracy of the fine[] table.
+           By brute-force analysis, we find |mlogrh/mlogr12h| < 125.6,
+           |mlogr1h/mlogr12h| < 125.6 too, and |mlogr2h/mlogr12h| < 124.6.
+           This yields for the relative error a bound of:
+             (125.6 * (2^-102.678 + 2^-107.22) + 124.5 * 2^-107.27) |mlogr12h|
 	     125.6 (2^-107.22 + 2^-107.27 + 2^-102.678) |mlogr12h|
-             < 2^-95.599 |mlogr12h|
-	   (the terms 2^-107.22 and 2^-107.27 come from finite precision of
-           the table coarse[] and fine[] respectively, and the factor 125.6
-           from the cancellation from |mlogrh/mlogr12h|).
+             < 2^-95.588 |mlogr12h|
            We thus get a total relative error of at most:
-           (2^-95.433 + 2^-95.599) < 2^-94.513 |mlogr12h|.
+           (2^-95.433 + 2^-95.588) < 2^-94.508 |mlogr12h|.
 	*/
 	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
 		mlogr12h, mlogr12l);
