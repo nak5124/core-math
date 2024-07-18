@@ -515,6 +515,18 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
            |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
            < 2^-94.508 |mlogr12h|.
+
+           However, a much better bound is obtained by brute force,
+           by trying all the values of extra_int, r1, r2 and all
+           rounding modes. This is done in the accompanying high_sum.c
+           program, which yields the bound:
+
+           |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
+           < 2^-103.430 |mlogr12h|.
+
+           Additionally, this program also shows:
+
+           |mlogr12l/mlogr12h| < 2^-47.961.
 	*/
 	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
 		mlogr12h, mlogr12l);
