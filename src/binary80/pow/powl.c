@@ -455,8 +455,9 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            (see function analyse_first_high_sum() in powl.sage).
 	*/
 
-	high_sum(&mlogr2h, &mlogr2l, mlogrh, mlogr2h, mlogr2l);
-	mlogr2l += mlogrl;
+        double mlogr12h, mlogr12l;
+	high_sum(&mlogr12h, &mlogr12l, mlogrh, mlogr2h, mlogr2l);
+	mlogr12l += mlogrl;
 	/* Let us prove that unless it is zero, |mlogrh| is in the same binade
            of |mlogr2h| or in a larger binade (so that the fast_two_sum
            condition is fulfilled).
@@ -467,49 +468,52 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h| which allows us to
            conclude.
 
-	   Let us call (rh, rl) the result of the high_sum and t the low part
-           of the fast_two_sum() call.
-           Expanding high_sum, as above the fast_two_sum yields an error
-           <= 2^-105|rh| and |t| <= 2^-52|rh|.
-	   In the last sum, notice that
-           |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * 124.6 |rh| < 2^-46.03 |rh|.
+	   Expanding high_sum(), let t the low part of the fast_two_sum() call.
+           As above the fast_two_sum yields an error <= 2^-105 |mlogr12h|
+           and |t| <= 2^-52 |mlogr12h|.
+	   In the last sum of the fast_two_sum(), notice that
+           |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * 124.6 |mlogr12h|
+           < 2^-46.03 |mlogr12h|.
 	   The factor 124.6 is because several bits might cancel in the
            addition mlogrh + mlogr2h.
            The largest cancellation is obtained for extra_int=0, i1=126
            (the index of r1), and i2=31, where we get
            mlogrh = -0x1.6fe50b6ef0851p-7, mlogr2h = 0x1.6cf6ddd2611d4p-7,
-           thus rh = -0x1.7716ce47b3e8p-14, and |mlogr2h/rh| ~ 124.545.
+           thus mlogr12h = -0x1.7716ce47b3e8p-14, |mlogr2h/mlogr12h| ~ 124.545.
 
-	   Therefore, |mlogr2l + t| <= (2^-46.03+2^-52)|rh| <= 2^-46.007|rh|.
-           This implies that |rl| <= 2^-46.007|rh| and that the rounding error
-           of the high_sum's final sum is at most 2^-98.007 |rh|.
+	   Therefore, |mlogr2l + t| <= (2^-46.03 + 2^-52) |mlogr12h|
+                                    <= 2^-46.007 |mlogr12h|.
+           This implies that |mlogr12l| <= 2^-46.007 |mlogr12h| and that the
+           rounding error of the high_sum's final sum is
+           at most 2^-98.007 |mlogr12h|.
 
-	   Note that the last sum mlogr2l + mlogrl is at most
-	     |rl| + 2^-51|mlogrh| <= (2^-46.007 + 2^-46)|rh|
+	   Note that the following sum mlogr12l + mlogrl is at most
+	     |mlogr12l| + 2^-51 |mlogrh|
+             <= (2^-46.007 + 125.545 * 2^-51) |mlogr12h|
            (where |mlogrl| <= 2^-51|mlogrh| was proven in the analysis of
-           the first high_sum), we thus get for the final value of mlogr2l:
-           |mlogr2l| <= 2^-45.003 |mlogr2h| and a rounding error
-	   of at most 2^-97.003 |mlogr2h|.
+           the first high_sum, and |mlogrh/mlogr12h| < 125.6 from the above
+           cancellation example), we thus get:
+           |mlogr12l| <= 2^-43.701 |mlogr12h| and a rounding error
+	   of at most 2^-95.701 |mlogr12h|.
 
 	   These steps of computation created an error at most
-	     (2^-105 + 2^-98.007 + 2^-97.003) |mlogr2h|
-             < 2^-96.415 |mlogr2h|
+	     (2^-105 + 2^-98.007 + 2^-95.701) |mlogr12h|
+             < 2^-95.433 |mlogr12h|
 	   Propagating the previous errors gives another error term at most
-	     124.6 (2^-107.22 + 2^-107.27 + 2^-102.678) |mlogr2h|
-             < 2^-95.599 |mlogr2h|
+	     125.6 (2^-107.22 + 2^-107.27 + 2^-102.678) |mlogr12h|
+             < 2^-95.599 |mlogr12h|
 	   (the terms 2^-107.22 and 2^-107.27 come from finite precision of
-           the table coarse[] and fine[] respectively, and the factor 124.6
-           from the cancellation from the previous value of mlogr2h to the
-           new one). We thus get a
-	   total relative error of at most:
-           (2^-96.415 + 2^-95.599) < 2^-94.950 |mlogr2h|.
+           the table coarse[] and fine[] respectively, and the factor 125.6
+           from the cancellation from |mlogrh/mlogr12h|).
+           We thus get a total relative error of at most:
+           (2^-95.433 + 2^-95.599) < 2^-94.513 |mlogr12h|.
 	*/
 	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
-		mlogr2h, mlogr2l);
-	fast_two_sum(&mlogr2h, &mlogr2l, mlogr2h, mlogr2l);
+		mlogr12h, mlogr12l);
+	fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
 	/* This renormalization incurs a relative error at most 2^-105. The total
 	   relative error becomes at most 2^-96.223. This ensures
-	   |mlogr2l| <= 2^-52|mlogr2h|.
+	   |mlogr12l| <= 2^-52|mlogr12h|.
 	*/
 
 	// |xh| <= 1p-12
@@ -535,11 +539,11 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   with relative error at most 2^-98.429. Furthermore |rl|<=2^-49.066|rh|.
 	*/
 
-	high_sum(rh, rl, mlogr2h,*rh,*rl);
-	*rl += mlogr2l;
+	high_sum(rh, rl, mlogr12h,*rh,*rl);
+	*rl += mlogr12l;
 	/* Let us call rh', rl' the results of the computation, rh and rl the inputs.
-	   Note that if mlogr2h != 0, then |mlogr2h| >= 0x1.5p-12 (manual check).
-	   Given the argument above, this implies |mlogr2h| has at least the
+	   Note that if mlogr12h != 0, then |mlogr12h| >= 0x1.5p-12 (manual check).
+	   Given the argument above, this implies |mlogr12h| has at least the
 	   binade of |rh|.
 
 	   Expanding the high_sum call and calling t the fast_two_sum result's low
