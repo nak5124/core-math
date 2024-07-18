@@ -467,18 +467,21 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h| which allows us to
            conclude.
 
+           The accompanying program high_sum, compiled with -DRATIO, gives
+           the following upper-bound (all attained for extra_int=0, i1=126
+           and i2=32 where i1, i2 are the indices for r1 and r2):
+           
+           |mlogrh/mlogr12h|  < 125.6
+           |mlogr1h/mlogr12h| < 125.6
+           |mlogr2h/mlogr12h| < 124.6
+
 	   Expanding high_sum(), let t the low part of the fast_two_sum() call.
            As above the fast_two_sum yields an error <= 2^-105 |mlogr12h|
            and |t| <= 2^-52 |mlogr12h|.
 	   In the last sum of the fast_two_sum(), notice that
            |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * 124.6 |mlogr12h|
-           < 2^-46.03 |mlogr12h|.
-	   The factor 124.6 is because several bits might cancel in the
-           addition mlogrh + mlogr2h.
-           The largest cancellation is obtained for extra_int=0, i1=126
-           (the index of r1), and i2=31, where we get
-           mlogrh = -0x1.6fe50b6ef0851p-7, mlogr2h = 0x1.6cf6ddd2611d4p-7,
-           thus mlogr12h = -0x1.7716ce47b3e8p-14, |mlogr2h/mlogr12h| ~ 124.545.
+           < 2^-46.03 |mlogr12h|,
+           where we used the above bound |mlogr2h/mlogr12h| < 124.6.
 
 	   Therefore, |mlogr2l + t| <= (2^-46.03 + 2^-52) |mlogr12h|
                                     <= 2^-46.007 |mlogr12h|.
@@ -503,14 +506,15 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            where 2^-102.678 |mlogrh| comes from the first high_sum() call,
            2^-107.22 |mlogr1h| comes from the accuracy of the coarse[] table,
            and 2^-107.27 |mlogr2h| comes from the accuracy of the fine[] table.
-           By brute-force analysis, we find |mlogrh/mlogr12h| < 125.6,
-           |mlogr1h/mlogr12h| < 125.6 too, and |mlogr2h/mlogr12h| < 124.6.
-           This yields for the relative error a bound of:
+           Using the above bounds, this yields a relative error bound of:
              (125.6 * (2^-102.678 + 2^-107.22) + 124.5 * 2^-107.27) |mlogr12h|
 	     125.6 (2^-107.22 + 2^-107.27 + 2^-102.678) |mlogr12h|
              < 2^-95.588 |mlogr12h|
            We thus get a total relative error of at most:
-           (2^-95.433 + 2^-95.588) < 2^-94.508 |mlogr12h|.
+           (2^-95.433 + 2^-95.588) < 2^-94.508 |mlogr12h|:
+
+           |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
+           < 2^-94.508 |mlogr12h|.
 	*/
 	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
 		mlogr12h, mlogr12l);

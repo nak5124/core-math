@@ -2,12 +2,43 @@
 #include <mpfr.h>
 #include <fenv.h>
 #include <math.h>
+#include <omp.h>
 #include "powl_tables.h"
 
-// define RATIO to analyze the maximal value of the ratios
-// |mlogrh/mlogr12h|, |mlogr1h/mlogr12h|, |mlogr2h/mlogr12h|
-// otherwise analyze the maximal relative error between the
-// computed value mlogr12h + mlogr12l and the true value
+/* Define MODE=0 to analyze the maximal value of the ratios
+   |mlogrh/mlogr12h|, |mlogr1h/mlogr12h|, |mlogr2h/mlogr12h|.
+   With -DMODE=0 we get these last lines as output:
+
+r=2 extra_int=0 i1=126 i2=31 |mlogrh/mlogr12h|=1.2554490174030241e+02
+r=2 extra_int=0 i1=126 i2=31 |mlogr1h/mlogr12h|=1.2554490174030241e+02
+r=3 extra_int=0 i1=126 i2=31 |mlogr2h/mlogr12h|=1.2454490174030240e+02
+
+   Define MODE=1 to analyze the maximal relative error between the
+   computed value mlogr12h + mlogr12l and the true value
+   (add -fopenmp on the command line to make the computation faster).
+   With -DMODE=1 we get these last lines as output:
+
+r=1 extra_int=130 i1=59 i2=19 err=7.240159e-32
+r=1 extra_int=514 i1=42 i2=69 err=7.297105e-32
+r=2 extra_int=2050 i1=100 i2=65 err=7.315219e-32
+
+   This means the largest relative error is 7.315219e-32 < 2^-103.430,
+   obtained for rounding up (RNDU), with extra_int=2050, i1=100, i2=65.
+
+   Define MODE=2 to analyse the maximal value of |mlogr12l/mlogr12h|.
+   With -DMODE=2 we get these last lines as output:
+
+r=0 extra_int=0 i1=126 i2=29 |mlogr12l/mlogr12h|=1.5823267968081940e-15
+r=0 extra_int=0 i1=126 i2=30 |mlogr12l/mlogr12h|=3.2536127880762052e-15
+r=0 extra_int=0 i1=126 i2=31 |mlogr12l/mlogr12h|=3.6490470899802542e-15
+
+   This means the largest value of |mlogr12l/mlogr12h| is
+   3.6490470899802542e-15 < 2^-47.961.
+*/
+
+#ifndef MODE
+#error "You should define MODE (0, 1, or 2)"
+#endif
 
 static inline
 void fast_two_sum(double* rh, double* rl, double a, double b) {
@@ -24,9 +55,7 @@ void high_sum(double* rh, double* rl, double a, double bh, double bl) {
 	*rl = bl + e;
 }
 
-// return |mlogr2h + mlogr2l - (extra_int + l1[i1] + l2[i2])| / |mlogr2l|
-// where l1[i1] = coarse[i1].mlogrh + coarse[i1].mlogrl
-// and   l2[i2] = fine[i2].mlogrh + fine[i2].mlogrl
+// return |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2)| / |mlogr12h|
 static double
 compute_error (int extra_int, int i1, int i2, double mlogr12h, double mlogr12l)
 {
@@ -35,13 +64,17 @@ compute_error (int extra_int, int i1, int i2, double mlogr12h, double mlogr12l)
   mpfr_init2 (y, 127);
   // compute in x the sum with 127-bit precision
   mpfr_set_si (x, extra_int, MPFR_RNDN);
-  mpfr_add_d (x, x, coarse[i1].mlogrh, MPFR_RNDN);
-  mpfr_add_d (x, x, coarse[i1].mlogrl, MPFR_RNDN);
-  mpfr_add_d (x, x, fine[i2].mlogrh, MPFR_RNDN);
-  mpfr_add_d (x, x, fine[i2].mlogrl, MPFR_RNDN);
-  // put in y the value of mlogr2h + mlogr2l
+  mpfr_set_d (y, coarse[i1].r, MPFR_RNDN);
+  if (coarse[i1].z)
+    mpfr_mul_2ui (y, y, 1, MPFR_RNDN);
+  mpfr_log2 (y, y, MPFR_RNDN);
+  mpfr_sub (x, x, y, MPFR_RNDN);
+  mpfr_set_d (y, fine[i2].r, MPFR_RNDN);
+  mpfr_log2 (y, y, MPFR_RNDN);
+  mpfr_sub (x, x, y, MPFR_RNDN);
+  // put in y the value of mlogr12h + mlogr12l
   mpfr_set_d (y, mlogr12h, MPFR_RNDN);
-  mpfr_add_d (y, y, mlogr12h, MPFR_RNDN);
+  mpfr_add_d (y, y, mlogr12l, MPFR_RNDN);
   mpfr_sub (x, x, y, MPFR_RNDN);
   mpfr_abs (x, x, MPFR_RNDN);
   double err = mpfr_get_d (x, MPFR_RNDN);
@@ -60,6 +93,9 @@ analyze_second_sum (void)
   for (int r = 0; r < 4; r++)
   {
     fesetround (R[r]);
+#if MODE==1
+#pragma omp parallel for schedule(static,1)
+#endif
     for (int extra_int = -16382; extra_int < 16384; extra_int ++)
       for (int i1 = 0; i1 < 128; i1++)
       {
@@ -77,7 +113,7 @@ analyze_second_sum (void)
           double mlogr12h, mlogr12l;
           high_sum(&mlogr12h, &mlogr12l, mlogrh, mlogr2h, mlogr2l);
           mlogr12l += mlogrl;
-#ifdef RATIO
+#if MODE==0
           double ratio1 = fabs (mlogrh / mlogr12h);
           double ratio2 = fabs (mlogr2h / mlogr12h);
           double ratio3 = fabs (mlogr1h / mlogr12h);
@@ -91,15 +127,26 @@ analyze_second_sum (void)
             printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr1h/mlogr12h|=%.16e\n",
                     r, extra_int, i1, i2, maxratio3 = ratio3);
           fflush (stdout);
-#else
+#elif MODE==1
           double err = compute_error (extra_int, i1, i2, mlogr12h, mlogr12l);
+#pragma omp critical
           if (err > maxerr)
-            printf ("r=%d extra_int=%d i1=%d i2=%d err=%f\n",
+          {
+            printf ("r=%d extra_int=%d i1=%d i2=%d err=%e\n",
                     r, extra_int, i1, i2, maxerr = err);
+            // printf ("r1=%la r2=%la mlogr12h=%la mlogr12l=%la\n", coarse[i1].r, fine[i2].r, mlogr12h, mlogr12l);
+          }
+#elif MODE==2
+          double ratio1 = fabs (mlogr12l / mlogr12h);
+          if (ratio1 > maxratio1)
+            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr12l/mlogr12h|=%.16e\n",
+                    r, extra_int, i1, i2, maxratio1 = ratio1);
+#else
+#error "Invalid value of MODE"
 #endif
         }
       }
-  } 
+  }
 }
 
 int

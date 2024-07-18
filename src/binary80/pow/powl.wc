@@ -328,3 +328,31 @@ snan,snan
 -0x1.fffffffffffffffep+16383,-0x1.fffffffffffffffep+16383
 # the following has 62 identical bits after the round bit
 0xc.000000000000001p-4,0x2p+0
+# worst-cases for y=0x1p-5 with at least 63 identical
+# bits after the round bit (-m 64 with bacsel)
+# in the range [1/2,2^15)
+0x1p+0,0x1p-5
+0x2.c633fda9e1221c94p+0,0x1p-5
+0xd.45e4393b8e78b8cp+0,0x1p-5
+0xe.e72e28a48cdf9eep+0,0x1p-5
+0x1.e27327caf92da732p+4,0x1p-5
+0x3.3a5b3937edfb9f6cp+4,0x1p-5
+0x3.592e2fbc4b6fb8b4p+4,0x1p-5
+0x4.6d56b080085ae908p+4,0x1p-5
+0x6.016947d64388e85p+4,0x1p-5
+0x6.fb4227f83201d118p+4,0x1p-5
+0x8.70a524bfe8df147p+4,0x1p-5
+0xa.91ebd0f31742083p+4,0x1p-5
+0xc.730d3f766c33a64p+4,0x1p-5
+0x1.b4aabbf6cc930118p+8,0x1p-5
+0x3.198ea2a1a26f41b4p+8,0x1p-5
+0x6.fd80129f17552588p+8,0x1p-5
+0xe.0847544034d4713p+8,0x1p-5
+0x1.32e7e9d971d9905p+12,0x1p-5
+0x2.127356c61d61e5e8p+12,0x1p-5
+# worst-cases for y=0x1.8p-4 with at least 63 identical
+# bits after the round bit (-m 64 with bacsel)
+# in the range [1/2,2^7)
+0x1p+0,0x1.8p-4
+0x1.810cecde531202acp+0,0x1.8p-4
+0x1.a1f221995893bfdp+0,0x1.8p-4
