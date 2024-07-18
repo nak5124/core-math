@@ -23,6 +23,7 @@
 0xd.05ba8ced8a7174ap+10729
 0xa.a086149580676a7p+15593
 0xd.6fe53f73d74707dp+13631
+-0x0.475bece8f82d90fp-16385
 # worst cases computed by bacsel in [0.5,2) with at least 54 identical bits
 # after the round bit (-m 55 in bacsel)
 0x1.0000000000000002p-2

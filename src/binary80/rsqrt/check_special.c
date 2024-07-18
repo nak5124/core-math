@@ -123,12 +123,13 @@ get_random ()
   v.m |= (uint64_t) rand () << 31;
   v.m |= (uint64_t) rand () << 62;
   v.e = rand () & 0xffff;
-  // if e is not 0 nor 0x7fff nor 0xffff, m should have its msb set
-  uint64_t t = v.e != 0 && v.e != 0x7fff && v.e != 0xffff;
-  v.m |= t << 63;
-  // if e is 0, m should have its msb cleared
-  if (v.e == 0)
+  // cf https://en.wikipedia.org/wiki/Extended_precision
+  // if the exponent (apart from sign bit) is 0, m should have its msb cleared
+  // if the exponent (apart from sign bit) is not 0, m should have its msb set
+  if ((v.e & 0x7fff) == 0)
     v.m = (v.m << 1) >> 1;
+  else
+    v.m |= (uint64_t) 1 << 63;
   return v.f;
 }
 
