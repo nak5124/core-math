@@ -39,33 +39,23 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-static inline int get_rounding_mode (volatile fexcept_t *flagp)
+static inline fexcept_t get_flags ()
 {
 #ifdef __x86_64__
-  *flagp = _mm_getcsr ();
-  return ((*flagp)>>13) & 3;
+  return _mm_getcsr ();
 #else
-  fegetexceptflag (flagp, FE_ALL_EXCEPT);
-  switch (fegetround ())
-  {
-  case FE_TONEAREST:
-    return 0;
-  case FE_DOWNWARD:
-    return 1;
-  case FE_UPWARD:
-    return 2;
-  }
-  // case FE_TOWARDZERO:
-  return 3;
+  fexcept_t flag;
+  fegetexceptflag (&flag, FE_ALL_EXCEPT);
+  return flag;
 #endif
 }
 
-static inline void set_flags (const volatile fexcept_t *flagp)
+static inline void set_flags (fexcept_t flag)
 {
 #ifdef __x86_64__
-  _mm_setcsr (*flagp);
+  _mm_setcsr (flag);
 #else
-  fesetexceptflag (flagp, FE_ALL_EXCEPT);
+  fesetexceptflag (&flag, FE_ALL_EXCEPT);
 #endif
 }
 
@@ -118,7 +108,7 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
    and fits in a 128-bit integer, so the approximation is squared (which
    also fits in a 128-bit integer), compared and adjusted if necessary using
    the exact value of x^2+y^2. */
-static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const volatile fexcept_t *flag){
+static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const fexcept_t flag){
   double op = 1.0 + 0x1p-54, om = 1.0 - 0x1p-54;
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 bm = (xi.u&(~0ul>>12))|1l<<52;
@@ -188,7 +178,7 @@ static double __attribute__((noinline)) as_hypot_overflow(){
 }
 
 double cr_hypot(double x, double y){
-  volatile fexcept_t flag; get_rounding_mode (&flag);
+  volatile fexcept_t flag = get_flags();
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 emsk = 0x7ffl<<52, ex = xi.u&emsk, ey = yi.u&emsk;
   /* emsk corresponds to the upper bits of NaN and Inf (apart the sign bit) */
@@ -241,7 +231,7 @@ double cr_hypot(double x, double y){
   u64 aidr = ey + (0x3fel<<52) - ex;
   u64 mid = (aidr - 0x3c90000000000000 + 16)>>5;
   if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ul || aidr>0x3c9fffffffffff80ul, 0)) 
-    thd.f = as_hypot_hard(x,y,&flag);
+    thd.f = as_hypot_hard(x,y,flag);
   thd.u -= off;
   if(__builtin_expect(thd.u>=(0x7fful<<52), 0)) return as_hypot_overflow();
   return thd.f;
