@@ -438,8 +438,9 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            that the low part of its result is at most 2^-52|mlogrh|. Notice
            that |mlogrh| >= .5 > |mlogr1h| so that
 	   2^-52|mlogrh| >= 2^-52|mlogr1h| >= |mlogr1l|.
-	   This implies that the "rl" sum of high_sum is at most 2^-51|mlogrh|
-	   and that its rounding error is at most 2^-103|mlogrh|.
+	   This implies that the "rl" sum of high_sum (i.e., mlogrl)
+           is at most 2^-51|mlogrh| and that its rounding error is
+           at most 2^-103|mlogrh|.
 
 	   The total rounding error is at most
 	     (2^-103+2^-105)|mlogrh| <= 2^-102.678 |mlogrh|:
@@ -466,31 +467,42 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h| which allows us to
            conclude.
 
-	   Let us call (rh, rl) the result of the high_sum and t the value of
-           mlogr2l before the addition mlogr2l += mlogrl.
-           Expanding high_sum, the previous argument shows that the
-	   fast_two_sum yields an error <= 2^-105|rh| and |t| <= 2^-52|rh|.
+	   Let us call (rh, rl) the result of the high_sum and t the low part
+           of the fast_two_sum() call.
+           Expanding high_sum, as above the fast_two_sum yields an error
+           <= 2^-105|rh| and |t| <= 2^-52|rh|.
 	   In the last sum, notice that
-           |mlogr2l| <= 2^-53|mlogr2h| <= 2^(-52+5)|rh|.
-	   The +5 is because as many as 5 bits may cancel computing |rh|, and is
-	   obtained by looking at the tables (the 5 results from
-	   0x1.6a0e8140311aap-7 + (-0x1.6fe50b6ef0851p-7) )
+           |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * 124.6 |rh| < 2^-46.03 |rh|.
+	   The factor 124.6 is because several bits might cancel in the
+           addition mlogrh + mlogr2h.
+           The largest cancellation is obtained for extra_int=0, i1=126
+           (the index of r1), and i2=31, where we get
+           mlogrh = -0x1.6fe50b6ef0851p-7, mlogr2h = 0x1.6cf6ddd2611d4p-7,
+           thus rh = -0x1.7716ce47b3e8p-14, and |mlogr2h/rh| ~ 124.545.
 
-	   Therefore, |mlogr2l + t| <= (2^-47+2^-52)|rh| <= 2^-46.955|rh|. This
-	   implies that |rl| <= 2^-46.955|rh| and that the rounding error of the
-	   high_sum's final sum is at most 2^-98.955|rh|.
+	   Therefore, |mlogr2l + t| <= (2^-46.03+2^-52)|rh| <= 2^-46.007|rh|.
+           This implies that |rl| <= 2^-46.007|rh| and that the rounding error
+           of the high_sum's final sum is at most 2^-98.007 |rh|.
 
-	   Note that the last sum is at most
-	     |rl| + 2^-51|mlogrh| <= (2^-46.955 + 2^-46)|rh|
-	   we get in the end |mlogr2l| <= 2^-45.399|mlogr2h| and a rounding error
-	   of at most 2^-97.399|mlogr2h|.
+	   Note that the last sum mlogr2l + mlogrl is at most
+	     |rl| + 2^-51|mlogrh| <= (2^-46.007 + 2^-46)|rh|
+           (where |mlogrl| <= 2^-51|mlogrh| was proven in the analysis of
+           the first high_sum), we thus get for the final value of mlogr2l:
+           |mlogr2l| <= 2^-45.003 |mlogr2h| and a rounding error
+	   of at most 2^-97.003 |mlogr2h|.
 
 	   These steps of computation created an error at most
-	     (2^-98.955 + 2^-97.399 + 2^-105)|mlogr2h|;
+	     (2^-105 + 2^-98.007 + 2^-97.003) |mlogr2h|
+             < 2^-96.415 |mlogr2h|
 	   Propagating the previous errors gives another error term at most
-	     2^5(2^-107 + 2^-107 + 2^-102.678)|mlogr2h|
-	   (the 2^-107 comes from the table's finite precision). We thus get a
-	   total relative error of at most 2^-96.227|mlogr2h|. 
+	     124.6 (2^-107.22 + 2^-107.27 + 2^-102.678) |mlogr2h|
+             < 2^-95.599 |mlogr2h|
+	   (the terms 2^-107.22 and 2^-107.27 come from finite precision of
+           the table coarse[] and fine[] respectively, and the factor 124.6
+           from the cancellation from the previous value of mlogr2h to the
+           new one). We thus get a
+	   total relative error of at most:
+           (2^-96.415 + 2^-95.599) < 2^-94.950 |mlogr2h|.
 	*/
 	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
 		mlogr2h, mlogr2l);
