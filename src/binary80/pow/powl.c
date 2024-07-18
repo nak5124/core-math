@@ -24,6 +24,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* References:
+   [1] Note on FastTwoSum with Directed Roundings, Sélène Corbineau and Paul
+       Zimmermann, July 2024, https://inria.hal.science/hal-03798376.
+ */
+
 #include <stdint.h>
 #include <fenv.h>
 #include <stdbool.h>
@@ -68,7 +73,8 @@ static inline int get_rounding_mode (void)
 }
 
 /* Split a number of exponent 0 (1 <= |x| < 2)
-   into a high part fitting in 33 bits and a low part fitting in 31 bits. */
+   into a high part fitting in 33 bits and a low part fitting in 31 bits:
+   1 <= rh <= 2 and |rl| < 2^-32 */
 static inline
 void split(double* rh, double* rl, long double x) {
 	static long double C = 0x1.8p+31L; // ulp(C)=2^-32
@@ -364,7 +370,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	double xh, xl; // a (resp b) bits
 	split(&xh, &xl, x);
-        // x = xh + xl with xh on 33 bits and xl on 31 bits
+        // x = xh + xl with xh on 33 bits and xl on 31 bits, |xl| < 2^-32
 
 	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
@@ -389,8 +395,9 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
         /* The above multiplications are exact.
            now xh fits in 42 bits at most, xl in 40.
            More precisely the initial xh was a multiple of 2^-32.
-	         Since r1 is a multiple of 2^-9 then the new value of xh is a multiple
-           of 2^-41.
+           Since r1 is a multiple of 2^-9 then the new value of xh is a
+           multiple of 2^-41.
+           Since we had |rl| < 2^-32 and |r1| <= 1, we still have |rl| < 2^-32.
         */
 
 	POWL_DPRINTF("get_hex(R(abs("SAGE_RR" - 1)))\n", xh);
@@ -530,25 +537,33 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	*/
 	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
 		mlogr12h, mlogr12l);
-	fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
-	/* This renormalization incurs a relative error at most 2^-105. The total
-	   relative error becomes at most 2^-96.223. This ensures
-	   |mlogr12l| <= 2^-52|mlogr12h|.
+        fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
+	/* This renormalization incurs a relative error at most 2^-105.
+           The total relative error becomes at most:
+           (1 + 2^-103.430) * (1 + 2^-105) - 1 < 2^-103.011. This ensures
+	   |mlogr12l| <= 2^-52 |mlogr12h|.
 	*/
 
 	// |xh| <= 1p-12
 	xh = __builtin_fma(r2, xh, -1); xl *= r2;
-	// exact since xl fits in 40 bits and at least 11 bits are cancelled
-	// when computing the fma for xh.
+	/* The product old_xl * r2 is exact since old_xl fits in 40 bits
+           and r2 in 13 bits.
+           We know that xh is a multiple of 2^-41. Since r2 is a multiple of
+           2^-13, then r2*xh is a multiple of 2^-54, and so is r2*xh - 1.
+           Since |r2*xh - 1| <= 2^-12, r2*xh - 1 is exactly representable,
+           and thus the fma() above is exact too. */
 
 	two_sum(&xh, &xl, xh, xl); // We probably cannot use Fast2Sum
-	/* At input, we have |xh| <= 1p-12 and |xl| < 2*2^-32 = 2^-31. Therefore at
+	/* At input, we have |xh| <= 1p-12 and |xl| < 2^-32. Therefore at
 	   output we have |xh| <= 2^-11.999, |xl| <= ulp(xh) <= 2^-64 and 
 	   xr = xh + xl is such that |xr| <= 2^-11.999.
 
-	   Note that without the two_sum, we have no guarantees on the relative
-	   sizes of xh and xl but both are small (approx. xh <= 2^-12, xl <= 2^-33).
-	   this may be enough ? (probably not)
+	   We use two_sum because we have no guarantees on the relative
+	   sizes of xh and xl. However, since we know |xl| < 2^-32, if the
+           Fast2Sum condition is not fulfilled, this would mean |xh| < 2^-33,
+           Theorem 2 from reference [1] than says that if we used Fast2Sum,
+           the rounding error would be less than 3 2^-53 |xh|, thus less than
+           3 * 2^-53 * (2^-33 + 2^-32) < 2^-82.830.
 	*/
 	POWL_DPRINTF("get_hex(R(r1*r2*sx - 1 - "SAGE_DD"))\n", xh, xl);
 	POWL_DPRINTF("s = r1*r2*sx - 1\n");
