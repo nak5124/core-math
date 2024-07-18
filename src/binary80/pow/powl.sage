@@ -51,20 +51,16 @@ def get_coarsetbl(m = 9, L = 7):
 				minimizer = r.exact_rational()
 			r = r.nextabove()
 		if(minimizer <= 2**(-.5)): # r <= 1/sqrt(2) thus x >= sqrt(2)
-			z = 1 # we consider x/2
-			# divide x by 2
-			nh/=2
-			nl/=2
-			# multiply r by 2
-			rl*=2
-			rh*=2
-			minimizer *= 2
-                # around 1, fix r to 1
+			z = 1 # add a 1/2 prefactor
+    # around 1 and 2, fix r to 1 and .5 respectively
 		if(rl <= 1 and 1 <= rh):
 			minimizer = 1
 			minr = max(R(abs(nl - 1)),R(abs(nh - 1)))
+		if(rl <= 2 and 2 <= rh):
+			minimizer = 1/2
+			minr = max(R(abs(nl - 1)),R(abs(nh - 1)))
 		maxmin = max(maxmin, minr)
-		h, l, err = get_hl (minimizer)
+		h, l, err = get_hl (minimizer*2**z) # we have z+h+l ~= -log2(minimizer)
 		maxhl = max(maxhl, abs(h+l))
 		maxerr = max(maxerr, err)
 		T[i] = (h, l)
