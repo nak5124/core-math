@@ -67,9 +67,13 @@ long double cr_rsqrtl (long double x){
       if(!v.m)
 	return 1.0L / x;   // x=+0 and x=-0
       else {
-	int cnt = __builtin_clzll (v.m);
-	v.m <<= cnt;
-	e -= cnt - 1;
+	if(!v.e){
+	  int cnt = __builtin_clzll (v.m);
+	  v.m <<= cnt;
+	  e -= cnt - 1;
+	} else {
+	  return 0.0L / 0.0L; // x<0: rsqrt(x)=NaN
+	}
       }
     } else {
       if (v.e > 0x8000) return 0.0L / 0.0L; // x<0: rsqrt(x)=NaN
