@@ -26,7 +26,11 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
+#include <fenv.h>
+
+#ifdef __x86_64__
 #include <x86intrin.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -34,6 +38,36 @@ SOFTWARE.
 #endif
 
 #pragma STDC FENV_ACCESS ON
+
+static inline int get_rounding_mode (volatile fexcept_t *flagp)
+{
+#ifdef __x86_64__
+  *flagp = _mm_getcsr ();
+  return ((*flagp)>>13) & 3;
+#else
+  fegetexceptflag (flagp, FE_ALL_EXCEPT);
+  switch (fegetround ())
+  {
+  case FE_TONEAREST:
+    return 0;
+  case FE_DOWNWARD:
+    return 1;
+  case FE_UPWARD:
+    return 2;
+  }
+  // case FE_TOWARDZERO:
+  return 3;
+#endif
+}
+
+static inline void set_flags (const volatile fexcept_t *flagp)
+{
+#ifdef __x86_64__
+  _mm_setcsr (*flagp);
+#else
+  fesetexceptflag (flagp, FE_ALL_EXCEPT);
+#endif
+}
 
 typedef uint64_t u64;
 typedef int64_t i64;
@@ -84,7 +118,7 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
    and fits in a 128-bit integer, so the approximation is squared (which
    also fits in a 128-bit integer), compared and adjusted if necessary using
    the exact value of x^2+y^2. */
-static double  __attribute__((noinline)) as_hypot_hard(double x, double y, unsigned flag){
+static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const volatile fexcept_t *flag){
   double op = 1.0 + 0x1p-54, om = 1.0 - 0x1p-54;
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 bm = (xi.u&(~0ul>>12))|1l<<52;
@@ -123,7 +157,7 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, unsig
     D = m2 - rm2;
   } while(D>0);
   if(D==0){
-    _mm_setcsr(flag);
+    set_flags(flag);
   } else {
     if(__builtin_expect(op == om, 1)){
       u64 tm = (rm << k) - (1<<(k-(rm<=(1l<<53))));
@@ -154,7 +188,7 @@ static double __attribute__((noinline)) as_hypot_overflow(){
 }
 
 double cr_hypot(double x, double y){
-  volatile unsigned flag = _mm_getcsr();
+  volatile fexcept_t flag; get_rounding_mode (&flag);
   b64u64_u xi = {.f = x}, yi = {.f = y};
   u64 emsk = 0x7ffl<<52, ex = xi.u&emsk, ey = yi.u&emsk;
   /* emsk corresponds to the upper bits of NaN and Inf (apart the sign bit) */
@@ -207,7 +241,7 @@ double cr_hypot(double x, double y){
   u64 aidr = ey + (0x3fel<<52) - ex;
   u64 mid = (aidr - 0x3c90000000000000 + 16)>>5;
   if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ul || aidr>0x3c9fffffffffff80ul, 0)) 
-    thd.f = as_hypot_hard(x,y,flag);
+    thd.f = as_hypot_hard(x,y,&flag);
   thd.u -= off;
   if(__builtin_expect(thd.u>=(0x7fful<<52), 0)) return as_hypot_overflow();
   return thd.f;
