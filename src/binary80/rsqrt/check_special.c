@@ -121,15 +121,14 @@ get_random ()
   b80u80_t v;
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) rand () << 62;
+  v.m |= (uint64_t) (rand () & 1) << 62;
+  // the low 63 bits of m are random
   v.e = rand () & 0xffff;
+  // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
+  // significant bit set, otherwise it should be cleared
   // cf https://en.wikipedia.org/wiki/Extended_precision
-  // if the exponent (apart from sign bit) is 0, m should have its msb cleared
-  // if the exponent (apart from sign bit) is not 0, m should have its msb set
-  if ((v.e & 0x7fff) == 0)
-    v.m = (v.m << 1) >> 1;
-  else
-    v.m |= (uint64_t) 1 << 63;
+  uint64_t t = (v.e & 0x7fff) != 0;
+  v.m |= t << 63;
   return v.f;
 }
 
