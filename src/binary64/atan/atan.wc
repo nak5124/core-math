@@ -55200,3 +55200,14 @@
 -0x1.ffffffffffffdp+1023
 0x1.ffffffffffffep+1023
 -0x1.ffffffffffffep+1023
+# arguments which produce results closest to +-pi()/2 represantable in the double precision format
+0x1.d02967c31cdb7p+53
+0x1.d02967c31cdb6p+53
+0x1.d02967c31cdb5p+53
+0x1.d02967c31cdb4p+53
+0x1.d02967c31cdb3p+53
+-0x1.d02967c31cdb7p+53
+-0x1.d02967c31cdb6p+53
+-0x1.d02967c31cdb5p+53
+-0x1.d02967c31cdb4p+53
+-0x1.d02967c31cdb3p+53

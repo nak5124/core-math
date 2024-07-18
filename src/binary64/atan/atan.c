@@ -244,14 +244,13 @@ double cr_atan(double x){
   double h, ah, al;
   if(__builtin_expect(at>0x4062ded8e34a9035ul, 0)) {
     // |x| > 0x1.2ded8e34a9035p+7
-    if (__builtin_expect(at >= (0x7fful<<52), 0)) { // NaN or Inf
-      if (at == (0x7fful<<52)) // +/-Inf
-	return __builtin_copysign(0x1.921fb54442d18p+0, x) + __builtin_copysign(0x1p-54, x);
-      return x; // NaN
-    }
-    h = -1.0/x;
     ah = __builtin_copysign(0x1.921fb54442d18p+0, x);
     al = __builtin_copysign(0x1.1a62633145c07p-54, x);
+    if (__builtin_expect(at >= 0x434d02967c31cdb5ul, 0)) { // |x| is large
+      if (__builtin_expect(at > (0x7fful<<52), 0)) return x; // NaN
+      return ah + al;
+    }
+    h = -1.0/x;
   } else {
     // now 0x1.b21c475e6362ap-8 <= |x| <= 0x1.2ded8e34a9035p+7 thus 1<=i<=30
     u64 u = t.u & (~0ul>>13);
