@@ -421,11 +421,14 @@ double cr_atanpi (double x){
   double h, ah, al;
   if(__builtin_expect(at>0x4062ded8e34a9035, 0)) {
     // |x| > 0x1.2ded8e34a9035p+7, atanpi|x| > 0.49789
-    if(__builtin_expect(at >= (0x7fful<<52), 0)){
-      // case Inf or NaN
-      if(at == (0x7fful<<52)) // Inf
-	return __builtin_copysign(0.5, x); // atanpi_specific
-      return x; // NaN
+    if(__builtin_expect(at >= 0x43445f306dc9c883ul, 0)){ // atanpi(|x|) > 0.5 - 0x1p-55
+      if(__builtin_expect(at >= (0x7fful<<52), 0)){
+	// case Inf or NaN
+	if(at == (0x7fful<<52)) // Inf
+	  return __builtin_copysign(0.5, x); // atanpi_specific
+	return x; // NaN
+      }
+      return __builtin_copysign(0.5, x) - __builtin_copysign(0x1p-56, x);
     }
     h = -1.0/x;
     ah = __builtin_copysign(0x1.921fb54442d18p+0, x);
