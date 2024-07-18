@@ -152,9 +152,10 @@ void d_mul(double* rh, double* rl, double ah, double al,
 
 #include "powl_tables.h"
 
-/* Let x = xh + xl. Assume |x| <= 2^-12
+/* Let x = xh + xl. Assume |x| <= 2^-11.999.
 Then polyeval(&rh, &rl, xh, xl) returns in 
-rh + rl an estimate of log2(1 + x) with relative error at most 2^-98.429.
+rh + rl an estimate of log2(1 + x) with relative error at most 2^-98.429,
+with |rl| <= 2^-49.066 |rh|.
 */
 static inline
 void polyeval(double* rh, double* rl, double xh, double xl) {
