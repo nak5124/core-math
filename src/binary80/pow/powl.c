@@ -371,27 +371,26 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	lut_t l = coarse[cvt_x.m>>56 & 0x7f];
 	POWL_DPRINTF("key=0x%lx\n", (cvt_x.m>>56 & 0x7f));
 
-	/* If l.z is 0, then |x*r1 - 1| <= 0x1p-7.
-	   If l.z is 1, then |(x/2)*r1 - 1| <= 0x1p-7.
-	   In all cases, mlogr1h + mlogr1 approximates -log2(r1) with
-           relative error < 2^-107.22. Note that |mlogr1h+mlogr1l| < .5
+	/* We always have |x*r1 - 1| <= 0x1p-7. The term l.z is chosen such that
+	   l.z+mlogr1h + mlogr1 approximates -log2(r1) with
+     relative error < 2^-107.22. Note that |mlogr1h+mlogr1l| < .5
 	   The tables are constructed in such a way that r fits in 9 bits.
 	*/
 	double r1      = l.r;
 	double mlogr1h = l.mlogrh;
 	double mlogr1l = l.mlogrl;
-	extra_int     += l.z;      // if z=1, we consider x/2
+	extra_int     += l.z;
 
 	POWL_DPRINTF("r1 = " SAGE_RR "\n", r1);
-	
-	if(l.z) {xh/=2; xl/=2; POWL_DPRINTF("sx = sx/2\nei+=1\n");}
+
+	// Eliminated if POWL_DEBUG is not defined	
+	if(l.z) {POWL_DPRINTF("sx = sx/2\nei+=1\n");}
 	xh *= r1; xl *= r1;
         /* The above multiplications are exact.
            now xh fits in 42 bits at most, xl in 40.
-           More precisely the initial xh was a multiple of 2^-32 if z=0,
-           and of 2^-33 if z=1. Since r1 is a multiple of 2^-9 for z=0,
-           and of 2^-8 for z=1, then the new value of xh is a multiple
-           of 2^-41 in all cases.
+           More precisely the initial xh was a multiple of 2^-32.
+	         Since r1 is a multiple of 2^-9 then the new value of xh is a multiple
+           of 2^-41.
         */
 
 	POWL_DPRINTF("get_hex(R(abs("SAGE_RR" - 1)))\n", xh);
