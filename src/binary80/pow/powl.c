@@ -446,6 +446,12 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
              
              |mlogrh + mlogrl - (extra_int + mlogr1h + mlogr1l)|
              <= 2^-102.678 |mlogrh|.
+
+           If one performs an exhaustive search on all possible values
+           of extra_int (-16382 to 16383), on all rounding modes, and
+           on all values of mlogr1h/mlogr1l, we obtain that the maximal
+           relative error is bounded by 2^-105.003 |mlogrh|
+           (see function analyse_first_high_sum() in powl.sage).
 	*/
 
 	high_sum(&mlogr2h, &mlogr2l, mlogrh, mlogr2h, mlogr2l);
