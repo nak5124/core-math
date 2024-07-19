@@ -250,6 +250,17 @@ def check_S(m=55,t=20,width=2^30,d=2,alpha=2,nthreads=64,out=None):
    if out != None:
       out.close()
 
+def get_S():
+   S = []
+   for n in range(2,41+1):
+      y = R64(n)
+      S.append(y)
+   for F in range(1,5+1):
+      for n in range(3,41+1,2):
+         y = R64(n/2^F)
+         S.append(y)
+   return S
+
 def print_xy(out,x,y):
    if abs(x) >= RR(2^16384) or abs(x) < RR(2^-16445):
       return 0
