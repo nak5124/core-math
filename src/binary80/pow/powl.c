@@ -182,137 +182,185 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	     at most 2^-102.954|ah*bh|.
 	   - the error neglecting |al*bl| is at most 2^-52*2^-55.976|ah*bh|
 	   The total relative error in terms of |ah*bh| is thus at most
-	     2^-103.811 + 2^-102.954 + 2^-107.979 <= 2^-102.291.
+	     (1 + 2^-103.811) * (1 + 2^-102.954) * (1 + 2^-107.979) - 1
+             <= 2^-102.291.
 	   Expressing the error relative to ln2inv*x, we get a relative error
-           at most 2^-102.290.
+           at most 2^-102.290:
+           scaleh + scalel = (ln2invh + ln2invl) * x * (1 + eps2)
+           with |eps2| < 2^-102.290.
 	*/
 
+        // compute c0 + c1*x = 1 - x/2
 	double ord01h, ord01l;
-	ord01h = -xh/2; ord01l = -xl/2; /*c1 = 1/2*/ // Exact.
-	high_sum(&ord01h,&ord01l, 1, ord01h, ord01l);
+	ord01h = -xh/2; ord01l = -xl/2; // Exact since c1=-1/2
+	high_sum(&ord01h, &ord01l, 1.0, ord01h, ord01l);
 	/* Expanding the high_sum call we get that :
-	   - the fast_two_sum incurs an error of 2^-105(1 + 2^-12.999) <= 2^-104.999
-	     and its' low value is at most 2^-52.
-	   - the final sum has value at most 2^-52+2^-12.999*2^-52 <= 2^-51.999; this
-	     implies a rounding error of at most 2^-104.
-	  Therefore, at output we have |ord01h| <= 1 + 2^-12.998,
-	  |ord01l| <= 2^-51.999 and the total error on 1 - x/2 is at most 2^-103.414.
+	   - the fast_two_sum incurs an error <= 2^-105(1 + 2^-11.999)
+                                              <= 2^-104.999
+	     and its' low value is at most ulp(1 + 2^-11.999) = 2^-52.
+	   - the final sum has value <= 2^-11.999*2^-52+2^-52 <= 2^-51.999;
+             this implies a rounding error <= ulp(2^-51.999) = 2^-104.
+	  Therefore, at output we have |ord01h| <= 1 + 2^-11.998,
+	  |ord01l| <= 2^-51.999 and the total error on c0 + c1*x is
+          at most 2^-104.999 + 2^-104 < 2^-103.414:
+          ord01h + ord01l = c0 + c1*x + eps01 with |eps01| < 2^-103.414.
 	*/
 
 
+        // compute c2 + c3*x = 0x1.555555555555555555696dc16a8p-2 - x/4
 	double ord23h, ord23l;
 	ord23h = -xh/4; /*c3 = -1/4*/
 	ord23l = __builtin_fma(-xl, 1./4, 0x1.55555a5b705aap-56); /*c2l*/
 	high_sum(&ord23h, &ord23l, 0x1.5555555555555p-2, ord23h, ord23l); /*c2h*/
 	/* We compute that
-	    |-xl/4 + c2l| <= 2^-11.999*2^(-54) + 2^-55.584 <= 2^-55.582.
-	   Therefore after the fma |ord23l| <= 2^-55.581 and the associated rounding
-	   error is at most 2^-56-52 = 2^-108.
+	    |-xl/4 + c2l| <= 2^-11.999*2^-52/4 + 2^-55.584 <= 2^-55.582.
+	   Therefore after the fma |ord23l| <= 2^-55.581 and the associated
+           rounding error is at most ulp(2^-55.581) = 2^-108.
 
 	   Expanding the high_sum call we get that :
 	   - the fast_two_sum incurs an error of 2^-105(2^-1.584 + 2^-13.999)
-	     <= 2^-106.583 and its' low value is at most 2^-54.
-	   - the final sum has value at most 2^-54 + 2^-55.581 <= 2^-53.583; this
-	     implies a rounding error of at most 2^-106.
+	     <= 2^-106.583 and its low value is at most
+             ulp(2^-1.584 + 2^-13.999) = 2^-54.
+	   - the final sum has value at most 2^-55.581 + 2^-54 <= 2^-53.583;
+             this implies a rounding error of at most ulp(2^-53.583) = 2^-106.
 	   At output we thus have |ord23h| <= 2^-1.583, |ord23l| <= 2^-53.582
-	   and the total error on c2 + c3x is at most
-	      2^-106+2^-108+2^-106.583 <= 2^-105.060.
+	   and the total error on c2 + c3*x is at most
+	      2^-108 + 2^-106.583 + 2^-106 <= 2^-105.060:
+           ord23h + ord23l = c2 + c3*x + eps23 with |eps23| < 2^-105.060.
 	*/
 
-	double xsqh, xsql; d_mul(&xsqh, &xsql, xh, xl, xh, xl);
+        // approximate x^2
+	double xsqh, xsql;
+        d_mul(&xsqh, &xsql, xh, xl, xh, xl);
 	// FIXME directly analyze the absolute errors ?
 	/* Expanding the d_mul call we get that :
 	   - |p| <= 2^-52|xh^2|
-	   - |xh*xl+p| <= 2^-51|xh^2| so that |q| <= 2^-50.999|xh^2| and q's rounding
+	   - |xl*xh+p| <= 2^-52|xh^2| + 2^-52|xh^2| <= 2^-51|xh^2|
+             so that |q| <= 2^-50.999|xh^2| and q's rounding
 	     error is at most 2^-102.999|xh^2|.
-	   - |xl*xh+q| <= 2^-50.414|xh|^2 so that |xsql| <= 2^-50.413|xh^2| and the
-	     rounding error is at most 2^-102.413|xh^2|
+	   - |xh*xl+q| <= 2^-52|xh^2| + 2^-50.999|xh^2| <= 2^-50.414|xh|^2
+             so that |xsql| <= 2^-50.413|xh^2| and the
+	     rounding error on xsql is at most 2^-102.413|xh^2|
 	   - the error made by neglecting xl^2 is at most 2^-104|xh|.
 	   The total relative error in terms of |xh^2| is thus at most
-	     2^-102.413 + 2^-102.999 + 2^-104 <= 2^-101.413
+	     (1 + 2^-102.999) * (1 + 2^-102.413) * (1 + 2^-104) - 1
+             <= 2^-101.413
 	   Expressing the error relative to x^2 we get a relative error at most
 	     2^-101.412.
-	   This translates to an absolute error less than 2^-125.41 
+	   This translates to an absolute error less than 2^-125.41
+           since |x| <= 2^-11.999:
+           |xsqh + xsql - x^2| <= 2^-125.41.
 	   Also, at output we have |xsqh| <= 2^-23.997 and
-	   |xsql| <= 2^-50.413|xsqh| <= 2^-74.410 .
+	   |xsql| <= 2^-50.413|xsqh| <= 2^-74.410.
 	*/
 
+        // multiply c2+c3*x by x^2
 	d_mul(&ord23h, &ord23l, ord23h, ord23l, xsqh, xsql);
-	/* Expanding the d_mul call we get that:
-	   - |p| <= 2^-52 * (2^-23.997*2^-1.583) <= 2^-77.579.
-	   - |al*bh + p| <= 2^-53.582*2^-23.997 + 2^-77.579 <= 2^-76.578, so that 
-	     |q| <= 2^-76.577 and the associated rounding error is at most 2^-129.
-	   - |ah*bl + q| <= 2^-1.583*2^-74.410 + 2^-76.578 <= 2^-75.256. Therefore
-	     at output |ord23l| <= 2^-75.255 and the associated rounding error is at
-	     most 2^-128.
-	   - the error made by neglecting xsql*ord23l is at most 2^-74.410*2^-53.582
-	     <= 2^-127.991
-	   Propagating the errors on x^2 and c2 + c3x gives an intrinsic error of
+	/* Recall we have |ord23h| <= 2^-1.583, |ord23l| <= 2^-53.582,
+           |xsqh| <= 2^-23.997, |xsql| <= 2^-74.410.
+           Expanding the d_mul call we get that:
+	   - |p| <= 2^-52 * (2^-1.583*2^-23.997) <= 2^-77.580.
+	   - |al*bh + p| <= 2^-53.582*2^-23.997 + 2^-77.580 <= 2^-76.579,
+             so that |q| <= 2^-76.578 and the associated rounding error is
+             at most ulp(2^-76.578) = 2^-129.
+	   - |ah*bl + q| <= 2^-1.583*2^-74.410 + 2^-76.578 <= 2^-75.256.
+             Therefore at output |ord23l| <= 2^-75.255 and the associated
+             rounding error is at most ulp(2^-75.255) = 2^-128.
+	   - the error made by neglecting ord23l*xsql is at most
+             2^-53.582*2^-74.410 <= 2^-127.992.
+	   Propagating the errors on x^2 and c2 + c3*x gives an intrinsic error of
 	   at most :
-	     2^-125.41 * (c2 + 2^-11.999*|c3|) + 2^-105.060*2^(-11.999*2)
-	     + 2^-125.41 * 2^(-11.999*2) <= 2^-126.685
-	   The total absolute error computing x^2(c2 + c3x) is thus bounded by
-	     2^-128+2^-129+2^-127.991+2^-126.685 <= 2^-125.679.
+	     (c2 + 2^-11.999*|c3|) * 2^-125.41 + eps23 * 2^(-11.999*2)
+	     + eps23 * 2^-125.41 <= 2^-126.685
+	   The total absolute error computing x^2(c2 + c3*x) is thus bounded by
+	     2^-129+2^-128+2^-127.992+2^-126.685 <= 2^-125.679:
+             |ord23h + ord23l - (c2*x^2 + c3*x^3)| < 2^-125.679
 	*/
 
 	double x4 = xsqh*xsqh;
 	/* Neglecting 2*xsqh*xsql + xsql^2 creates an error of at most
 	   2*2^-23.997*2^-74.410 + 2^(-74.410*2) <= 2^-97.406.
-	   Also, |xsqh*xsqh| <= 2^(-23.997*2) <= 2^-47.994. Therefore, the rounding
-	   error of the product is at most 2^-100.
+	   Also, |xsqh*xsqh| <= 2^(-23.997*2) <= 2^-47.994. Therefore,
+           the rounding error of the product is <= ulp(2^-47.994) = 2^-100.
 
 	   We obtain that |x4| <= 2^-47.993
 	   and that |x4 - x^4| <= 2^-97.406 + 2^-100 + |(xsqh+xsql)^2 - x^4|
-	                       <= 2^-97.184 + |(xsqh+xsql)+x^2||(xsqh+xsql) - x^2|
-	                       <= 2^-97.184 + (2*(2^-11.999)^2 + 2^-125.41)*2^-125.41
-	                       <= 2^-97.183
+                       <= 2^-97.184 + |(xsqh+xsql) + x^2||(xsqh+xsql) - x^2|
+                       <= 2^-97.184 + (2*(2^-11.999)^2 + 2^-125.41)*2^-125.41
+                       <= 2^-97.183
 	*/
 
 	double acc = __builtin_fma(xh, -0x1.555555555554dp-3/*c5*/,
 	                                0x1.999999999998ap-3/*c4*/);
 	double bcc = __builtin_fma(xh, -0x1.0000014f8ec21p-3/*c7*/,
 	                                0x1.24924ad7557bep-3/*c6*/);
-	/* We compute that |xh*c5 + c4| <= 2^-2.321. This implies that
-	   |acc| <= 2^-2.321 and that the rounding error is at most 2^-55.
-	   Neglecting xl*c5 incurs an error of at most 2^-64*2^-2.584 <= 2^-66.584
+	/* We compute that |xh*c5 + c4| <= 2^-2.3216. This implies that
+	   |acc| <= 2^-2.321 and that its rounding error is at most
+           ulp(2^-2.321) = 2^-55.
+	   Neglecting xl*c5 incurs an error of at most 2^-64*2^-2.584
+           <= 2^-66.584.
 	   The total error computing c4 + c5x is thus at most
-	     2^-55+2^-66.584 <= 2^-54.999.
+	     2^-55+2^-66.584 <= 2^-54.999:
+           |acc - (c4+c5*x)| < 2^-54.999.
 
-	   In the same way, we compute that |xh*c7 + c6| <= 2^-2.807, which implies
-	   |bcc| <= 2^-2.806 and that the rounding error is at most 2^-55.
-	   Neglecting xl*c7 incurs an error of at most 2^-64*2^-2.999 <= 2^-66.999.
+	   In the same way, we compute that |xh*c7 + c6| <= 2^-2.807, which
+           implies |bcc| <= 2^-2.806 and its rounding error is at most
+           ulp(2^-2.806) = 2^-55.
+	   Neglecting xl*c7 incurs an error of at most 2^-64*2^-2.999
+           <= 2^-66.999.
 	   The total error computing c6 + c7x is thus at most
-	     2^-55+2^-66.999 <= 2^-54.999.
+	     2^-55+2^-66.999 <= 2^-54.999:
+           |bcc - (c6+c7*x)| < 2^-54.999.
 	*/
 
+        // approximate c4+c5*x+c6*x^2+c7*x^3
 	acc = __builtin_fma(xsqh, bcc, acc);
-	/* We compute that |xsqh*bcc + acc| <= 2^-23.997*2^-2.806+2^-2.321<= 2^-2.320.
-	   This ensures that at output, |acc| <= 2^-2.319. Also, the rounding error is
-	   at most 2^-55.
+	/* We compute that |xsqh*bcc + acc| <= 2^-23.997*2^-2.806+2^-2.321
+           <= 2^-2.320.
+	   This ensures that at output, |acc| <= 2^-2.319. Also, the rounding
+           error is at most ulp(2^-2.319) = 2^-55.
 	   Since |xsqh+xsql - x^2| <= 2^-125.41, we have
-	   |xsqh - x^2| <= 2^-125.41+2^-74.410 <= 2^-74.409. Propagating the errors
-	   on acc and bcc we get an intrinsic error of 
-	     2^-74.409*2^-2.806 + 2^-54.999*2^(-11.999*2) + 2^-54.999*2^(-11.999*2)
-	     + 2^-54.999 <= 2^-54.998.
-	   The total error computing c4 + c5x + x^2(c6 + c7x) is thus at most
-	    2^-54.998 + 2^-55 <= 2^-53.998 
+	   |xsqh - x^2| <= 2^-125.41+2^-74.410 <= 2^-74.409.
+           We thus get:
+           |acc - (c4+c5*x+c6*x^2+c7*x^3)|
+           <= |acc - (xsqh*bcc+acc_old)| + |xsqh*bcc - (c6*x^2+c7*x^3)|
+              + |acc_old - (c4+c5*x)|
+           <= 2^-55 + |xsqh-x^2|*|bcc| + x^2*|bcc - (c6+c7*x)| + 2^-54.999
+           <= 2^-55 + 2^-74.409*2^-2.806 + 2^-23.998*2^-54.999 + 2^-54.999
+           <= 2^-53.999.
 	*/
 
 	ord01l = __builtin_fma(x4, acc, ord01l);
-	/* Propagating the errors on x4 and acc yields an intrinsic error of
-	     2^-54.999*2^-47.996 + 2^-97.183*2^-2.319 + 2^-97.183*2^-54.999
-	     <= 2^-99.379.
-	   We compute that |x4*acc+ord01l|<=2^-47.993*2^-2.319+2^-51.999 <= 2^-49.921.
-	   This implies that at output |ord01l| <= 2^-49.920 and that the rounding
-	   error is 2^-102 at most.
-	   The error in this step is thus 2^-102+2^-99.379 = 2^-99.161 
+	/* We have |x4 - x| <= 2^-97.183
+                   |acc - (c4+c5*x+c6*x^2+c7*x^3)| <= 2^-53.999 and
+             ord01h + ord01l = c0 + c1*x + eps01 with |eps01| < 2^-103.414.
+	   We compute that |x4*acc+ord01l|<=2^-47.993*2^-2.319+2^-51.999
+           <= 2^-49.921.
+	   This implies that at output |ord01l| <= 2^-49.920 and that the
+           rounding error is at most ulp(2^-49.921) = 2^-102.
+           We deduce with ord01l_old denoting the previous value of ord01l:
+           |ord01h + ord01l - (c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3))|
+           <= 2^-103.414 [approximation error on ord01h + ord01l_old]
+            + 2^-102     [rounding error on ord01l]
+            + |x4*acc - x^4*(c4+c5*x+c6*x^2+c7*x^3)|
+           <= 2^-103.414 + 2^-102 + |x4-x^4|*|acc|
+              + x^4*|acc-(c4+c5*x+c6*x^2+c7*x^3)|
+           <= 2^-103.414 + 2^-102 + 2^-97.183*2^-2.319 + 2^-47.996*2^-53.999
+           <= 2^-98.995.
 	*/
 
 	high_sum(&ord23h, &ord23l, ord01h, ord23h, ord23l);
 	ord23l += ord01l; // Rewrite ? 
 	//add22(&ord01h, &ord01l, ord01h, ord01l, ord23h, ord23l);
-	/* Propagating the errors on subterms gives a total intrinsic error of
-	   2^-99.161 + 2^-105.060 + 2^-103.414 <= 2^-99.064.
+	/* At input, ord01h + ord01l approximates
+           c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3) with error <= 2^-98.995,
+           and ord23h + ord23l approximates c2*x^2 + c3*x^3 with error
+           <= 2^-125.679 (the error eps01 on ord01h + ord01l_old was already
+           taken into account above).
+           This yields a total intrinsic error of
+	   2^-98.995 + 2^-125.679 <= 2^-98.994.
+
+           PZ: stopped review here.
 
 	   Expanding high_sum, we see that the fast_two_sum incurs an error at most
 	   2^-105(1 + 2^-12.998 + 2^-1.583) <= 2^-104.584. We also see that

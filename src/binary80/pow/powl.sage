@@ -309,3 +309,43 @@ def doit_bacsel(y,e,k,t0=None,t1=None,neg=false):
       u0 = t0+h*i
       u1 = min(t0+h*(i+1),t1)
       print ("./doit.sh " + str(u0) + " " + str(u1) + " 64 " + str(e) + " 64 24 64 " + y)
+
+def a_mul(a,b):
+   rh = a*b
+   rl = fma(a,b,-rh)
+   return rh, rl
+
+def d_mul(ah,al,bh,bl):
+   rh, p = a_mul(ah,bh)
+   q = fma(al,bh,p)
+   rl = fma(ah,bl,q)
+   return rh, rl
+
+# return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
+# this internal routine is used below
+def RIFulp(x):
+   return max(x.lower().ulp(),x.upper().ulp())
+
+def analyse_polyeval(rnd='RNDN'):
+   R = RealField(53,rnd=rnd)   
+   err = dict()
+   xh = RIF(-2^-11.999,2^-11.999)
+   xl = RIF(-2^-64,2^-64)
+   ln2invh = RIF(R("0x1.71547652b82fep+0",16))
+   ln2invl = RIF(R("0x1.777d0ffda0d24p-56",16))
+   # d_mul(&scaleh, &scalel, ln2invh, ln2invl, xh, xl)
+   #    a_mul(scaleh, p, ln2invh, xh)
+   #    q = fma(ln2invl, xh, p)
+   #    scalel = fma(ln2invh, xl, q)
+   scaleh = ln2invh*xh
+   u = RIFulp(scaleh)
+   p = RIF(-u,u) # |p| < ulp(scaleh)
+   # a_mul is exact
+   q = ln2invl*xh+p
+   e1 = RIFulp(q) # maximal error for the 1st fma
+   scalel = ln2invh*xl+q
+   e2 = RIFulp(scalel) # maximal error for the 2nd fma
+   err[0] = e1+e2
+   return err[0]
+
+   
