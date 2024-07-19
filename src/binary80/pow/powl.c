@@ -551,8 +551,12 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            and r2 in 13 bits.
            We know that xh is a multiple of 2^-41. Since r2 is a multiple of
            2^-13, then r2*xh is a multiple of 2^-54, and so is r2*xh - 1.
-           Since |r2*xh - 1| <= 2^-12, r2*xh - 1 is exactly representable,
-           and thus the fma() above is exact too. */
+           Since |r2*xh - 1| <= 2^-12, r2*xh - 1 fits in 42 bits,
+           and thus the above fma() is exact too.
+           FIXME: since r2*xh - 1 fits in 42 bits, we could split the
+           initial x into 44+20 bits instead of 33+31, which would make
+           xl smaller, and maybe we can get rid of the renormalization above,
+           and replace the two_sum() below by a fast_two_sum(). */
 
 	two_sum(&xh, &xl, xh, xl); // We probably cannot use Fast2Sum
 	/* At input, we have |xh| <= 1p-12 and |xl| < 2^-32. Therefore at
