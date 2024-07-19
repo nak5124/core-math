@@ -145,39 +145,46 @@ static inline
 void d_mul(double* rh, double* rl, double ah, double al,
                                    double bh, double bl)
 { double p;
-	a_mul(rh, &p, ah, bh);
+        a_mul(rh, &p, ah, bh); // exact
 	double q = __builtin_fma(al, bh, p);
 	*rl = __builtin_fma(ah, bl, q);
 }
 
 #include "powl_tables.h"
 
-/* Let x = xh + xl. Assume |x| <= 2^-11.999.
+/* Let x = xh + xl. Assume |x|, |xh| <= 2^-11.999 and |xl| <= 2^-52 |xl|
 Then polyeval(&rh, &rl, xh, xl) returns in 
 rh + rl an estimate of log2(1 + x) with relative error at most 2^-98.429,
 with |rl| <= 2^-49.066 |rh|.
 */
 static inline
 void polyeval(double* rh, double* rl, double xh, double xl) {
-	/* We approximate log2(1 + x) by x/ln(2) * (c0 + c1*x + ... + c7*x^7)
-	  This polynomial has intrinsic relative error 2^-105.879
-	  (the biggest error we make is in x^4/5 ~> 2^(-52)*2^(-42) = 2^-94
+	/* We approximate log2(1 + x)/x/(ln2invh + ln2invl) by
+           a polynomial c0 + c1*x + ... + c7*x^7 (see powl.sollya).
+	  This polynomial, say p(x), has intrinsic relative error 2^-105.879:
+          log2(1 + x)/x/(ln2invh + ln2invl) = p(x) * (1 + eps1), thus
+          log2(1 + x) = (ln2invh + ln2invl) * x * p(x) * (1 + eps1)
+          with |eps1| < 2^-105.879.
 	*/
-	double ln2invh = 0x1.71547652b82fep+0, ln2invl = 0x1.777d0ffda0d24p-56;
-	double scaleh, scalel; d_mul(&scaleh, &scalel, ln2invh, ln2invl, xh, xl);
-	/* Expanding the d_mul call we get that :
+	static const double ln2invh = 0x1.71547652b82fep+0,
+                            ln2invl = 0x1.777d0ffda0d24p-56;
+        // ln2invh + ln2invl = 1/log(2) * (1 + e) with |e| < 2^-110.066
+	double scaleh, scalel;
+        d_mul(&scaleh, &scalel, ln2invh, ln2invl, xh, xl);
+	/* Expanding the d_mul call we get that:
+             with ah=ln2invh, al=ln2invl, bh=xh, bl=xl:
 	   - |p| <= 2^-52|ah*bh|
-	   - |al*bh+p| <= 2^-55.976|ah*bh| + 2^-104|ah*bh| so that q is such that
-	     |q| <= 2^-55.975|ah*bh| and q's rounding error is
-	     at most 2^-107.975|ah*bh|.
-	   - |ah*bl+q| <= 2^-52|ah*bh| + 2^-55.975|ah*bh| so that
-	     |scalel| <= 2^-51.911|ah*bh| and the final rounding error is at most
-	     2^-103.911|ah*bh|.
+	   - |al*bh+p| <= 2^-55.976|ah*bh| + 2^-52|ah*bh| so that
+	     |q| <= 2^-51.911|ah*bh| and q's rounding error is
+	     at most 2^-103.811|ah*bh|.
+	   - |ah*bl+q| <= 2^-52|ah*bh| + 2^-51.911|ah*bh| so that
+	     |scalel| <= 2^-50.954|ah*bh| and scalel's rounding error is
+	     at most 2^-102.954|ah*bh|.
 	   - the error neglecting |al*bl| is at most 2^-52*2^-55.976|ah*bh|
 	   The total relative error in terms of |ah*bh| is thus at most
-	     2^-107.976 + 2^-103.91 + 2^-107.975 <= 2^-103.747.
-	   Expressing the error relative to ln2inv*x, we get a relative error at most
-	     2^-103.746.
+	     2^-103.811 + 2^-102.954 + 2^-107.979 <= 2^-102.291.
+	   Expressing the error relative to ln2inv*x, we get a relative error
+           at most 2^-102.290.
 	*/
 
 	double ord01h, ord01l;
@@ -564,8 +571,9 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   xr = xh + xl is such that |xr| <= 2^-11.999.
 
 	   We use two_sum because we have no guarantees on the relative
-	   sizes of xh and xl. However, since we know |xl| < 2^-32, if the
-           Fast2Sum condition is not fulfilled, this would mean |xh| < 2^-33,
+	   sizes of xh and xl. However, since we know |xl| < 2^-32 at input,
+           if the Fast2Sum condition is not fulfilled, this would mean
+           |xh| < 2^-33,
            Theorem 2 from reference [1] than says that if we used Fast2Sum,
            the rounding error would be less than 3 2^-53 |xh|, thus less than
            3 * 2^-53 * (2^-33 + 2^-32) < 2^-82.830.
