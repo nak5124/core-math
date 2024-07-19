@@ -246,7 +246,8 @@ double cr_atan(double x){
     // |x| > 0x1.2ded8e34a9035p+7
     ah = __builtin_copysign(0x1.921fb54442d18p+0, x);
     al = __builtin_copysign(0x1.1a62633145c07p-54, x);
-    if (__builtin_expect(at >= 0x434d02967c31cdb5ul, 0)) { // |x| is large
+    if (__builtin_expect(at >= 0x434d02967c31cdb5ul, 0)) {
+      // |x| >= 0x1.d02967c31cdb5p+53
       if (__builtin_expect(at > (0x7fful<<52), 0)) return x; // NaN
       return ah + al;
     }
