@@ -44,6 +44,7 @@ SOFTWARE.
 #define SAGE_RR "R(\"%a\",16)"
 #define SAGE_RE "R(\"%La\",16)"
 #define SAGE_DD "(R(\"%a\",16)+R(\"%a\",16))"
+#define SAGE_QR "R(\"0x0.%016lx%016lx%016lx%016lxp%ld\", 16)*2*(-1)^%lu"
 #else
 #define POWL_DPRINTF(...)
 #endif
@@ -62,6 +63,7 @@ typedef union {
 	uint64_t u;
 } b64u64_t;
 
+#include "qint.h"
 static inline int get_rounding_mode (void)
 {
 #ifdef __x86_64__
@@ -446,7 +448,6 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	POWL_DPRINTF("r1 = " SAGE_RR "\n", r1);
 
 	// Eliminated if POWL_DEBUG is not defined	
-	if(l.z) {POWL_DPRINTF("sx = sx/2\nei+=1\n");}
 	xh *= r1; xl *= r1;
         /* The above multiplications are exact.
            now xh fits in 42 bits at most, xl in 40.
@@ -946,11 +947,11 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 		int shiftby = 1 - wanted_exponent;
 
 		if(__builtin_expect(shiftby == 64, 0)) {
-			return 0x1p-16445L * .75L;
+			return (invert ? -0x1p-16445L : 0x1p-16445L) * .75L;
 		}
 
 		if(__builtin_expect(shiftby > 64, 0)) {	
-				return 0x1p-16445L * .25L;
+				return (invert ? -0x1p-16445L : 0x1p-16445L) * .25L;
 		}
 		ml = (uint64_t)ml >> shiftby;
 		ml |= mh << (64 - shiftby);
@@ -988,7 +989,7 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 	b80u80_t v;	
 	v.m = mh; // mantissa
 	v.e = wanted_exponent; // exponent
-	if(__builtin_expect(invert, 0)) {v.e += (1<<16);}
+	if(__builtin_expect(invert, 0)) {v.e += (1<<15);}
 	bool b1 = (uint64_t)(ml + eps) <= (uint64_t)(2*eps); 
 	*fail = b1;
 
@@ -998,9 +999,266 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 
 	// Infinity output case
 	if(__builtin_expect(wanted_exponent >= 32767, 0)) {
-		return 0x1p16383L + 0x1p16383L;
+		return (invert ? -0x1p16383L - 0x1p16383L : 0x1p16383L + 0x1p16383L);
 	}
 	return v.f;
+}
+
+// x has only its upper 2 limbs nonzero
+inline static
+void q_logpoly(qint64_t* r, const qint64_t* x) {
+	/* We use a naïve Horner scheme as a placeholder,
+	   can most definitely be improved.
+
+	   Coefficients for log2(1 + x)/x
+	*/
+	static const qint64_t P[19] = {
+    {.hh = 0x9b81e344cc4acd3f, .hl = 0x5d1b6197f381b711, .lh = 0x686a64bc8f736278, .ll = 0x1711add7c4ccfb91, .ex = -4, .sgn = 0x0}, /* degree 18 */
+    {.hh = 0xa4258caa9366101d, .hl = 0xdf3c5cc7acf3d865, .lh = 0xac62d361b06d261d, .ll = 0x3f20e4fc49eaab31, .ex = -4, .sgn = 0x1}, /* degree 17 */
+    {.hh = 0xadcd64dba1f4c039, .hl = 0x2cdddfdd50f72d6e, .lh = 0x4ab8ddc595e99b35, .ll = 0xae0a612898ed178e, .ex = -4, .sgn = 0x0}, /* degree 16 */
+    {.hh = 0xb8aa3b295c127161, .hl = 0xfba18fda417284a8, .lh = 0xf221f16032a256a1, .ll = 0xbc4b6c58360e6b6b, .ex = -4, .sgn = 0x1}, /* degree 15 */
+    {.hh = 0xc4f9d8b4a67fefb7, .hl = 0x3425410828a39116, .lh = 0xa5ac6790971c8ad1, .ll = 0xbabc8f1b73a70e8, .ex = -4, .sgn = 0x0}, /* degree 14 */
+    {.hh = 0xd30bb153d6f6c9fb, .hl = 0x28e9fdc71fab7b48, .lh = 0xeeed752c9b6bc0f7, .ll = 0xcb18d704648f7791, .ex = -4, .sgn = 0x1}, /* degree 13 */
+    {.hh = 0xe347ab4698bb00e7, .hl = 0x11e274b19fcf82c9, .lh = 0xffcdbd54ac8584a0, .ll = 0xd8016b2c5eb3e814, .ex = -4, .sgn = 0x0}, /* degree 12 */
+    {.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa911f62b593a, .lh = 0xca0546b8500f7cf3, .ll = 0x317f22dda062e439, .ex = -4, .sgn = 0x1}, /* degree 11 */
+    {.hh = 0x864d424ca0116942, .hl = 0xb91d166906a0e72e, .lh = 0xfbc828fed851908a, .ll = 0x31c745705fdaef91, .ex = -3, .sgn = 0x0}, /* degree 10 */
+    {.hh = 0x93bb62877cdff3c9, .hl = 0x653998a6ba7dcc66, .lh = 0x16bdfd5e77e0dcab, .ll = 0x5b6982c68790588e, .ex = -3, .sgn = 0x1}, /* degree 9 */
+    {.hh = 0xa42589ebe01547c3, .hl = 0x54071b63eba83796, .lh = 0x2686f8891574e631, .ll = 0x8d661611c8a1f1b1, .ex = -3, .sgn = 0x0}, /* degree 8 */
+    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb574d0da8d33054, .ll = 0xcd950b061011f17b, .ex = -3, .sgn = 0x1}, /* degree 7 */
+    {.hh = 0xd30bb153d6f6c9fb, .hl = 0x22e490ee2efcd9c1, .lh = 0xcf6430a218437c7, .ll = 0x94f25632b58926c, .ex = -3, .sgn = 0x0}, /* degree 6 */
+    {.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa915e17c5361, .lh = 0x39c9f8e1273cd88d, .ll = 0x96a101a6e32c3197, .ex = -3, .sgn = 0x1}, /* degree 5 */
+    {.hh = 0x93bb62877cdff3c9, .hl = 0x653998a6ba7dcba0, .lh = 0xbc45fbba4abaaead, .ll = 0x3dee003a9577997c, .ex = -2, .sgn = 0x0}, /* degree 4 */
+    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8afb83221b926b8e, .ex = -2, .sgn = 0x1}, /* degree 3 */
+    {.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa915e17c5361, .lh = 0x39c9f8e127372320, .ll = 0xb986c890fa1e97e5, .ex = -2, .sgn = 0x0}, /* degree 2 */
+    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8b25166cd1fa0378, .ex = -1, .sgn = 0x1}, /* degree 1 */
+    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8b25166cd1a13248, .ex = 0, .sgn = 0x0}, /* degree 0 */
+};
+
+	mul_qint(r, &P[0], x);
+
+	for(int i = 1; i <= 18; i++) {
+			add_qint(r, &P[i], r);
+			mul_qint(r, r, x);
+	}
+}
+
+inline static
+void q_log2pow(qint64_t* r, long double x, long double y) {
+	b80u80_t cvt_x = {.f = x};
+	int extra_int = (cvt_x.e&0x7fff) - 16383;
+	int shiftamnt = __builtin_clzl(cvt_x.m); // We know x is not 0 so not UB
+
+	POWL_DPRINTF("x0 = abs(" SAGE_RE ")\n", x);
+	POWL_DPRINTF("shiftamnt = %d\n", shiftamnt);
+	POWL_DPRINTF("y = "SAGE_RE"\n", y);
+
+	extra_int -= shiftamnt ? (shiftamnt - 1) : 0;
+	cvt_x.m <<= shiftamnt; // Handle denormals
+	cvt_x.e = 16383; // new wanted exponent
+	x = cvt_x.f; // original x = 2^extra_int * x
+	POWL_DPRINTF("get_hex(x0 - 2^%d *"SAGE_RE")\n", extra_int, x);
+
+	/* Really, this is the same as in the fastpath. Try to merge to reduce
+	   code cache footprint ?
+	*/
+	double xh, xl; // 33 and 31 bits
+	split(&xh, &xl, x);
+
+	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
+	// Uses the high 7 bits of x's mantissa.
+	lut_t l = coarse[cvt_x.m>>56 & 0x7f];
+	POWL_DPRINTF("key=0x%lx\n", (cvt_x.m>>56 & 0x7f));
+	extra_int += l.z;
+	xh *= l.r; xl *= l.r; // exact
+
+	b64u64_t cvt_xh = {.f = xh};
+	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f];
+	// bit 52 goes to 6+5 = 11. Bits 11 - 8
+	POWL_DPRINTF("key2 = 0x%lx\n", (cvt_xh.u>>40 & 0x7f));
+	POWL_DPRINTF("r1 = " SAGE_RR "\n", l.r);
+	POWL_DPRINTF("r2 = " SAGE_RR "\n", l2.r);
+	xh = __builtin_fma(l2.r, xh, -1); xl *= l2.r;
+
+	qint64_t reducted[1];
+	qint_fromdd(reducted, xh, xl);
+	POWL_DPRINTF("reducted = "SAGE_QR"\n",
+	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,
+	   reducted->ex, reducted->sgn);
+	POWL_DPRINTF("get_hex(R(reducted-"SAGE_DD"))\n",xh,xl);
+
+	qint64_t reduction[1];
+	qint_fromsi(reduction, extra_int);
+	POWL_DPRINTF("get_hex(R("SAGE_QR"-%d))\n",
+	   reduction->hh, reduction->hl, reduction->lh, reduction->ll,
+	   reduction->ex, reduction->sgn, extra_int);
+
+	add_qint(reduction, &acc_coarsetbl[cvt_x.m>>56 & 0x7f], reduction);
+	add_qint(reduction, &acc_finetbl[(cvt_xh.u>>40) & 0x7f],reduction); 
+	/* We have log2(x)= reduction + log2(1 + xr) */
+	POWL_DPRINTF("reduction = R("SAGE_QR")\n",
+	   reduction->hh, reduction->hl, reduction->lh, reduction->ll,
+	   reduction->ex, reduction->sgn);
+	POWL_DPRINTF("get_hex(R(reduction + log2(r1) + log2(r2) - ei))\n");
+
+	qint64_t q_y[1];
+	qint_fromld(q_y, y);
+	POWL_DPRINTF("get_hex(y - "SAGE_QR")\n",
+	   q_y->hh, q_y->hl, q_y->lh, q_y->ll, q_y->ex, q_y->sgn);
+
+	q_logpoly(r, reducted);
+	POWL_DPRINTF("get_hex(R(log2(1 + reducted) -"SAGE_QR"))\n",
+	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
+	add_qint(r, reduction, r);
+	mul_qint_41(r, r, q_y);
+	POWL_DPRINTF("get_hex(R(y*log2(x0)-"SAGE_QR"))\n",
+	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
+}
+
+inline static
+void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
+	int i0 = fracpart & 0x1f;
+	int i1 = (fracpart >> 5) & 0x1f;
+	int i2 = (fracpart >> 10) & 0x1f;
+	int i3 = (fracpart >> 15) & 0x1f;
+
+	qint64_t tmp0[1], tmp1[1], tmp2[1], tmp3[1];
+	qint_fromdd(tmp0, t0[i0][0], t0[i0][1]); corr_t corr0 = t0_corr[i0];
+	qint_fromdd(tmp1, t1[i1][0], t1[i1][1]); corr_t corr1 = t1_corr[i1];
+	qint_fromdd(tmp2, t2[i2][0], t2[i2][1]); corr_t corr2 = t2_corr[i2];
+	qint_fromdd(tmp3, t3[i3][0], t3[i3][1]); corr_t corr3 = t3_corr[i3];
+
+	POWL_DPRINTF("get_hex(R("SAGE_QR"-2^(%d/2^20)))\n",
+	   tmp0->hh, tmp0->hl, tmp0->lh, tmp0->ll, tmp0->ex, tmp0->sgn, i0);
+	POWL_DPRINTF("get_hex(R("SAGE_QR"-2^(%d/2^15)))\n",
+	   tmp1->hh, tmp1->hl, tmp1->lh, tmp1->ll, tmp1->ex, tmp1->sgn, i1);
+	POWL_DPRINTF("get_hex(R("SAGE_QR"-2^(%d/2^10)))\n",
+	   tmp2->hh, tmp2->hl, tmp2->lh, tmp2->ll, tmp2->ex, tmp2->sgn, i2);
+	POWL_DPRINTF("get_hex(R("SAGE_QR"-2^(%d/2^5)))\n",
+	   tmp3->hh, tmp3->hl, tmp3->lh, tmp3->ll, tmp0->ex, tmp0->sgn, i3);
+
+	int exponent = -116;
+	int sgn = 0;
+	int64_t  corr_h = corr0.h + corr1.h + corr2.h + corr3.h;
+	unsigned __int128 corr_l = corr0.l + corr1.l + corr2.l + corr3.l;
+
+	corr_h += (unsigned)(corr_l >> 126); // add carry
+	corr_l <<= 2; // shift out overlap
+
+	sgn = corr_h < 0; // Assumes we never have corr_h = 0 unless everything is 0
+	if(sgn) {
+	   // Convert to sign and magnitude. Can be seen like as a 196 2s complement
+	   // mantissa being inverted
+		 corr_h = -corr_h - 1;
+		 corr_l = -corr_l;
+	}
+
+	// Again, if corr_h == 0 then necessarily everything is 0.
+	if(__builtin_expect(corr_h == 0, 0)) {
+		cp_qint(corr, &ZERO_Q);
+	} else {
+		int shift = __builtin_clzl(corr_h);
+		POWL_DPRINTF("shift = %d\n", shift);
+		corr_h <<= shift;
+		corr_h |= shift ? (corr_l >> (128 - shift)) : 0;
+		corr_l <<= shift;
+		corr->hh = corr_h;
+		corr->hl = corr_l >> 64;
+		corr->lh = (uint64_t) corr_l;
+		corr->ll = 0;
+		corr->sgn = sgn;
+		corr->ex = exponent + shift;
+	}
+
+	qint64_t acc0[1], acc1[1];
+	mul_qint_22(acc0, tmp0, tmp1);
+	mul_qint_22(acc1, tmp2, tmp3);
+	mul_qint(r, acc0, acc1);
+}
+
+/* Approximates 2^x with a polynomial for |x| < 2^-20 */
+inline static
+void q_exp2poly(qint64_t* r, const qint64_t* x) {
+	static const qint64_t Q[11] = {
+    {.hh = 0xf267a8ac5c749bda, .hl = 0x7865836d373adb84, .lh = 0x635d2e2ca85170c0, .ll = 0xf8ee1545560b1526, .ex = -28, .sgn = 0x0}, /* degree 10 */
+    {.hh = 0xda929e9caf40bee9, .hl = 0x28ba8e19d9f759aa, .lh = 0x96547a8fd7ed0b86, .ll = 0x47d8a68e75663946, .ex = -24, .sgn = 0x0}, /* degree 9 */
+    {.hh = 0xb160111d2e411fec, .hl = 0x7ff30374d01bb8c4, .lh = 0xf116dc310a212be3, .ll = 0x6f732ad9e39ac6cc, .ex = -20, .sgn = 0x0}, /* degree 8 */
+    {.hh = 0xffe5fe2c45863435, .hl = 0x8a8e64398706e1c2, .lh = 0x98bacaaf195ab440, .ll = 0x16313911f8a7556f, .ex = -17, .sgn = 0x0}, /* degree 7 */
+    {.hh = 0xa184897c363c3b7a, .hl = 0x58544c3591a0f9f6, .lh = 0x62916db60594cac7, .ll = 0xa8da1b73cb7c4d60, .ex = -13, .sgn = 0x0}, /* degree 6 */
+    {.hh = 0xaec3ff3c53398883, .hl = 0x8bfb4d28a5f61982, .lh = 0xbb69ccdf430a8a3e, .ll = 0xfd0b892be341d779, .ex = -10, .sgn = 0x0}, /* degree 5 */
+    {.hh = 0x9d955b7dd273b94e, .hl = 0x65df05a9f7562839, .lh = 0x23c7529f31c88ec9, .ll = 0x10b35f45a1d79617, .ex = -7, .sgn = 0x0}, /* degree 4 */
+    {.hh = 0xe35846b82505fc59, .hl = 0x9d3b15d995e96f74, .lh = 0xf5c47444da0110e2, .ll = 0x5a29dd80013101b9, .ex = -5, .sgn = 0x0}, /* degree 3 */
+    {.hh = 0xf5fdeffc162c7543, .hl = 0x78b583764b9afe55, .lh = 0x1d13a8e186734ea6, .ll = 0x15f49ddd89a9bc77, .ex = -3, .sgn = 0x0}, /* degree 2 */
+    {.hh = 0xb17217f7d1cf79ab, .hl = 0xc9e3b39803f2f6af, .lh = 0x40f343267298b62d, .ll = 0x8a0d175b8bb03a5a, .ex = -1, .sgn = 0x0}, /* degree 1 */
+    {.hh = 0x8000000000000000, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x0}, /* degree 0 */
+};
+
+	cp_qint(r, &Q[0]);
+
+	for(int i = 1; i < 11; i++) {
+		mul_qint(r, r, x);
+		add_qint(r, &Q[i], r);
+	}
+}
+
+
+/* Compute 2^x */
+inline static
+void q_exp2(qint64_t* r, const qint64_t* x) {
+	POWL_DPRINTF("l = "SAGE_QR"\n",
+	   x->hh, x->hl, x->lh, x->ll, x->ex, x->sgn);
+	uint64_t xs = (x->hh >> (43 - x->ex)); // low bit has weight 2^-20
+	qint64_t reducted[1];
+	reducted->hh = xs << (43 - x->ex);
+	reducted->hl = reducted->lh = reducted->ll = 0;
+	reducted->sgn = x->sgn ^ 1;
+	reducted->ex = x->ex;
+	add_qint(reducted, x, reducted);
+	// With inlining, probably almost as fast as doing it by hand	
+	
+	// Split xs * (-1)^x->sgn into entire part and fractional part
+	int extra_exp;
+	uint64_t fracpart;
+	if(x->sgn) {
+		fracpart = (1 << 20) - xs; // Only the low bits matter, check that 0 -> 0.
+		if(__builtin_expect(xs & 0xfffff, 1)) {
+			extra_exp = -(xs>>20) - 1;
+		} else {
+			extra_exp = -(xs>>20);
+		}
+	} else {
+		extra_exp = xs>>20;
+		fracpart  = xs;
+	}
+
+	POWL_DPRINTF("extra_exp = %d\nfracpart = 0x%05lx\n",
+	   extra_exp, fracpart&0xfffff);
+
+	qint64_t corr[1], exp2frac[1];
+	q_exp2xs(exp2frac, fracpart, corr);
+	POWL_DPRINTF("exp2frac = "SAGE_QR"\n",
+	   exp2frac->hh, exp2frac->hl, exp2frac->lh, exp2frac->ll,
+	   exp2frac->ex, exp2frac->sgn);
+	POWL_DPRINTF("corr = "SAGE_QR"\n",
+	   corr->hh, corr->hl, corr->lh, corr->ll, corr->ex, corr->sgn);
+	corr->sgn ^= 1;
+	add_qint(reducted, corr, reducted);
+	POWL_DPRINTF("red = "SAGE_QR"\n",
+	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,
+	   reducted->ex, reducted->sgn);
+	POWL_DPRINTF("get_hex(R(exp2frac*2^(-corr) - 2^(fracpart/2^20)))\n");
+	POWL_DPRINTF("get_hex(R(2^l - exp2frac*2^red*2^extra_exp))\n");
+	
+	qint64_t exp2red[1];
+	q_exp2poly(exp2red, reducted);
+	POWL_DPRINTF("exp2red = "SAGE_QR"\n",
+	   exp2red->hh, exp2red->hl, exp2red->lh, exp2red->ll,
+	   exp2red->ex, exp2red->sgn);
+	POWL_DPRINTF("get_hex(R(2^red - exp2red))\n");
+	mul_qint(r, exp2red, exp2frac);
+	r->ex += extra_exp;
+	POWL_DPRINTF("r = "SAGE_QR"\n",
+	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
+	POWL_DPRINTF("get_hex(R(2^l - r))\n");
 }
 
 inline static
@@ -1126,30 +1384,38 @@ long double cr_powl(long double x, long double y) {
 
         // now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 
-	if(__builtin_expect((int64_t)cvt_x.m < 0, 1)) { // x is normal
+	// Automatic giveup if x subnormal
+	if(__builtin_expect(cvt_x.m >> 63, 1)) {
+		long double r;
 		double rh, rl;
 		POWL_DPRINTF("x="SAGE_RE"\n",x);
 		POWL_DPRINTF("y="SAGE_RE"\n",y);
 		compute_log2pow(&rh, &rl, x, y);
-    // rh + rl approximates y*log2(x)
-		POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
-		long double r;
+
 		if(__builtin_expect(rh <= -16445.2, 0)) {
 			return (sign * 0x1p-16445L) * .5L;
 		} else if(__builtin_expect(rh >= 16384.5, 0)) {
-                  return sign * 0x1p16383L + sign * 0x1p16383L;
-	  } else if(__builtin_expect(rh < 0x1p-66 && rh > -0x1p-66, 0)) {
+			return sign * 0x1p16383L + sign * 0x1p16383L;
+		} else if(__builtin_expect(rh < 0x1p-66 && rh > -0x1p-66, 0)) {
 		  return sign * 1.L + sign * rh;
-	    // If |rh| is sufficiently small, even with the error margin we know
-	    // how x^y rounds.
+	  	// If |rh| is sufficiently small, even with the error margin we know
+	  	// how x^y rounds.
 		} else {
+			// rh + rl approximates y*log2(x)
+			POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
 			double resh, resl;
 			int extra_exponent = exp2d(&resh, &resl, rh, rl);
 			bool fail = false;
 			r = fastpath_roundtest(resh, resl, extra_exponent, invert, &fail);
-			if(__builtin_expect(fail, 0)) {return -1.;}
+			if(__builtin_expect(!fail, 1)) {	
+				POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
+				return r;
+			}
 		}
-		POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
-		return r;
-	} else {return -1.;} // x subnormal
+	} // Fastpath failed or x was subnormal
+ 
+	qint64_t q_r[1]; q_log2pow(q_r, x, y);
+	q_exp2(q_r, q_r);
+	unsigned rm = get_rounding_mode();
+	return qint_told(q_r,rm, invert);
 }
