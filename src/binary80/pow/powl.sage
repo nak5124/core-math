@@ -63,7 +63,7 @@ def get_coarsetbl(m = 9, L = 7):
 		h, l, err = get_hl (minimizer*2**z) # we have z+h+l ~= -log2(minimizer)
 		maxhl = max(maxhl, abs(h+l))
 		maxerr = max(maxerr, err)
-		T[i] = (h, l)
+		T[i] = (h, l, minimizer)
 		print ("{" + get_hex(Rm(minimizer)) + ", "
 				+ get_hex(h) + ", " + get_hex(l) + ","
 				+ str(z) + "},//" + get_hex(R(minr)))
@@ -114,7 +114,7 @@ def get_finetbl(m = 13, L = 7):
 		z = 0
 		maxmin = max(maxmin, minr)
 		h, l, err = get_hl (minimizer)
-		T[i] = (h,l)
+		T[i] = (h,l, minimizer)
 		maxerr = max(maxerr, err)
 		if i // 2**(L-2) == 1: # unused entries
 			print("{0,0,0,0}, // unused")
@@ -196,6 +196,72 @@ def analyse_second_high_sum(extra_int_min=-16382):
                if err>maxerr:
                   maxerr = err
                   print ("extra_int=", extra_int, "r=", 'RND'+r, "i1=", i1, "i2=", i2, "err=", log(err)/log(2.))
+
+# For each member of L, print its -log2(minimizer) as a qint64.
+# extracted from binary64/pow/qint.sage
+def accurate_logs(L):
+	R64 = RealField(64)
+	R = RealField(256)
+	for a,b,r in L:
+		x = R(n(log2(r), 300))
+		s,m,e = x.sign_mantissa_exponent()
+		assert m==0 or m.nbits()==256, "m==0 or m.nbits()==256"
+		l = (2^256+m).digits(2^64)
+		if(l[1] == 0): # Ensure 0 gets exponent 0
+			e = -255
+		# we store -log2(x) thus we change signs
+		if s==1:
+			print ("    {.hh = " + hex(l[3]) + ", .hl = " + hex(l[2]) +
+		            ", .lh = "+ hex(l[1]) + ", .ll = " + hex(l[0]) +
+		            ", .ex = " + str(e+255) + ", .sgn = 0x1},")
+		else: # s=-1
+			print ("    {.hh = " + hex(l[3]) + ", .hl = " + hex(l[2]) +
+		            ", .lh = "+ hex(l[1]) + ", .ll = " + hex(l[0]) +
+		            ", .ex = " + str(e+255) + ", .sgn = 0x0},")
+
+def format_sollya_poly(s):
+	R256 = RealField(256)
+	R.<x> = R256[]
+	p = R(s)
+	n = p.degree()
+	print(n)
+	for i in range(n, -1, -1):
+		c = p[i]
+		s,m,e = c.sign_mantissa_exponent()
+		while m.nbits()<256:
+			m = 2*m
+			e = e-1
+		assert m.nbits()==256, "m.nbits()==256"
+		l = m.digits(2^64)
+		if s==1:
+			print ("    {.hh = " + hex(l[3]) + ", .hl = " + hex(l[2]) + ", .lh = " +
+		hex(l[1]) + ", .ll = " + hex(l[0]) + ", .ex = " + str(e+255) +
+		", .sgn = 0x0}, /* degree " + str(i) + " */")
+		else: # s=-1
+			print ("    {.hh = " + hex(l[3]) + ", .hl = " + hex(l[2]) + ", .lh = " +
+		hex(l[1]) + ", .ll = " + hex(l[0]) + ", .ex = " + str(e+255) +
+		", .sgn = 0x1}, /* degree " + str(i) + " */")
+
+def corr_tk(k=0):
+   maxerr = 0
+   R = RealField(53)
+   print("static const corr_t t"+str(k)+"_corr[32] = {")
+   for i in range(2^5):
+      x = n(2^(i/2^(20-5*k)), 400)
+      h = R(x)
+      l = R(x-h.exact_rational())
+      t = h.exact_rational() + l.exact_rational()
+      e = n(log(t)/log(2) - i/2^(20-5*k), 600)
+      corrhi  = floor(e * 2^167)
+      corrloh = floor((e * 2^167 - corrhi)*2^62)
+      corrlol = floor(((e * 2^167 - corrhi)*2^62 - corrloh)*2^64)
+      assert abs(corrhi) < 2^61, "abs(corrhi) < 2^61"
+      print("   {.h=" + str(corrhi) + "L,.lh=" + str(corrloh) +
+                                      "UL,.ll=" + str(corrlol) + "UL},")
+      err_acc = abs(corrhi/2^167 + corrloh/2^(167+62) + corrlol/2^(167+62+64)-e)
+      maxerr = max(maxerr, err_acc)
+   print ("};")
+   print ("Error " + str(log(maxerr)/log(2.)))
 
 def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
    y = R64(y)
