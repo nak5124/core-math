@@ -134,6 +134,12 @@ def fast_two_sum(a,b):
    rl = b - e
    return rh, rl
 
+# return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
+# this internal routine is used below
+def RIFulp(x):
+   return max(x.lower().ulp(),x.upper().ulp())
+
+# return the results of high_sum and the maximal absolute error
 def high_sum(a,bh,bl):
    rh, e = fast_two_sum (a, bh)
    rl = bl + e
@@ -398,18 +404,55 @@ def d_mul(ah,al,bh,bl):
    rl = fma(ah,bl,q)
    return rh, rl
 
-# return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
-# this internal routine is used below
-def RIFulp(x):
-   return max(x.lower().ulp(),x.upper().ulp())
+# return the results of high_sum and the maximal absolute error
+def high_sum_RIF(a,bh,bl):
+   # rh, e = fast_two_sum (a, bh)
+   rh = a + bh
+   u = RIFulp(rh)
+   e = RIF(-u,u)
+   err1 = 2^-105*rh.abs().upper()
+   rl = bl + e
+   err2 = RIFulp(rl)
+   return rh, rl, err1+err2
 
-def analyse_polyeval(rnd='RNDN'):
-   R = RealField(53,rnd=rnd)   
+# return bound on absolute error
+def d_mul_RIF(ah,al,bh,bl):
+   # rh, p = a_mul(ah,bh)
+   rh = ah*bh
+   u = RIFulp(rh)
+   p = RIF(-u,u)
+   # q = fma(al,bh,p)
+   q = al*bh+p
+   # rl = fma(ah,bl,q)
+   rl = ah*bl+q
+   return rh, rl, RIFulp(q)+RIFulp(rl)+(al*bl).abs().upper()
+
+# return bound on relative error in terms of |ah|
+# assuming |al| <= scalea*|ah|, |bl| <= scaleb*|bh|
+def d_mul_RIF_rel(ah,al,scalea,bh,bl):
+   # rh, p = a_mul(ah,bh)
+   rh = ah*bh
+   u = RIFulp(rh)
+   p = RIF(-u,u) # |p| <= 2^-52 |ah*bh|
+   # q = fma(al,bh,p)
+   q = al*bh+p
+   qmax = (scalea+2^-52)*bh.abs().upper() # |q| <= qmax*|ah|
+   err_q = 2^-52*qmax # err(q) <= err_q*|ah|
+   # rl = fma(ah,bl,q)
+   rl = ah*bl+RIF(q)
+   rlmax = bl.abs().upper() + qmax
+   err_rl = rlmax*2^-52  # err(rl) <= err_rl*|ah|
+   return rh, rl, err_q+err_rl
+
+def analyse_polyeval():
+   R200 = RealField(200)
    err = dict()
    xh = RIF(-2^-11.999,2^-11.999)
    xl = RIF(-2^-64,2^-64)
-   ln2invh = RIF(R("0x1.71547652b82fep+0",16))
-   ln2invl = RIF(R("0x1.777d0ffda0d24p-56",16))
+   x = xh+xl
+   ln2invh = RIF(RR("0x1.71547652b82fep+0",16))
+   ln2invl = RIF(RR("0x1.777d0ffda0d24p-56",16))
+   ln2inv = ln2invh+ln2invl
    # d_mul(&scaleh, &scalel, ln2invh, ln2invl, xh, xl)
    #    a_mul(scaleh, p, ln2invh, xh)
    #    q = fma(ln2invl, xh, p)
@@ -418,11 +461,104 @@ def analyse_polyeval(rnd='RNDN'):
    u = RIFulp(scaleh)
    p = RIF(-u,u) # |p| < ulp(scaleh)
    # a_mul is exact
-   q = ln2invl*xh+p
-   e1 = RIFulp(q) # maximal error for the 1st fma
-   scalel = ln2invh*xl+q
-   e2 = RIFulp(scalel) # maximal error for the 2nd fma
-   err[0] = e1+e2
-   return err[0]
-
-   
+   q = (ln2invl/ln2invh).upper()+2^-52 # in terms of scaleh
+   e1 = 2^-52*q # maximal error for the 1st fma in terms of scaleh
+   print ("   e1=", log(e1)/log(2.))
+   scalel = RIF(2^-52+q) # |xl| <= 2^-52 |xl|
+   e2 = 2^-52*scalel.abs().upper()
+   print ("   e2=", log(e2)/log(2.))
+   e3 = (ln2invl/ln2invh).upper()*2^-52 # error neglecting scalel*xl
+   print ("   e3=", log(e3)/log(2.))
+   e_scale = (1+R200(e1))*(1+R200(e2))*(1+R200(e3))-1
+   print ("e_scale=", log(e_scale)/log(2.))
+   # ord01h = -xh/2; ord01l = -xl/2;
+   ord01h = -xh/2
+   ord01l = -xl/2
+   # high_sum(&ord01h, &ord01l, 1.0, ord01h, ord01l)
+   ord01h, ord01l, err01 = high_sum_RIF(RIF(1.0), ord01h, ord01l)
+   print ("err01=", log(err01)/log(2.))
+   # ord23h = -xh/4
+   ord23h = -xh/4
+   # ord23l = __builtin_fma(-xl, 1./4, 0x1.55555a5b705aap-56)
+   ord23l = -xl*1/4+RIF(RR("0x1.55555a5b705aap-56",16))
+   # high_sum(&ord23h, &ord23l, 0x1.5555555555555p-2, ord23h, ord23l)
+   c2h = RIF(RR("0x1.5555555555555p-2",16))
+   ord23l_old = ord23l
+   ord23h, ord23l, err23 = high_sum_RIF(c2h, ord23h, ord23l)
+   err23 += RIFulp(ord23l_old) # error of the fma()
+   print ("err23=", log(err23)/log(2.))
+   # d_mul(&xsqh, &xsql, xh, xl, xh, xl)
+   xsqh, xsql, err_xsq = d_mul_RIF(xh, xl, xh, xl)
+   print ("err_xsq=", log(err_xsq)/log(2.))
+   # d_mul(&ord23h, &ord23l, ord23h, ord23l, xsqh, xsql)
+   ord23 = ord23h + ord23l
+   ord23h, ord23l, err_23 = d_mul_RIF(ord23h, ord23l, xsqh, xsql)
+   # add error on xsq
+   err_23 += (ord23*RIF(err_xsq)).abs().upper()
+   # add error on ord23
+   err_23 += (RIF(err23)*(xsqh+xsql)).abs().upper()
+   # add product of errors
+   err_23 += err23*err_xsq
+   print ("err_23=", log(err_23)/log(2.))
+   # x4 = xsqh*xsqh
+   x4 = xsqh*xsqh
+   err_x4 = RIFulp(x4)
+   # neglected terms
+   err_x4 += (2*xsqh*xsql+xsql^2).abs().upper()
+   # difference between xsq and x^2
+   err_x4 += (2*RIF(err_xsq)*x+RIF(err_xsq)^2).abs().upper()
+   print ("err_x4=", log(err_x4)/log(2.))
+   # acc = fma(xh, -0x1.555555555554dp-3, 0x1.999999999998ap-3)
+   c5 = RIF(RR("-0x1.555555555554dp-3",16))
+   c4 = RIF(RR("0x1.999999999998ap-3",16))
+   acc = xh*c5+c4
+   err_acc = RIFulp(acc)
+   # neglect xl
+   err_acc += (xl*c5).abs().upper()
+   print ("err_acc=", log(err_acc)/log(2.))
+   # bcc = fma(xh, -0x1.0000014f8ec21p-3, 0x1.24924ad7557bep-3)
+   c7 = RIF(RR("-0x1.0000014f8ec21p-3",16))
+   c6 = RIF(RR("0x1.24924ad7557bep-3",16))
+   bcc = xh*c7+c6
+   err_bcc = RIFulp(bcc)
+   # neglect xl
+   err_bcc += (xl*c7).abs().upper()
+   print ("err_bcc=", log(err_bcc)/log(2.))
+   # acc = __builtin_fma(xsqh, bcc, acc)
+   acc = xsqh*bcc+acc
+   err_acc2 = RIFulp(acc)
+   # error term (xsqh-x^2)*bcc
+   err_acc2 += ((xsql+RIF(err_xsq))*bcc).abs().upper()
+   # error on previous acc
+   err_acc2 += err_acc
+   print ("err_acc2=", log(err_acc2)/log(2.))
+   # ord01l = __builtin_fma(x4, acc, ord01l)
+   ord01l = x4*acc+ord01l
+   err_ord01l = RIFulp(ord01l)
+   err_ord01l += 2^-103.414 # error on ord01h + ord01l_old
+   # error on acc2
+   err_ord01l += (x4*RIF(err_acc2)).abs().upper()
+   # error on x4
+   err_ord01l += (RIF(err_x4)*acc).abs().upper()
+   # combined errors
+   err_ord01l += err_x4*err_acc2
+   print ("err_ord01l=", log(err_ord01l)/log(2.))
+   # high_sum(&ord23h, &ord23l, ord01h, ord23h, ord23l)
+   ord23h, ord23l, err_23a = high_sum_RIF(ord01h, ord23h, ord23l)
+   err_23a += err_ord01l # error from ord01l (including that on ord01h + ord01l_old)
+   err_23a += err_23 # error on ord23
+   # ord23l += ord01l
+   ord23l += ord01l
+   err_23a += RIFulp(ord23l)
+   print ("err_23a=", log(err_23a)/log(2.))
+   zmin = log(1+x.lower())/log(2.)/(RR(ln2inv)*x.lower())
+   zmax = log(1+x.upper())/log(2.)/(RR(ln2inv)*x.upper())
+   z = min(zmin,zmax)
+   err_23a_rel = err_23a/z
+   print ("err_23a_rel=", log(err_23a_rel)/log(2.))
+   # take into account the Sollya error
+   err_23b = (1 + R200(err_23a_rel))*(1+R200(2^-105.879))-1
+   print ("err_23b=", log(err_23b)/log(2.))
+   # d_mul(rh, rl, scaleh, scalel, ord23h, ord23l)
+   rh, rl, err_r = d_mul_RIF_rel(scaleh, scalel, 2^-50.954, ord23h, ord23l)
+   print ("err_r=", log(err_r)/log(2.))

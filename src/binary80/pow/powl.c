@@ -156,7 +156,7 @@ void d_mul(double* rh, double* rl, double ah, double al,
 
 /* Let x = xh + xl. Assume |x|, |xh| <= 2^-11.999 and |xl| <= 2^-52 |xl|
 Then polyeval(&rh, &rl, xh, xl) returns in 
-rh + rl an estimate of log2(1 + x) with relative error at most 2^-98.282,
+rh + rl an estimate of log2(1 + x) with relative error at most 2^-98.285,
 with |rl| <= 2^-48.946 |rh|.
 */
 static inline
@@ -178,18 +178,18 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	   - |p| <= 2^-52|ah*bh|
 	   - |al*bh+p| <= 2^-55.976|ah*bh| + 2^-52|ah*bh| so that
 	     |q| <= 2^-51.911|ah*bh| and q's rounding error is
-	     at most 2^-103.811|ah*bh|.
+	     at most 2^-103.911|ah*bh|.
 	   - |ah*bl+q| <= 2^-52|ah*bh| + 2^-51.911|ah*bh| so that
 	     |scalel| <= 2^-50.954|ah*bh| and scalel's rounding error is
 	     at most 2^-102.954|ah*bh|.
 	   - the error neglecting |al*bl| is at most 2^-52*2^-55.976|ah*bh|
 	   The total relative error in terms of |ah*bh| is thus at most
-	     (1 + 2^-103.811) * (1 + 2^-102.954) * (1 + 2^-107.979) - 1
-             <= 2^-102.291.
+	     (1 + 2^-103.911) * (1 + 2^-102.954) * (1 + 2^-107.979) - 1
+             <= 2^-102.325.
 	   Expressing the error relative to ln2inv*x, we get a relative error
-           at most 2^-102.290:
+           at most 2^-102.324:
            scaleh + scalel = (ln2invh + ln2invl) * x * (1 + eps2)
-           with |eps2| < 2^-102.290.
+           with |eps2| < 2^-102.324.
 	*/
 
         // compute c0 + c1*x = 1 - x/2
@@ -234,63 +234,54 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
         // approximate x^2
 	double xsqh, xsql;
         d_mul(&xsqh, &xsql, xh, xl, xh, xl);
-	// FIXME directly analyze the absolute errors ?
 	/* Expanding the d_mul call we get that :
-	   - |p| <= 2^-52|xh^2|
-	   - |xl*xh+p| <= 2^-52|xh^2| + 2^-52|xh^2| <= 2^-51|xh^2|
-             so that |q| <= 2^-50.999|xh^2| and q's rounding
-	     error is at most 2^-102.999|xh^2|.
-	   - |xh*xl+q| <= 2^-52|xh^2| + 2^-50.999|xh^2| <= 2^-50.414|xh|^2
-             so that |xsql| <= 2^-50.413|xh^2| and the
-	     rounding error on xsql is at most 2^-102.413|xh^2|
-	   - the error made by neglecting xl^2 is at most 2^-104|xh|.
-	   The total relative error in terms of |xh^2| is thus at most
-	     (1 + 2^-102.999) * (1 + 2^-102.413) * (1 + 2^-104) - 1
-             <= 2^-101.413
-	   Expressing the error relative to x^2 we get a relative error at most
-	     2^-101.412.
-	   This translates to an absolute error less than 2^-125.41
-           since |x| <= 2^-11.999:
-           |xsqh + xsql - x^2| <= 2^-125.41.
-	   Also, at output we have |xsqh| <= 2^-23.997 and
-	   |xsql| <= 2^-50.413|xsqh| <= 2^-74.410.
+	   - |p| <= ulp(xh^2) <= 2^-76
+	   - |xl*xh+p| <= 2^-52|xh^2| + 2^-76 <= 2^-74.998
+             so that q's rounding error is at most ulp(2^-74.998) = 2^-127
+	   - |xh*xl+q| <= 2^-52|xh^2| + 2^-74.998 <= 2^-74.413
+             so that the rounding error on xsql is at most ulp(2^-74.413) = 2^-127
+	   - the error made by neglecting xl^2 is at most 2^-104|xh^2| <= 2^-127.998
+	   The total error is thus at most:
+	     2^-127 + 2^-127 + 2^-127.998 <= 2^-125.677:
+           |xsqh + xsql - x^2| <= 2^-125.677.
+	   Also, at output we have |xsqh| <= 2^-23.997 and |xsql| <= 2^-74.413.
 	*/
 
         // multiply c2+c3*x by x^2
 	d_mul(&ord23h, &ord23l, ord23h, ord23l, xsqh, xsql);
 	/* Recall we have |ord23h_old| <= 2^-1.583, |ord23l| <= 2^-53.582,
-           |xsqh| <= 2^-23.997, |xsql| <= 2^-74.410.
+           |xsqh| <= 2^-23.997, |xsql| <= 2^-74.413.
            Expanding the d_mul call we get that:
            - |ord23h| <= |ord23h_old * xsqh| <= 2^-1.583 * 2^-23.997 <= 2^-25.579
 	   - |p| <= 2^-52 * (2^-1.583*2^-23.997) <= 2^-77.580.
 	   - |al*bh + p| <= 2^-53.582*2^-23.997 + 2^-77.580 <= 2^-76.579,
              so that |q| <= 2^-76.578 and the associated rounding error is
              at most ulp(2^-76.578) = 2^-129.
-	   - |ah*bl + q| <= 2^-1.583*2^-74.410 + 2^-76.578 <= 2^-75.256.
-             Therefore at output |ord23l| <= 2^-75.255 and the associated
-             rounding error is at most ulp(2^-75.255) = 2^-128.
+	   - |ah*bl + q| <= 2^-1.583*2^-74.413 + 2^-76.578 <= 2^-75.257.
+             Therefore at output |ord23l| <= 2^-75.256) and the associated
+             rounding error is at most ulp(2^-75.256) = 2^-128.
 	   - the error made by neglecting ord23l*xsql is at most
-             2^-53.582*2^-74.410 <= 2^-127.992.
+             2^-53.582*2^-74.413 <= 2^-127.995.
 	   Propagating the errors on x^2 and c2 + c3*x gives an intrinsic error of
 	   at most :
-	     (c2 + 2^-11.999*|c3|) * 2^-125.41 + eps23 * 2^(-11.999*2)
-	     + eps23 * 2^-125.41 <= 2^-126.685
+	     (c2 + 2^-11.999*|c3|) * 2^-125.677 + eps23 * 2^(-11.999*2)
+	     + eps23 * 2^-125.677 <= 2^-126.896
 	   The total absolute error computing x^2(c2 + c3*x) is thus bounded by
-	     2^-129+2^-128+2^-127.992+2^-126.685 <= 2^-125.679:
-             |ord23h + ord23l - (c2*x^2 + c3*x^3)| < 2^-125.679
+	     2^-129+2^-128+2^-127.995+2^-126.896 <= 2^-125.781:
+             |ord23h + ord23l - (c2*x^2 + c3*x^3)| < 2^-125.781
 	*/
 
 	double x4 = xsqh*xsqh;
 	/* Neglecting 2*xsqh*xsql + xsql^2 creates an error of at most
-	   2*2^-23.997*2^-74.410 + 2^(-74.410*2) <= 2^-97.406.
+	   2*2^-23.997*2^-74.413 + 2^(-74.413*2) <= 2^-97.409.
 	   Also, |xsqh*xsqh| <= 2^(-23.997*2) <= 2^-47.994. Therefore,
            the rounding error of the product is <= ulp(2^-47.994) = 2^-100.
 
 	   We obtain that |x4| <= 2^-47.993
-	   and that |x4 - x^4| <= 2^-97.406 + 2^-100 + |(xsqh+xsql)^2 - x^4|
-                       <= 2^-97.184 + |(xsqh+xsql) + x^2||(xsqh+xsql) - x^2|
-                       <= 2^-97.184 + (2*(2^-11.999)^2 + 2^-125.41)*2^-125.41
-                       <= 2^-97.183
+	   and that |x4 - x^4| <= 2^-97.409 + 2^-100 + |(xsqh+xsql)^2 - x^4|
+                       <= 2^-97.187 + |(xsqh+xsql) + x^2||(xsqh+xsql) - x^2|
+                       <= 2^-97.187 + (2*(2^-11.999)^2 + 2^-125.677)*2^-125.41
+                       <= 2^-97.186
 	*/
 
 	double acc = __builtin_fma(xh, -0x1.555555555554dp-3/*c5*/,
@@ -322,19 +313,19 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
            <= 2^-2.320.
 	   This ensures that at output, |acc| <= 2^-2.319. Also, the rounding
            error is at most ulp(2^-2.319) = 2^-55.
-	   Since |xsqh+xsql - x^2| <= 2^-125.41, we have
-	   |xsqh - x^2| <= 2^-125.41+2^-74.410 <= 2^-74.409.
+	   Since |xsqh+xsql - x^2| <= 2^-125.677, we have
+	   |xsqh - x^2| <= 2^-125.677+2^-74.413 <= 2^-74.412.
            We thus get:
            |acc - (c4+c5*x+c6*x^2+c7*x^3)|
            <= |acc - (xsqh*bcc+acc_old)| + |xsqh*bcc - (c6*x^2+c7*x^3)|
               + |acc_old - (c4+c5*x)|
            <= 2^-55 + |xsqh-x^2|*|bcc| + x^2*|bcc - (c6+c7*x)| + 2^-54.999
-           <= 2^-55 + 2^-74.409*2^-2.806 + 2^-23.998*2^-54.999 + 2^-54.999
+           <= 2^-55 + 2^-74.412*2^-2.806 + 2^-23.998*2^-54.999 + 2^-54.999
            <= 2^-53.999.
 	*/
 
 	ord01l = __builtin_fma(x4, acc, ord01l);
-	/* We have |x4 - x| <= 2^-97.183
+	/* We have |x4 - x| <= 2^-97.186
                    |acc - (c4+c5*x+c6*x^2+c7*x^3)| <= 2^-53.999 and
              ord01h + ord01l = c0 + c1*x + eps01 with |eps01| < 2^-103.414.
 	   We compute that |x4*acc+ord01l|<=2^-47.993*2^-2.319+2^-51.999
@@ -348,21 +339,21 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
             + |x4*acc - x^4*(c4+c5*x+c6*x^2+c7*x^3)|
            <= 2^-103.414 + 2^-102 + |x4-x^4|*|acc|
               + x^4*|acc-(c4+c5*x+c6*x^2+c7*x^3)|
-           <= 2^-103.414 + 2^-102 + 2^-97.183*2^-2.319 + 2^-47.996*2^-53.999
-           <= 2^-98.995.
+           <= 2^-103.414 + 2^-102 + 2^-97.186*2^-2.319 + 2^-47.996*2^-53.999
+           <= 2^-98.997.
 	*/
 
 	high_sum(&ord23h, &ord23l, ord01h, ord23h, ord23l);
 	ord23l += ord01l; // Rewrite ? 
 	//add22(&ord01h, &ord01l, ord01h, ord01l, ord23h, ord23l);
 	/* At input, ord01h + ord01l approximates
-           c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3) with error <= 2^-98.995,
+           c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3) with error <= 2^-98.997,
            with |ord01h| <= 1 + 2^-11.998, |ord01l| <= 2^-49.920,
            and ord23h + ord23l approximates c2*x^2 + c3*x^3 with error
-           <= 2^-125.679 (the error eps01 on ord01h + ord01l_old was already
+           <= 2^-125.781 (the error eps01 on ord01h + ord01l_old was already
            taken into account above), with |ord23h| <= 2^-25.579, |ord23l| <= 2^-75.255,
            This yields a total intrinsic error of
-	   2^-98.995 + 2^-125.679 <= 2^-98.994.
+	   2^-98.997 + 2^-125.781 <= 2^-98.996.
 
 	   Expanding high_sum, we see that the fast_two_sum incurs an error at most
 	   2^-105(1 + 2^-12.998 + 2^-25.579) <= 2^-104.999. We also see that
@@ -377,26 +368,26 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
            and that the sum's rounding error is at most ulp(2^-49.613) = 2^-102.
 
 	   The total accumulated error is therefore at most
-           2^-98.994 + 2^-104.999 + 2^-104 + 2^-102 <= 2^-98.766:
+           2^-98.996 + 2^-104.999 + 2^-104 + 2^-102 <= 2^-98.767:
 
-           |ord23h + ord23l - p(x)| <= 2^-98.766
+           |ord23h + ord23l - p(x)| <= 2^-98.767
            where p(x) = c0 + c1*x + c2*x^2 + c3*x^3 + c4*x^4 + c5*x^5 + c6*x^6 + c7*x^7.
 
            The value ord23h + ord23l approximates log2(1 + x)/(ln2inv*x), which
 	   is positive and decreasing by concavity. We can check that it's value
 	   at x = 2^-11.999 is at least .9998. Therefore, the absolute error above
-	   translates to a relative error <= 2^-98.766/.9998 <= 2^-98.765. Added
-	   to the polynomial's intrinsic relative error of 2^-105.879, we ensure
+	   translates to a relative error <= 2^-98.767/.9998 <= 2^-98.766. Taking into
+	   account to the polynomial's intrinsic relative error of 2^-105.879, we ensure
 	   that we have computed log2(1+xr)/(ln2inv*xr) with relative error at most
-	   (1 + 2^-105.879) * (1 + 2^-98.765) - 1 <= 2^-98.754. */
+	   (1 + 2^-105.879) * (1 + 2^-98.766) - 1 <= 2^-98.755. */
 
 	d_mul(rh, rl, scaleh, scalel, ord23h, ord23l);
 	/* Recall scaleh + scalel approximates ln2inv*x with relative error
-           at most 2^-102.290, with |scalel| <= 2^-50.954|scaleh|,
+           at most 2^-102.324, with |scalel| <= 2^-50.954|scaleh|,
            and ord23h + ord23l approximates log2(1 + x)/(ln2inv*x)
-           with relative error <= 2^-98.754, with |ord23h| < 1.001, |ord23l| <= 2^-49.613.
+           with relative error <= 2^-98.755, with |ord23h| < 1.001, |ord23l| <= 2^-49.613.
            Propagating each term's relative errors we get a total intrinsic relative
-	   error of (1 + 2^-102.290)*(1 + 2^-98.754) - 1 <= 2^-98.634.
+	   error of (1 + 2^-102.324)*(1 + 2^-98.755) - 1 <= 2^-98.638.
 	   Expanding the d_mul call we get :
 	     - |p| <= 2^-52*|scaleh|*1.001
 	     - |scalel*ord23h + p| <= (2^-50.954+2^-52)*1.001*|scaleh|. This ensures
@@ -408,19 +399,32 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	  The total rounding error is thus at most
 	    (2^-102.382+2^-100.946)|scaleh| <= 2^-100.492|scaleh|:
 
-            |rh + rl - (scaleh + scalel) * (ord23h + ord23l)| <= 2^-100.492 |scaleh|.
+            rh + rl = (scaleh + scalel) * (ord23h + ord23l) + eps1 * |scaleh|
+            with |eps1| <= 2^-100.492.
 
-          Let scale = scaleh + scalel and ord23 = ord23h + ord23l. Writing
-	    |scaleh|/|log2(1+x)| = |scaleh|/|scale*ord23| * |scale*ord23|/|log2(1+x)|
-		we see that the second factor is off from 1 by at most 2^-98.634 and that
-	  the first factor is off from 1 by at most 0.001. Thus:
-          |scaleh|/|log2(1+x)| <= 1.001 * (1 + 2^-98.634) <= 1.0011, and
-          |rh + rl - log2(1+x)| <= 2^-100.492 * 1.0011 |log2(1+x)|
-                                <= 2^-100.490 |log2(1+x)|.
+          Since |scalel| <= 2^-50.954|scaleh|, we deduce with scale := scaleh + scalel:
 
-	  The total relative error of this routine is therefore at most
-	   (1 + 2^-98.634) * (1 + 2^-100.490) - 1 <= 2^-98.282.
-	  We have the postcondition |rl| <= 2^-48.946|rh|.
+            rh + rl = scale * (ord23h + ord23l) + eps2 * |scale|
+            with |eps2| <= |eps1|/(1-2^-50.954) <= 2^-100.491.
+
+          Since |ord23h + ord23l| >= 0.999, we deduce with ord23 := ord23h + ord23l:
+
+            rh + rl = scale * ord23 + eps3 * |scale*ord23|
+            with |eps3| <= |eps2|/0.999 <= 2^-100.489.
+
+          Now scale = (ln2invh + ln2invl) * x * (1 + eps) with |eps| < 2^-102.324,
+          and ord23 = log2(1 + x)/(ln2inv*x) * (1 + eps) with |eps| < 2^-98.755, thus:
+          scale * ord23 = log2(1+x) * (1 + eps4) with
+          |eps4| <= (1 + 2^-102.324) * (1 + 2^-98.755) - 1 <= 2^-98.638.
+
+          It follows:
+
+            rh + rl = log2(1+x) * (1 + eps4) + eps3 * log2(1+x) * (1 + eps4)
+                    = log2(1+x) * (1 + eps5)
+            with |eps5| <= |eps4| + |eps3| * (1 + |eps4|)
+                        <= 2^-98.285.
+
+	  We also have the postcondition |rl| <= 2^-48.946|rh|.
 	*/
 }
 
