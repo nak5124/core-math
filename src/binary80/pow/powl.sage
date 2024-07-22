@@ -649,6 +649,7 @@ def max_rh_over_rh_prime(i1,i2,T1=None,T2=None):
    rh_prime = mlogr12h - rh
    return rh/rh_prime
 
+# compute maximal value of |rh/rh'| for all i1,i2 values
 # max_rh_over_rh_prime_all()
 # 0 0 1
 # 127 125 1.00183310592127
@@ -659,6 +660,47 @@ def max_rh_over_rh_prime_all():
    T2 = get_finetbl(verbose=false)
    for i1,i2 in S:
       ratio = max_rh_over_rh_prime(i1,i2,T1=T1,T2=T2)
+      if ratio > maxratio:
+         print (i1, i2, ratio)
+         maxratio = ratio
+
+# compute maximal value of |mlogr12h|/|mlogr12h+rh| for given i1,i2
+# (when mlogr12h != 0)
+# max_mlogr12h_over_rh_prime(127,125)
+# 2.00183310592127
+def max_mlogr12h_over_rh_prime(i1,i2,T1=None,T2=None):
+   if T1==None:
+      T1 = get_coarsetbl(verbose=false)
+   if T2==None:
+      T2 = get_finetbl(verbose=false)
+   r1 = T1[i1][2]
+   r2 = T2[i2][2]
+   xmin, xmax = get_interval(i1,i2,T1=T1,T2=T2)
+   xredmin = r1*r2*xmin
+   xredmax = r1*r2*xmax
+   rhmin = n(log(xredmin)/log(2))
+   rhmax = n(log(xredmax)/log(2))
+   rh = max(abs(rhmin),abs(rhmax))
+   mlogr12h = n(-log(r1)/log(2)-log(r2)/log(2))
+   mlogr12h = abs(mlogr12h - round(mlogr12h)) # compute centered fraction
+   if mlogr12h == 0:
+      return 1
+   assert rh < mlogr12h, "rh < mlogr12h"
+   rh_prime = mlogr12h - rh
+   return mlogr12h/rh_prime
+
+# compute maximal value of |mlogr12h/rh'| for all i1,i2 values
+# max_mlogr12h_over_rh_prime_all()
+# 0 0 1
+# 0 1 1.50045785683029
+# 127 125 2.00183310592127
+def max_mlogr12h_over_rh_prime_all():
+   maxratio = 0
+   S = possible_i1_i2(verbose=false)
+   T1 = get_coarsetbl(verbose=false)
+   T2 = get_finetbl(verbose=false)
+   for i1,i2 in S:
+      ratio = max_mlogr12h_over_rh_prime(i1,i2,T1=T1,T2=T2)
       if ratio > maxratio:
          print (i1, i2, ratio)
          maxratio = ratio

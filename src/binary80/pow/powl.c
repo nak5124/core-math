@@ -668,23 +668,45 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            low part, fast_two_sum() yields a rounding error <= 2^-105|rh'|
            and |t| <= 2^-52|rh'|. In the last sum inside high_sum(), notice
 	   that |rl + t| <= 2^-48.946 |rh| + 2^-52|rh'|. Now, since
-	   2^-11.469/|0x1.5p-12 - 2^-11.469| <= 2^3.447, we have |rh| <= 2^3.447|rh'|
-	   and thus |rl + t| <= (2^-52+2^-49.066*2^3.447)|rh'|. This shows that after
-	   the high sum, |rl'| <= 2^-45.601|rh'| and that the associated rounding
-	   error is at most 2^-97.601|rh'|.
+           |rh| < 1.002 |rh'| (see max_rh_over_rh_prime_all() in powl.sage),
+	   we have |rl + t| <= (2^-48.946 * 1.002 + 2^-52)|rh'|.
+           This shows that after high_sum(), |rl'| <= 2^-48.779|rh'| and that
+           the associated rounding error is at most
+           2^-105 |rh'| + 2^-52 |rl'| <= (2^-105 + 2^-52*2^-48.779) |rh'|
+           <= 2^-100.703 |rh'|.
 
-	   We compute that 0x1.5p-12/|0x1.5p-12 - 2^-11.469| <= 2^3.309
-	   The sum on the last line is thus at most
-	     2^-45.601|rh'| + 2^3.309*2^-52|rh'| <= 2^-45.440|rh'|
-	   which implies that in the end |rl'| <= 2^-45.439|rh'| and that the
-	   associated rounding error is at most 2^-97.539|rh'|.
+           Since |rl'| <= 2^-48.779|rh'|, |mlogr12l| <= 2^-52 |mlogr12h|,
+           and the routine max_mlogr12h_over_rh_prime_all() in powl.sage
+           shows that |mlogr12h| < 2.002 |rh'|,
+	   the sum rl' + mlogr12l is thus at most
+	     2^-48.779|rh'| + 2.002*2^-52|rh'| <= 2^-48.498|rh'|
+	   which implies that in the end |rl'| <= 2^-48.497|rh'| and that the
+	   associated rounding error is at most 2^-100.497|rh'|.
 
 	   These steps of computation created an error at most
-	     (2^-97.601 + 2^-105 + 2^-97.539)|rh'|.
-	   Propagating the previous errors gives another error term at most
-	     (2^3.309*2^-96.223 + 2^3.447*2^-98.429)|rh'|.
+	     (2^-105 + 2^-100.703 + 2^-100.497)|rh'| <= 2^-99.562|rh'|:
+
+             |rh' + rl' - (mlogr12h + rh + rl)| <= 2^-99.562 |rh'|.
+
+           We had a relative error <= 2^-103.023 on mlogr12h + mlogr12l:
+
+           |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
+           < 2^-103.023 |mlogr12h|
+
+           which since |mlogr12h/rh'| <= 2.002 translates to
+           2.002*2^-103.023. And we had a relative error <= 2^-98.285 on
+           rh + rl:
+
+           |rh + rl - log2(1+x)| <= 2^-98.285 |rh|
+
+           which since |rh/rh'| <= 1.002 translates to 1.002*2^-98.285.
+           In summary we get:
+           |rh' + rl' - (extra_int - log2(r1) - log2(r2) + log2(1+xr))|
+           <= eps * rh'
+           with |eps| <= (1 + 2^-99.562) * (1 + 2.002*2^-103.023)
+                      * (1 + 1.002*2^-98.285) - 1 <= 2^-97.710.
 	   The total relative error computing log2(1 + x) is therefore at most
-	   2^-92.515. Also, |rl'| <= 2^-45.439|rh'|.
+	   2^-97.710. Also, |rl'| <= 2^-48.497|rh'|.
 	*/
 
 	double yh = y; double yl = y - (long double)(yh);
