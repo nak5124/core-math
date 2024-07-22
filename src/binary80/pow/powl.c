@@ -436,6 +436,9 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 
 - 2^-80 <= |y| < 2^78
 - x is normal, i.e., |x| >= 2^-16382
+
+Ensures:
+|rh + rl - y * log2(x)| < 2^-97.286 |rh| with |rl| <= 2^-48.262 |rh|.
 */
 static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
@@ -708,24 +711,31 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   2^-97.710. Also, |rl'| <= 2^-48.497|rh'|.
 	*/
 
-	double yh = y; double yl = y - (long double)(yh);
+	double yh = y; double yl = y - (long double) yh;
+        // y = yh + yl exactly, with |yl| < 2^-52 |yh|
+
 	POWL_DPRINTF("get_hex(R(log2(x)) - "SAGE_DD")\n", *rh, *rl);
 	d_mul(rh, rl, yh, yl, *rh, *rl);
-	/* Let us call again rh', rl' the output values for rh and rl, and rh and rl
-	   the input values. The relative error on log2(1 + x) propagates, creating
-	   an intrinsic relative error of 2^-92.515.
+	/* Let us call again rh', rl' the output values for rh and rl,
+           and rh and rl the input values. The relative error on log2(1 + x)
+           propagates, creating an intrinsic relative error of 2^-97.710.
 	   Expanding the d_mul call, we see that |p| <= 2^-52|yh*rh|; then
 	     - |yl*rh + p| <= 2^-52|yh*rh| + 2^-52|yh*rh| <= 2^-51|yh*rh|.
 	       This ensures |q| <= 2^-51|yh*rh|. Also, the associated
 	       rounding error is at most 2^-103|yh*rh|.
-	     - |yh*rl + q| <= (2^-45.439 + 2^-51)|yh*rh|. This ensures that 
-	       |rl'| <= 2^-45.408|rh'| and that the associated rounding error is
-	       at most 2^-97.408|rh'|.
+	     - |yh*rl + q| <= (2^-48.497 + 2^-51)|yh*rh|. This ensures that 
+	       |rl'| <= 2^-48.262|rh'| and that the associated rounding error
+               is at most 2^-100.262|rh'|.
 	     - the error produced by neglecting |yl*rl| is at most
-	       2^-52*2^-45.439|yh*rh|.
-	   The total error up to this step is therefore at most
-	     (2^-52*2^-45.439 + 2^-97.408 + 2^-103 + 2^-92.515)|yh*rh|
-		 or at most 2^-92.421|rh'|. We also have |rl'| <= 2^-45.408|rh|.
+	       2^-52*2^-48.497|yh*rh|.
+           The total error of this d_mul() is thus at most:
+           (2^-103 + 2^-100.262 + 2^-52*2^-48.497) |yh*rh| <= 2^-99.262 |yh*rh|
+           Adding the relative error on rh+rl we get:
+
+           rh' + rl' - y * log2(x) = eps * rh'
+
+           with |eps| <= (1 + 2^-97.710) * (1 + 2^-99.262) - 1 <= 2^-97.286.
+           We also have |rl'| <= 2^-48.262|rh'|.
 	*/
 }
 
