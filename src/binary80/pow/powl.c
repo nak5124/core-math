@@ -112,6 +112,10 @@ void add22(double* zh, double* zl, double xh, double xl, double yh, double yl) {
 	*zl = (r - (*zh)) + s;
 }
 
+// assumes a = 0 or |a| >= |b| (or ulp(a) >= ulp(b))
+// ensures |rl| <= 2^-52*|rh| and a rounding error <= 2^-105*|rh|
+// |rh + rl - (a + b)| <= 2^-105*|rh| (whatever the rounding mode)
+// See reference [1].
 static inline
 void fast_two_sum(double* rh, double* rl, double a, double b) {
 	*rh = a + b;
@@ -646,8 +650,8 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	polyeval(rh, rl, xh, xl);
 	/* By polyeval's error analysis, rh + rl gets an estimate of log2(1+x)
-	   with relative error at most 2^-98.285.
-           Furthermore |rl| <= 2^-48.946 |rh|.
+	   with relative error at most 2^-98.285, and |rl| <= 2^-48.946 |rh|.
+           Since |x| < 2^-11.999, it follows |rh| < 2^-11.470.
 	*/
 
 	high_sum(rh, rl, mlogr12h, *rh, *rl);
@@ -656,13 +660,14 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            rh and rl the inputs.
 	   Note that if mlogr12h != 0, then the program high_sum.c with MODE=3
            shows that |mlogr12h| >= 0x1.7148ec2a1bfc8p-12.
-	   Given the argument above, this implies |mlogr12h| has at least the
-	   binade of |rh|.
+           Since |rh| < 2^-11.470 < 0x1.8p-12, this implies mlogr12h is 0 or
+           lies in the same binade than rh, or in a larger binade.
+           Thus the fast_two_sum() condition in high_sum() is fulfilled.
 
-	   Expanding the high_sum call and calling t the fast_two_sum result's low
-	   part, the previous argument ensures that the fast_two_sum creates an error
-	   at most 2^-105|rh'| and that |t| <= 2^-52|rh'|. In the last sum, notice
-	   that |rl + t| <= 2^-52|rh'| + 2^-49.066|rh|. Now, since
+	   Expanding the high_sum call and calling t the fast_two_sum result's
+           low part, fast_two_sum() yields a rounding error <= 2^-105|rh'|
+           and |t| <= 2^-52|rh'|. In the last sum inside high_sum(), notice
+	   that |rl + t| <= 2^-48.946 |rh| + 2^-52|rh'|. Now, since
 	   2^-11.469/|0x1.5p-12 - 2^-11.469| <= 2^3.447, we have |rh| <= 2^3.447|rh'|
 	   and thus |rl + t| <= (2^-52+2^-49.066*2^3.447)|rh'|. This shows that after
 	   the high sum, |rl'| <= 2^-45.601|rh'| and that the associated rounding

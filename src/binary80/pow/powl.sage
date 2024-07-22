@@ -22,15 +22,16 @@ def get_hl(minimizer):
 # 0x1p-7 -107.225895411898 0.496174262004249
 # m is the number of bits of r1[i]
 # L is the length of the table
-def get_coarsetbl(m = 9, L = 7):
+def get_coarsetbl(m = 9, L = 7, verbose=true):
 	Rm = RealField(m)
 	R  = RealField(106)
 	T = dict()
 	maxmin = -1
 	maxerr = 0 # maximal absolute error
 	maxhl = 0  # maximal value of |h+l|
-	print("static const _Alignas(16)")
-	print("lut_t coarse[" + str(2**L) + "] = {")
+	if verbose:
+	   print("static const _Alignas(16)")
+	   print("lut_t coarse[" + str(2**L) + "] = {")
 	for i in range(2**L):
 		# x is in range 1 + i/2**L, 1 + (i+1)/2**L
 		# we want to minimise |xr - 1| on that interval
@@ -64,24 +65,27 @@ def get_coarsetbl(m = 9, L = 7):
 		maxhl = max(maxhl, abs(h+l))
 		maxerr = max(maxerr, err)
 		T[i] = (h, l, minimizer)
-		print ("{" + get_hex(Rm(minimizer)) + ", "
+		if verbose:
+		   print ("{" + get_hex(Rm(minimizer)) + ", "
 				+ get_hex(h) + ", " + get_hex(l) + ","
 				+ str(z) + "},//" + get_hex(R(minr)))
-	print("};")
-	print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
+	if verbose:
+	   print("};")
+	   print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
 	return T
 
 # m is the number of bits of r2[i]
 # L is the length of the table
 # get_finetbl()
 # 0x1p-12 -107.270397599854 0.0112272554232541
-def get_finetbl(m = 13, L = 7):
+def get_finetbl(m = 13, L = 7, verbose=true):
 	Rm = RealField(m)
 	R  = RealField(106)
 	T = dict()
 	maxmin = -1
-	print("static const _Alignas(16)")
-	print("lut_t fine[" + str(2**L) + "] = {")
+	if verbose:
+	   print("static const _Alignas(16)")
+	   print("lut_t fine[" + str(2**L) + "] = {")
 	maxerr = 0
 	maxhl = 0
 	for i in range(2^L):
@@ -117,14 +121,17 @@ def get_finetbl(m = 13, L = 7):
 		T[i] = (h,l, minimizer)
 		maxerr = max(maxerr, err)
 		if i // 2**(L-2) == 1: # unused entries
-			print("{0,0,0,0}, // unused")
+		   if verbose:
+		      print("{0,0,0,0}, // unused")
 		else:
 			maxhl = max(maxhl, abs(h+l))
-			print ("{" + get_hex(Rm(minimizer))
+			if verbose:
+			   print ("{" + get_hex(Rm(minimizer))
 				+ ", " + get_hex(h) + ", " + get_hex(l) + ", "
 					+ str(z) + "}, //" + get_hex(R(nl)) +","+ get_hex(R(nh)) + "(" + hex(i) + ")")
-	print("};")
-	print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
+	if verbose:
+	   print("};")
+	   print(get_hex(maxmin), log(maxerr)/log(2.), maxhl)
 	return T
 
 def fast_two_sum(a,b):
@@ -567,9 +574,9 @@ def analyse_polyeval():
 # possible=possible_i1_i2()
 # len(possible)
 # 4357 # over 128*96, i.e., about 35%
-def possible_i1_i2():
-   T1 = get_coarsetbl()
-   T2 = get_finetbl()
+def possible_i1_i2(verbose=true):
+   T1 = get_coarsetbl(verbose=false)
+   T2 = get_finetbl(verbose=false)
    possible = []
    for i1 in range(128):
       xmin = 1 + i1/2^7
@@ -587,7 +594,71 @@ def possible_i1_i2():
             ymin = 1 - 2^-7 + (i2-64)*2^-13
             ymax = 1 - 2^-7 + (i2+1-64)*2^-13
          if ymax <= r1xmin or r1xmax <= ymin:
-            print ("not possible: i1=", i1, "i2=", i2)
+            if verbose:
+               print ("not possible: i1=", i1, "i2=", i2)
          else:
             possible.append((i1,i2))
    return possible
+
+# return interval corresponding to i1,i2
+# get_interval(127,125)
+# (8189/4096, 4095/2048)
+def get_interval(i1,i2,T1=None,T2=None):
+   assert 0 <= i1 < 128, "0 <= i1 < 128"
+   assert 0 <= i2 < 32 or 64 <= i2 < 128, "0 <= i2 < 32 or 64 <= i2 < 128"
+   if T1==None:
+      T1 = get_coarsetbl(verbose=false)
+   if T2==None:
+      T2 = get_finetbl(verbose=false)
+   xmin = 1 + i1/2^7
+   xmax = 1 + (i1+1)/2^7
+   r1 = T1[i1][2]
+   if i2 < 32:
+      ymin = 1 + i2*2^-12
+      ymax = 1 + (i2+1)*2^-12
+   else:
+      ymin = 1 - 2^-7 + (i2-64)*2^-13
+      ymax = 1 - 2^-7 + (i2+1-64)*2^-13
+   ymin = max(ymin, r1*xmin)
+   ymax = min(ymax, r1*xmax)
+   # go back to x
+   return ymin/r1, ymax/r1
+
+# compute maximal value of |rh|/|mlogr12h+rh| for given i1,i2
+# (when mlogr12h != 0)
+# max_rh_over_rh_prime(127,125)
+# 1.00183310592127
+def max_rh_over_rh_prime(i1,i2,T1=None,T2=None):
+   if T1==None:
+      T1 = get_coarsetbl(verbose=false)
+   if T2==None:
+      T2 = get_finetbl(verbose=false)
+   r1 = T1[i1][2]
+   r2 = T2[i2][2]
+   xmin, xmax = get_interval(i1,i2,T1=T1,T2=T2)
+   xredmin = r1*r2*xmin
+   xredmax = r1*r2*xmax
+   rhmin = n(log(xredmin)/log(2))
+   rhmax = n(log(xredmax)/log(2))
+   rh = max(abs(rhmin),abs(rhmax))
+   mlogr12h = n(-log(r1)/log(2)-log(r2)/log(2))
+   mlogr12h = abs(mlogr12h - round(mlogr12h)) # compute centered fraction
+   if mlogr12h == 0:
+      return 1
+   assert rh < mlogr12h, "rh < mlogr12h"
+   rh_prime = mlogr12h - rh
+   return rh/rh_prime
+
+# max_rh_over_rh_prime_all()
+# 0 0 1
+# 127 125 1.00183310592127
+def max_rh_over_rh_prime_all():
+   maxratio = 0
+   S = possible_i1_i2(verbose=false)
+   T1 = get_coarsetbl(verbose=false)
+   T2 = get_finetbl(verbose=false)
+   for i1,i2 in S:
+      ratio = max_rh_over_rh_prime(i1,i2,T1=T1,T2=T2)
+      if ratio > maxratio:
+         print (i1, i2, ratio)
+         maxratio = ratio
