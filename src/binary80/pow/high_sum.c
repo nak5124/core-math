@@ -6,48 +6,46 @@
 #include <float.h>
 #include <omp.h>
 #include <stdbool.h>
+#include <assert.h>
 
 /* Define MODE=0 to analyze the maximal value of the ratios
    |mlogrh/mlogr12h|, |mlogr1h/mlogr12h|, |mlogr2h/mlogr12h|.
    With -DMODE=0 we get these last lines as output:
 
-r=2 extra_int=0 i1=126 i2=31 |mlogrh/mlogr12h|=1.2554490174030241e+02
-r=2 extra_int=0 i1=126 i2=31 |mlogr1h/mlogr12h|=1.2554490174030241e+02
-r=3 extra_int=0 i1=126 i2=31 |mlogr2h/mlogr12h|=1.2454490174030240e+02
+r=2 extra_int=0 i1=126 i2=15 |mlogrh/mlogr12h|=1.9500286434136714e+00
+r=2 extra_int=0 i1=126 i2=15 |mlogr1h/mlogr12h|=1.9500286434136714e+00
+r=0 extra_int=0 i1=0 i2=1 |mlogr2h/mlogr12h|=1.0000000000000000e+00
 
    Define MODE=1 to analyze the maximal relative error between the
    computed value mlogr12h + mlogr12l and the true value
    (add -fopenmp on the command line to make the computation faster).
    With -DMODE=1 we get these last lines as output:
 
-r=1 extra_int=130 i1=59 i2=19 err=7.240159e-32
-r=1 extra_int=514 i1=42 i2=69 err=7.297105e-32
-r=2 extra_int=2050 i1=100 i2=65 err=7.315219e-32
+r=1 extra_int=258 i1=3 i2=12 err=7.110497e-32
+r=1 extra_int=258 i1=59 i2=12 err=7.182856e-32
+r=1 extra_int=8194 i1=16 i2=17 err=7.235989e-32
 
-   This means the largest relative error is 7.315219e-32 < 2^-103.430,
-   obtained for rounding up (RNDU), with extra_int=2050, i1=100, i2=65.
+   This means the largest relative error is 7.235989e-32 < 2^-103.446,
+   obtained for rounding to zero (RNDZ), with extra_int=8194, i1=16, i2=17.
 
    Define MODE=2 to analyse the maximal value of |mlogr12l/mlogr12h|.
    With -DMODE=2 we get these last lines as output:
 
-r=0 extra_int=0 i1=126 i2=29 |mlogr12l/mlogr12h|=1.5823267968081940e-15
-r=0 extra_int=0 i1=126 i2=30 |mlogr12l/mlogr12h|=3.2536127880762052e-15
-r=0 extra_int=0 i1=126 i2=31 |mlogr12l/mlogr12h|=3.6490470899802542e-15
+r=1 extra_int=-513 i1=43 i2=1 |mlogr12l/mlogr12h|=4.4084763153344564e-16
+r=2 extra_int=-513 i1=43 i2=1 |mlogr12l/mlogr12h|=4.4084763153344570e-16
+r=2 extra_int=512 i1=43 i2=1 |mlogr12l/mlogr12h|=4.4097994937579496e-16
 
    This means the largest value of |mlogr12l/mlogr12h| is
-   3.6490470899802542e-15 < 2^-47.961.
+   4.4097994937579496e-16 < 2^-51.010.
 
-   Define MODE=3 to print all combinations that can give a value of mlogr12h
-   non zero with |mlogr12h| < 2^-12, after the renormalization.
-   With -DMODE=3 we get:
+   Define MODE=3 to find the smallest non-zero value of |mlogr12h|,
+   after the renormalization. With -DMODE=3 we get:
 
-r=0 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e98p-14
-r=1 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e98p-14
-r=2 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e98p-14
-r=3 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e99p-14
+r=0 extra_int=0 i1=0 i2=1 |mlogr12h|=0x1.150c5586012b8p-11
+r=0 extra_int=0 i1=127 i2=125 |mlogr12h|=0x1.7148ec2a1bfc9p-12
+r=1 extra_int=0 i1=127 i2=125 |mlogr12h|=0x1.7148ec2a1bfc8p-12
 
-   This means the only case where |mlogr12h| < 2^-12 (with mlogr12h <> 0)
-   is extra_int=0 i1=126 i2=31.
+   Thus the smallest non-zero value of |mlogr12h| is 0x1.7148ec2a1bfc8p-12.
 */
 
 #ifndef MODE
@@ -60,6 +58,32 @@ typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 
 #include "qint.h"
 #include "powl_tables.h"
+
+// return non-zero iff the combination (i1,i2) is possible
+static int
+is_possible (int i1, int i2)
+{
+  assert (0 <= i1 && i1 < 128);
+  double xmin = 1.0 + (double) i1 * 0x1p-7;
+  double xmax = 1.0 + (double) (i1 + 1) * 0x1p-7;
+  double r1 = coarse[i1].r;
+  xmin = r1 * xmin;
+  xmax = r1 * xmax;
+  // [xmin, xmax] is near 1, whatever the value of coarse[i1].z
+  assert ((0 <= i2 && i2 < 32) || (32 <= i2 && i2 < 128));
+  double ymin, ymax;
+  if (i2 < 32)
+  {
+    ymin = 1.0 + (double) i2 * 0x1p-12;
+    ymax = 1.0 + (double) (i2 + 1) * 0x1p-12;
+  }
+  else
+  {
+    ymin = 1.0 - 0x1p-7 + (double) (i2 - 64) * 0x1p-13;
+    ymax = 1.0 - 0x1p-7 + (double) (i2 + 1 - 64) * 0x1p-13;
+  }
+  return (xmax <= ymin || ymax <= xmin) ? 0 : 1;
+}
 
 static inline
 void fast_two_sum(double* rh, double* rl, double a, double b) {
@@ -129,6 +153,8 @@ analyze_second_sum (void)
         {
           if (32 <= i2 && i2 < 64)
             continue;
+          if (!is_possible (i1, i2))
+            continue;
           double mlogr2h = fine[i2].mlogrh;
           double mlogr2l = fine[i2].mlogrl;
           // printf ("%d %d %d %d\n", r, extra_int, i1, i2);
@@ -165,7 +191,7 @@ analyze_second_sum (void)
                     r, extra_int, i1, i2, maxratio1 = ratio1);
 #elif MODE==3
           fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
-          if (mlogr12h != 0 && fabs (mlogr12h) < 0x1p-12)
+          if (mlogr12h != 0 && fabs (mlogr12h) < min_mlogr12h)
             printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr12h|=%la\n",
                     r, extra_int, i1, i2, min_mlogr12h = fabs (mlogr12h));
 #else
@@ -176,9 +202,21 @@ analyze_second_sum (void)
   }
 }
 
+static void
+count_possible (void)
+{
+  int possible = 0;
+  for (int i1 = 0; i1 < 128; i1++)
+    for (int i2 = 0; i2 < 128; i2++)
+      if (i2 < 32 || 64 <= i2)
+        possible += is_possible (i1, i2);
+  printf ("Number of possible (i1,i2) combinations: %d\n", possible);
+}
+
 int
 main ()
 {
+  count_possible ();
   analyze_second_sum ();
   return 0;
 }
