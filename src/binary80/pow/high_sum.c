@@ -37,14 +37,17 @@ r=0 extra_int=0 i1=126 i2=31 |mlogr12l/mlogr12h|=3.6490470899802542e-15
    This means the largest value of |mlogr12l/mlogr12h| is
    3.6490470899802542e-15 < 2^-47.961.
 
-   Define MODE=3 to find the smallest value of mlogr12h (when non zero),
-   after the renormalization. With -DMODE=2 we get these last lines as output:
+   Define MODE=3 to print all combinations that can give a value of mlogr12h
+   non zero with |mlogr12h| < 2^-12, after the renormalization.
+   With -DMODE=3 we get:
 
-r=0 extra_int=0 i1=0 i2=1 |mlogr12h|=0x1.150c5586012b8p-11
-r=0 extra_int=0 i1=0 i2=125 |mlogr12h|=0x1.7148ec2a1bfc9p-12
 r=0 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e98p-14
+r=1 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e98p-14
+r=2 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e98p-14
+r=3 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e99p-14
 
-   This means the smallest value of |mlogr12h| is 0x1.7716ce47b3e98p-14.
+   This means the only case where |mlogr12h| < 2^-12 (with mlogr12h <> 0)
+   is extra_int=0 i1=126 i2=31.
 */
 
 #ifndef MODE
@@ -162,7 +165,7 @@ analyze_second_sum (void)
                     r, extra_int, i1, i2, maxratio1 = ratio1);
 #elif MODE==3
           fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
-          if (mlogr12h != 0 && fabs (mlogr12h) < min_mlogr12h)
+          if (mlogr12h != 0 && fabs (mlogr12h) < 0x1p-12)
             printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr12h|=%la\n",
                     r, extra_int, i1, i2, min_mlogr12h = fabs (mlogr12h));
 #else
