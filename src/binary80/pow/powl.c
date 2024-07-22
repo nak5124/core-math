@@ -1459,7 +1459,7 @@ long double cr_powl(long double x, long double y) {
 	}
 
         // now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
-#ifdef ACCURATE_ONLY
+#ifndef ACCURATE_ONLY
 	// Automatic giveup if x subnormal
 	if(__builtin_expect(cvt_x.m >> 63, 1)) {
 		long double r;
@@ -1467,8 +1467,14 @@ long double cr_powl(long double x, long double y) {
 		POWL_DPRINTF("x="SAGE_RE"\n",x);
 		POWL_DPRINTF("y="SAGE_RE"\n",y);
 		compute_log2pow(&rh, &rl, x, y);
+                // rh + rl = y * log2(x) * (1 + eps) with
+                // |eps| <= 2^-97.286 |rh| and |rl| <= 2^-48.262 |rh|
 
-		if(__builtin_expect(rh <= -16445.2, 0)) {
+		if(__builtin_expect(rh <= -16446.1, 0)) {
+                  /* Since |rl| <= 2^-48.262 |rh|,
+                     y * log2(x) <= -16446.1 (1 - 2^-48.262) * (1 - 2^-97.286)
+                     <= -16446.09 thus x^y < 2^-16446. (Numbers in
+                     (2^-16446, 2^-16445) round to nearest to 2^-16445.) */
 			return (sign * 0x1p-16445L) * .5L;
 		} else if(__builtin_expect(rh >= 16384.5, 0)) {
 			return sign * 0x1p16383L + sign * 0x1p16383L;

@@ -392,3 +392,5 @@
 0x1.63699ab73c85f56ap+8,0x1.8p-4
 0x1.3626afafd77339b2p+9,0x1.8p-4
 0x1.04b1356a78ecf7e2p+10,0x1.8p-4
+# exercise underflow test (x^y ~ 2^-16445.3)
+0x1.45f306dc9c883p-2,0x1.372e8de305337p+13
