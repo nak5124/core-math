@@ -998,19 +998,15 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 	if(__builtin_expect(wanted_exponent <= 0, 0)) {
 		int shiftby = 1 - wanted_exponent;
 
-		// FIXME this can behave erroneously for numbers close to the normal
-		// threshold, which would have failed the rounding test.
-		if(__builtin_expect(shiftby == 64, 0)) {
-			return (invert ? -0x1p-16445L : 0x1p-16445L) * .75L;
-		}
-
 		if(__builtin_expect(shiftby > 64, 0)) {	
-				return (invert ? -0x1p-16445L : 0x1p-16445L) * .25L;
+			mh = 0; ml = mh >> (shiftby - 64); eps = 1;
+			// This overestimates epsilon, which is safe
+		} else {
+			ml = (uint64_t)ml >> shiftby;
+			ml |= mh << (64 - shiftby);
+			mh >>= shiftby;
+			eps >>= shiftby;
 		}
-		ml = (uint64_t)ml >> shiftby;
-		ml |= mh << (64 - shiftby);
-		mh >>= shiftby;	
-		eps >>= shiftby;
 		wanted_exponent = 0;
 
 		POWL_DPRINTF("Shifting by %u\n", shiftby);
@@ -1049,7 +1045,6 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 
 	// Denormals *inside* the computation don't seem to pause a problem
 	// given the error analysis (we used absolute bounds mostly)
-	// rounding test
 
 	// Infinity output case
 	if(__builtin_expect(wanted_exponent >= 32767, 0)) {
@@ -1067,30 +1062,35 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 	   Coefficients for log2(1 + x)/x
 	*/
 	static const qint64_t P[19] = {
-    {.hh = 0x9b81e344cc4acd3f, .hl = 0x5d1b6197f381b711, .lh = 0x686a64bc8f736278, .ll = 0x1711add7c4ccfb91, .ex = -4, .sgn = 0x0}, /* degree 18 */
-    {.hh = 0xa4258caa9366101d, .hl = 0xdf3c5cc7acf3d865, .lh = 0xac62d361b06d261d, .ll = 0x3f20e4fc49eaab31, .ex = -4, .sgn = 0x1}, /* degree 17 */
-    {.hh = 0xadcd64dba1f4c039, .hl = 0x2cdddfdd50f72d6e, .lh = 0x4ab8ddc595e99b35, .ll = 0xae0a612898ed178e, .ex = -4, .sgn = 0x0}, /* degree 16 */
-    {.hh = 0xb8aa3b295c127161, .hl = 0xfba18fda417284a8, .lh = 0xf221f16032a256a1, .ll = 0xbc4b6c58360e6b6b, .ex = -4, .sgn = 0x1}, /* degree 15 */
-    {.hh = 0xc4f9d8b4a67fefb7, .hl = 0x3425410828a39116, .lh = 0xa5ac6790971c8ad1, .ll = 0xbabc8f1b73a70e8, .ex = -4, .sgn = 0x0}, /* degree 14 */
-    {.hh = 0xd30bb153d6f6c9fb, .hl = 0x28e9fdc71fab7b48, .lh = 0xeeed752c9b6bc0f7, .ll = 0xcb18d704648f7791, .ex = -4, .sgn = 0x1}, /* degree 13 */
-    {.hh = 0xe347ab4698bb00e7, .hl = 0x11e274b19fcf82c9, .lh = 0xffcdbd54ac8584a0, .ll = 0xd8016b2c5eb3e814, .ex = -4, .sgn = 0x0}, /* degree 12 */
-    {.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa911f62b593a, .lh = 0xca0546b8500f7cf3, .ll = 0x317f22dda062e439, .ex = -4, .sgn = 0x1}, /* degree 11 */
-    {.hh = 0x864d424ca0116942, .hl = 0xb91d166906a0e72e, .lh = 0xfbc828fed851908a, .ll = 0x31c745705fdaef91, .ex = -3, .sgn = 0x0}, /* degree 10 */
-    {.hh = 0x93bb62877cdff3c9, .hl = 0x653998a6ba7dcc66, .lh = 0x16bdfd5e77e0dcab, .ll = 0x5b6982c68790588e, .ex = -3, .sgn = 0x1}, /* degree 9 */
-    {.hh = 0xa42589ebe01547c3, .hl = 0x54071b63eba83796, .lh = 0x2686f8891574e631, .ll = 0x8d661611c8a1f1b1, .ex = -3, .sgn = 0x0}, /* degree 8 */
-    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb574d0da8d33054, .ll = 0xcd950b061011f17b, .ex = -3, .sgn = 0x1}, /* degree 7 */
-    {.hh = 0xd30bb153d6f6c9fb, .hl = 0x22e490ee2efcd9c1, .lh = 0xcf6430a218437c7, .ll = 0x94f25632b58926c, .ex = -3, .sgn = 0x0}, /* degree 6 */
-    {.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa915e17c5361, .lh = 0x39c9f8e1273cd88d, .ll = 0x96a101a6e32c3197, .ex = -3, .sgn = 0x1}, /* degree 5 */
-    {.hh = 0x93bb62877cdff3c9, .hl = 0x653998a6ba7dcba0, .lh = 0xbc45fbba4abaaead, .ll = 0x3dee003a9577997c, .ex = -2, .sgn = 0x0}, /* degree 4 */
-    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8afb83221b926b8e, .ex = -2, .sgn = 0x1}, /* degree 3 */
-    {.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa915e17c5361, .lh = 0x39c9f8e127372320, .ll = 0xb986c890fa1e97e5, .ex = -2, .sgn = 0x0}, /* degree 2 */
-    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8b25166cd1fa0378, .ex = -1, .sgn = 0x1}, /* degree 1 */
-    {.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8b25166cd1a13248, .ex = 0, .sgn = 0x0}, /* degree 0 */
-};
+		{.hh = 0x9b81e344cc4acd3f, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x0}, /* degree 18 */
+		{.hh = 0xa4258caa93661016, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x1}, /* degree 17 */
+		{.hh = 0xadcd64dba1f4c039, .hl = 0x2cdde110238be8d8, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x0}, /* degree 16 */
+		{.hh = 0xb8aa3b295c127161, .hl = 0xfba1b1615d052d58, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x1}, /* degree 15 */
+		{.hh = 0xc4f9d8b4a67fefb7, .hl = 0x3425410828a24674, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x0}, /* degree 14 */
+		{.hh = 0xd30bb153d6f6c9fb, .hl = 0x28e9fdc71f70e43e, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x1}, /* degree 13 */
+		{.hh = 0xe347ab4698bb00e7, .hl = 0x11e274b19fcf82ca, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x0}, /* degree 12 */
+		{.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa911f62b593b, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x1}, /* degree 11 */
+		{.hh = 0x864d424ca0116942, .hl = 0xb91d166906a0e72e, .lh = 0xfbc828ff26a1984a, .ll = 0x4e591874ecaec24e, .ex = -3, .sgn = 0x0}, /* degree 10 */
+		{.hh = 0x93bb62877cdff3c9, .hl = 0x653998a6ba7dcc66, .lh = 0x16bdfd507a428b04, .ll = 0x41d10daaa8adc41c, .ex = -3, .sgn = 0x1}, /* degree 9 */
+		{.hh = 0xa42589ebe01547c3, .hl = 0x54071b63eba83796, .lh = 0x2686f8891574e5f5, .ll = 0x4a2c567591c942f9, .ex = -3, .sgn = 0x0}, /* degree 8 */
+		{.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb574d0da8d33458, .ll = 0x9fa51eba24fafe8, .ex = -3, .sgn = 0x1}, /* degree 7 */
+		{.hh = 0xd30bb153d6f6c9fb, .hl = 0x22e490ee2efcd9c1, .lh = 0xcf6430a218437c7, .ll = 0x94f364a4987e6e8, .ex = -3, .sgn = 0x0}, /* degree 6 */
+ 		{.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa915e17c5361, .lh = 0x39c9f8e1273cd88d, .ll = 0x96a06e6ed417ed99, .ex = -3, .sgn = 0x1}, /* degree 5 */
+		{.hh = 0x93bb62877cdff3c9, .hl = 0x653998a6ba7dcba0, .lh = 0xbc45fbba4abaaead, .ll = 0x3dee003a9576c9a2, .ex = -2, .sgn = 0x0}, /* degree 4 */
+		{.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8afb83221b9653eb, .ex = -2, .sgn = 0x1}, /* degree 3 */
+		{.hh = 0xf6384ee1d01feba4, .hl = 0xfe0aa915e17c5361, .lh = 0x39c9f8e127372320, .ll = 0xb986c890fa1e97e5, .ex = -2, .sgn = 0x0}, /* degree 2 */
+		{.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8b25166cd1fa0378, .ex = -1, .sgn = 0x1}, /* degree 1 */
+		{.hh = 0xb8aa3b295c17f0bb, .hl = 0xbe87fed0691d3e88, .lh = 0xeb577aa8dd695a58, .ll = 0x8b25166cd1a13248, .ex = 0, .sgn = 0x0}, /* degree 0 */
+	};
 
-	mul_qint(r, &P[0], x);
+	mul_qint_11(r, x, &P[0]); // Relative error ~2^-64 here is fine
+	
+	for(int i = 2; i <= 7; i++) {
+		add_qint_22(r, &P[1], r);
+		mul_qint_22(r, r, x);
+	}
 
-	for(int i = 1; i <= 18; i++) {
+	for(int i = 8; i <= 18; i++) {
 			add_qint(r, &P[i], r);
 			mul_qint(r, r, x);
 	}
@@ -1251,25 +1251,32 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 inline static
 void q_exp2poly(qint64_t* r, const qint64_t* x) {
 	static const qint64_t Q[11] = {
-    {.hh = 0xf267a8ac5c749bda, .hl = 0x7865836d373adb84, .lh = 0x635d2e2ca85170c0, .ll = 0xf8ee1545560b1526, .ex = -28, .sgn = 0x0}, /* degree 10 */
-    {.hh = 0xda929e9caf40bee9, .hl = 0x28ba8e19d9f759aa, .lh = 0x96547a8fd7ed0b86, .ll = 0x47d8a68e75663946, .ex = -24, .sgn = 0x0}, /* degree 9 */
-    {.hh = 0xb160111d2e411fec, .hl = 0x7ff30374d01bb8c4, .lh = 0xf116dc310a212be3, .ll = 0x6f732ad9e39ac6cc, .ex = -20, .sgn = 0x0}, /* degree 8 */
-    {.hh = 0xffe5fe2c45863435, .hl = 0x8a8e64398706e1c2, .lh = 0x98bacaaf195ab440, .ll = 0x16313911f8a7556f, .ex = -17, .sgn = 0x0}, /* degree 7 */
-    {.hh = 0xa184897c363c3b7a, .hl = 0x58544c3591a0f9f6, .lh = 0x62916db60594cac7, .ll = 0xa8da1b73cb7c4d60, .ex = -13, .sgn = 0x0}, /* degree 6 */
-    {.hh = 0xaec3ff3c53398883, .hl = 0x8bfb4d28a5f61982, .lh = 0xbb69ccdf430a8a3e, .ll = 0xfd0b892be341d779, .ex = -10, .sgn = 0x0}, /* degree 5 */
-    {.hh = 0x9d955b7dd273b94e, .hl = 0x65df05a9f7562839, .lh = 0x23c7529f31c88ec9, .ll = 0x10b35f45a1d79617, .ex = -7, .sgn = 0x0}, /* degree 4 */
-    {.hh = 0xe35846b82505fc59, .hl = 0x9d3b15d995e96f74, .lh = 0xf5c47444da0110e2, .ll = 0x5a29dd80013101b9, .ex = -5, .sgn = 0x0}, /* degree 3 */
-    {.hh = 0xf5fdeffc162c7543, .hl = 0x78b583764b9afe55, .lh = 0x1d13a8e186734ea6, .ll = 0x15f49ddd89a9bc77, .ex = -3, .sgn = 0x0}, /* degree 2 */
-    {.hh = 0xb17217f7d1cf79ab, .hl = 0xc9e3b39803f2f6af, .lh = 0x40f343267298b62d, .ll = 0x8a0d175b8bb03a5a, .ex = -1, .sgn = 0x0}, /* degree 1 */
-    {.hh = 0x8000000000000000, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x0}, /* degree 0 */
-};
+		{.hh = 0xf267a8ac5c749bda, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -28, .sgn = 0x0}, /* degree 10 */
+		{.hh = 0xda929e9caf40bee9, .hl = 0x28ba755cfbeb15af, .lh = 0x0, .ll = 0x0, .ex = -24, .sgn = 0x0}, /* degree 9 */
+		{.hh = 0xb160111d2e411fec, .hl = 0x7ff30374d01cdca8, .lh = 0x0, .ll = 0x0, .ex = -20, .sgn = 0x0}, /* degree 8 */
+		{.hh = 0xffe5fe2c45863435, .hl = 0x8a8e64398706e1c3, .lh = 0x0, .ll = 0x0, .ex = -17, .sgn = 0x0}, /* degree 7 */
+		{.hh = 0xa184897c363c3b7a, .hl = 0x58544c3591a0f9f6, .lh = 0x62916db41ee8676d, .ll = 0x9a0f49f229e8311a, .ex = -13, .sgn = 0x0}, /* degree 6 */
+		{.hh = 0xaec3ff3c53398883, .hl = 0x8bfb4d28a5f61982, .lh = 0xbb69ccdf430a035d, .ll = 0xc86feff9c1904fe0, .ex = -10, .sgn = 0x0}, /* degree 5 */
+		{.hh = 0x9d955b7dd273b94e, .hl = 0x65df05a9f7562839, .lh = 0x23c7529f31c88ec9, .ll = 0x10b5dbd81066669c, .ex = -7, .sgn = 0x0}, /* degree 4 */
+		{.hh = 0xe35846b82505fc59, .hl = 0x9d3b15d995e96f74, .lh = 0xf5c47444da0110e2, .ll = 0x5a29dd80d795db82, .ex = -5, .sgn = 0x0}, /* degree 3 */
+		{.hh = 0xf5fdeffc162c7543, .hl = 0x78b583764b9afe55, .lh = 0x1d13a8e186734ea6, .ll = 0x15f49ddd89a9bc73, .ex = -3, .sgn = 0x0}, /* degree 2 */
+		{.hh = 0xb17217f7d1cf79ab, .hl = 0xc9e3b39803f2f6af, .lh = 0x40f343267298b62d, .ll = 0x8a0d175b8bb03a5a, .ex = -1, .sgn = 0x0}, /* degree 1 */
+		{.hh = 0x8000000000000000, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x0}, /* degree 0 */
+	};
 
 	cp_qint(r, &Q[0]);
-
-	for(int i = 1; i < 11; i++) {
-		mul_qint(r, r, x);
-		add_qint(r, &Q[i], r);
+	mul_qint_11(r, r, x); // relative error of 2^-64 is fine here
+	for(int i = 1; i <= 4; ++i) {
+		add_qint_22(r, &Q[i], r);
+		mul_qint_22(r, r, x);
 	}
+
+	for(int i = 5; i <= 9; i++) {
+		add_qint(r, &Q[i], r);
+		mul_qint(r, r, x);
+	}
+
+	add_qint(r, &Q[10], r);
 }
 
 
