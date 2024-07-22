@@ -998,19 +998,15 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 	if(__builtin_expect(wanted_exponent <= 0, 0)) {
 		int shiftby = 1 - wanted_exponent;
 
-		// FIXME this can behave erroneously for numbers close to the normal
-		// threshold, which would have failed the rounding test.
-		if(__builtin_expect(shiftby == 64, 0)) {
-			return (invert ? -0x1p-16445L : 0x1p-16445L) * .75L;
-		}
-
 		if(__builtin_expect(shiftby > 64, 0)) {	
-				return (invert ? -0x1p-16445L : 0x1p-16445L) * .25L;
+			mh = 0; ml = mh >> (shiftby - 64); eps = 1;
+			// This overestimates epsilon, which is safe
+		} else {
+			ml = (uint64_t)ml >> shiftby;
+			ml |= mh << (64 - shiftby);
+			mh >>= shiftby;
+			eps >>= shiftby;
 		}
-		ml = (uint64_t)ml >> shiftby;
-		ml |= mh << (64 - shiftby);
-		mh >>= shiftby;	
-		eps >>= shiftby;
 		wanted_exponent = 0;
 
 		POWL_DPRINTF("Shifting by %u\n", shiftby);
@@ -1049,7 +1045,6 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 
 	// Denormals *inside* the computation don't seem to pause a problem
 	// given the error analysis (we used absolute bounds mostly)
-	// rounding test
 
 	// Infinity output case
 	if(__builtin_expect(wanted_exponent >= 32767, 0)) {
