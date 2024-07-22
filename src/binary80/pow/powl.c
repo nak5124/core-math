@@ -547,62 +547,59 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h| which allows us to
            conclude.
 
-           The accompanying program high_sum, compiled with -DRATIO, gives
-           the following upper-bound (all attained for extra_int=0, i1=126
-           and i2=32 where i1, i2 are the indices for r1 and r2):
+           The accompanying program high_sum.c, compiled with -DMODE=0, gives
+           the following upper-bounds (all attained for extra_int=0):
            
-           |mlogrh/mlogr12h|  < 125.6
-           |mlogr1h/mlogr12h| < 125.6
-           |mlogr2h/mlogr12h| < 124.6
+           |mlogrh/mlogr12h|  < 1.951
+           |mlogr1h/mlogr12h| < 1.951
+           |mlogr2h/mlogr12h| <= 1
 
 	   Expanding high_sum(), let t the low part of the fast_two_sum() call.
            As above the fast_two_sum yields an error <= 2^-105 |mlogr12h|
            and |t| <= 2^-52 |mlogr12h|.
 	   In the last sum of the fast_two_sum(), notice that
-           |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * 124.6 |mlogr12h|
-           < 2^-46.03 |mlogr12h|,
-           where we used the above bound |mlogr2h/mlogr12h| < 124.6.
+           |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * |mlogr12h|,
+           where we used the above bound |mlogr2h/mlogr12h| <= 1.
 
-	   Therefore, |mlogr2l + t| <= (2^-46.03 + 2^-52) |mlogr12h|
-                                    <= 2^-46.007 |mlogr12h|.
-           This implies that |mlogr12l| <= 2^-46.007 |mlogr12h| and that the
+	   Therefore, |mlogr2l + t| <= (2^-53 + 2^-52) |mlogr12h|
+                                    <= 2^-51.415 |mlogr12h|.
+           This implies that |mlogr12l| <= 2^-51.415 |mlogr12h| and that the
            rounding error of the high_sum's final sum is
-           at most 2^-98.007 |mlogr12h|.
+           at most 2^-103.415 |mlogr12h|.
 
 	   Note that the following sum mlogr12l + mlogrl is at most
 	     |mlogr12l| + 2^-51 |mlogrh|
-             <= (2^-46.007 + 125.545 * 2^-51) |mlogr12h|
+             <= (2^-51.415 + 1.951 * 2^-51) |mlogr12h|
            (where |mlogrl| <= 2^-51|mlogrh| was proven in the analysis of
-           the first high_sum, and |mlogrh/mlogr12h| < 125.6 from the above
-           cancellation example), we thus get:
-           |mlogr12l| <= 2^-43.701 |mlogr12h| and a rounding error
-	   of at most 2^-95.701 |mlogr12h|.
+           the first high_sum, and |mlogrh/mlogr12h| < 1.951 from the above
+           bounds), we thus get:
+           |mlogr12l| <= 2^-49.566 |mlogr12h| and a rounding error
+	   of at most 2^-101.566 |mlogr12h|.
 
 	   These steps of computation created an error at most
-	     (2^-105 + 2^-98.007 + 2^-95.701) |mlogr12h|
-             < 2^-95.433 |mlogr12h|
+	     (2^-105 + 2^-103.415 + 2^-101.566) |mlogr12h|
+             < 2^-101.111 |mlogr12h|
 	   Propagating the previous absolute errors gives:
            2^-102.678 |mlogrh| + 2^-107.22 |mlogr1h| + 2^-107.27 |mlogr2h|
            where 2^-102.678 |mlogrh| comes from the first high_sum() call,
            2^-107.22 |mlogr1h| comes from the accuracy of the coarse[] table,
            and 2^-107.27 |mlogr2h| comes from the accuracy of the fine[] table.
            Using the above bounds, this yields a relative error bound of:
-             (125.6 * (2^-102.678 + 2^-107.22) + 124.5 * 2^-107.27) |mlogr12h|
-	     125.6 (2^-107.22 + 2^-107.27 + 2^-102.678) |mlogr12h|
-             < 2^-95.588 |mlogr12h|
+             (1.951 * (2^-102.678 + 2^-107.22) + 1 * 2^-107.27) |mlogr12h|
+             < 2^-101.624 |mlogr12h|
            We thus get a total relative error of at most:
-           (2^-95.433 + 2^-95.588) < 2^-94.508 |mlogr12h|:
+           (2^-101.111 + 2^-101.624) < 2^-100.344 |mlogr12h|:
 
            |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
-           < 2^-94.508 |mlogr12h|.
+           < 2^-100.344 |mlogr12h|.
 
-           However, a much better bound is obtained by brute force,
+           However, a better bound is obtained by brute force,
            by trying all the values of extra_int, r1, r2 and all
            rounding modes. This is done in the accompanying high_sum.c
-           program, which yields the bound:
+           program, which yields the bound (with -DMODE=1):
 
            |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
-           < 2^-103.430 |mlogr12h|.
+           < 2^-103.446 |mlogr12h|.
 
            Additionally, this program also shows:
 
@@ -613,7 +610,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
         fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
 	/* This renormalization incurs a relative error at most 2^-105.
            The total relative error becomes at most:
-           (1 + 2^-103.430) * (1 + 2^-105) - 1 < 2^-103.011. This ensures
+           (1 + 2^-103.446) * (1 + 2^-105) - 1 < 2^-103.023. This ensures
 	   |mlogr12l| <= 2^-52 |mlogr12h|.
 	*/
 
@@ -649,13 +646,16 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	polyeval(rh, rl, xh, xl);
 	/* By polyeval's error analysis, rh + rl gets an estimate of log2(1+x)
-	   with relative error at most 2^-98.429. Furthermore |rl|<=2^-49.066|rh|.
+	   with relative error at most 2^-98.285.
+           Furthermore |rl| <= 2^-48.946 |rh|.
 	*/
 
-	high_sum(rh, rl, mlogr12h,*rh,*rl);
+	high_sum(rh, rl, mlogr12h, *rh, *rl);
 	*rl += mlogr12l;
-	/* Let us call rh', rl' the results of the computation, rh and rl the inputs.
-	   Note that if mlogr12h != 0, then |mlogr12h| >= 0x1.5p-12 (manual check).
+	/* Let us call rh', rl' the results of the computation,
+           rh and rl the inputs.
+	   Note that if mlogr12h != 0, then the program high_sum.c with MODE=3
+           shows that |mlogr12h| >= 0x1.7148ec2a1bfc8p-12.
 	   Given the argument above, this implies |mlogr12h| has at least the
 	   binade of |rh|.
 

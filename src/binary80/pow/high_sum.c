@@ -10,11 +10,15 @@
 
 /* Define MODE=0 to analyze the maximal value of the ratios
    |mlogrh/mlogr12h|, |mlogr1h/mlogr12h|, |mlogr2h/mlogr12h|.
-   With -DMODE=0 we get these last lines as output:
+   With -DMODE=0 we get these last lines as output (where the ratios
+   are rounded upwards):
 
-r=2 extra_int=0 i1=126 i2=15 |mlogrh/mlogr12h|=1.9500286434136714e+00
-r=2 extra_int=0 i1=126 i2=15 |mlogr1h/mlogr12h|=1.9500286434136714e+00
-r=0 extra_int=0 i1=0 i2=1 |mlogr2h/mlogr12h|=1.0000000000000000e+00
+r=0 extra_int=0 i1=126 i2=15 |mlogrh/mlogr12h|=0x1.f33513c1b9974p+0
+r=0 extra_int=0 i1=126 i2=15 |mlogr1h/mlogr12h|=0x1.f33513c1b9974p+0
+r=0 extra_int=0 i1=0 i2=1 |mlogr2h/mlogr12h|=0x1p+0
+
+   thus the first two ratios are bounded by 0x1.f33513c1b9974p+0 < 1.951,
+   and the last one by 1.
 
    Define MODE=1 to analyze the maximal relative error between the
    computed value mlogr12h + mlogr12l and the true value
@@ -128,6 +132,18 @@ compute_error (int extra_int, int i1, int i2, double mlogr12h, double mlogr12l)
   return err / mlogr12h;
 }
 
+// return |a/b| rounded up
+static double get_ratio (double a, double b)
+{
+  a = fabs (a);
+  b = fabs (b);
+  int r = fegetround ();
+  fesetround (FE_UPWARD);
+  double ratio = a / b;
+  fesetround (r);
+  return ratio;
+}
+
 // find by brute-force the maximal relative error of the 2nd high_sum call
 // in compute_log2pow()
 static void
@@ -162,17 +178,17 @@ analyze_second_sum (void)
           high_sum(&mlogr12h, &mlogr12l, mlogrh, mlogr2h, mlogr2l);
           mlogr12l += mlogrl;
 #if MODE==0
-          double ratio1 = fabs (mlogrh / mlogr12h);
-          double ratio2 = fabs (mlogr2h / mlogr12h);
-          double ratio3 = fabs (mlogr1h / mlogr12h);
+          double ratio1 = get_ratio (mlogrh, mlogr12h);
+          double ratio2 = get_ratio (mlogr2h, mlogr12h);
+          double ratio3 = get_ratio (mlogr1h, mlogr12h);
           if (ratio1 > maxratio1)
-            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogrh/mlogr12h|=%.16e\n",
+            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogrh/mlogr12h|=%la\n",
                     r, extra_int, i1, i2, maxratio1 = ratio1);
           if (ratio2 > maxratio2)
-            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr2h/mlogr12h|=%.16e\n",
+            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr2h/mlogr12h|=%la\n",
                     r, extra_int, i1, i2, maxratio2 = ratio2);
           if (ratio3 > maxratio3)
-            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr1h/mlogr12h|=%.16e\n",
+            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr1h/mlogr12h|=%la\n",
                     r, extra_int, i1, i2, maxratio3 = ratio3);
           fflush (stdout);
 #elif MODE==1
