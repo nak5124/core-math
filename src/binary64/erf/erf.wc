@@ -65946,9 +65946,21 @@
 0x1.0ep+1017
 0x1.0dfffffffffffp+1017
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023

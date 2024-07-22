@@ -76,13 +76,29 @@ float cr_exp2f(float x){
      {0x1.d5818dcfba487p+0}, {0x1.da9e603db3285p+0}, {0x1.dfc97337b9b5fp+0}, {0x1.e502ee78b3ff6p+0},
      {0x1.ea4afa2a490dap+0}, {0x1.efa1bee615a27p+0}, {0x1.f50765b6e4540p+0}, {0x1.fa7c1819e90d8p+0}};
 
-  b32u32_u t = {.f = x}, u = {.f = x + 0x1.8p17f};
+  b32u32_u t = {.f = x};
+  if(__builtin_expect((t.u&0xffff)==0, 0)){
+    int k = ((t.u>>23)&0xff)-127;
+    if(__builtin_expect(k>=0 && k<9 && (t.u<<(9+k)) == 0, 0)){
+      int msk = (int)t.u>>31;
+      int m = ((t.u&0x7fffff)|(1<<23))>>(23-k);
+      m = (m^msk) - msk + 127;
+      if(m>0 && m<255){
+	t.u = m<<23;
+	return t.f;
+      } else if(m<=0 && m>-23){
+	t.u = 1<<(22+m);
+	return t.f;
+      }
+    }
+  }
   uint32_t ux = t.u<<1;
-  double offd = 0x1.8p46, xd = x, h = xd - ((xd + offd) - offd), h2 = h*h;
   if (__builtin_expect(ux>=0x86000000u || ux<0x65000000u, 0)){
     if(__builtin_expect(ux<0x65000000u, 1)) return 1.0f + x;
     if(!(t.u>=0xc3000000 && t.u<0xc3150000u)) return as_special(x);
   }
+  double offd = 0x1.8p46, xd = x, h = xd - ((xd + offd) - offd), h2 = h*h;
+  b32u32_u u = {.f = x + 0x1.8p17f};
   b64u64_u sv = tb[u.u&0x3f];
   sv.u += (long)(u.u>>6)<<52;
   static const double b[] = {1, 0x1.62e42fef4c4e7p-1, 0x1.ebfd1b232f475p-3, 0x1.c6b19384ecd93p-5};

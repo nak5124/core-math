@@ -92,9 +92,22 @@ get_random ()
   b80u80_t v;
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) rand () << 62;
-  v.e = rand () & 65535;
+  v.m |= (uint64_t) (rand () & 1) << 62;
+  // the low 63 bits of m are random
+  v.e = rand () & 0xffff;
+  // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
+  // significant bit set, otherwise it should be cleared
+  // cf https://en.wikipedia.org/wiki/Extended_precision
+  uint64_t t = (v.e & 0x7fff) != 0;
+  v.m |= t << 63;
   return v.f;
+}
+
+static void
+check_exact (void)
+{
+  for (int e = -16445; e < 16384; e++)
+    check ((long double) e);
 }
 
 int
@@ -141,6 +154,9 @@ main (int argc, char *argv[])
 
   ref_init();
   ref_fesetround (rnd);
+
+  printf ("Checking exact cases\n");
+  check_exact ();
 
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */

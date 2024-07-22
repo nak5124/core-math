@@ -41689,7 +41689,6 @@
 0x1.b1c15d78e7c7cp+1019
 0x1.b1c15d78e7c7cp+1020
 0x1.b1c15d78e7c7cp+1021
-0x1.61a3db8c8d129p+1021
 0x1.61a3db8c8d129p+1022
 0x1.61a3db8c8d129p+1023
 # special cases
@@ -41701,6 +41700,15 @@
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
 # non-regression tests
 0x1.62d237048d83p+940
-0x1.6ac5b262ca1ffp+849

@@ -208,7 +208,12 @@ static const tint_t Q[30] = {
 static double __attribute__((noinline))
 atan2pi_accurate (double y, double x)
 {
-  int inv = __builtin_fabs (y) > __builtin_fabs (x);
+  double absy = __builtin_fabs (y), absx = __builtin_fabs (x);
+  int inv = absy > absx;
+  if (absy == absx)
+    return (y > 0) ?
+      ((x > 0) ? 0.25 : 0.75)      // 1st and 2nd quadrant
+      : ((x < 0) ? -0.75 : -0.25); // 3rd and 4th quadrant
   tint_t z[1], p[1], q[1];
   if (inv) // case |y| > |x|
   {

@@ -7588,6 +7588,16 @@
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
 # worst cases not above, computed with bacsel with at least 43 identical bits
 # after the round bit, in the ranges
 # -0x1.2b708872320e2p+5 <= x <= -0x1.6a09e667f3bccp-53

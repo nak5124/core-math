@@ -68928,9 +68928,26 @@
 -inf
 +0
 -0
-# denormal threshold
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
+# threshold values
 -0x1.ff00000000002p+9
 -0x1.ff00000000001p+9
--0x1.ffp+9
 -0x1.fefffffffffffp+9
 -0x1.feffffffffffep+9
+-0x1.71547652b82fdp-54
+-0x1.71547652b82fep-54
+-0x1.71547652b82ffp-54
+0x1.71547652b82fcp-53
+0x1.71547652b82fdp-53
+0x1.71547652b82fep-53
+# non-regression test (reported by Erik E.)
+-0x0.0000000000001p-1022

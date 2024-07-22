@@ -1573,7 +1573,9 @@
 0x1.ffffffffffff3p-1
 0x1.ffffffffffff4p-1
 0x1.ffffffffffff7p-1
-# worst cases from https://www.vinc17.net/research/testlibm/hrcases/hrcases-trig.xz (some might be duplicates with the above)
+# worst cases from
+# https://www.vinc17.net/research/testlibm/hrcases/hrcases-trig.xz
+# (some might be duplicates with the above)
 0x1.f845e88d26c1ep-1
 0x1.f23e0c2c04de4p-1
 0x1.f22771f73b4c8p-1
@@ -179024,9 +179026,19 @@
 # special values
 +snan
 -snan
-nan
++nan
 -nan
-inf
++inf
 -inf
-0x0p+0
-6473 duplicates
++0
+-0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023

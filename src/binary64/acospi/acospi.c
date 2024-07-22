@@ -406,7 +406,7 @@ static const double T[256][8] = {
 static const double pi_hi = 0x1.921fb54442d18p1;
 static const double pi_lo = 0x1.1a62633145c07p-53;
 
-/* For the slow path, use polynomials of degree DEGREE (thus with DEGREE+1
+/* For the accurate path, use polynomials of degree DEGREE (thus with DEGREE+1
    coefficients), with coefficients of degree < LARGE represented as
    double-double, and coefficients of degree >= LARGE as double only.
    Thus each polynomial needs DEGREE+LARGE+1 'doubles'. */
@@ -791,9 +791,9 @@ static const int8_t exceptions_rnd[EXCEPTIONS] = {
   };
 // end_acospi
 
-/* slow path, assumes |x| < 1 */
+/* accurate path, assumes |x| < 1 */
 static double
-slow_path (double x)
+accurate_path (double x)
 {
   double absx, y, h, l, u, v;
   union_t w;
@@ -821,6 +821,9 @@ slow_path (double x)
       int8_t l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
       return h + h * 0x1p-54 * (double) l;
     }
+    // for |x| <= 0x1.921fb54442d18p-54, acospi(x) rounds to 0.5 to nearest
+    if (absx <= 0x1.921fb54442d18p-54)
+      return __builtin_fma (x, -0.125, 0.5);
     // end_acospi
 
     p = T2[i];
@@ -916,7 +919,7 @@ cr_acospi (double x)
   double absx = u.x;
   k = u.i[1];
   if (k < 0x3fe80000) { /* |x| < 0.75 */
-    if (__builtin_expect (k == 0 && u.i[0] == 0, 0)) return 0.5;
+    if (__builtin_expect (k == 0 && u.i[0] == 0, 0)) return 0.5; // x = 0
     /* approximate acos(x) by pi/2 +/- p(x-xmid), where [0,0.75) is split
        into 192 sub-intervals */
     v.x = 1.0 + absx; /* 1 <= v.x < 2 */
@@ -979,7 +982,7 @@ cr_acospi (double x)
     static const double err = 0x1.c0p-63; // acospi_specific, 2^-62.195 < 0x1.c0p-63
     double left  = u + (v - err), right = u + (v + err);
     if (__builtin_expect (left != right, 0))
-      return slow_path (x); /* hard to round case */
+      return accurate_path (x); /* hard to round case */
     return left;
   }
   /*--------------------------- 0.75 <= |x| < 1 ---------------------*/
@@ -1047,7 +1050,7 @@ cr_acospi (double x)
     static const double err = 0x1.13p-66; // acospi_specific, 2^-65.898 < 0x1.13p-66
     double left  = u + (v - err), right = u + (v + err);
     if (__builtin_expect (left != right, 0))
-      return slow_path (x); /* hard to round case */
+      return accurate_path (x); /* hard to round case */
     return left;
   }    /*   else  if (k < 0x3ff00000)    */
 

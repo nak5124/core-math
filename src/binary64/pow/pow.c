@@ -1332,8 +1332,12 @@ is_exact (double x, double y)
                         (w.u << 22) != 0, 1))
     return 0;
 
-  // xmax[y-2] for 2<=y<=33 is the largest m such that m^y fits in 53 bits
-  static const uint64_t xmax[] = { 94906265, 208063, 9741, 1552, 456, 190, 98,
+  if (__builtin_expect ((v.u << 1) == 0x7fe0000000000000ul, 0)) // |x| = 1
+    return 1;
+
+  // xmax[y] for 1<=y<=33 is the largest m such that m^y fits in 53 bits
+  static const uint64_t xmax[] = { 0, 0xffffffffffffffff,
+                                   94906265, 208063, 9741, 1552, 456, 190, 98,
                                    59, 39, 28, 21, 16, 13, 11, 9, 8, 7, 6, 6,
                                    5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3 };
   if (y >= 0 && is_int (y)) {
@@ -1362,7 +1366,7 @@ is_exact (double x, double y)
       return 0;
     // now 2 <= y <= 33
     int y_int = (int) y;
-    if (m > xmax[y_int - 2])
+    if (m > xmax[y_int])
       return 0;
     // |x^y| = m^y * 2^(e*y)
     uint64_t my = m * m;
@@ -1405,7 +1409,6 @@ is_exact (double x, double y)
   {
     if (m != 1) return 0;
     // y = -2^f thus k = -f
-    if (x == 1) return 1;
     // now e <> 0
     t = __builtin_ctzl (e);
     if (-f > t) return 0; // 2^k does not divide e
@@ -1432,19 +1435,24 @@ is_exact (double x, double y)
   }
 
   // Now |x^y| = (m*2^e)^n with n an odd integer
-  // now for 33 < n it cannot be exact
-  if (33 < n)
-    return 0;
-  // now 2 <= n <= 33
-  if (m > xmax[n - 2])
-    return 0;
+  // now for 33 < n it cannot be exact, unless m=1
+  if (m > 1)
+  {
+    if (33 < n)
+      return 0;
+    // now n <= 33
+    if (m > xmax[n])
+      return 0;
+  }
   // |x^y| = m^n * 2^(e*n)
-  uint64_t my = m * m;
-  while (n-- > 2)
+  uint64_t my = m;
+  int64_t ez = e * n;
+  while (n-- > 1)
     my = my * m;
+  // |x^y| = my * 2^(e*n)
   t = 64 - __builtin_clzl (my);
   // 2^(t-1) <= m^n < 2^t thus 2^(e*n + t - 1) <= |x^n| < 2^(e*n + t)
-  int64_t ez = e * n + t;
+  ez += t;
   if (ez <= -1074 || 1024 < ez)
     return 0;
   // since m is odd, x^y is an odd multiple of 2^(e*y)

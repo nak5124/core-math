@@ -232,14 +232,18 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
     {0x1.5d87fe7a66459p-70, -0x1.dc47e47beb9ddp-124}, {0x1.430912f9fb79dp-85, -0x1.4fcd51fcb764p-139}};
   double fl, fh = polydd(z, 6, cd, &fl);
   fh = mulddd(z, fh,fl, &fl);
-  if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){
-    if(!(k&0xfff)){
+  if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){ // x >= -1022
+    // for -0x1.71547652b82fep-54 <= x <= 0x1.71547652b82fdp-53,
+    // exp2(x) round to x to nearest
+    if (-0x1.71547652b82fep-54 <= x && x <= 0x1.71547652b82fdp-53)
+      return __builtin_fma (x, 0.5, 1.0);
+    else if(!(k&0xfff)){ // 4096*x rounds to 4096*integer
       double e;
       fh = fasttwosum(th,fh, &e);
       fl = fasttwosum(e, fl, &e);
       ix.f = fl;
-      if((ix.u&(~0ul>>12))==0) {
-	if((ix.u>>52)&0x7ff){
+      if((ix.u&(~0ul>>12))==0) { // fl is a power of 2
+	if((ix.u>>52)&0x7ff){    // |fl| is Inf
 	  b64u64_u v = {.f = e};
 	  i64 d = ((((i64)ix.u>>63)^((i64)v.u>>63))<<1) + 1;
 	  ix.u += d;

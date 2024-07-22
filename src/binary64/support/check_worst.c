@@ -33,7 +33,9 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 #include "function_under_test.h"
 
@@ -102,10 +104,10 @@ readstdin(double2 **result, int *count)
       (*count)++;
     else if (sscanf_snan (buf, &(*item)[0]) == 1)
     {
-      while (*buf++ != ',');
-      if (sscanf_snan (buf, &(*item)[1]) == 1)
+      char *tbuf = buf;
+      while (*tbuf++ != ',');
+      if (sscanf_snan (tbuf, &(*item)[1]) == 1)
         (*count)++;
-      printf ("x=%la y=%la\n", (*item)[0], (*item)[1]);
     }
   }
 }
@@ -142,6 +144,23 @@ is_equal (double x, double y)
 
 int tests = 0;
 
+// prints snan/qnan when x is NaN
+static void
+print_binary64 (double x)
+{
+  d64u64 v = {.f = x};
+  if (!is_nan (x)) // not NaN
+    printf ("%la", x);
+  else
+  {
+    // if bit 51 is 1, this is a qNaN, otherwise a sNaN
+    if ((v.i >> 51) & 1)
+      printf ("qnan");
+    else
+      printf ("snan");
+  }
+}
+
 static void
 check (double x, double y)
 {
@@ -160,9 +179,25 @@ check (double x, double y)
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
 #ifndef EXCHANGE_X_Y
-    printf("FAIL x=%la y=%la ref=%la z=%la\n", x, y, z1, z2);
+    printf("FAIL x=");
+    print_binary64 (x);
+    printf (" y=");
+    print_binary64 (y);
+    printf (" ref=");
+    print_binary64 (z1);
+    printf (" z=");
+    print_binary64 (z2);
+    printf ("\n");
 #else
-    printf("FAIL y=%la x=%la ref=%la z=%la\n", x, y, z1, z2);
+    printf("FAIL y=");
+    print_binary64 (x);
+    printf (" x=");
+    print_binary64 (y);
+    printf (" ref=");
+    print_binary64 (z1);
+    printf (" z=");
+    print_binary64 (z2);
+    printf ("\n");
 #endif
     fflush(stdout);
 #ifndef DO_NOT_ABORT
