@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <mpfr.h>
 #include <fenv.h>
 #include <math.h>
+#include <float.h>
 #include <omp.h>
-#include "powl_tables.h"
+#include <stdbool.h>
 
 /* Define MODE=0 to analyze the maximal value of the ratios
    |mlogrh/mlogr12h|, |mlogr1h/mlogr12h|, |mlogr2h/mlogr12h|.
@@ -34,11 +36,27 @@ r=0 extra_int=0 i1=126 i2=31 |mlogr12l/mlogr12h|=3.6490470899802542e-15
 
    This means the largest value of |mlogr12l/mlogr12h| is
    3.6490470899802542e-15 < 2^-47.961.
+
+   Define MODE=3 to find the smallest value of mlogr12h (when non zero),
+   after the renormalization. With -DMODE=2 we get these last lines as output:
+
+r=0 extra_int=0 i1=0 i2=1 |mlogr12h|=0x1.150c5586012b8p-11
+r=0 extra_int=0 i1=0 i2=125 |mlogr12h|=0x1.7148ec2a1bfc9p-12
+r=0 extra_int=0 i1=126 i2=31 |mlogr12h|=0x1.7716ce47b3e98p-14
+
+   This means the smallest value of |mlogr12h| is 0x1.7716ce47b3e98p-14.
 */
 
 #ifndef MODE
 #error "You should define MODE (0, 1, or 2)"
 #endif
+
+typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
+
+#define POWL_DPRINTF(x,y,z)
+
+#include "qint.h"
+#include "powl_tables.h"
 
 static inline
 void fast_two_sum(double* rh, double* rl, double a, double b) {
@@ -89,6 +107,7 @@ static void
 analyze_second_sum (void)
 {
   double maxerr = 0, maxratio1 = 0, maxratio2 = 0, maxratio3 = 0;
+  double min_mlogr12h = DBL_MAX;
   static int R[4] = {FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD};
   for (int r = 0; r < 4; r++)
   {
@@ -141,6 +160,11 @@ analyze_second_sum (void)
           if (ratio1 > maxratio1)
             printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr12l/mlogr12h|=%.16e\n",
                     r, extra_int, i1, i2, maxratio1 = ratio1);
+#elif MODE==3
+          fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
+          if (mlogr12h != 0 && fabs (mlogr12h) < min_mlogr12h)
+            printf ("r=%d extra_int=%d i1=%d i2=%d |mlogr12h|=%la\n",
+                    r, extra_int, i1, i2, min_mlogr12h = fabs (mlogr12h));
 #else
 #error "Invalid value of MODE"
 #endif
