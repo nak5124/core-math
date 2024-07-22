@@ -264,10 +264,10 @@ def corr_tk(k=0):
       h = R(x)
       l = R(x-h.exact_rational())
       t = h.exact_rational() + l.exact_rational()
-      e = n(log(t)/log(2) - i/2^(20-5*k), 600)
-      corrhi  = floor(e * 2^167)
-      corrloh = floor((e * 2^167 - corrhi)*2^62)
-      corrlol = floor(((e * 2^167 - corrhi)*2^62 - corrloh)*2^64)
+      e = n(n(log(t),600)/n(log(2),600) - n(i/2^(20-5*k),600), 600)
+      corrhi  = floor(n(e * 2^167, 600))
+      corrloh = floor(n((e * 2^167 - corrhi)*2^62, 600))
+      corrlol = floor(n(((e * 2^167 - corrhi)*2^62 - corrloh)*2^64, 600))
       assert abs(corrhi) < 2^61, "abs(corrhi) < 2^61"
       print("   {.h=" + str(corrhi) + "L,.lh=" + str(corrloh) +
                                       "UL,.ll=" + str(corrlol) + "UL},")

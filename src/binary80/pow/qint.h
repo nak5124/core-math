@@ -296,70 +296,91 @@ static inline void qint_fromsi(qint64_t* a, int d) {
 	a->hl = a->lh = a->ll = 0;
 }
 
-long double qint_told(qint64_t* a,unsigned rm, bool invert) {
-	if(__builtin_expect(!a->hh, 0)) { // a == 0 exactly
-		return 0.0L;
+void qint_subnormalize(qint64_t* a, const qint64_t* x) {
+	if(__builtin_expect(!x->hh, 0)) {
+		cp_qint(a, &ZERO_Q);
+		a->sgn = x->sgn;
+		return;
 	}
 
-	if(a->ex <= -16383) { // Shift mantissa like a subnormal
-		int shiftby = -a->ex - 16383 + 1;
-		if(__builtin_expect(shiftby == 64, 0)) {
-			return (invert ? -0x1p-16445L : 0x1p-16445L) * .75L;
-		}
-		if(__builtin_expect(shiftby > 64, 0)) {
-			return (invert ? -0x1p-16445L : 0x1p-16445L) * .25L;
-		}
-#ifdef P2_RNDTEST
-		a->ll >>= shiftby;
-		a->ll |= a->lh << (64 - shiftby);
-		a->lh >>= shiftby;
-		a->lh |= a->hl << (64-shiftby);
-#endif
-		a->rh  >>= shiftby;
+	if(__builtin_expect(x->ex <= -16383, 0)) {
+		int shiftby = -x->ex - 16383 + 1;
+		POWL_DPRINTF("shiftby = %d\n", shiftby);
 		a->ex = -16383;
-	};
+		if(__builtin_expect(shiftby > 64, 0)) {
+			a->hh = 0; a->hl = 1ul << 62; a->lh = a->ll = 0;
+			a->sgn = x->sgn;
+			return;
+		}
 
-	if(rm == FE_TONEAREST) {
-		a->hh += a->hl >> 63;
-#ifdef P2_RNDTEST
+		if(__builtin_expect(shiftby == 64, 0)) {
+			a->hh = 0;
+			a->hl = x->hh;
+			a->lh = x->hl;
+			a->ll = x->ll;
+			a->sgn = x->sgn;
+			return;
+		}
+
+		// Here 1 < shiftby < 64
+		a->hh = x->hh >> shiftby;
+		a->hl = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
+		a->lh = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
+		a->ll = (x->lh << (64 - shiftby)) | (x->ll >> shiftby);
+		return;
+	}
+	cp_qint(a, x);
+}
+
+// Subnormalization is already done, this only deals with infinities/zeroes
+// and rounding.
+long double qint_told(qint64_t* a, unsigned rm, bool invert, bool* hard) {
+	bool f = false;
+	if(rm==FE_TONEAREST) {
+		a->hh += (a->hl>>63);
+		f = a->hl>>63;
 		a->hl ^= (1ul << 63);
-#endif
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
-		a->hh++;
+		a->hh += a->hl||a->lh||a->ll;
+		f = true;
 	}
 
-	// This branch can only be taken in the *normal* case, not the subnormal one
-	if(__builtin_expect(!a->hh, 0)) {
-		a->hh = 1ul << 63;
-		a->ex += 1;
+	// Note that hl||lh||ll holds the signed distance from the rounding boundary
 
-#ifdef P2_RNDTEST
-		a->ll >>= 1;
-		a->ll |= a->lh << 63;
-		a->lh >>= 1;
-		a->lh |= a->hl << 63;
-		a->hl >>= 1;
-		a->hl |= (a->hl << 1) & (1l << 63); // Do sign extension. This is precise
-		// to 1 ulp of hl||lh||ll
-#endif
+	if(__builtin_expect(f && (a->hh == 0), 0)) {// overflow
+			a->hh = 1ul << 63;
+
+			a->ll = (a->ll >> 1) | (a->lh << 63);
+			a->lh = (a->lh >> 1) | (a->hl << 63);
+			a->hl = (a->hl >> 1) | (a->hl << 63); // Sign extend
+			a->ex++;
 	}
 
-	// We had a denormal but rounding made it into the smallest normal
-	if(__builtin_expect((a->hh>>63) && (a->ex == -16383), 0)) {
-		a->ex = -16382;	
+	// The result is the smallest normal number
+	if(__builtin_expect((a->hh>>63) && a->ex == -16383, 0)) {
+		a->ex = -16382;
 	}
 
 	b80u80_t v;
 	v.m = a->hh;
 	v.e = a->ex + 16383;
-	if(__builtin_expect(invert, 0)) {v.e += (1<<15);}
+	if(__builtin_expect(invert, 0)) {v.e+=(1<<15);}
 
-	// Infinity output case
+	POWL_DPRINTF("m = %016lx\n", v.m);
+	POWL_DPRINTF("e = %x (%ld)\n", v.e, a->ex);
+
+	__int128 d = a->hl; d <<= 64;
+	d += a->lh;
+
+	// FIXME: placeholder simulating about 128 bits of precision after
+	// the round bit.
+	*hard = (d == 0 || d == -1);
 	if(__builtin_expect(a->ex >= 16384, 0)) {
-		return invert ? -0x1p16383L - 0x1p16383L : 0x1p16383L + 0x1p16383L;
+			return invert ? (-0x1p16383L - 0x1p16383L) : (0x1p16383L + 0x1p16383L);
 	}
 	return v.f;
 }
+
 
 static inline int cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
 
