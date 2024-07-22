@@ -562,3 +562,32 @@ def analyse_polyeval():
    # d_mul(rh, rl, scaleh, scalel, ord23h, ord23l)
    rh, rl, err_r = d_mul_RIF_rel(scaleh, scalel, 2^-50.954, ord23h, ord23l)
    print ("err_r=", log(err_r)/log(2.))
+
+# return possible combinations of i1 and i2
+# possible=possible_i1_i2()
+# len(possible)
+# 4357 # over 128*96, i.e., about 35%
+def possible_i1_i2():
+   T1 = get_coarsetbl()
+   T2 = get_finetbl()
+   possible = []
+   for i1 in range(128):
+      xmin = 1 + i1/2^7
+      xmax = 1 + (i1+1)/2^7
+      r1 = T1[i1][2]
+      r1xmin = r1*xmin
+      r1xmax = r1*xmax
+      for i2 in range(128):
+         if 32 <= i2 < 64:
+            continue # unused entry
+         if i2 < 32:
+            ymin = 1 + i2*2^-12
+            ymax = 1 + (i2+1)*2^-12
+         else:
+            ymin = 1 - 2^-7 + (i2-64)*2^-13
+            ymax = 1 - 2^-7 + (i2+1-64)*2^-13
+         if ymax <= r1xmin or r1xmax <= ymin:
+            print ("not possible: i1=", i1, "i2=", i2)
+         else:
+            possible.append((i1,i2))
+   return possible
