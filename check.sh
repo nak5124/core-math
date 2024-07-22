@@ -92,7 +92,14 @@ if [ "$CFLAGS" == "" ]; then
       # (https://gitlab.inria.fr/core-math/core-math/-/issues/8)
       export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math"
    else
-      export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
+      MACHINE=`uname -m`
+      if [ "$MACHINE" == "ppc64le" ]; then
+         # -march=native is not supported by gcc 14 on ppc64le
+         export CFLAGS="-O3 -mcpu=native -fno-finite-math-only -frounding-math -fsignaling-nans"
+      else
+         export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
+      fi
+      unset MACHINE
    fi
 else
    # the core-math code assumes -frounding-math

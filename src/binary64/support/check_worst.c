@@ -33,7 +33,9 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 #include "function_under_test.h"
 
