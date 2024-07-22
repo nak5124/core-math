@@ -130,6 +130,43 @@ check_pow2 (void)
   }
 }
 
+// perform N random tests near underflow threshold
+static void
+check_near_underflow (int N)
+{
+  long double threshold1 = -16446.0L; // half smallest subnormal
+  long double threshold2 = -16445.0L; // smallest subnormal
+  long double threshold3 = -16382.0L; // smallest normal
+  for (int n = 0; n < N / 3; n++)
+  {
+    long double x = get_random ();
+    x = fabsl (x);
+    long double y = threshold1 / log2l (x);
+    check (x, y);
+    y = threshold2 / log2l (x);
+    check (x, y);
+    y = threshold3 / log2l (x);
+    check (x, y);
+  }
+}
+
+// perform N random tests near overflow threshold
+static void
+check_near_overflow (int N)
+{
+  long double threshold1 = 16384.0L;
+  long double threshold2 = 16383.0L;
+  for (int n = 0; n < N / 2; n++)
+  {
+    long double x = get_random ();
+    x = fabsl (x);
+    long double y = threshold1 / log2l (x);
+    check (x, y);
+    y = threshold2 / log2l (x);
+    check (x, y);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -179,11 +216,17 @@ main (int argc, char *argv[])
   printf ("Checking x=2^k\n");
   check_pow2 ();
 
+#define N 1000000UL /* total number of tests */
+
+  printf ("Checking near overflow threshold\n");
+  check_near_overflow (N);
+
+  printf ("Checking near underflow threshold\n");
+  check_near_underflow (N);
+
   printf ("Checking random values\n");
 
 	long int total = 0, fails = 0, giveups = 0;
-
-#define N 1000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
