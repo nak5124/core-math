@@ -740,6 +740,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 }
 
 // approximates 2^(xh + xl), assuming |xl| <= 2^-48.262 |xh| and |xh| < 16446.1
+// ensure resh + resl = 2^(xh + xl) * (1 + eps) with |eps| <= 2^-86.751
 static inline
 int exp2d(double* resh, double* resl, double xh, double xl) {
 	b64u64_t cvt = {.f = xh};
@@ -802,7 +803,8 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	d_mul(&xs_pow2_h, &xs_pow2_l, frcp_acc0_h, frcp_acc0_l,
 		frcp_acc2_h, frcp_acc2_l);
 	/* This step introduces a relative error rho2 (see the analysis
-           in fastpath() from expl.c):
+           in fastpath() from expl.c), since the tables t0, t1, t2, t3
+           are the same as for expl:
 
            xs_pow2_h + xs_pow2_l = 2^frac(r) * (1 + rho2)
 
@@ -821,12 +823,12 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 
 	double xsq = xh * xh;
 	/* Neglecting 2*xl*xh + xl^2 brings an error of at most
-           |2*xl*xh + xl^2| <= 2 * 2^-65.408 * 2^-19.999 + 2^(-65.408*2)
-                            <= 2^-84.406.
+           |2*xl*xh + xl^2| <= 2 * 2^-68.262 * 2^-19.999 + 2^(-68.262*2)
+                            <= 2^-87.260.
 	   Since |xh| <= 2^-19.999, we have |xh*xh| <= 2^-39.998. The rounding
            error on xsq is therefore at most ulp(2^-39.998) = 2^-92, and
 	     |xsq| <= 2^-39.998 + 2^-92 <= 2^-39.997.
-	   We have thus |xsq - xr^2| <= 2^-84.406 + 2^-92 <= 2^-84.398.
+	   We have thus |xsq - xr^2| <= 2^-87.260 + 2^-92 <= 2^-87.206.
 	*/
 	double orders23 = xsq * __builtin_fma(xh,0x1.c6b08d704a1cdp-5,
 		0x1.ebfbdff82c696p-3);
@@ -834,24 +836,24 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	/* We note A = 0x1.c6b08d704a1cdp-5 and B = 0x1.ebfbdff82c696p-3.
 	   Analyzing the fma call:
 	   Neglecting xl * A imparts an error bounded by
-	     |A * xl| <= A*2^-65.408 <= 2^-69.579 
+	     |A * xl| <= A*2^-68.262 <= 2^-72.433.
 	   Since |xh| <= 2^-19.999, |A*xh+B| <= 2^-19.999*A + B < 1/4 - 0.008.
 	   This implies that the fma's result is strictly less than 1/4.
 	   The rounding error of the fma is therefore at most ulp(1/8) = 2^-55.
 	   The total error evaluating Axr+B is thus at most
-           2^-55 + 2^-69.579 <= 2^-54.999.
+           2^-55 + 2^-72.433 <= 2^-54.999.
 
 	   Given the errors on each factor, the product xsq * fma() carries an
            intrinsic error
-	     |xr|^2*2^-54.999 + 2^-84.398*|Axr+B| + 2^-84.398*2^-54.999
-	   Since |xr|<= 2^-19.999 we check that |Axr+B| <= 2^-2.049 and thus
-           the error is at most 2^-86.443.
+	     |xr|^2*2^-54.999 + 2^-84.995*|Axr+B| + 2^-84.995*2^-54.999
+	   Since |xr|<= 2^-19.999 we check that |Axr+B| <= 2^-2.057 and thus
+           the error is at most 2^-87.046.
 
 	   Since |xsq| <= 2^-39.997 and |A*xh+B| < 1/4 - 0.008, the product
            is bounded by 2^-39.997 * (1/4 - 0.008) < 2^-42.04. The rounding
            error on orders23 is thus at most ulp(2^-42.04) = 2^-95.
            Therefore |orders23| <= 2^-42.04 + 2^-95 < 2^-42.03.
-	   The total error on orders23 is at most 2^-86.443+2^-95 <= 2^-86.439.
+	   The total error on orders23 is at most 2^-87.046+2^-95 <= 2^-87.040.
 	*/
 
 	double order1h, order1l;
@@ -867,16 +869,17 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	     |coeff1l*xh + s| <= 2^-55.25*2^-19.999 + 2^-73 <= 2^-72.724.
 	   This ensures that the rounding error computing t is at most
            ulp(2^-72.724) = 2^-125 and that |t| <= 2^-72.7.
-	   Since |coeff1h| <= 2^-0.528 and |xl| < 2^-65.408, we compute that
-	     |coeff1h*xl + t| <= 2^-0.528 * 2^-65.408 + 2^-72.7 <= 2^-65.922.
-	   The rounding error on order1l is therefore at most ulp(2^-65.922)
-	   = 2^-118. We also get |order1l| < 2^-65.9.
-	   The total rounding error is at most 2^-125 + 2^-118 <= 2^-117.988:
+	   Since |coeff1h| <= 2^-0.528 and |xl| < 2^-68.262, we compute that
+	     |coeff1h*xl + t| <= 2^-0.528 * 2^-68.262 + 2^-72.7 <= 2^-68.697.
+	   The rounding error on order1l is therefore at most ulp(2^-68.697)
+	   = 2^-121. We also get |order1l| < 2^-68.6.
+	   The total rounding error is at most 2^-125 + 2^-121 <= 2^-120.912.
 
 	   The error due to neglecting xl*coeff1l is at most
-	     |xl*coeff1l| <= 2^-65.408 * 2^-55.25 <= 2^-120.658
-	   The total error on order1 is at most 2^-117.988 + 2^-120.658 <= 2^-117.777:
-           |order1h + order1l - (coeff1h + coeff1l) * (xh + xl)| < 2^-117.777.
+	     |xl*coeff1l| <= 2^-68.262 * 2^-55.25 <= 2^-123.512.
+	   The total error on order1 is at most 2^-120.912 + 2^-123.512
+           <= 2^-120.691:
+           |order1h + order1l - (coeff1h + coeff1l) * (xh + xl)| < 2^-120.691.
 	*/
 
 	double finalh, finall;
@@ -899,7 +902,7 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	*/
 
 	finall = tmp + (finall + order1l);
-	/* At input, we have |finall| < 2^-52 and |order1l| <= 2^-71.4.
+	/* At input, we have |finall| < 2^-52 and |order1l| <= 2^-68.6.
            Therefore the internal sum is strictly bounded by 2^-51.9 and has
            rounding error at most ulp(2^-51.9) = 2^-104.
 	   Calling S the intermediate result, since |tmp| <= 2^-52 we have
@@ -911,27 +914,27 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	*/
 
 	/* Summing up the errors we get :
-	   - 2^-86.439  computing orders23,
-	   - 2^-117.777 computing order1,
+	   - 2^-87.040  computing orders23,
+	   - 2^-120.691 computing order1,
 	   - 2^-104.999 in the first fast_two_sum,
 	   - 2^-104.998 in the second fast_two_sum,
 	   - 2^-102.415 in the last sum.
 	  The polynomial itself was only precise to 2^-89.218. Therefore,
           we have computed 2^xr with error at most :
-	   2^-86.439 + 2^-117.777 + 2^-104.999 + 2^-104.998 + 2^-102.415 + 2^-89.218
-	   <= 2^-86.2427
+	   2^-87.040 + 2^-120.691 + 2^-104.999 + 2^-104.998 + 2^-102.415
+           + 2^-89.218 <= 2^-86.7519.
 	   Since xr >= -2^-19.999, this gives a relative error rho3 less than
-	   2^-86.2427/2^(-2^-19.999) < 2^-86.242:
-	   finalh + finall = 2^xr * (1 + rho3) with |rho3| < 2^-86.242
+	   2^-86.7519/2^(-2^-19.999) < 2^-86.7518:
+	   finalh + finall = 2^xr * (1 + rho3) with |rho3| < 2^-86.7518
 	*/
 	if(__builtin_expect(do_red,1)) {
 		d_mul(&finalh, &finall, finalh, finall, xs_pow2_h, xs_pow2_l);
 	  /* We have xs_pow2_h + xs_pow2_l = 2^frac(r) * (1 + rho2)
 	     with |rho2| < 2^-99.1, and
-	     finalh + finall = 2^xr * (1 + rho3) with |rho3| < 2^-86.242
+	     finalh + finall = 2^xr * (1 + rho3) with |rho3| < 2^-86.7518.
 	     The intrinsic relative error of the product is at most
-	     (1 + rho2) * (1 + rho3) - 1 <= 2^-99.1 + 2^-86.242
-	                                  + 2^-99.1*2^-86.242 <= 2^-86.241
+	     (1 + rho2) * (1 + rho3) - 1 <= 2^-99.1 + 2^-86.7518
+	                                  + 2^-99.1*2^-86.7518 <= 2^-86.7515
 
 	     Expanding the d_mul call, we see that:
 	     Since |finalh*xs_pow2_h| < 2^0.002*2 <= 2^1.002,
@@ -944,19 +947,20 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
              *lo is less than ulp(2^-47.638) = 2^-100.
              The total rounding error is therefore at most
 	     2^-102 + 2^-100 <= 2^-99.678.
-	     The error due to neglecting xs_pow2l * finall is at most
-	       |xs_pow2l * finall| <= 2^-48.2 * 2^-50.8 <= 2^-99, thus adding
-             it yields an arror < 2^-99.678 + 2^-99 <= 2^-98.299.
+	     The error due to neglecting xs_pow2_l * finall is at most
+	       |xs_pow2_l * finall| <= 2^-48.2 * 2^-50.8 <= 2^-99, thus adding
+             it yields an error < 2^-99.678 + 2^-99 <= 2^-98.299.
 
 	     Since the product should be at least exp(-2^-19.999), this
              translates to an additional relative error
              rho4 <= 2^-98.299/2^(-2^-19.999), so rho4 <= 2^-98.298.
 	     Taking into account rho4, the total relative error is thus at most
-	      (1 + 2^-86.241)(1 + rho4) - 1 <= 2^-86.240:
-             |finalh + finall - 2^frac(r) * 2^xr| < 2^-86.240.
+	      (1 + 2^-86.7515)(1 + rho4) - 1 <= 2^-86.751:
+             |finalh + finall - 2^frac(r) * 2^xr| < 2^-86.751.
 	  */
 	} else {
-	  /* The only error made is rho3, the total relative error is 2^-86.242. */
+	  /* The only error made is rho3, the total relative error
+             is at most 2^-86.7518. */
 		extra_exponent = 0;
 	}
 	*resh = finalh;
