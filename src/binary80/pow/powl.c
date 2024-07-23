@@ -1492,13 +1492,21 @@ long double cr_powl(long double x, long double y) {
 
 		if(__builtin_expect(rh <= -16446.1, 0)) {
                   /* Since |rl| <= 2^-48.262 |rh|,
-                     y * log2(x) <= -16446.1 (1 - 2^-48.262) * (1 - 2^-97.286)
+                     y * log2(x) <= -16446.1 * (1-2^-48.262) * (1-2^-97.286)
                      <= -16446.09 thus x^y < 2^-16446. (Numbers in
                      (2^-16446, 2^-16445) round to nearest to 2^-16445.) */
 			return (sign * 0x1p-16445L) * .5L;
-		} else if(__builtin_expect(rh >= 16384.5, 0)) {
+		} else if(__builtin_expect(rh >= 16384.1, 0)) {
+                  /* Since |rl| <= 2^-48.262 |rh|,
+                     y * log2(x) >= 16384.1 * (1-2^-48.262) * (1-2^-97.286)
+                     >= 16394.09 thus x^y > 2^16384 and there is overflow. */
 			return sign * 0x1p16383L + sign * 0x1p16383L;
 		} else if(__builtin_expect(rh < 0x1p-66 && rh > -0x1p-66, 0)) {
+                  /* Since |rl| <= 2^-48.262 |rh|,
+                     |y * log2(x)| < 2^-66 * (1+2^-48.262) * (1+2^-97.286)
+                     < 2^-65, and exp(+/-2^-65) rounds to 1 to nearest,
+                     thus by monotonicity of rounding x^y rounds to 1
+                     to nearest. */
 		  return sign * 1.L + sign * rh;
 	  	// If |rh| is sufficiently small, even with the error margin we know
 	  	// how x^y rounds.
