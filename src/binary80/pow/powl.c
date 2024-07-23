@@ -739,8 +739,11 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	*/
 }
 
-// approximates 2^(xh + xl), assuming |xl| <= 2^-48.262 |xh| and |xh| < 16446.1
-// ensure resh + resl = 2^(xh + xl) * (1 + eps) with |eps| <= 2^-85.010
+// approximates 2^(xh + xl) by 2^extra_exponent * (resh + resl)
+// where extra_exponent is the returned value
+// assuming |xl| <= 2^-48.262 |xh| and |xh| < 16446.1
+// ensure 2^extra_exponent * (resh + resl) = 2^(xh + xl) * (1 + eps)
+// with |eps| <= 2^-85.010, 0.499 < |resh| < 2.004, |resl| <= 2^-47.638
 static inline
 int exp2d(double* resh, double* resl, double xh, double xl) {
 	b64u64_t cvt = {.f = xh};
@@ -783,11 +786,11 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
            and xh = xh_old, xl = xl_old, r = 0. In summary, in all cases
            we have (with r=0 in case do_red=0):
 
-           |xh + xl - (xh_old + xl_old - r)| < 2^-84.995
+           |xh + xl - (xh_old + xl_old - frac(r))| < 2^-84.995
 
            thus:
 
-           2^(r + xh + xl) = 2^(xh_old + xl_old) * (1 + rho1)
+           2^(frac(r) + xh + xl) = 2^(xh_old + xl_old) * (1 + rho1)
 
            with |rho1| < 2^(2^-84.995) - 1 < 2^-85.523,
            and |xh| <= 2^-19.9994, |xl| < 2^-68.262. */
@@ -815,7 +818,8 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
            xs_pow2_h + xs_pow2_l = 2^frac(r) * (1 + rho2)
 
            with |rho2| < 2^-99.1. Moreover, |xs_pow2_l| <= 2^-48.2 and
-           |xs_pow2_h| < 2. */
+           1 <= |xs_pow2_h| < 2 (1 <= |xs_pow2_h| comes from the fact
+           that all tables t0, t1, t2, t3 are >= 1). */
 
 	/* Evaluating the Taylor polynomial for 2^xr where xr = xh + xl.
 	   If do_red is true, then |xh| <= 2^-19.9994 and |xl| <= 2^-72 so that
@@ -904,7 +908,7 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
            Furthermore |finalh+order1h| <= 2^0.001 + 2^-20.5 < 2^0.002. This
            ensures that the error is bounded by 2^-105*2^0.002 <= 2^-104.998.
            Also, we get for the new value of finalh:
-           |finalh| <= 2^0.002 and |tmp| <= ulp(2^0.002) = 2^-52.
+           0.499 < |finalh| <= 1.002 and |tmp| <= ulp(1.002) = 2^-52.
 	*/
 
 	finall = tmp + (finall + order1l);
@@ -943,14 +947,14 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	                                  + 2^-99.1*2^-86.7518 <= 2^-86.7515
 
 	     Expanding the d_mul call, we see that:
-	     Since |finalh*xs_pow2_h| < 2^0.002*2 <= 2^1.002,
-             |s| <= ulp(2^1.002) = 2^-51. Then, since
+	     Since |finalh*xs_pow2_h| < 1.002*2 = 2.004,
+             |s| <= ulp(2.004) = 2^-51. Then, since
 	     |finall*xs_pow2_h + s| <= 2^-50.8 * 2 + 2^-51 <= 2^-49.278 we get
 	     |t| <= 2^-49.277 and that the rounding error on t is at most
              ulp(2^-49.278) = 2^-102.
-	     We compute |finalh*xs_pow2_l + t| <= 2^0.002*2^-48.2+2^-49.277
-	     <= 2^-47.638. This ensures that the rounding error computing
-             *lo is less than ulp(2^-47.638) = 2^-100.
+	     We compute |finalh*xs_pow2_l + t| <= 1.004*2^-48.2+2^-49.277
+	     <= 2^-47.636. This ensures that the rounding error computing
+             *lo is less than ulp(2^-47.636) = 2^-100.
              The total rounding error is therefore at most
 	     2^-102 + 2^-100 <= 2^-99.678.
 	     The error due to neglecting xs_pow2_l * finall is at most
@@ -963,6 +967,9 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	     Taking into account rho1, the total relative error is thus at most
 	      (1 + 2^-86.7515)(1 + rho1)(1 + rho4) - 1 <= 2^-85.010:
              |finalh + finall - 2^frac(r) * 2^xr| < 2^-85.010.
+
+             Moreover since 0.499 < |finalh_old| <= 1.002 and
+             1 <= xs_pow2_h < 2, we deduce 0.499 < |finalh| < 2.004.
 	  */
 	} else {
 	  /* The only error made is rho3, the total relative error
@@ -1548,6 +1555,7 @@ long double cr_powl(long double x, long double y) {
 			POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
 			double resh, resl;
 			int extra_exponent = exp2d(&resh, &resl, rh, rl);
+                        // resh + resl = 2^(xh + xl) * (1 + eps) with |eps| <= 2^-85.010
 			bool fail = false;
 			r = fastpath_roundtest(resh, resl, extra_exponent, invert, &fail);
 			if(__builtin_expect(!fail, 1)) {	
