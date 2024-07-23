@@ -740,7 +740,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 }
 
 // approximates 2^(xh + xl), assuming |xl| <= 2^-48.262 |xh| and |xh| < 16446.1
-// ensure resh + resl = 2^(xh + xl) * (1 + eps) with |eps| <= 2^-86.751
+// ensure resh + resl = 2^(xh + xl) * (1 + eps) with |eps| <= 2^-85.010
 static inline
 int exp2d(double* resh, double* resl, double xh, double xl) {
 	b64u64_t cvt = {.f = xh};
@@ -773,18 +773,24 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
            reference [1]).
 	   We also have |xl| <= 2^-72 in that case too, since
            |xh - (rem + xl_old)| < ulp(xh) <= 2^-86, and
-           |xh + xl - (rem +xl_old)| < 2^-84.995, thus by the triangle
+           |xh + xl - (rem + xl_old)| < 2^-84.995, thus by the triangle
            inequality |xl| < 2^-86 + 2^-84.995 < 2^-84.411.
 	*/
 	}
 
         /* If do_red=0 we had |xh| < 2^-20 thus
-           |xl| < 2^-48.262*2^-20 <= 2^-68.262. In summary, in all cases
+           |xl| < 2^-48.262*2^-20 <= 2^-68.262,
+           and xh = xh_old, xl = xl_old, r = 0. In summary, in all cases
            we have (with r=0 in case do_red=0):
 
            |xh + xl - (xh_old + xl_old - r)| < 2^-84.995
 
-           with |xh| <= 2^-19.9994, |xl| < 2^-68.262. */
+           thus:
+
+           2^(r + xh + xl) = 2^(xh_old + xl_old) * (1 + rho1)
+
+           with |rho1| < 2^(2^-84.995) - 1 < 2^-85.523,
+           and |xh| <= 2^-19.9994, |xl| < 2^-68.262. */
 
 	int i0 = fracpart & 0x1f;
 	int i1 = (fracpart >> 5) & 0x1f;
@@ -954,9 +960,9 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	     Since the product should be at least exp(-2^-19.999), this
              translates to an additional relative error
              rho4 <= 2^-98.299/2^(-2^-19.999), so rho4 <= 2^-98.298.
-	     Taking into account rho4, the total relative error is thus at most
-	      (1 + 2^-86.7515)(1 + rho4) - 1 <= 2^-86.751:
-             |finalh + finall - 2^frac(r) * 2^xr| < 2^-86.751.
+	     Taking into account rho1, the total relative error is thus at most
+	      (1 + 2^-86.7515)(1 + rho1)(1 + rho4) - 1 <= 2^-85.010:
+             |finalh + finall - 2^frac(r) * 2^xr| < 2^-85.010.
 	  */
 	} else {
 	  /* The only error made is rho3, the total relative error
