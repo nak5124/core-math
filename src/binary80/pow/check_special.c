@@ -70,21 +70,16 @@ check (long double x, long double y)
 	mpfr_clear (X);
   mpfr_clear (Y);
   mpfr_clear (Z);
-	if (!is_equal (z, t))
+  if (!is_equal (z, t))
   {
-		if(is_equal(z, -1.)) {
-			//printf("GIVEUP x=%La,y=%La (ref = %La)\n", x, y, t);
-			return 2;
-		} else {
-			printf("FAIL x=%La,y=%La ref=%La z=%La\n", x,y,t,z);
+    printf("FAIL x=%La,y=%La ref=%La z=%La\n", x,y,t,z);
 #ifdef DO_NOT_ABORT
-			return 1;
+    return 1;
 #else
-			exit(1);
+    exit(1);
 #endif
-		}
   }
-	return 0;
+  return 0;
 }
 
 // check x=2^n and y, return 1 iff x is in the long double range
@@ -167,6 +162,27 @@ check_near_overflow (int N)
   }
 }
 
+// perform N random tests for x^y near 1-2^-64, 1-2^-65, 1+2^-64, 1+2^-63
+static void
+check_near_one (int N)
+{
+  long double threshold1 = 0x1.fffffffffffffffep-1L; // nextbelow(1) = 1-2^-64
+  long double threshold2 = 0x1.0000000000000002p+0L; // nextabove(1) = 1+2^-63
+  for (int n = 0; n < N / 4; n++)
+  {
+    long double x = get_random ();
+    x = fabsl (x);
+    long double y = threshold1 / log2l (x);
+    check (x, y);
+    // if x^y is near 1-2^-64, then x^(y/2) is near sqrt(1-2^-64) ~ 1 - 2^-65
+    check (x, y * 0.5L);
+    y = threshold2 / log2l (x);
+    check (x, y);
+    // if x^y is near 1+2^-63, then x^(y/2) is near sqrt(1+2^-63) ~ 1 + 2^-64
+    check (x, y * 0.5L);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -216,7 +232,7 @@ main (int argc, char *argv[])
   printf ("Checking x=2^k\n");
   check_pow2 ();
 
-#define N 1000000UL /* total number of tests */
+#define N 10000000UL /* total number of tests */
 
   printf ("Checking near overflow threshold\n");
   check_near_overflow (N);
@@ -224,27 +240,26 @@ main (int argc, char *argv[])
   printf ("Checking near underflow threshold\n");
   check_near_underflow (N);
 
+  printf ("Checking near one\n");
+  check_near_one (N);
+
   printf ("Checking random values\n");
 
-	long int total = 0, fails = 0, giveups = 0;
+	long int total = 0, fails = 0;
 
   unsigned int seed = getpid ();
   srand (seed);
-#pragma omp parallel for reduction (+: total,fails,giveups)
+#pragma omp parallel for reduction (+: total,fails)
 	for(uint64_t n = 0; n < N; n++) {
 		ref_init();
 		ref_fesetround(rnd);
 		fesetround(rnd1[rnd]);
 		long double x = get_random(), y = get_random();
 		int j = check(x, y);
-		if(j == 2) {
-			giveups++;
-		} else if(j == 1) {
-			fails++;
-		}
+                fails += j;
 		total++;
 	}
-	printf("%ld tests, %ld fails, %ld giveups\n", total, fails, giveups);
+	printf("%ld tests, %ld failure(s)\n", total, fails);
 
   return 0;
 }
