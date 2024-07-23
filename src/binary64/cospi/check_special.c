@@ -29,7 +29,9 @@ SOFTWARE.
 #include <stdint.h>
 #include <math.h>
 #include <fenv.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -141,9 +143,11 @@ static void check_val(double x){
 }
 
 static void check_random_all(double a, double b){
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads();
+#endif
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
     check_random(getpid () + i, a, b);

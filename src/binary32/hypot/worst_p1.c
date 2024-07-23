@@ -29,7 +29,9 @@ SOFTWARE.
 #include <stdint.h>
 #include <assert.h>
 #include <gmp.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <math.h>
 
 extern void check (float, float); // defined in triples.c

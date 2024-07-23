@@ -31,7 +31,9 @@ SOFTWARE.
 #include <unistd.h>
 #include <fenv.h>
 #include <math.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <mpfr.h>
 
 float cr_atan2pif (float, float);
@@ -172,9 +174,11 @@ main (int argc, char *argv[])
         }
     }
 
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
+#endif
   /* check random values */
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)

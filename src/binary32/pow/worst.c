@@ -40,7 +40,9 @@ Example:
 #include <string.h>
 #include <mpfr.h>
 #include <assert.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <math.h>
 #include <sys/types.h>
 #include <sys/resource.h>

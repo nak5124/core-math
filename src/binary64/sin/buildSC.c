@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 #define N 256 // length of the table
 

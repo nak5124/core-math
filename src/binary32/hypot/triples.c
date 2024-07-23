@@ -30,7 +30,9 @@ SOFTWARE.
 #include <math.h>
 #include <fenv.h>
 #include <assert.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <mpfr.h>
 
 float cr_hypotf (float, float);

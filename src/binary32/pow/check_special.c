@@ -31,7 +31,9 @@ SOFTWARE.
 #include <fenv.h>
 #include <mpfr.h>
 #include <math.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <assert.h>
 
 float cr_powf (float, float);

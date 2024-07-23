@@ -32,7 +32,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
-#ifndef CORE_MATH_NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
 

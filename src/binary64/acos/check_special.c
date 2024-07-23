@@ -33,7 +33,9 @@ SOFTWARE.
 #include <float.h> // for DBL_MAX
 #include <sys/types.h>
 #include <unistd.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 int ref_init (void);
 int ref_fesetround (int);

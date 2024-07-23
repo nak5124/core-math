@@ -30,7 +30,9 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <assert.h>
 
 // triples.c
