@@ -7,6 +7,7 @@
 #include <omp.h>
 #include <unistd.h>
 #include <math.h>
+#include <assert.h>
 
 void doloop (int, int);
 extern long double cr_powl (long double, long double);
@@ -183,6 +184,40 @@ check_near_one (int N)
   }
 }
 
+// check exact or midpoint values for y integer
+static void
+check_exact_or_midpoint_1 (void)
+{
+  ref_init();
+  ref_fesetround(rnd);
+  fesetround(rnd1[rnd]);
+  long double zmin = 0x1p-16445L;
+  long double zmax = 0x1.fffffffffffffffep+16383L;
+  for (int n = 41; n >= 2; n--)
+  {
+    long double y = n;
+    long double xmin = powl (zmin, 1.0L / y);
+    long double xmax = powl (zmax, 1.0L / y);
+    // max_pow[n] is the largest x such that x^n fits in 65 bits
+    long double max_pow[] = {0, 0, 6074000999, 3329021, 77935, 8191, 1824, 624, 279, 149, 90, 60, 42, 31, 24, 20, 16, 14, 12, 10, 9, 8, 7, 7, 6, 6, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+    for (long double m = 3.0L; m <= max_pow[n]; m += 2.0L)
+    {
+      // x = m*2^e with m odd (exact powers of two are tested elsewhere)
+      long double tmin = xmin / m;
+      long double tmax = xmax / m;
+      // we want tmin <= 2^e <= tmax
+      int emin, emax;
+      frexpl (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
+      frexpl (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
+      for (int e = emin; e <= emax; e++)
+      {
+        long double x = ldexpl (m, e);
+        check (x, y);
+      }
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -232,7 +267,7 @@ main (int argc, char *argv[])
   printf ("Checking x=2^k\n");
   check_pow2 ();
 
-#define N 10000000UL /* total number of tests */
+#define N 1000000UL /* total number of tests */
 
   printf ("Checking near overflow threshold\n");
   check_near_overflow (N);
@@ -242,6 +277,9 @@ main (int argc, char *argv[])
 
   printf ("Checking near one\n");
   check_near_one (N);
+
+  printf ("Checking exact/midpoint values\n");
+  check_exact_or_midpoint_1 ();
 
   printf ("Checking random values\n");
 

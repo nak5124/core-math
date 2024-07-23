@@ -1,6 +1,7 @@
 # non-regression tests
 0x1p+1,0x1.ffff333333333334p+13
 0x8p+61,0x8p-9
+0xep-716,0xb.8p+1
 # special and extremal values
 +snan,+snan
 +snan,+nan
