@@ -188,12 +188,11 @@ check_near_one (int N)
 static void
 check_exact_or_midpoint_1 (void)
 {
-  ref_init();
-  ref_fesetround(rnd);
-  fesetround(rnd1[rnd]);
   long double zmin = 0x1p-16445L;
   long double zmax = 0x1.fffffffffffffffep+16383L;
-  for (int n = 41; n >= 2; n--)
+  // we limit n to 6 for the time being, since smaller exponents
+  // take more time
+  for (int n = 41; n >= 6; n--)
   {
     long double y = n;
     long double xmin = powl (zmin, 1.0L / y);
@@ -209,8 +208,12 @@ check_exact_or_midpoint_1 (void)
       int emin, emax;
       frexpl (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
       frexpl (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
+#pragma omp parallel for
       for (int e = emin; e <= emax; e++)
       {
+        ref_init();
+        ref_fesetround(rnd);
+        fesetround(rnd1[rnd]);
         long double x = ldexpl (m, e);
         check (x, y);
       }
