@@ -190,9 +190,9 @@ check_exact_or_midpoint_1 (void)
 {
   long double zmin = 0x1p-16445L;
   long double zmax = 0x1.fffffffffffffffep+16383L;
-  // we limit n to 6 for the time being, since smaller exponents
+  // we limit n to 5 for the time being, since smaller exponents
   // take more time
-  for (int n = 41; n >= 6; n--)
+  for (int n = 41; n >= 5; n--)
   {
     long double y = n;
     long double xmin = powl (zmin, 1.0L / y);
@@ -267,6 +267,9 @@ main (int argc, char *argv[])
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
 
+  printf ("Checking exact/midpoint values\n");
+  check_exact_or_midpoint_1 ();
+
   printf ("Checking x=2^k\n");
   check_pow2 ();
 
@@ -280,9 +283,6 @@ main (int argc, char *argv[])
 
   printf ("Checking near one\n");
   check_near_one (N);
-
-  printf ("Checking exact/midpoint values\n");
-  check_exact_or_midpoint_1 ();
 
   printf ("Checking random values\n");
 
