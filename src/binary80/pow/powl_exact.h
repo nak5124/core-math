@@ -68,7 +68,8 @@ static inline
 void exactify(qint64_t* a, unsigned rm) {
 	if(rm == FE_TONEAREST) {
 		// Since we round to even, the correctly rounded result is this one
-		a->hh &= ~1; a->hl = a->lh = a->ll = 0;
+		if(a->hh&1) {a->hh++;};
+		a->hl = a->lh = a->ll = 0;
 	} else {
 		// In directed rounding modes this is effectively a round to nearest
 		if(a->hl>>63) {

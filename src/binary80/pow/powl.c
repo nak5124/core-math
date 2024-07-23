@@ -1598,11 +1598,11 @@ long double cr_powl(long double x, long double y) {
 	if(hard && exact_if_hard) {
 		POWL_DPRINTF("Boundary!\n");
 		exactify(q_r, rm);
-		POWL_DPRINTF("Tf = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
+		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
 			q_r->ex, q_r->sgn);
 		qint_subnormalize(final, q_r);
-		POWL_DPRINTF("Tf = "SAGE_QR"\n", final->hh, final->hl, final->lh, final->ll,
-			final->ex, final->sgn);
+		POWL_DPRINTF("exact_sub = "SAGE_QR"\n",
+			final->hh, final->hl, final->lh, final->ll, final->ex, final->sgn);
 		return qint_told(final, rm, invert, &hard);
 	} else {return r;}
 }
