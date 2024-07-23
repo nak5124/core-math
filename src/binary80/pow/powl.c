@@ -739,32 +739,51 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	*/
 }
 
-
-/* computes 2^(xh + xl), assuming |xl| <= ulp(xh) and |xh| < 2^31 */
+// approximates 2^(xh + xl), assuming |xl| <= 2^-48.262 |xh| and |xh| < 16446.1
 static inline
 int exp2d(double* resh, double* resl, double xh, double xl) {
 	b64u64_t cvt = {.f = xh};
 	bool do_red	= cvt.e >= -20 + 0x3ff;
+        // do_red is true iff |xh| >= 2^-20
 
-	static const double C = 0x1.8p+32; // ulp is 2^-20
+	static const double C = 0x1.8p+32; // ulp(C) = 2^-20
 	b64u64_t y = {.f = xh + C};
 	uint64_t fracpart = y.u;
 	int16_t extra_exponent = y.u>>20;
 
+        // r = y.f - C is the rounding of xh to an integer multiple of 2^-20
+        // extra_exponent is the integer part of r
+        // and the low 20 bits of fracpart are the fractional part of r
+
 	if(__builtin_expect(do_red, 1)) {
-		double rem = xh - (y.f - C);
-		fast_two_sum(&xh,&xl,rem,xl);
-	}
-	/* Let xl_old/xh_old be the old values to xh and xl, and xh/xl the values
-	   afterwards. We have |rem| < 2^-20 and |xl| <= 2^(14.1-45.408) <= 2^-31.307.
-	   Therefore |rem+xl| < 2^-20 + 2^(14.1-45.408) which ensures
+                double rem = xh - (y.f - C); // rem = xh - r
+		fast_two_sum (&xh,&xl,rem,xl);
+	/* Let xh_old/xl_old be the old values to xh and xl, and xh/xl the
+           new values. Note that we can have |rem| < |xl_old| here.
+           We have |rem| < 2^-20 and |xl_old| <= 2^-48.262*16446.1 < 2^-34.256.
+	   Therefore |rem+xl_old| <= 2^-20 + 2^-34.256 which ensures
 	   |xh| <= 2^-19.9994.
-	   If rem = 0 or rem's exponent is at least that of xl_old, then the rounding
-	   error is at most 2^-105|xh| <= 2^-124.99942 and |xl| < ulp(xh) <= 2^-72.
-	   If this is not the case, since |xl_old| <= 2^-31.307 we must have
-	   |rem| < 2^-32 which implies |xh| < 2^-30.612. (Theorem 2 from reference [])
-	   We also have |xl| <= 2^-72 in that case too.
+	   If rem = 0 or ulp(rem) >= ulp(xl_old), then the pre-condition of
+           fast_two_sum() is fulfilled, the rounding error is at most
+           2^-105|xh| <= 2^-124.9994 and |xl| < ulp(xh) <= 2^-72.
+	   If this is not the case, since |xl_old| < 2^-34.256 we must have
+	   |rem| < 2^-35 which implies |xh| < 2^-33.580, and the rounding
+           error is at most 3 * 2^-53 * |xh| < 2^-84.995 (see Theorem 2 from
+           reference [1]).
+	   We also have |xl| <= 2^-72 in that case too, since
+           |xh - (rem + xl_old)| < ulp(xh) <= 2^-86, and
+           |xh + xl - (rem +xl_old)| < 2^-84.995, thus by the triangle
+           inequality |xl| < 2^-86 + 2^-84.995 < 2^-84.411.
 	*/
+	}
+
+        /* If do_red=0 we had |xh| < 2^-20 thus
+           |xl| < 2^-48.262*2^-20 <= 2^-68.262. In summary, in all cases
+           we have (with r=0 in case do_red=0):
+
+           |xh + xl - (xh_old + xl_old - r)| < 2^-84.995
+
+           with |xh| <= 2^-19.9994, |xl| < 2^-68.262. */
 
 	int i0 = fracpart & 0x1f;
 	int i1 = (fracpart >> 5) & 0x1f;
@@ -782,16 +801,22 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 		t3[i3][0], t3[i3][1]);  // 2^(i3/2^5)
 	d_mul(&xs_pow2_h, &xs_pow2_l, frcp_acc0_h, frcp_acc0_l,
 		frcp_acc2_h, frcp_acc2_l);
-	/* This step introduces relative error |rho2| at most 2^-99.1, see sc_expl*/
+	/* This step introduces a relative error rho2 (see the analysis
+           in fastpath() from expl.c):
+
+           xs_pow2_h + xs_pow2_l = 2^frac(r) * (1 + rho2)
+
+           with |rho2| < 2^-99.1. Moreover, |xs_pow2_l| <= 2^-48.2 and
+           |xs_pow2_h| < 2. */
 
 	/* Evaluating the Taylor polynomial for 2^xr where xr = xh + xl.
 	   If do_red is true, then |xh| <= 2^-19.9994 and |xl| <= 2^-72 so that
 	   |xr| <= 2^-19.999.
-	   If do_red is false, we have |xr| < 2^-20 + 2^(-20-45.408) <= 2^-19.999,
-	   and |xl| <= 2^(-20-45.408) = 2^-65.408.
+	   If do_red is false, we have |xr| < 2^-20 + 2^-68.262 <= 2^-19.999,
+	   and |xl| <= 2^-68.262.
 
-	   Over the interval [-2^-19.999, 2^-19.999] the polynomial used has 2^-89.218
-	   absolute error.
+	   Over the interval [-2^-19.999, 2^-19.999] the polynomial used has
+           absolute error <= 2^-89.218 (same polynomial as in expl.c).
 	*/
 
 	double xsq = xh * xh;
@@ -1392,24 +1417,24 @@ bool is_odd_integer(long double x) {
 
 // return non-zero iff x is a NaN
 inline static
-int isnan(long double x) {
+int _isnan(long double x) {
   const b80u80_t v = {.f = x};
   return ((v.e&0x7fff) == 0x7fff && (v.m != (1ul << 63)));
 }
 
 // return non-zero iff x is a signaling NaN
 inline static
-int issnan(long double x) {
+int _issnan(long double x) {
 	const b80u80_t v = {.f = x};
-	return isnan(x) && (!((v.m>>62)&1));
+	return _isnan(x) && (!((v.m>>62)&1));
 }
 
 long double cr_powl(long double x, long double y) {
 
 	const b80u80_t cvt_x = {.f = x}, cvt_y = {.f = y};
 
-	if(__builtin_expect(isnan(x) || isnan(y), 0)) {
-          if (issnan (x) || issnan (y))
+	if(__builtin_expect(_isnan(x) || _isnan(y), 0)) {
+          if (_issnan (x) || _issnan (y))
           {
             feraiseexcept(FE_INVALID);
             return __builtin_nanl(""); // Returns a quiet NaN, raises invalid operation
@@ -1508,8 +1533,6 @@ long double cr_powl(long double x, long double y) {
                      thus by monotonicity of rounding x^y rounds to 1
                      to nearest. */
 		  return sign * 1.L + sign * rh;
-	  	// If |rh| is sufficiently small, even with the error margin we know
-	  	// how x^y rounds.
 		} else {
 			// rh + rl approximates y*log2(x)
 			POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
