@@ -989,6 +989,8 @@ inline static
 long double fastpath_roundtest(double rh, double rl, int extra_exp,
                                bool invert, bool* fail) {
 	unsigned rm = get_rounding_mode();
+	fast_two_sum(&rh, &rl, rh, rl); // The fast_two_sum precondition is satisfied
+
 	b64u64_t th = {.f = rh}, tl = {.f = rl};
 	POWL_DPRINTF("rh = %a\nrl = %a\n", rh, rl);
 	long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
@@ -1009,35 +1011,24 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 		ml <<= 64-sh;
 	}
 
-	if(__builtin_expect((tl.u&~(1l<<63)) == 0, 0)) {
-		// ml == 0. Note that ml cannot be subnormal
-		ml = 0; mlt = 0;
-	}
 	// construct the mantissa of the long double number
 	uint64_t mh = ((th.u<<11)|1l<<63);
-	int64_t eps = (mh >> (83 - 64)); // 83 comes from |eps| < 2^-83.287
+
 	POWL_DPRINTF("tl_u = %016lx\n", tl.u);
 	POWL_DPRINTF("ml = %016lx\n", ml);
 	POWL_DPRINTF("mlt = %016lx\nmh=%016lx\n", mlt, mh);
 	
-
-	uint64_t oldmh = mh;
 	mh += mlt;
-	if(__builtin_expect((mh < oldmh) && !(mlt>>63), 0)) {
-		// We've had an (unsigned) overflow
-		ml = (ml >> 1) | (mh << 63);
-		mh = (mh >> 1) | (1l << 63);
-		extra_exp++;
-		eps >>= 1;
-	} else if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
+	if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
 					     // can unset the msb so shift the
 					     // number back
 		mh = mh<<1 | (uint64_t)ml>>63;
 		ml <<= 1;
 		extra_exp--;
-		eps <<= 1;
 	}
-
+	int64_t eps = (mh >> (83 - 64));
+	// 83 comes from |eps| < 2^-83.287 and the fast_two_sum's error
+	
 	int wanted_exponent = extra_exp + 0x3c00 + eh;
 	POWL_DPRINTF("wanted exponent : %x\n", wanted_exponent);
 	POWL_DPRINTF("mh||ml = %016lx %016lx\n", mh, ml);
@@ -1056,6 +1047,7 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 			ml |= mh << (64 - shiftby);
 			mh >>= shiftby;
 			eps >>= shiftby;
+			eps += 1;
 		}
 		wanted_exponent = 0;
 
@@ -1063,7 +1055,7 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 		POWL_DPRINTF("mh||ml = %016lx %016lx\n", mh, ml);
 	}
 
-	oldmh = mh; // For overflow detection
+	uint64_t oldmh = mh; // For overflow detection
 	if(rm==FE_TONEAREST){ // round to nearest
 		mh += (uint64_t)ml>>63;
 		ml ^= (1ul << 63);
@@ -1400,7 +1392,7 @@ bool is_integer(long double x) {
 	const b80u80_t cvt = {.f = x};
 	int e = (cvt.e & 0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
 	if (e >= 63) return true; // ulp(x) >= ulp(2^63) = 1 thus x is integer
-        else if (e <= -1) return false; // |x| < 1
+        else if (e <= -1) return cvt.m == 0; // |x| < 1
         // bit 0 of cvt.m has weight 2^(e-63)
         // thus bit 62-e corresponds to weight 1/2
         // we need the low 63-e bits to equal 000...000
@@ -1432,91 +1424,100 @@ bool is_odd_integer(long double x) {
 inline static
 int _isnan(long double x) {
   const b80u80_t v = {.f = x};
-  return ((v.e&0x7fff) == 0x7fff && (v.m != (1ul << 63)));
+  return ((v.e&0x7fff) == 0x7fff && (v.m<<1));
 }
 
 // return non-zero iff x is a signaling NaN
 inline static
 int _issnan(long double x) {
 	const b80u80_t v = {.f = x};
-	return _isnan(x) && (!((v.m>>62)&1));
+	return _isnan(x) && ((int64_t)(v.m<<1) > 0);
 }
 
 long double cr_powl(long double x, long double y) {
 
 	const b80u80_t cvt_x = {.f = x}, cvt_y = {.f = y};
+	int x_exp = (cvt_x.e&0x7fff) - 16383;
+	int y_exp = (cvt_y.e&0x7fff) - 16383;
 
-	if(__builtin_expect(_isnan(x) || _isnan(y), 0)) {
-          if (_issnan (x) || _issnan (y))
-          {
-            feraiseexcept(FE_INVALID);
-            return __builtin_nanl(""); // Returns a quiet NaN, raises invalid operation
-          }
-          // qNaN^0 = 1^qNaN = 1
-          if (__builtin_expect(cvt_y.m == 0 || x == 1.L, 0)) return 1.L;
-          // Return a quiet NaN
-          return __builtin_nanl("");
-	}  
-
-        // x^0 = 1^y = 1
-	if(__builtin_expect(cvt_y.m == 0 || x == 1.L, 0)) return 1.L;
-
-	const int x_exp = (cvt_x.e&0x7fff) - 16383;
-        // 2^x_exp <= |x| < 2^(x_exp+1)
-	const int y_exp = (cvt_y.e&0x7fff) - 16383;
-        // 2^y_exp <= |y| < 2^(y_exp+1)
-
-	bool invert = (cvt_x.e>>15) & is_odd_integer(y);
-	const long double sign = ((cvt_x.e>>15) & is_odd_integer(y)) ? -1.L : 1.L;
+	bool invert = false;
+	long double sign = 1.0L;
 
 	static const long double inf = __builtin_infl();	
-	if(__builtin_expect(cvt_x.m == 0, 0)) { // x = +- 0
-		if(cvt_y.e>>15) { // y < 0
-			if(cvt_y.e != 0xffff) feraiseexcept(FE_DIVBYZERO); // If y != -inf
-			return sign * inf;
-		} else {
-			return sign * 0L;
-		}
-	}
-
-	// -inf < x < 0
-	if(__builtin_expect(cvt_x.e >= 1<<15 && cvt_x.e != 0xffff, 0)) {
-		if(!is_integer(y)) // Note that +-infty are (even) integers here
-			{feraiseexcept(FE_INVALID); return __builtin_nanl("");}
-		if(__builtin_expect(x == -1L, 0)) {
-			return sign;
-		}
-	}
-
-	// Now, the handling of forbidden values has been done
-	// and the sign of the result computed in sign. We treat x as |x|.
-
-	if(__builtin_expect((cvt_x.e&0x7fff) == 0x7fff, 0)) // x = +-inf
-          return sign * ((cvt_y.e>>15) ? 0L : inf);
-
 	bool lt1 = (x_exp < 0) ^ (cvt_y.e>>15);
-        // x^y = 2^s with s < 0 (we have already dealt wuth x=1
-        // thus x_exp >= 0 implies x > 1)
+	// If lt1 is set, then |x|^y < 1.
+	// If lt1 is not set, then either |x|^y > 1 or |x|==1
 
-	if(__builtin_expect(y_exp >= 78, 0)) {
-          /* For |y| >= 2^78, since |x| <> 1, the smallest value of
-             |y * log2(x)| is attained for x = 1 - 2^-64, and is > 23637,
-             thus |x^y| is smaller than the smallest positive subnormal
-             2^-16445, or largest than MAX_LDBL = 2^16384*(1-2^-64). */
-          // |y| >= 2^78 implies y is a (possibly infinite) even integer
-		if(__builtin_expect(y_exp == 0x7fff - 16383, 0)) // y = +-infty
-                  return (lt1) ? 0L : inf;
-		else
-                  return (lt1) ? 0x1p-16445L * .5L : 0x1p16383L + 0x1p16383L;
-	} else if(__builtin_expect(y_exp <= -81, 0)) {
-          /* For y_exp <= -81, we have |y| < 2^-80,
-             thus since |log2(x)| <= 16445, we have |y*log2(x)| < 0x1.00f4p-66.
-             Since for |t| <= 0x1.71547652b82fe176p-65, 2^t rounds to 1
-             to nearest, we can deduce the correct rounding. */
-          return (lt1) ? 1.L - 0x1p-65L : 1.L + 0x1p-65L;
+	/* x is negative */
+	if(__builtin_expect(cvt_x.e>>15, 0)) {
+		if(__builtin_expect(_isnan(y)
+	                      || (!is_integer(y) && cvt_x.m && x_exp != 0x7fff-16383)
+		                    ,0)) {
+			feraiseexcept(FE_INVALID);
+			return __builtin_nanl("");
+		}
+
+		if(is_odd_integer(y)) {
+			invert = true;
+			sign = -1.0L;
+		}
 	}
 
-        // now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
+	POWL_DPRINTF("sign = %La\n", sign);
+
+	// x is either (s)NaN or +-infty
+	if(__builtin_expect(x_exp == 0x7fff - 16383, 0)) {
+		if(_issnan(x)) {
+			feraiseexcept(FE_INVALID);
+			return __builtin_nanl("");
+		}
+		if(!cvt_y.m) {return 1L;}
+		if(_isnan(x) || _isnan(y)) {
+			feraiseexcept(FE_INVALID);
+			return __builtin_nanl("");
+		}
+		// Here x == +-infty and y != 0
+		return lt1 ? sign*0L : sign*inf;
+	} else
+
+	// From now on, x is normal
+	if(__builtin_expect(!cvt_x.m, 0)) { // x == +-0
+		if(_isnan(y)) {feraiseexcept(FE_INVALID); return __builtin_nanl("");}
+		if(!cvt_y.m) {return 1L;} // y == 0
+		if(cvt_y.e>>15 && cvt_y.e != 0xffff) {feraiseexcept(FE_DIVBYZERO);}
+		return lt1 ? sign*0L : sign*inf;
+	}
+
+	/* For |y| >= 2^78, and |x| <> 1, the smallest value of
+	   |y * log2(x)| is attained for x = 1 - 2^-64, and is > 23637,
+	   thus |x^y| is smaller than the smallest positive subnormal
+	   2^-16445, or largest than MAX_LDBL = 2^16384*(1-2^-64).
+	   Here y is either +-inf, (s)NaN, or very large.
+	*/
+	else if(__builtin_expect(y_exp >= 78, 0)) {
+		if(_issnan(y)) {feraiseexcept(FE_INVALID); return __builtin_nanl("");}
+		if(x == 1.L) {return 1.L;}
+		if(_isnan(y)) {feraiseexcept(FE_INVALID); return __builtin_nanl("");}
+		if(x == -1.L) {return sign;}
+		// y == +-infty
+		if(y_exp == 0x7fff - 16383) {
+			return lt1 ? sign*0L : sign*inf;
+		} else {
+			return lt1 ? (sign*0x1p-16445L)*.25L : (sign*0x1p16383L)*2L;
+		}
+	} else if(__builtin_expect(y_exp <= -81, 0)) {
+		/* For y_exp <= -81, we have |y| < 2^-80,
+		thus since |log2(x)| <= 16445, we have |y*log2(x)| < 0x1.00f4p-66.
+		Since for |t| <= 0x1.71547652b82fe176p-65, 2^t rounds to 1
+		to nearest, we can deduce the correct rounding. */
+		if(!cvt_y.m || x == 1.L) {
+			return 1.L;
+		} else { // Here we know sign == 1.
+				return lt1 ? 1. - 0x1p-16445L : 1. + 0x1p-16445L; 
+		}
+	}
+
+	// now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 #ifndef ACCURATE_ONLY
 	// Automatic giveup if x subnormal
 	if(__builtin_expect(cvt_x.m >> 63, 1)) {
