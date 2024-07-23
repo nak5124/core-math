@@ -981,9 +981,12 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	return extra_exponent;
 }
 
-/* Rounding and rounding test for the fastpath*/
+/* Rounding and rounding test for the fastpath.
+   Assume 2^extra_exp * (rh + rl) = x^y * (1 + eps) with |eps| < 2^-83.287,
+   with 0.499 < |h| < 2.004, |rl| <= 2^-47.638.
+*/
 inline static
-long double fastpath_roundtest(double rh, double rl,int extra_exp,
+long double fastpath_roundtest(double rh, double rl, int extra_exp,
                                bool invert, bool* fail) {
 	unsigned rm = get_rounding_mode();
 	b64u64_t th = {.f = rh}, tl = {.f = rl};
@@ -1012,14 +1015,7 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 	}
 	// construct the mantissa of the long double number
 	uint64_t mh = ((th.u<<11)|1l<<63);
-	/* The evaluation of 2^(yln2(1+x)) was precise to 2^(-86.240) relative error.
-	   Since yln2(1+x) was computed to 2^(-92.421) relative error, and must be
-	   less than 2^14 lest the result be infinite, yln2(1+x) was known to
-	   2^-78.421. This implies an additional relative error of 2^-78.949. The
-	   total relative error computing x^y is therefore at most
-	   2^-78.949 + 2^-92.421 + 2^-92.421*2^-78.949 = 2^-78.948
-	*/
-	int64_t eps = (mh >> (78 - 64));
+	int64_t eps = (mh >> (83 - 64)); // 83 comes from |eps| < 2^-83.287
 	POWL_DPRINTF("tl_u = %016lx\n", tl.u);
 	POWL_DPRINTF("ml = %016lx\n", ml);
 	POWL_DPRINTF("mlt = %016lx\nmh=%016lx\n", mlt, mh);
@@ -1529,8 +1525,8 @@ long double cr_powl(long double x, long double y) {
 		POWL_DPRINTF("x="SAGE_RE"\n",x);
 		POWL_DPRINTF("y="SAGE_RE"\n",y);
 		compute_log2pow(&rh, &rl, x, y);
-                // rh + rl = y * log2(x) * (1 + eps) with
-                // |eps| <= 2^-97.286 |rh| and |rl| <= 2^-48.262 |rh|
+                // rh + rl = y * log2(x) * (1 + eps1) with
+                // |eps1| <= 2^-97.286 |rh| and |rl| <= 2^-48.262 |rh|
 
 		if(__builtin_expect(rh <= -16446.1, 0)) {
                   /* Since |rl| <= 2^-48.262 |rh|,
@@ -1555,7 +1551,22 @@ long double cr_powl(long double x, long double y) {
 			POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
 			double resh, resl;
 			int extra_exponent = exp2d(&resh, &resl, rh, rl);
-                        // resh + resl = 2^(xh + xl) * (1 + eps) with |eps| <= 2^-85.010
+                        /* 2^extra_exponent * (resh + resl)
+                           = 2^(rh + rl) * (1 + eps2) with |eps2| <= 2^-85.010,
+                           0.499 < |resh| < 2.004, |resl| <= 2^-47.638.
+                           Since rh + rl = y * log2(x) * (1 + eps1) with
+                           |eps1| <= 2^-97.286,
+                           and |rh+rl| < 16446.1 * (1 + 2^-48.262),
+                           we deduce |y * log2(x)| < 16446.2, thus
+                           rh + rl = y * log2(x) + eps1_abs
+                           with |eps1_abs| < 16446.2 * 2^-97.286 < 2^-83.280.
+                           It follows:
+                           2^extra_exponent * (resh + resl)
+                           = x^y * 2^eps1_abs * (1 + eps2)
+                           = x^y * (1 + eps)
+                           with |eps| < 2^eps1_abs * (1 + eps2) - 1 < 2^-83.287
+                        */
+
 			bool fail = false;
 			r = fastpath_roundtest(resh, resl, extra_exponent, invert, &fail);
 			if(__builtin_expect(!fail, 1)) {	
