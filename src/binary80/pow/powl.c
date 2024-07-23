@@ -980,9 +980,18 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 	int64_t eps = (mh >> (78 - 64));
 	POWL_DPRINTF("tl_u = %016lx\n", tl.u);
 	POWL_DPRINTF("ml = %016lx\n", ml);
+	POWL_DPRINTF("mlt = %016lx\nmh=%016lx\n", mlt, mh);
 	
+
+	uint64_t oldmh = mh;
 	mh += mlt;
-	if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
+	if(__builtin_expect((mh < oldmh) && !(mlt>>63), 0)) {
+		// We've had an (unsigned) overflow
+		ml = (ml >> 1) | (mh << 63);
+		mh = (mh >> 1) | (1l << 63);
+		extra_exp++;
+		eps >>= 1;
+	} else if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
 					     // can unset the msb so shift the
 					     // number back
 		mh = mh<<1 | (uint64_t)ml>>63;
@@ -993,13 +1002,16 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 
 	int wanted_exponent = extra_exp + 0x3c00 + eh;
 	POWL_DPRINTF("wanted exponent : %x\n", wanted_exponent);
-	POWL_DPRINTF("mh||ml = %lx%lx\n", mh, ml);
+	POWL_DPRINTF("mh||ml = %016lx %016lx\n", mh, ml);
 
 	if(__builtin_expect(wanted_exponent <= 0, 0)) {
 		int shiftby = 1 - wanted_exponent;
 
-		if(__builtin_expect(shiftby > 64, 0)) {	
-			mh = 0; ml = mh >> (shiftby - 64); eps = 1;
+		if(__builtin_expect(shiftby >= 64, 0)) {	
+			ml = mh >> (shiftby - 64); mh = 0; eps = 1;
+			if(__builtin_expect(shiftby > 65, 0)) {
+				*fail = false; return invert ? -0x1p-16445L*.25L : 0x1p-16445L*0.25L;
+			}
 			// This overestimates epsilon, which is safe
 		} else {
 			ml = (uint64_t)ml >> shiftby;
@@ -1013,6 +1025,7 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 		POWL_DPRINTF("mh||ml = %016lx %016lx\n", mh, ml);
 	}
 
+	oldmh = mh; // For overflow detection
 	if(rm==FE_TONEAREST){ // round to nearest
 		mh += (uint64_t)ml>>63;
 		ml ^= (1ul << 63);
@@ -1024,7 +1037,7 @@ long double fastpath_roundtest(double rh, double rl,int extra_exp,
 
 	// This branch can only be taken if wanted_exponent != 0
   // Else we simply cannot have an overflow
-	if(__builtin_expect(!mh, 0)) {
+	if(__builtin_expect(mh < oldmh, 0)) {
 		ml = ml/2; // Signed semantics matter
 	  eps >>= 1;
 		mh = 1ull << 63;
