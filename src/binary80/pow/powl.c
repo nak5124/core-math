@@ -1529,25 +1529,21 @@ long double cr_powl(long double x, long double y) {
 		compute_log2pow(&rh, &rl, x, y);
                 // rh + rl = y * log2(x) * (1 + eps1) with
                 // |eps1| <= 2^-97.286 |rh| and |rl| <= 2^-48.262 |rh|
-
-		if(__builtin_expect(rh <= -16446.1, 0)) {
-                  /* Since |rl| <= 2^-48.262 |rh|,
-                     y * log2(x) <= -16446.1 * (1-2^-48.262) * (1-2^-97.286)
-                     <= -16446.09 thus x^y < 2^-16446. (Numbers in
-                     (2^-16446, 2^-16445) round to nearest to 2^-16445.) */
-			return (sign * 0x1p-16445L) * .5L;
-		} else if(__builtin_expect(rh >= 16384.1, 0)) {
-                  /* Since |rl| <= 2^-48.262 |rh|,
-                     y * log2(x) >= 16384.1 * (1-2^-48.262) * (1-2^-97.286)
-                     >= 16394.09 thus x^y > 2^16384 and there is overflow. */
-			return sign * 0x1p16383L + sign * 0x1p16383L;
-		} else if(__builtin_expect(rh < 0x1p-66 && rh > -0x1p-66, 0)) {
-                  /* Since |rl| <= 2^-48.262 |rh|,
-                     |y * log2(x)| < 2^-66 * (1+2^-48.262) * (1+2^-97.286)
-                     < 2^-65, and exp(+/-2^-65) rounds to 1 to nearest,
-                     thus by monotonicity of rounding x^y rounds to 1
-                     to nearest. */
-		  return sign * 1.L + sign * rh;
+		double rhsq = rh*rh;
+		/* This implies |rh| <= 1p-66;
+		   Since |rl| <= 2^-48.262 |rh|,
+		   |y * log2(x)| < 2^-66 * (1+2^-48.262) * (1+2^-97.286)
+		   < 2^-65, and exp(+/-2^-65) rounds to 1 to nearest,
+		   thus by monotonicity of rounding x^y rounds to 1
+		   to nearest. */
+		if(__builtin_expect(rhsq <= 0x1p-132f, 0)) {
+			return sign * 1.L + sign * rh;
+		} else if(__builtin_expect(rhsq >= (16447*16447), 0)) {
+		/* If |rh| >= 16447, then |rh + rl| > 164456.9 and depending on the
+		   sign of rh we can deduce the correctly rounded result.
+		*/
+			if(rh > 0) {return sign*0x1p16383L + sign*0x1p16383L;}
+			else {return (sign*0x1p-16445L)*.25L;}
 		} else {
 			// rh + rl approximates y*log2(x)
 			POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
