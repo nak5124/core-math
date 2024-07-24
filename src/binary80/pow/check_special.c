@@ -186,36 +186,46 @@ check_near_one (int N)
 
 // check exact or midpoint values for y integer
 static void
-check_exact_or_midpoint_1 (void)
+check_exact_or_midpoint (void)
 {
   long double zmin = 0x1p-16445L;
   long double zmax = 0x1.fffffffffffffffep+16383L;
-  // we limit n to 5 for the time being, since smaller exponents
-  // take more time
-  for (int n = 41; n >= 5; n--)
+  // max_pow[n] is the largest x such that x^n fits in 65 bits
+  long double max_pow[] = {0, 0, 6074000999, 3329021, 77935, 8191, 1824, 624, 279, 149, 90, 60, 42, 31, 24, 20, 16, 14, 12, 10, 9, 8, 7, 7, 6, 6, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+  // max_m[ey] is the largest m such that m^(2^ey) fits in 64 bits
+  long double max_m[] = {0x1.fffffffffffffffep+63L, 0x1.fffffffep+31L,
+                         0x1.fffep+15L, 0x1.fep+7L, 0x1.ep+3L, 0x1.8p+1L};
+  for (int ey = 5; ey >= 0; ey--)
   {
-    long double y = n;
-    long double xmin = powl (zmin, 1.0L / y);
-    long double xmax = powl (zmax, 1.0L / y);
-    // max_pow[n] is the largest x such that x^n fits in 65 bits
-    long double max_pow[] = {0, 0, 6074000999, 3329021, 77935, 8191, 1824, 624, 279, 149, 90, 60, 42, 31, 24, 20, 16, 14, 12, 10, 9, 8, 7, 7, 6, 6, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3};
-    for (long double m = 3.0L; m <= max_pow[n]; m += 2.0L)
+    int dn = (ey == 0) ? 1 : 2; // for ey > 0, we can restrict to odd n
+    // we limit n by below for the time being, since smaller exponents
+    // take more time
+    int d = 1 << ey; // denominator of y
+    for (int n = 41; n >= 12; n -= dn)
     {
-      // x = m*2^e with m odd (exact powers of two are tested elsewhere)
-      long double tmin = xmin / m;
-      long double tmax = xmax / m;
-      // we want tmin <= 2^e <= tmax
-      int emin, emax;
-      frexpl (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
-      frexpl (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
-#pragma omp parallel for
-      for (int e = emin; e <= emax; e++)
+      long double y = (long double) n / (long double) d;
+      long double xmin = powl (zmin, 1.0L / y);
+      long double xmax = powl (zmax, 1.0L / y);
+      for (long double m = 3.0L; m <= max_pow[n] && m <= max_m[ey]; m += 2.0L)
       {
-        ref_init();
-        ref_fesetround(rnd);
-        fesetround(rnd1[rnd]);
-        long double x = ldexpl (m, e);
-        check (x, y);
+        // x = m^d*2^e with m odd and e divisible by d
+        long double tmin = xmin / m;
+        long double tmax = xmax / m;
+        // we want tmin <= 2^e <= tmax
+        int emin, emax;
+        frexpl (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
+        frexpl (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
+        // we want emin divisible by d
+        while (emin % d) emin++;
+#pragma omp parallel for
+        for (int e = emin; e <= emax; e += d)
+        {
+          ref_init();
+          ref_fesetround(rnd);
+          fesetround(rnd1[rnd]);
+          long double x = ldexpl (powl (m, d), e);
+          check (x, y);
+        }
       }
     }
   }
@@ -268,7 +278,7 @@ main (int argc, char *argv[])
   fesetround(rnd1[rnd]);
 
   printf ("Checking exact/midpoint values\n");
-  check_exact_or_midpoint_1 ();
+  check_exact_or_midpoint ();
 
   printf ("Checking x=2^k\n");
   check_pow2 ();
