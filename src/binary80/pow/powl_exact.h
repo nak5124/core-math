@@ -4,8 +4,11 @@ static inline
 void q_extract(int64_t* e, uint64_t* m, long double x) {
 	const b80u80_t cvt_x = {.f = x};
 	int shift = __builtin_ctzl(cvt_x.m);
+	int exponent = (cvt_x.e&0x7fff) - 16383;	
+	if(exponent == -16383) {exponent++;}
+
 	POWL_DPRINTF("shift=%d\n", shift);
-	*e = (cvt_x.e&0x7fff) - 16383 - (63 - shift);
+	*e = exponent - (63 - shift);
 	*m = cvt_x.m >> shift;
 }
 
@@ -28,7 +31,7 @@ bool check_rb(long double x, long double y, const qint64_t* z) {
 	int64_t E;
 	q_extract(&E, &m, x);
 	POWL_DPRINTF("E = %ld\nm = 0x%016lx\n", E, m);
-
+	POWL_DPRINTF("get_hex(R("SAGE_RE" - 2^%ld*%ld))\n",x,E,m);
 
 	uint64_t n;
 	int64_t F;
@@ -76,22 +79,4 @@ void exactify(qint64_t* a) {
 		}
 	}
 	a->hl &= 1ul<<63; a->lh = a->ll = 0;
-
-	/*
-	if(rm == FE_TONEAREST) {
-		// Since we round to even, the correctly rounded result is this one
-		int closeness = a->hl >> 60; // 4 high bits after mantissa
-		if(closeness > 1 && closeness < 14 && (a->hh&1)) {a->hh++;};
-		a->hl = a->lh = a->ll = 0;
-	} else {
-		// In directed rounding modes this is effectively a round to nearest
-		if(a->hl>>63) {
-			a->hh++;
-			if(__builtin_expect(!a->hh, 0)) {
-				a->hh = 1ul << 63;
-				a->ex++;
-			}
-		}
-		a->hl = a->lh = a->ll = 0;
-	}*/
 }
