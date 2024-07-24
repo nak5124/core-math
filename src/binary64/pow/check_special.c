@@ -118,7 +118,7 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
-#define N 1000000000ul
+#define N 1000000ul
 
 static void
 check_random (int i)
@@ -164,15 +164,25 @@ check_exact_or_midpoint (void)
   for (int ey = 5; ey >= 0; ey--)
   {
     int dn = (ey == 0) ? 1 : 2; // for ey > 0, we can restrict to odd n
-    // we limit n by below for the time being, since smaller exponents
-    // take more time
     int d = 1 << ey; // denominator of y
-    for (int n = 34; n >= 4; n -= dn)
+    for (int n = 34; n >= 2; n -= dn)
     {
       double y = (double) n / (double) d;
       double xmin = pow (zmin, 1.0 / y);
       double xmax = pow (zmax, 1.0 / y);
-      for (double m = 3.0; m <= max_pow[n] && m <= max_m[ey]; m += 2.0)
+      double m0 = 3.0; // should be odd
+      double dm = 2.0; // should be even
+      /* For n=2, we only sample some of the values of m, otherwise it would
+         take of the order of 2 days on a 64-core machine. Just disable the
+         test below to perform the full check. The value of STEP below ensures
+         the test for n=2 takes about the same time as for all other values. */
+      if (n == 2 && ey <= 1)
+      {
+#define STEP 512 // about max_pow[2] / max_pow[3]
+        m0 += 2.0 * (lrand48 () % STEP);
+        dm *= STEP;
+      }
+      for (double m = m0; m <= max_pow[n] && m <= max_m[ey]; m += dm)
       {
         // x = m^d*2^e with m odd and e divisible by d
         double md = pow (m, d);

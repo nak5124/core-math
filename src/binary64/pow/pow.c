@@ -1370,8 +1370,9 @@ is_exact (double x, double y)
       return 0;
     // |x^y| = m^y * 2^(e*y)
     uint64_t my = m * m;
-    while (y_int-- > 2)
+    for (int i = 2; i < y_int; i++)
       my = my * m;
+    // my = m^y
     t = 64 - __builtin_clzl (m);
     // 2^(t-1) <= m^y < 2^t thus 2^(e*y + t - 1) <= |x^y| < 2^(e*y + t)
     int64_t ez = e * y_int + t;
@@ -1751,6 +1752,8 @@ double cr_pow (double x, double y) {
 
   // Rounding test
 
+  // 2^R.ex <= R < 2^(R.ex+1)
+
   /* case R < 2^-1075: underflow case */
   if (R.ex < -1075) {
     return 0.5 * (s * 0x1p-1074);
@@ -1759,6 +1762,7 @@ double cr_pow (double x, double y) {
   if (R.ex < -1022) { /* subnormal case */
     /* -1075 <= R.ex <= -1023 thus 2^-1075 <= R < 2^-1022 */
     uint64_t ex = -(1022 + R.ex); /* 1 <= ex <= 53 */
+    // the significand has to be shifted right by ex bits
     uint64_t m = R.lo >> (10 + ex) | R.hi << (54 - ex);
 
     /* In principle, the bound 28 which holds for the normal case below
