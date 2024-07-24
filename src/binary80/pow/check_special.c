@@ -198,10 +198,9 @@ check_exact_or_midpoint (void)
   for (int ey = 5; ey >= 0; ey--)
   {
     int dn = (ey == 0) ? 1 : 2; // for ey > 0, we can restrict to odd n
-    // we limit n by below for the time being, since smaller exponents
-    // take more time
+    // we limit to n >= 4, since n=2 and n=3 take a long time
     int d = 1 << ey; // denominator of y
-    for (int n = 41; n >= 5; n -= dn)
+    for (int n = 41; n >= 4; n -= dn)
     {
       long double y = (long double) n / (long double) d;
       long double xmin = powl (zmin, 1.0L / y);
@@ -209,8 +208,9 @@ check_exact_or_midpoint (void)
       for (long double m = 3.0L; m <= max_pow[n] && m <= max_m[ey]; m += 2.0L)
       {
         // x = m^d*2^e with m odd and e divisible by d
-        long double tmin = xmin / m;
-        long double tmax = xmax / m;
+        long double md = powl (m, d);
+        long double tmin = xmin / md;
+        long double tmax = xmax / md;
         // we want tmin <= 2^e <= tmax
         int emin, emax;
         frexpl (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
@@ -223,7 +223,7 @@ check_exact_or_midpoint (void)
           ref_init();
           ref_fesetround(rnd);
           fesetround(rnd1[rnd]);
-          long double x = ldexpl (powl (m, d), e);
+          long double x = ldexpl (md, e);
           check (x, y);
         }
       }
