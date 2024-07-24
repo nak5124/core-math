@@ -29,6 +29,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <math.h>
 #include <mpfr.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
@@ -149,6 +150,54 @@ check_random_all (void)
     check_random (getpid () + i);
 }
 
+// check exact or midpoint values for y integer
+static void
+check_exact_or_midpoint (void)
+{
+  double zmin = 0x1p-1074;
+  double zmax = 0x1.fffffffffffffp+1023;
+  // max_pow[n] is the largest x such that x^n fits in 54 bits
+  double max_pow[] = {0, 0, 134217727, 262143, 11585, 1782, 511, 210, 107, 63, 42, 30, 22, 17, 14, 12, 10, 9, 7, 7, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3};
+  // max_m[ey] is the largest m such that m^(2^ey) fits in 53 bits
+  double max_m[] = {0x1.fffffffffffffp+52, 0x1.6a09e64p+26,
+                         0x1.3068p+13, 0x1.88p+6, 0x1.2p+3, 0x1.8p+1};
+  for (int ey = 5; ey >= 0; ey--)
+  {
+    int dn = (ey == 0) ? 1 : 2; // for ey > 0, we can restrict to odd n
+    // we limit n by below for the time being, since smaller exponents
+    // take more time
+    int d = 1 << ey; // denominator of y
+    for (int n = 34; n >= 4; n -= dn)
+    {
+      double y = (double) n / (double) d;
+      double xmin = pow (zmin, 1.0 / y);
+      double xmax = pow (zmax, 1.0 / y);
+      for (double m = 3.0; m <= max_pow[n] && m <= max_m[ey]; m += 2.0)
+      {
+        // x = m^d*2^e with m odd and e divisible by d
+        double md = pow (m, d);
+        double tmin = xmin / md;
+        double tmax = xmax / md;
+        // we want tmin <= 2^e <= tmax
+        int emin, emax;
+        frexp (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
+        frexp (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
+        // we want emin divisible by d
+        while (emin % d) emin++;
+#pragma omp parallel for
+        for (int e = emin; e <= emax; e += d)
+        {
+          ref_init();
+          ref_fesetround(rnd);
+          fesetround(rnd1[rnd]);
+          double x = ldexp (md, e);
+          check (x, y);
+        }
+      }
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -190,6 +239,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking exact/midpoint values\n");
+  check_exact_or_midpoint ();
 
   printf ("Checking random values\n");
   check_random_all ();
