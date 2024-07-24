@@ -43,7 +43,7 @@ bool check_rb(long double x, long double y, const qint64_t* z) {
 
 	/* x is not a power of 2 */	
 	if(y < 0) return false;
-	if(F > 5 || n > 41 || (n * (1 << F) > 41)) return false; // y>41
+	if(F > 5 || n > 41 || (F >=0 && (n * (1 << F) > 41))) return false; // y>41
 	if(F < -5) return false; // The only way this was possible was that m == 1
 
 	if(F < 0) {
@@ -58,17 +58,30 @@ bool check_rb(long double x, long double y, const qint64_t* z) {
 	return true;
 }
 
-/* Given a not subnormalized such that
-	i)  a is hard to round in the current rounding mode
-	ii) a approximates a rounding boundary
-modifies a in place so that, when rounded to a binary64, the result is
-the correctly rounded rounding boundary.
+/* Given a not subnormalized approximating a rounding boundary
+modifies a in place so that it exactly represents the rounding boundary.
 */ 
 static inline
-void exactify(qint64_t* a, unsigned rm) {
+void exactify(qint64_t* a) {
+	if((a->hl>>62) & 1) {
+		uint64_t oldhl = a->hl;
+		a->hl += (1ul << 63);
+		if(a->hl < oldhl) {
+			a->hh++;
+		}
+
+		if(__builtin_expect(!a->hh, 0)) {
+			a->hh = 1ul << 63;
+			a->ex++;
+		}
+	}
+	a->hl &= 1ul<<63; a->lh = a->ll = 0;
+
+	/*
 	if(rm == FE_TONEAREST) {
 		// Since we round to even, the correctly rounded result is this one
-		if(a->hh&1) {a->hh++;};
+		int closeness = a->hl >> 60; // 4 high bits after mantissa
+		if(closeness > 1 && closeness < 14 && (a->hh&1)) {a->hh++;};
 		a->hl = a->lh = a->ll = 0;
 	} else {
 		// In directed rounding modes this is effectively a round to nearest
@@ -80,5 +93,5 @@ void exactify(qint64_t* a, unsigned rm) {
 			}
 		}
 		a->hl = a->lh = a->ll = 0;
-	}
+	}*/
 }

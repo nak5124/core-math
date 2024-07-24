@@ -340,6 +340,11 @@ long double qint_told(qint64_t* a, unsigned rm, bool invert, bool* hard) {
 		a->hh += (a->hl>>63);
 		f = a->hl>>63;
 		a->hl ^= (1ul << 63);
+		if(a->hl == 0 && a->lh == 0 && a->ll == 0 && (a->hh&1)) {
+		// We were on the rounding boundary and rounded away instead of to zero
+			a->hh -= 1;
+			f = false;
+		} 
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
 		a->hh += a->hl||a->lh||a->ll;
 		f = true;

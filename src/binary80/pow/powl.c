@@ -1129,7 +1129,7 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 	mul_qint_11(r, x, &P[0]); // Relative error ~2^-64 here is fine
 	
 	for(int i = 2; i <= 7; i++) {
-		add_qint_22(r, &P[1], r);
+		add_qint_22(r, &P[i], r);
 		mul_qint_22(r, r, x);
 	}
 
@@ -1207,7 +1207,7 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
 	add_qint(r, reduction, r);
 	mul_qint_41(r, r, q_y);
-	POWL_DPRINTF("get_hex(R(y*log2(x0)-"SAGE_QR"))\n",
+	POWL_DPRINTF("get_hex(R(1-"SAGE_QR"/(y*log2(x0))))\n",
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
 }
 
@@ -1519,12 +1519,13 @@ long double cr_powl(long double x, long double y) {
 
 	// now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 #ifndef ACCURATE_ONLY
+
+	POWL_DPRINTF("x="SAGE_RE"\n",x);
+	POWL_DPRINTF("y="SAGE_RE"\n",y);
 	// Automatic giveup if x subnormal
 	if(__builtin_expect(cvt_x.m >> 63, 1)) {
 		long double r;
 		double rh, rl;
-		POWL_DPRINTF("x="SAGE_RE"\n",x);
-		POWL_DPRINTF("y="SAGE_RE"\n",y);
 		compute_log2pow(&rh, &rl, x, y);
                 // rh + rl = y * log2(x) * (1 + eps1) with
                 // |eps1| <= 2^-97.286 |rh| and |rl| <= 2^-48.262 |rh|
@@ -1594,10 +1595,12 @@ long double cr_powl(long double x, long double y) {
 	bool exact_if_hard = check_rb(x,y,q_r);
 	bool hard = false;
 	long double r = qint_told(final, rm, invert, &hard);
-	
+
+	POWL_DPRINTF("get_hex(R(1 - r/x^y))\n");
+	if(hard){POWL_DPRINTF("hard\n");}
 	if(hard && exact_if_hard) {
 		POWL_DPRINTF("Boundary!\n");
-		exactify(q_r, rm);
+		exactify(q_r);
 		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
 			q_r->ex, q_r->sgn);
 		qint_subnormalize(final, q_r);
