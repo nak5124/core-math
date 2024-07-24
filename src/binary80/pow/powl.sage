@@ -215,7 +215,8 @@ def analyse_second_high_sum(extra_int_min=-16382):
 def accurate_logs(L):
 	R64 = RealField(64)
 	R = RealField(256)
-	for a,b,r in L:
+	for i in range(len(L)):
+		(a,b,r) = L[i]
 		x = R(n(log2(r), 300))
 		s,m,e = x.sign_mantissa_exponent()
 		assert m==0 or m.nbits()==256, "m==0 or m.nbits()==256"
@@ -254,6 +255,7 @@ def format_sollya_poly(s):
 			print ("    {.hh = " + hex(l[3]) + ", .hl = " + hex(l[2]) + ", .lh = " +
 		hex(l[1]) + ", .ll = " + hex(l[0]) + ", .ex = " + str(e+255) +
 		", .sgn = 0x1}, /* degree " + str(i) + " */")
+	return [get_hex(p[n - i]) for i in [0..n]]
 
 def corr_tk(k=0):
    maxerr = 0

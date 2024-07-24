@@ -254,9 +254,9 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
         // multiply c2+c3*x by x^2
 	d_mul(&ord23h, &ord23l, ord23h, ord23l, xsqh, xsql);
 	/* Recall we have |ord23h_old| <= 2^-1.583, |ord23l| <= 2^-53.582,
-           |xsqh| <= 2^-23.997, |xsql| <= 2^-74.413.
-           Expanding the d_mul call we get that:
-           - |ord23h| <= |ord23h_old * xsqh| <= 2^-1.583 * 2^-23.997 <= 2^-25.579
+	   |xsqh| <= 2^-23.997, |xsql| <= 2^-74.413.
+	   Expanding the d_mul call we get that:
+	   - |ord23h| <= |ord23h_old * xsqh| <= 2^-1.583 * 2^-23.997 <= 2^-25.579
 	   - |p| <= 2^-52 * (2^-1.583*2^-23.997) <= 2^-77.580.
 	   - |al*bh + p| <= 2^-53.582*2^-23.997 + 2^-77.580 <= 2^-76.579,
              so that |q| <= 2^-76.578 and the associated rounding error is
@@ -707,7 +707,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            <= eps * rh'
            with |eps| <= (1 + 2^-99.562) * (1 + 2.002*2^-103.023)
                       * (1 + 1.002*2^-98.285) - 1 <= 2^-97.710.
-	   The total relative error computing log2(1 + x) is therefore at most
+	   The total relative error computing log2(x) is therefore at most
 	   2^-97.710. Also, |rl'| <= 2^-48.497|rh'|.
 	*/
 
@@ -1096,7 +1096,10 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	return v.f;
 }
 
-// x has only its upper 2 limbs nonzero
+/* Given |x| < 2^-11.999 fitting in 128 bits,
+computes an approximation of log2(1 + x).
+Relative error at most 2^-249.998
+*/
 inline static
 void q_logpoly(qint64_t* r, const qint64_t* x) {
 	/* We use a naïve Horner scheme as a placeholder,
@@ -1128,7 +1131,7 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 
 	mul_qint_11(r, x, &P[0]); // Relative error ~2^-64 here is fine
 	
-	for(int i = 2; i <= 7; i++) {
+	for(int i = 1; i <= 7; i++) {
 		add_qint_22(r, &P[i], r);
 		mul_qint_22(r, r, x);
 	}
@@ -1178,24 +1181,47 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 
 	qint64_t reducted[1];
 	qint_fromdd(reducted, xh, xl);
+	/* Much like in the fastpath, computing reducted is exact. We also have
+	   the guarantee that |reducted| <= 2^-11.999.
+	*/
 	POWL_DPRINTF("reducted = "SAGE_QR"\n",
 	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,
 	   reducted->ex, reducted->sgn);
 	POWL_DPRINTF("get_hex(R(reducted-"SAGE_DD"))\n",xh,xl);
 
-	qint64_t reduction[1];
-	qint_fromsi(reduction, extra_int);
-	POWL_DPRINTF("get_hex(R("SAGE_QR"-%d))\n",
-	   reduction->hh, reduction->hl, reduction->lh, reduction->ll,
-	   reduction->ex, reduction->sgn, extra_int);
+	qint64_t eint[1];
+	qint_fromsi(eint, extra_int);
+	
+	qint64_t mlogr[1];
+	add_qint(mlogr, &acc_coarsetbl[cvt_x.m>>56 & 0x7f], eint);
 
-	add_qint(reduction, &acc_coarsetbl[cvt_x.m>>56 & 0x7f], reduction);
-	add_qint(reduction, &acc_finetbl[(cvt_xh.u>>40) & 0x7f],reduction); 
+	qint64_t mlogr12[1];
+	add_qint(mlogr12, &acc_finetbl[(cvt_xh.u>>40) & 0x7f], mlogr);
+	
 	/* We have log2(x)= reduction + log2(1 + xr) */
 	POWL_DPRINTF("reduction = R("SAGE_QR")\n",
 	   reduction->hh, reduction->hl, reduction->lh, reduction->ll,
 	   reduction->ex, reduction->sgn);
 	POWL_DPRINTF("get_hex(R(reduction + log2(r1) + log2(r2) - ei))\n");
+
+	/* Since the accurate tables merely extend the precision of the fast tables,
+	   the ratios computed by high_sum.c (-DMODE=0) stay valid.
+	   By analogy to the fastpath, let us call mlogr1 and mlogr2 the values
+	   looked up from the coarse and fine table respectively.
+
+	   We then know that
+	     |mlogr/mlogr12|  < 1.951
+	     |mlogr2/mlogr12| < 1
+	   Furthermore, since |mlogr1| < .5 it is straightforward to see that
+	     |mlogr| > |mlogr1|.
+	   The total relative error computing mlogr is 2^-254 due to rounding errors
+	   and (at most) 2^-256 relative error due mlogr1's error.
+	   The total relative error computing mlogr2 is of course at most 2^-256.
+	   This gives a relative error bound on mlogr12 as follows :
+	     2^-254 + (|mlogr/mlogr12| * (2^-254+2^-256) + |mlogr2/mlogr12|*2^-256)
+	     <= 2^-252.116 
+	   We thus have an error on mlogr12 which is bounded by 2^-252.116|mlogr12|
+	*/
 
 	qint64_t q_y[1];
 	qint_fromld(q_y, y);
@@ -1205,10 +1231,26 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	q_logpoly(r, reducted);
 	POWL_DPRINTF("get_hex(R(log2(1 + reducted) -"SAGE_QR"))\n",
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
-	add_qint(r, reduction, r);
+	/* As mentioned in q_logpoly(), the relative error on the result is at most
+	   2^-249.998.*/
+
+	add_qint(r, mlogr12, r);
+	/* Let us call r_in/r_out the values of r as input/output.
+	   Examining the fastpath's error analysis, we see that we have here
+	   |mlogr12/r_out| <= 2.002. Also |r_in/r_out| <= 1.002. The relative errors
+	   of 2^-252.116 and 2^-249.998, together with the sum's rounding error, make
+	   up for an error bound of
+	     |r_out|*(2^-254 + 2.002*2^-252.116 + 1.002*2^-249.998) 
+	     <= |r_out|*2^-249.388
+	   The total relative error computing log2(x) is therefore at most 2^-249.388.
+	*/
+
 	mul_qint_41(r, r, q_y);
 	POWL_DPRINTF("get_hex(R(1-"SAGE_QR"/(y*log2(x0))))\n",
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
+	/* The product imparts an additional relative rounding error of 2^-254. The
+	   total relative error computing ylog2(x) is thus at most
+	     2^-254 + 2^-249.388 <= 2^-249.330 */
 }
 
 inline static
@@ -1260,7 +1302,7 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	// Assumes we never have corr_h = 0 unless everything is 0
 	
 	if(sgn) {
-	   // Convert to sign and magnitude. Can be seen like as a 196 2s complement
+	   // Convert to sign and magnitude. Can be seen as a 196 2s complement
 	   // mantissa being inverted
 		 corr_h = -corr_h - 1;
 		 corr_l = -corr_l;
@@ -1290,7 +1332,9 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	mul_qint(r, acc0, acc1);
 }
 
-/* Approximates 2^x with a polynomial for |x| < 2^-20 */
+/* Approximates 2^x with a polynomial for |x| < 2^-20.
+Absolute error is bounded by 2^-253.967 (see accurate_analysis.sage)
+*/
 inline static
 void q_exp2poly(qint64_t* r, const qint64_t* x) {
 	static const qint64_t Q[11] = {
@@ -1307,8 +1351,8 @@ void q_exp2poly(qint64_t* r, const qint64_t* x) {
 		{.hh = 0x8000000000000000, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x0}, /* degree 0 */
 	};
 
-	cp_qint(r, &Q[0]);
-	mul_qint_11(r, r, x); // relative error of 2^-64 is fine here
+	mul_qint_11(r, &Q[0], x); // relative error of 2^-64 is fine here
+
 	for(int i = 1; i <= 4; ++i) {
 		add_qint_22(r, &Q[i], r);
 		mul_qint_22(r, r, x);

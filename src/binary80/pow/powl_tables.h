@@ -300,7 +300,8 @@ lut_t fine[128] = {
 {0x1p+0, 0x0p+0, 0x0p+0, 0}, //0x1.fffp-1,0x1p+0(0x7f)
 };
 
-/* acc_coarsetbl[i] holds a tint approximating -log2(coarsetbl[i].r) */
+/* acc_coarsetbl[i] holds a tint approximating -log2(coarsetbl[i].r) with
+relative error at most 2^-256.*/
 static const qint64_t acc_coarsetbl[128] = {
     {.hh = 0x0, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x1},
     {.hh = 0x8b510f105052285e, .hl = 0x49a09c72f783d310, .lh = 0x4c914d6a61f49b08, .ll = 0xfc7d870b752b078d, .ex = -6, .sgn = 0x0},
@@ -433,7 +434,9 @@ static const qint64_t acc_coarsetbl[128] = {
 };
 
 
-/* acc_finetbl[i] holds a tint approximating -log2(coarsetbl[i].r) */
+/* acc_finetbl[i] holds a tint approximating -log2(coarsetbl[i].r) with
+relative error at most 2^-256.
+*/
 static const qint64_t acc_finetbl[128] = {
     {.hh = 0x0, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x1},
     {.hh = 0x8a862ac30095c084, .hl = 0xe9bcfd0c62eaa2ca, .lh = 0x6c5f92c172efd68a, .ll = 0x502850f96434c589, .ex = -11, .sgn = 0x0},
