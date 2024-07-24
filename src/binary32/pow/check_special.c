@@ -28,13 +28,13 @@ SOFTWARE.
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <fenv.h>
 #include <mpfr.h>
 #include <math.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
-#include <assert.h>
 
 float cr_powf (float, float);
 float ref_pow (float, float);
@@ -48,15 +48,45 @@ int verbose = 0;
 
 int mid = 1; // if mid=1, also check midpoint cases
 
+typedef union {float f; uint32_t u;} b32u32_u;
+
 static inline uint32_t
 asuint (float f)
 {
-  union
-  {
-    float f;
-    uint32_t i;
-  } u = {f};
-  return u.i;
+  b32u32_u v = {.f = f};
+  return v.u;
+}
+
+static float
+get_random (struct drand48_data *buffer)
+{
+  b32u32_u v;
+  long l;
+  lrand48_r (buffer, &l);
+  v.u = l;
+  // lrand48_r generates only 31 bits
+  lrand48_r (buffer, &l);
+  v.u |= (uint32_t) l << 31;
+  return v.f;
+}
+
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+static inline int
+is_equal (float x, float y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint (x) == asuint (y);
 }
 
 static void
@@ -73,8 +103,8 @@ check (float x, float y)
   z2 = cr_powf(x, y);
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);
-  if (asuint (z1) != asuint (z2)) {
-    printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
+  if (!is_equal (z1, z2)) {
+    printf("FAIL x,y=%a,%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
     exit(1);
   }
@@ -94,6 +124,38 @@ check (float x, float y)
     exit(1);
 #endif
   }
+}
+
+#define N 1000000ul
+
+static void
+check_random (int i)
+{
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buffer[1];
+  float x, y;
+  srand48_r (i, buffer);
+  for (unsigned long n = 0; n < N; n++)
+  {
+    x = get_random (buffer);
+    y = get_random (buffer);
+    check (x, y);
+  }
+}
+
+static void
+check_random_all (void)
+{
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#endif
+#pragma omp parallel for
+  for (int i = 0; i < nthreads; i++)
+    check_random (getpid () + i);
 }
 
 // check exact and midpoint values
@@ -183,9 +245,11 @@ main (int argc, char *argv[])
         }
     }
 
+  printf ("Checking random values\n");
+  check_random_all ();
+
   printf ("Checking exact and midpoint values\n");
-  fflush (stdout);
-  // check_exact ();
   check_exact_or_midpoint ();
+
   return 0;
 }
