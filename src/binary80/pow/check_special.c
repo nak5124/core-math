@@ -73,7 +73,7 @@ check (long double x, long double y)
   mpfr_clear (Z);
   if (!is_equal (z, t))
   {
-    printf("FAIL x=%La,y=%La ref=%La z=%La\n", x,y,t,z);
+    printf("FAIL x,y=%La,%La ref=%La z=%La\n", x,y,t,z);
 #ifdef DO_NOT_ABORT
     return 1;
 #else
@@ -201,7 +201,7 @@ check_exact_or_midpoint (void)
     // we limit n by below for the time being, since smaller exponents
     // take more time
     int d = 1 << ey; // denominator of y
-    for (int n = 41; n >= 12; n -= dn)
+    for (int n = 41; n >= 5; n -= dn)
     {
       long double y = (long double) n / (long double) d;
       long double xmin = powl (zmin, 1.0L / y);
