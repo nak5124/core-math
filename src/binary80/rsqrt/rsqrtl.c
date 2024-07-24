@@ -232,6 +232,5 @@ long double cr_rsqrtl (long double x){
 long double rsqrtl (long double x){
   long double ir = 1.0L/x;
   return ir*sqrtl(x);
-  return 1.0L / sqrtl (x);
 }
 #endif
