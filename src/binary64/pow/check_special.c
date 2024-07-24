@@ -150,7 +150,7 @@ check_random_all (void)
     check_random (getpid () + i);
 }
 
-// check exact or midpoint values for y integer
+// check exact and midpoint values
 static void
 check_exact_or_midpoint (void)
 {

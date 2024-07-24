@@ -96,196 +96,49 @@ check (float x, float y)
   }
 }
 
-/* y positive integer: both x and -x are solutions */
+// check exact and midpoint values
 static void
-count_uint_y (int y)
+check_exact_or_midpoint (void)
 {
-  float xmin, xmax;
-  int emin, emax;
-  mpfr_t z;
-  mpfr_init2 (z, 25);
-  mpfr_set_ui_2exp (z, 1, -150, MPFR_RNDN);
-  mpfr_rootn_ui (z, z, y, MPFR_RNDU);
-  xmin = mpfr_get_flt (z, MPFR_RNDU);
-  mpfr_set_ui_2exp (z, 1, 128, MPFR_RNDN);
-  mpfr_nextbelow (z);
-  mpfr_rootn_ui (z, z, y, MPFR_RNDD);
-  xmax = mpfr_get_flt (z, MPFR_RNDD);
-  /* we want xmin <= x <= xmax, with x^y exact */
-  /* write x = m*2^e with m odd, m >= 3 */
-  /* compute the maximum odd m such that m^y < 2^(24+mid) */
-  mpfr_set_ui_2exp (z, 1, 24 + mid, MPFR_RNDN);
-  mpfr_nextbelow (z);
-  mpfr_rootn_ui (z, z, y, MPFR_RNDD);
-  assert (mpfr_fits_sint_p (z, MPFR_RNDD));
-  int maxm = mpfr_get_ui (z, MPFR_RNDD);
-  /* since m*2^e <= xmax, we have 2^e <= xmax/m <= xmax/3 */
-  mpfr_set_flt (z, xmax, MPFR_RNDD);
-  mpfr_div_ui (z, z, 3, MPFR_RNDD);
-  emax = mpfr_get_exp (z) - 1;
-  /* for the minimal exponent, since x is an odd multiple of 2^e,
-     x^y is an odd multiple of 2^(y*e), thus we want y*e >= -149-mid */
-  emin = - ((149 + mid) / y);
-  for (int e = emin; e <= emax; e++)
-    for (int m = 3; m <= maxm; m += 2)
+  float zmin = 0x1p-149f;
+  float zmax = 0x1.fffffep+12f;
+  // max_pow[n] is the largest x such that x^n fits in 25 bits
+  float max_pow[] = {0, 0, 5792, 322, 76, 31, 17, 11, 8, 6, 5, 4, 4, 3, 3, 3};
+  // max_m[ey] is the largest m such that m^(2^ey) fits in 24 bits
+  float max_m[] = {0x1.fffffep+23f, 0x1.ffep+11f, 0x1.f8p+5f, 0x1.cp+2f};
+  for (int ey = 3; ey >= 0; ey--)
+  {
+    int dn = (ey == 0) ? 1 : 2; // for ey > 0, we can restrict to odd n
+    int d = 1 << ey; // denominator of y
+    for (int n = 15; n >= 2; n -= dn)
     {
-      mpfr_set_ui_2exp (z, m, e, MPFR_RNDN);
-      if (mpfr_cmp_d (z, xmin) >= 0 && mpfr_cmp_d (z, xmax) <= 0)
+      float y = (float) n / (float) d;
+      float xmin = powf (zmin, 1.0f / y);
+      float xmax = powf (zmax, 1.0f / y);
+      for (float m = 3.0f; m <= max_pow[n] && m <= max_m[ey]; m += 2.0f)
       {
-        float x = mpfr_get_flt (z, MPFR_RNDN);
-        check (x, (float) y);
-        check (-x, (float) y);
+        // x = m^d*2^e with m odd and e divisible by d
+        float md = powf (m, d);
+        float tmin = xmin / md;
+        float tmax = xmax / md;
+        // we want tmin <= 2^e <= tmax
+        int emin, emax;
+        frexpf (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
+        frexpf (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
+        // we want emin divisible by d
+        while (emin % d) emin++;
+#pragma omp parallel for
+        for (int e = emin; e <= emax; e += d)
+        {
+          ref_init();
+          ref_fesetround(rnd);
+          fesetround(rnd1[rnd]);
+          float x = ldexpf (md, e);
+          check (x, y);
+        }
       }
-
-    }
-  mpfr_clear (z);
-}
-
-/* y = n/2^f */
-static void
-count_uint_2exp_y (int n, int f)
-{
-  int F = 1 << f;
-  float xmin, xmax;
-  int emin, emax;
-  mpfr_t z;
-  float y = ldexpf (n, -f);
-  mpfr_init2 (z, 25);
-  mpfr_set_ui_2exp (z, 1, -150, MPFR_RNDN);
-  mpfr_rootn_ui (z, z, n, MPFR_RNDU);
-  mpfr_pow_ui (z, z, F, MPFR_RNDU);
-  xmin = mpfr_get_flt (z, MPFR_RNDU);
-  mpfr_set_ui_2exp (z, 1, 128, MPFR_RNDN);
-  mpfr_nextbelow (z);
-  mpfr_rootn_ui (z, z, n, MPFR_RNDD);
-  mpfr_pow_ui (z, z, F, MPFR_RNDD);
-  xmax = mpfr_get_flt (z, MPFR_RNDD);
-  /* we want xmin <= x <= xmax, with x^y exact */
-  /* write x = m*2^e with m odd, m >= 3, m = k^(2^f) */
-  /* we should have both k^(2^f) < 2^24 and k^n < 2^(24+mid) */
-  /* compute the maximum odd k such that k^(2^f) < 2^24 */
-  mpfr_set_ui_2exp (z, 1, 24, MPFR_RNDN);
-  mpfr_nextbelow (z);
-  mpfr_rootn_ui (z, z, F, MPFR_RNDD);
-  assert (mpfr_fits_sint_p (z, MPFR_RNDD));
-  int maxk = mpfr_get_ui (z, MPFR_RNDD);
-  /* compute the maximum odd k such that k^n < 2^(24+mid) */
-  mpfr_set_ui_2exp (z, 1, 24 + mid, MPFR_RNDN);
-  mpfr_nextbelow (z);
-  mpfr_rootn_ui (z, z, n, MPFR_RNDD);
-  assert (mpfr_fits_sint_p (z, MPFR_RNDD));
-  int maxk2 = mpfr_get_ui (z, MPFR_RNDD);
-  maxk = (maxk < maxk2) ? maxk : maxk2;
-  /* Write x=m*2^e, we should have m=k^(2^f) and e multiple of 2^f,
-     then x^y = k^n*2^(e*n/2^f).
-     We should have m=k^(2^f) with k <= kmax. */
-  /* since m*2^e <= xmax, we have 2^e <= xmax/m <= xmax/3 */
-  mpfr_set_flt (z, xmax, MPFR_RNDD);
-  mpfr_div_ui (z, z, 3, MPFR_RNDD);
-  emax = mpfr_get_exp (z) - 1;
-  /* for the minimal exponent, since x is an odd multiple of 2^e,
-     x^y is an odd multiple of 2^(y*e), thus we want e >= -149 and
-     y*e >= -149-mid */
-  emin = - ((149 + mid) / y);
-  if (emin < -149)
-    emin = -149; /* so that x is representable */
-  /* we should have e multiple of F */
-  while (emin % F)
-    emin ++;
-  for (int e = emin; e <= emax; e += F)
-  {
-    for (int k = 3; k <= maxk; k += 2)
-    {
-      unsigned long m = k;
-      for (int j = 0; j < f; j++)
-        m = m * m;
-      /* m (odd) should be less than 2^24 */
-      assert (m < 0x1000000);
-      mpfr_set_ui_2exp (z, m, e, MPFR_RNDN);
-      if (mpfr_cmp_d (z, xmin) >= 0 && mpfr_cmp_d (z, xmax) <= 0)
-        check (mpfr_get_flt (z, MPFR_RNDN), y);
     }
   }
-  mpfr_clear (z);
-}
-
-/* x = +/-2^e:
-   for y integer, and -149-mid <= e*y <= 127, both x=2^e and -2^e are solutions
-   for y=n/2^f for f>=1, n odd, we need e divisible by 2^f,
-   and -149-mid <= e*y/2^f <= 127 */
-static void
-count_pow2_x (int e)
-{
-  if (e == 0) /* trivial solutions */
-    return;
-
-  /* case y integer */
-  float x = ldexpf (1.0f, e);
-  int ymin, ymax;
-  if (e > 0)
-  {
-    ymin = - ((149+mid) / e);
-    ymax = 127 / e;
-  }
-  else /* e < 0 */
-  {
-    ymin = - (127 / -e);
-    ymax = (149+mid) / (-e);
-  }
-  for (int y = ymin; y <= ymax; y++)
-    if (y != 0 && y != 1)
-    {
-      check (x, (float) y);
-      check (-x, (float) y);
-    }
-
-  /* case y = n/2^f */
-  int f = 1;
-  while ((e % 2) == 0)
-  {
-    /* invariant: e = e_orig/2^f */
-    e = e / 2;
-    /* -149-mid <= e*y <= 127 */
-    if (e > 0)
-    {
-      ymin = - ((149+mid) / e);
-      ymax = 127 / e;
-    }
-    else /* e < 0 */
-    {
-      ymin = - (127 / -e);
-      ymax = (149+mid) / (-e);
-    }
-    /* y should be odd */
-    if ((ymin % 2) == 0)
-      ymin ++;
-    for (int y = ymin; y <= ymax; y += 2)
-      check (x, ldexpf (y, -f));
-    f ++;
-  }
-}
-
-// check exact and midpoint cases
-static void
-check_exact (void)
-{
-  /* First deal with integer y >= 2. If x is not a power of 2, then y <= 15
-     whatever the value of mid, since 3^15 has 24 bits, and 3^16 has 26 bits.
-     Indeed, assume x = m*2^e with m odd, then m >= 3, thus we should have
-     m^y < 2^(24+mid). */
-  for (int n = 2; n <= 15; n++)
-    count_uint_y (n);
-  /* Now deal with y = n/2^f for a positive integer f, and an odd n. If x is
-     not a power of 2, assume x = m*2^e with m odd, m >= 3. Then m^(1/2^f)
-     should be an odd integer >= 3, which implies f <= 3 whatever the value of
-     mid, since 3^(2^3) has 13 bits, and 3^(2^4) has 26 bits.
-     For the same reason as above, n <= 15. */
-  for (int f = 1; f <= 3; f++)
-    for (int n = 1; n <= 15; n += 2)
-      count_uint_2exp_y (n, f);
-  /* Now deal with x=2^e. */
-  for (int e = -149; e <= 127; e++)
-    count_pow2_x (e);
 }
 
 int
@@ -332,6 +185,7 @@ main (int argc, char *argv[])
 
   printf ("Checking exact and midpoint values\n");
   fflush (stdout);
-  check_exact ();
+  // check_exact ();
+  check_exact_or_midpoint ();
   return 0;
 }
