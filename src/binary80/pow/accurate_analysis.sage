@@ -61,23 +61,23 @@ def analyze_logpoly():
 	R256 = RealField(256, rnd="RNDU")
 	y = R64(2^-11.999)
 	P = [R256('0x1.3703c68998959a7ep-4',16).exact_rational(),
- R256('-0x1.484b195526cc202cp-4',16).exact_rational(),
+ R256('0x1.484b195526cc202cp-4',16).exact_rational(),
  R256('0x1.5b9ac9b743e9807259bbc2204717d1bp-4',16).exact_rational(),
- R256('-0x1.71547652b824e2c3f74362c2ba0a5abp-4',16).exact_rational(),
+ R256('0x1.71547652b824e2c3f74362c2ba0a5abp-4',16).exact_rational(),
  R256('0x1.89f3b1694cffdf6e684a821051448ce8p-4',16).exact_rational(),
- R256('-0x1.a61762a7aded93f651d3fb8e3ee1c87cp-4',16).exact_rational(),
+ R256('0x1.a61762a7aded93f651d3fb8e3ee1c87cp-4',16).exact_rational(),
  R256('0x1.c68f568d317601ce23c4e9633f9f0594p-4',16).exact_rational(),
- R256('-0x1.ec709dc3a03fd749fc155223ec56b276p-4',16).exact_rational(),
+ R256('0x1.ec709dc3a03fd749fc155223ec56b276p-4',16).exact_rational(),
  R256('0x1.0c9a84994022d285723a2cd20d41ce5df79051fe4d4330949cb230e9d95d849cp-3',16).exact_rational(),
- R256('-0x1.2776c50ef9bfe792ca73314d74fb98cc2d7bfaa0f485160883a21b55515b8838p-3',16).exact_rational(),
+ R256('0x1.2776c50ef9bfe792ca73314d74fb98cc2d7bfaa0f485160883a21b55515b8838p-3',16).exact_rational(),
  R256('0x1.484b13d7c02a8f86a80e36c7d7506f2c4d0df1122ae9cbea9458aceb239285f2p-3',16).exact_rational(),
- R256('-0x1.71547652b82fe1777d0ffda0d23a7d11d6ae9a1b51a668b013f4a3d7449f5fdp-3',16).exact_rational(),
+ R256('0x1.71547652b82fe1777d0ffda0d23a7d11d6ae9a1b51a668b013f4a3d7449f5fdp-3',16).exact_rational(),
  R256('0x1.a61762a7aded93f645c921dc5df9b38219ec861443086f8e129e6c94930fcddp-3',16).exact_rational(),
- R256('-0x1.ec709dc3a03fd749fc15522bc2f8a6c27393f1c24e79b11b2d40dcdda82fdb32p-3',16).exact_rational(),
+ R256('0x1.ec709dc3a03fd749fc15522bc2f8a6c27393f1c24e79b11b2d40dcdda82fdb32p-3',16).exact_rational(),
  R256('0x1.2776c50ef9bfe792ca73314d74fb9741788bf77495755d5a7bdc00752aed9344p-2',16).exact_rational(),
- R256('-0x1.71547652b82fe1777d0ffda0d23a7d11d6aef551bad2b4b115f70644372ca7d6p-2',16).exact_rational(),
+ R256('0x1.71547652b82fe1777d0ffda0d23a7d11d6aef551bad2b4b115f70644372ca7d6p-2',16).exact_rational(),
  R256('0x1.ec709dc3a03fd749fc15522bc2f8a6c27393f1c24e6e4641730d9121f43d2fcap-2',16).exact_rational(),
- R256('-0x1.71547652b82fe1777d0ffda0d23a7d11d6aef551bad2b4b1164a2cd9a3f406fp-1',16).exact_rational(),
+ R256('0x1.71547652b82fe1777d0ffda0d23a7d11d6aef551bad2b4b1164a2cd9a3f406fp-1',16).exact_rational(),
  R256('0x1.71547652b82fe1777d0ffda0d23a7d11d6aef551bad2b4b1164a2cd9a342649p+0',16).exact_rational(),]
 	assert len(P) == 19, "len(P)==19"
 	err = dict()
