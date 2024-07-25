@@ -55,6 +55,25 @@ asuint (float f)
   return u.i;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+static inline int
+is_equal (float x, float y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint (x) == asuint (y);
+}
+
 static void
 check_aux (float x, float y)
 {
@@ -69,7 +88,7 @@ check_aux (float x, float y)
   z2 = cr_hypotf(x, y);
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);
-  if (asuint (z1) != asuint (z2)) {
+  if (!is_equal (z1, z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
     exit(1);
