@@ -106,7 +106,7 @@ float cr_tgammaf(float x){
      0x1.1fd0051a0525bp-10, 0x1.9808a8b96c37ep-13, 0x1.b3f78e01152b5p-15, 0x1.49c85a7e1fd04p-18,
      0x1.471ca49184475p-19, -0x1.368f0b7ed9e36p-23, 0x1.882222f9049efp-23, -0x1.a69ed2042842cp-25};
 
-  double m = z - 0x1.7p+1, i = __builtin_round(m), step = __builtin_copysign(1.0,i);
+  double m = z - 0x1.7p+1, i = __builtin_roundeven(m), step = __builtin_copysign(1.0,i);
   double d = m - i, d2 = d*d, d4 = d2*d2, d8 = d4*d4;
   double f = (c[0] + d*c[1]) + d2*(c[2] + d*c[3]) + d4*((c[4] + d*c[5]) + d2*(c[6] + d*c[7]))
     + d8*((c[8] + d*c[9]) + d2*(c[10] + d*c[11]) + d4*((c[12] + d*c[13]) + d2*(c[14] + d*c[15])));
