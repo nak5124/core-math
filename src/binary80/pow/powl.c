@@ -1270,6 +1270,9 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	     2^-254 + 2^-249.388 <= 2^-249.330 */
 }
 
+/* Let f be the low 20 bits of fracpart. Computes r and corr
+such that 2^(f/2^20)*2^corr = r*(1 + e) with |e| <= 2^-251.192
+*/
 inline static
 void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	int i0 = fracpart & 0x1f;
@@ -1282,42 +1285,21 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	qint_fromdd(tmp1, t1[i1][0], t1[i1][1]); corr_t corr1 = t1_corr[i1];
 	qint_fromdd(tmp2, t2[i2][0], t2[i2][1]); corr_t corr2 = t2_corr[i2];
 	qint_fromdd(tmp3, t3[i3][0], t3[i3][1]); corr_t corr3 = t3_corr[i3];
-
-	POWL_DPRINTF("get_hex(R("SAGE_QR
-"-2^(%d/2^20)*2^(R(2^-167*%ld+2^(-167-64-62)*(%lu+2^64*%lu)))))\n",
-	   tmp0->hh, tmp0->hl, tmp0->lh, tmp0->ll, tmp0->ex, tmp0->sgn, i0,
-	corr0.h, (uint64_t)corr0.l, (uint64_t)(corr0.l>>64));
-	POWL_DPRINTF("get_hex(R("SAGE_QR
-"-2^(%d/2^15)*2^(R(2^-167*%ld+2^(-167-64-62)*(%lu+2^64*%lu)))))\n",
-	   tmp1->hh, tmp1->hl, tmp1->lh, tmp1->ll, tmp1->ex, tmp1->sgn, i1,
-	corr1.h, (uint64_t)corr1.l, (uint64_t)(corr1.l>>64));
-	POWL_DPRINTF("get_hex(R("SAGE_QR
-"-2^(%d/2^10)*2^(R(2^-167*%ld+2^(-167-64-62)*(%lu+2^64*%lu)))))\n",
-	   tmp2->hh, tmp2->hl, tmp2->lh, tmp2->ll, tmp2->ex, tmp2->sgn, i2,
-	corr2.h, (uint64_t)corr2.l, (uint64_t)(corr2.l>>64));
-	POWL_DPRINTF("get_hex(R("SAGE_QR
-"-2^(%d/2^5)*2^(R(2^-167*%ld+2^(-167-64-62)*(%lu+2^64*%lu)))))\n",
-	   tmp3->hh, tmp3->hl, tmp3->lh, tmp3->ll, tmp3->ex, tmp3->sgn, i3,
-	corr3.h, (uint64_t)corr3.l, (uint64_t)(corr3.l>>64));
+	/* Given the tables' construction, we have
+	   2^(f/2^20)*2^corr0*...*2^corr3 = tmp0*...*tmp3*2^e0 with
+	   |e0| <= 2^-294.064 + 2^-294.003 + 2^-294.051 + 2^-294.057
+	        <= 2^-292.043 
+	*/
 
 	// as an unsigned value, MSB of corr_h has weight 2^-167*2^63 = 2^-104
 	int exponent = -104;
 	int64_t  corr_h = corr0.h + corr1.h + corr2.h + corr3.h;
 	unsigned __int128 corr_l = corr0.l + corr1.l + corr2.l + corr3.l;
 
-	POWL_DPRINTF("corr_raw = %ld*2^-167 + 2^(-167-64-62)*(%lu + 2^64*%lu)\n",
-	corr_h, (uint64_t)(corr_l&0xfffffffffffffffful), (uint64_t)(corr_l >> 64));
-
 	corr_h += (unsigned)(corr_l >> 126); // add carry
 	corr_l <<= 2; // shift out overlap
 
-	POWL_DPRINTF("corr_raw2 = %ld*2^-167 + 2^(-167-64-64)*(%lu + 2^64*%lu)\n",
-	corr_h, (uint64_t)(corr_l&0xfffffffffffffffful), (uint64_t)(corr_l >> 64));
-
-
 	int sgn = corr_h < 0;
-	// Assumes we never have corr_h = 0 unless everything is 0
-	
 	if(sgn) {
 	   // Convert to sign and magnitude. Can be seen as a 196 2s complement
 	   // mantissa being inverted
@@ -1325,10 +1307,12 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 		 corr_l = -corr_l;
 	}
 
-	// Again, if corr_h == 0 then necessarily everything is 0.
+	/* We use the fact that if corr_h == 0, then the whole reduction was trivial.
+	   This is proven by check_trivialzeroes() in powl.sage */
 	if(__builtin_expect(corr_h == 0, 0)) {
 		cp_qint(corr, &ZERO_Q);
 	} else {
+		// Convert corr_h and corr_l to a qint
 		POWL_DPRINTF("corr_h = %016lx\n", corr_h);
 		int shift = __builtin_clzl(corr_h);
 		POWL_DPRINTF("shift = %d\n", shift);
@@ -1346,7 +1330,17 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	qint64_t acc0[1], acc1[1];
 	mul_qint_22(acc0, tmp0, tmp1);
 	mul_qint_22(acc1, tmp2, tmp3);
+	// The products above are exact
 	mul_qint(r, acc0, acc1);
+	/* This product introduces 14 ulps of error, i.e. a relative error
+	   |r - tmp0*...*tmp3| <= 14*|r|*2^-255.
+
+	   Therefore
+	   |r - 2^(f/2^20)*2^-corr| <= |r - tmp0*...tmp3| + |(2^e0 - 1)*tmp0...tmp3|
+	                            <= 14*2^-255|r| + |2^e0-1|(1 + 14*2^-255)|r|
+	   This gives a total relative error of at most
+	     14*2^-255 + (1 + 14*2^-255)*(2^(2^-292.043) - 1) <= 2^-251.192
+	*/
 }
 
 /* Approximates 2^x with a polynomial for |x| < 2^-20.
@@ -1399,12 +1393,15 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 	reducted->ex = x->ex;
 	add_qint(reducted, x, reducted);
 	// With inlining, probably almost as fast as doing it by hand	
+	// Note that this is exact and that at output, we have
+	// |reducted| <= 2^-20 - 2^-20*2^-64 = 2^-20 - 2^-84 because the result
+	// must fit in 64 bits.
 	
 	// Split xs * (-1)^x->sgn into entire part and fractional part
 	int extra_exp;
 	uint64_t fracpart;
 	if(x->sgn) {
-		fracpart = (1 << 20) - xs; // Only the low bits matter, check that 0 -> 0.
+		fracpart = (1 << 20) - xs; // Only the low bits matter, notice that 0 -> 0.
 		if(__builtin_expect(xs & 0xfffff, 1)) {
 			extra_exp = -(xs>>20) - 1;
 		} else {
@@ -1414,6 +1411,11 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 		extra_exp = xs>>20;
 		fracpart  = xs;
 	}
+	/*If x >= 0 this is straightforward. If x < 0,
+	  then we need to split -xs. Calling e0 = xs>>20 and f0 = xs&0xfffff we have
+	  xs = 2^20*e0 + f0 so -xs = 2^20*(-e0-1) + (2^20 - f0), unless f0 == 0 in
+	  which case we need to split like 2^20*(-e0) + 0.
+	*/
 
 	POWL_DPRINTF("extra_exp = %d\nfracpart = 0x%05lx\n",
 	   extra_exp, fracpart&0xfffff);
@@ -1427,6 +1429,11 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 	   corr->hh, corr->hl, corr->lh, corr->ll, corr->ex, corr->sgn);
 	corr->sgn ^= 1;
 	add_qint(reducted, corr, reducted);
+	/* Remark that the result is at most 2^-20 + 2^-103 - 2^-87 < 2^-20.
+	   Therefore the addition's rounding error is at most 2^-254*2^-19 = 2^-273. 
+	   This contributes a relative error of 2^(2^-273) - 1 <= 2^-273.528 to the
+	   final result.
+	*/
 	POWL_DPRINTF("red = "SAGE_QR"\n",
 	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,
 	   reducted->ex, reducted->sgn);
@@ -1435,12 +1442,22 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 	
 	qint64_t exp2red[1];
 	q_exp2poly(exp2red, reducted);
+	/* The polynomial evaluation incurs an absolute error at most 2^-253.967;
+	   given that |reducted| < 2^-20 this translates to a relative error at most
+	   2^-253.966.
+	*/
 	POWL_DPRINTF("exp2red = "SAGE_QR"\n",
 	   exp2red->hh, exp2red->hl, exp2red->lh, exp2red->ll,
 	   exp2red->ex, exp2red->sgn);
 	POWL_DPRINTF("get_hex(R(2^red - exp2red))\n");
 	mul_qint(r, exp2red, exp2frac);
 	r->ex += extra_exp;
+	/* The relative error of the product is bounded by 14*2^-255. Combining this
+	   with the relative errors from the polynomial evaluation, the addition of
+	   corr, and q_exp2xs yields a total relative error of at most
+	     (1 + 2^-251.192)*(1 + 2^-273.528)*(1 + 2^-253.967) - 1
+	     <= 2^-250.995.
+	*/
 	POWL_DPRINTF("r = "SAGE_QR"\n",
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
 	POWL_DPRINTF("get_hex(R(2^l - r))\n");

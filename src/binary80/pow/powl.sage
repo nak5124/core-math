@@ -260,6 +260,7 @@ def format_sollya_poly(s):
 def corr_tk(k=0):
    maxerr = 0
    R = RealField(53)
+   T = dict()
    print("static const corr_t t"+str(k)+"_corr[32] = {")
    for i in range(2^5):
       x = n(2^(i/2^(20-5*k)), 400)
@@ -269,14 +270,34 @@ def corr_tk(k=0):
       e = n(n(log(t),600)/n(log(2),600) - n(i/2^(20-5*k),600), 600)
       corrhi  = floor(n(e * 2^167, 600))
       corrloh = floor(n((e * 2^167 - corrhi)*2^62, 600))
-      corrlol = floor(n(((e * 2^167 - corrhi)*2^62 - corrloh)*2^64, 600))
-      assert abs(corrhi) < 2^61, "abs(corrhi) < 2^61"
+      corrlol = round(n(((e * 2^167 - corrhi)*2^62 - corrloh)*2^64, 600))
+      assert abs(corrhi)  < 2^61, "abs(corrhi) < 2^61"
+      assert abs(corrloh) < 2^62, "abs(corrloh) < 2^62"
       print("   {.h=" + str(corrhi) + "L,.lh=" + str(corrloh) +
                                       "UL,.ll=" + str(corrlol) + "UL},")
       err_acc = abs(corrhi/2^167 + corrloh/2^(167+62) + corrlol/2^(167+62+64)-e)
       maxerr = max(maxerr, err_acc)
+      T[i] = (corrhi, corrloh, corrlol)
    print ("};")
    print ("Error " + str(log(maxerr)/log(2.)))
+   return T
+
+def check_trivialzeroes():
+   T0 = corr_tk(0)
+   T1 = corr_tk(1)
+   T2 = corr_tk(2)
+   T3 = corr_tk(3)
+   for i in range(2^5):
+      for j in range(2^5):
+         for k in range(2^5):
+            for l in range(2^5):
+               h0,_,_ = T0[i]
+               h1,_,_ = T1[j]
+               h2,_,_ = T2[k]
+               h3,_,_ = T3[l]
+               if(h0+h1+h2+h3 == 0):
+                  assert i == 0 and j == 0 and k == 0 and l == 0, "Failure!"
+   print ("Success")
 
 def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
    y = R64(y)

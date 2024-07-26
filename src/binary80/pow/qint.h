@@ -243,16 +243,10 @@ static inline void qint_fromdd(qint64_t* a, double h, double l) {
 		int de = (ax >> 52) - (bx >> 52);
 		unsigned __int128 mantissa_b = (1ul << 52) | (bx & ((1ul<<52)-1));
 		mantissa_b <<= 75 - de;
-		POWL_DPRINTF("manta = 0x%016lx%016lx\n", (long)(mantissa>>64),
-		(long)(mantissa));
-		POWL_DPRINTF("mantb = 0x%016lx%016lx\n", (long)(mantissa_b>>64),
-		(long)mantissa_b);
 
 		unsigned __int128 new_mantissa;
 		if((u.u>>63) ^ a->sgn) {
 			new_mantissa = mantissa - mantissa_b;
-			POWL_DPRINTF("nmant = 0x%016lx%016lx\n", (long)(new_mantissa>>64),
-			(long)new_mantissa);
 			if(__builtin_expect(new_mantissa > mantissa, 0)) { // underflow
 				a->sgn ^= 1;
 				new_mantissa = -new_mantissa; // Positive mantissa
