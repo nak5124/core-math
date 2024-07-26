@@ -706,3 +706,90 @@ def max_mlogr12h_over_rh_prime_all():
       if ratio > maxratio:
          print (i1, i2, ratio)
          maxratio = ratio
+
+def print_out(out,s):
+   if out==None:
+      print (s)
+   else:
+      out.write(s + "\n")
+
+def print_qint(x):
+   R256 = RealField(256)
+   t = R256(n(x,400))
+   s, m, e = t.sign_mantissa_exponent()
+   assert (m==0 or m.nbits()==256), "m==0 or m.nbits()==256"
+   m = (2^256+m).digits(2^64) # add 2^256 to ensure it works for m=0 too
+   hh = m[3]
+   hl = m[2]
+   lh = m[1]
+   ll = m[0]
+   if t != 0:
+      e += 255
+   if s==1:
+      s = 0
+   else:
+      s = 1
+   print ("    {.hh = " + hex(hh) + ", .hl = " + hex(hl) + ", .lh = " + hex(lh) + ", .ll = " + hex(ll) + ", .ex = " + str(e) + ", .sgn = " + hex(s) + "},")
+
+def get_acc_coarsetbl(out=None):
+   if out!=None:
+      out = open(out,"w")
+   T1 = get_coarsetbl(verbose=false)
+   R256 = RealField(256)
+   print_out (out, "static const qint64_t acc_coarsetbl[128] = {")
+   for i in range(128):
+      r = T1[i][2]
+      z = 0
+      if r <= 2**(-.5):
+         z = 1
+      t = R256(n(-log(r*2^z)/log(2),400))
+      s, m, e = t.sign_mantissa_exponent()
+      if m != 0:
+         while m < 2^255:
+            m = 2*m
+            e = e-1
+      m = (2^256+m).digits(2^64) # add 2^256 to ensure it works for m=0 too
+      hh = m[3]
+      assert (t==0 or hh.nbits()==64), "t==0 or hh.nbits()==64"
+      hl = m[2]
+      lh = m[1]
+      ll = m[0]
+      if t != 0:
+         e += 255
+      if s==1:
+         s = 0
+      else:
+         s = 1
+      print_out (out, "    {.hh = " + hex(hh) + ", .hl = " + hex(hl) + ", .lh = " + hex(lh) + ", .ll = " + hex(ll) + ", .ex = " + str(e) + ", .sgn = " + hex(s) + "},")
+   print_out (out, "};")
+
+def get_acc_finetbl(out=None):
+   if out!=None:
+      out = open(out,"w")
+   T2 = get_finetbl(verbose=false)
+   R256 = RealField(256)
+   print_out (out, "static const qint64_t acc_finetbl[128] = {")
+   for i in range(128):
+      r = T2[i][2]
+      t = R256(n(-log(r)/log(2),400))
+      s, m, e = t.sign_mantissa_exponent()
+      if 32 <= i < 64:
+         t = m = e = 0
+      if m != 0:
+         while m < 2^255:
+            m = 2*m
+            e = e-1
+      m = (2^256+m).digits(2^64) # add 2^256 to ensure it works for m=0 too
+      hh = m[3]
+      hl = m[2]
+      lh = m[1]
+      ll = m[0]
+      if t != 0:
+         e += 255
+      if s==1:
+         s = 0
+      else:
+         s = 1
+      print_out (out, "    {.hh = " + hex(hh) + ", .hl = " + hex(hl) + ", .lh = " + hex(lh) + ", .ll = " + hex(ll) + ", .ex = " + str(e) + ", .sgn = " + hex(s) + "},")
+   print_out (out, "};")
+      

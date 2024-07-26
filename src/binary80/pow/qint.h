@@ -280,7 +280,7 @@ static inline void qint_fromdd(qint64_t* a, double h, double l) {
 }
 
 /* Converts a signed integer to qint exactly */
-static inline void qint_fromsi(qint64_t* a, int d) {
+static inline void qint_fromsi(qint64_t* a, int32_t d) {
 	if(__builtin_expect(d == 0, 0)) {
 		cp_qint(a, &ZERO_Q);
 		return;
@@ -291,8 +291,8 @@ static inline void qint_fromsi(qint64_t* a, int d) {
 		d = -d;
 	}
 	unsigned shiftamnt = __builtin_clz(d);
-	a->hh = (unsigned long)d << (32 + shiftamnt);
-	a->ex = 31-shiftamnt; // If shiftamnt == 31 then a->ex = 0
+	a->hh = (uint64_t) d << (32 + shiftamnt);
+	a->ex = 31 - shiftamnt; // If shiftamnt == 31 then a->ex = 0
 	a->hl = a->lh = a->ll = 0;
 }
 

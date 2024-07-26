@@ -472,7 +472,8 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	xh *= r1; xl *= r1;
         /* The above multiplications are exact.
-           now xh fits in 42 bits at most, xl in 40.
+           Since xh, xl did fit in 33 and 31 bits respectively,
+           and r1 fits in 9 bits, now xh fits in 42 bits, and xl in 40.
            More precisely the initial xh was a multiple of 2^-32.
            Since r1 is a multiple of 2^-9 then the new value of xh is a
            multiple of 2^-41.
@@ -627,7 +628,10 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            We know that xh is a multiple of 2^-41. Since r2 is a multiple of
            2^-13, then r2*xh is a multiple of 2^-54, and so is r2*xh - 1.
            Since |r2*xh - 1| <= 2^-12, r2*xh - 1 fits in 42 bits,
-           and thus the above fma() is exact too. */
+           and thus the above fma() is exact too.
+           Moreover since old_xl fits in 40 bits, and r2 in 13 bits,
+           then xl fits in 53 bits, thus old_xl * r2 is exact
+           and both operations are exact. */
 
 	two_sum(&xh, &xl, xh, xl); // We probably cannot use Fast2Sum
 	/* At input, we have |xh| <= 1p-12 and |xl| < 2^-32. Therefore at
@@ -1093,6 +1097,8 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 }
 
 /* Given |x| < 2^-11.999 fitting in 128 bits,
+(FIXME: if xh,xl have their exponents differing by 75 in q_log2pow,
+then x (reducted in q_log2pow) might have up to 181 bits).
 computes an approximation of log2(1 + x).
 Relative error at most 2^-249.998
 */
@@ -1102,6 +1108,9 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 	   can most definitely be improved.
 
 	   Coefficients for log2(1 + x)/x
+
+           Minimax polynomial from accurate_log2.sollya, with maximal
+           relative error < 2^-250.299.
 	*/
 	static const qint64_t P[19] = {
 		{.hh = 0x9b81e344cc4acd3f, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x0}, /* degree 18 */
@@ -1166,20 +1175,22 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 
 	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
-	lut_t l = coarse[cvt_x.m>>56 & 0x7f];
-	POWL_DPRINTF("key=0x%lx\n", (cvt_x.m>>56 & 0x7f));
+        int i1 = cvt_x.m>>56 & 0x7f; // index in the coarse[] table
+	lut_t l = coarse[i1];
+	POWL_DPRINTF("key=0x%lx\n", i1);
 	extra_int += l.z;
 	xh *= l.r; xl *= l.r; // exact (see compute_log2pow)
 
 	b64u64_t cvt_xh = {.f = xh};
-	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f];
+        int i2 = (cvt_xh.u>>40) & 0x7f; // index in the fine[] table
+	lut_t l2 = fine[i2];
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
-	POWL_DPRINTF("key2 = 0x%lx\n", (cvt_xh.u>>40 & 0x7f));
+	POWL_DPRINTF("key2 = 0x%lx\n", i2);
 	POWL_DPRINTF("r1 = " SAGE_RR "\n", l.r);
 	POWL_DPRINTF("r2 = " SAGE_RR "\n", l2.r);
 	xh = __builtin_fma(l2.r, xh, -1); xl *= l2.r;
-        /* The above fma() is exact (see the analysis in compute_log2pow).
-           However the product xl_old * l2.r is not necessarily exact. */
+        /* The above operations are exact (see the analysis in
+           compute_log2pow). */
 
 	qint64_t reducted[1];
 	qint_fromdd(reducted, xh, xl);
@@ -1192,13 +1203,15 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	POWL_DPRINTF("get_hex(R(reducted-"SAGE_DD"))\n",xh,xl);
 
 	qint64_t eint[1];
-	qint_fromsi(eint, extra_int);
+	qint_fromsi(eint, extra_int); // eint = extra_int
 	
 	qint64_t mlogr[1];
-	add_qint(mlogr, &acc_coarsetbl[cvt_x.m>>56 & 0x7f], eint);
+	add_qint(mlogr, &acc_coarsetbl[i1], eint);
+        // mlogr approximates extra_int - log2(2^z*r1)
 
 	qint64_t mlogr12[1];
-	add_qint(mlogr12, &acc_finetbl[(cvt_xh.u>>40) & 0x7f], mlogr);
+	add_qint(mlogr12, &acc_finetbl[i2], mlogr);
+        // mlogr12 approximates extra_int - log2(2^z*r1) - log2(r2)
 	
 	/* We have log2(x)= reduction + log2(1 + xr) */
 	POWL_DPRINTF("reduction = R("SAGE_QR")\n",
@@ -1206,27 +1219,29 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	   reduction->ex, reduction->sgn);
 	POWL_DPRINTF("get_hex(R(reduction + log2(r1) + log2(r2) - ei))\n");
 
-	/* Since the accurate tables merely extend the precision of the fast tables,
-	   the ratios computed by high_sum.c (-DMODE=0) stay valid.
+	/* Since the accurate tables merely extend the precision of the fast
+           tables, the ratios computed by high_sum.c (-DMODE=0) stay valid.
 	   By analogy to the fastpath, let us call mlogr1 and mlogr2 the values
 	   looked up from the coarse and fine table respectively.
 
 	   We then know that
 	     |mlogr/mlogr12|  < 1.951
-	     |mlogr2/mlogr12| < 1
+	     |mlogr2/mlogr12| <= 1
 	   Furthermore, since |mlogr1| < .5 it is straightforward to see that
-	     |mlogr| > |mlogr1|.
-	   The total relative error computing mlogr is 2^-254 due to rounding errors
-	   and (at most) 2^-256 relative error due mlogr1's error.
-	   The total relative error computing mlogr2 is of course at most 2^-256.
+	     |mlogr| >= |mlogr1| (if eint=0, then mlogr=mlogr1).
+	   The total relative error computing mlogr is 2^-254 due to rounding
+           errors and (at most) 2^-256 relative error due mlogr1's error:
+           this yields a relative error < 2^-254+2^-256 < 2^-253.7.
+	   The total relative error of mlogr2 is also <= 2^-256.
 	   This gives a relative error bound on mlogr12 as follows :
-	     2^-254 + (|mlogr/mlogr12| * (2^-254+2^-256) + |mlogr2/mlogr12|*2^-256)
-	     <= 2^-252.116 
-	   We thus have an error on mlogr12 which is bounded by 2^-252.116|mlogr12|
+             2^-254 + 2^-256*|mlogr2/mlogr12| + 2^-253.7*|mlogr/mlogr12|
+             <= 2^-254 + 2^-256*1 + 2^-253.7*1.951
+	     <= 2^-252.131
+	   We thus have an error on mlogr12 which is <= 2^-252.131 |mlogr12|.
 	*/
 
 	qint64_t q_y[1];
-	qint_fromld(q_y, y);
+	qint_fromld(q_y, y); // exact
 	POWL_DPRINTF("get_hex(y - "SAGE_QR")\n",
 	   q_y->hh, q_y->hl, q_y->lh, q_y->ll, q_y->ex, q_y->sgn);
 
