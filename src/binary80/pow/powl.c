@@ -76,7 +76,7 @@ static inline int get_rounding_mode (void)
 
 /* Split a number of exponent 0 (1 <= |x| < 2)
    into a high part fitting in 33 bits and a low part fitting in 31 bits:
-   1 <= rh <= 2 and |rl| < 2^-32 */
+   1 <= |rh| <= 2 and |rl| < 2^-32 */
 static inline
 void split(double* rh, double* rl, long double x) {
 	static long double C = 0x1.8p+31L; // ulp(C)=2^-32
@@ -627,11 +627,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
            We know that xh is a multiple of 2^-41. Since r2 is a multiple of
            2^-13, then r2*xh is a multiple of 2^-54, and so is r2*xh - 1.
            Since |r2*xh - 1| <= 2^-12, r2*xh - 1 fits in 42 bits,
-           and thus the above fma() is exact too.
-           FIXME: since r2*xh - 1 fits in 42 bits, we could split the
-           initial x into 44+20 bits instead of 33+31, which would make
-           xl smaller, and maybe we can get rid of the renormalization above,
-           and replace the two_sum() below by a fast_two_sum(). */
+           and thus the above fma() is exact too. */
 
 	two_sum(&xh, &xl, xh, xl); // We probably cannot use Fast2Sum
 	/* At input, we have |xh| <= 1p-12 and |xl| < 2^-32. Therefore at
@@ -1142,6 +1138,9 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 	}
 }
 
+// put in r an 256-bit approximation of y*log2(x)
+// assume x is normal, not 0, 2^-80 <= |y| < 2^78
+// if x is negative, y should be an integer
 inline static
 void q_log2pow(qint64_t* r, long double x, long double y) {
 	b80u80_t cvt_x = {.f = x};
@@ -1163,13 +1162,14 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	*/
 	double xh, xl; // 33 and 31 bits
 	split(&xh, &xl, x);
+        // x = xh + xl with 1 <= |xh| <= 2 and |xl| < 2^-32
 
 	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
 	lut_t l = coarse[cvt_x.m>>56 & 0x7f];
 	POWL_DPRINTF("key=0x%lx\n", (cvt_x.m>>56 & 0x7f));
 	extra_int += l.z;
-	xh *= l.r; xl *= l.r; // exact
+	xh *= l.r; xl *= l.r; // exact (see compute_log2pow)
 
 	b64u64_t cvt_xh = {.f = xh};
 	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f];
@@ -1178,6 +1178,8 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	POWL_DPRINTF("r1 = " SAGE_RR "\n", l.r);
 	POWL_DPRINTF("r2 = " SAGE_RR "\n", l2.r);
 	xh = __builtin_fma(l2.r, xh, -1); xl *= l2.r;
+        /* The above fma() is exact (see the analysis in compute_log2pow).
+           However the product xl_old * l2.r is not necessarily exact. */
 
 	qint64_t reducted[1];
 	qint_fromdd(reducted, xh, xl);
