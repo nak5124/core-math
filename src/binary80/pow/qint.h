@@ -216,7 +216,11 @@ static inline void qint_fromld(qint64_t* a, long double x) {
 Convert a double double into tint_t representation.
 This is minimalistic : it assumes h and l are not denormals
 and that the exponent difference is at most 75 when h,l != 0.
-Also, we must have h = 0 or |h| >= |l| 
+Also, we must have h = 0 or |h| >= |l|.
+
+If the exponent difference is strictly less than 75, the operation
+is exact; if it is 75 there may be a 2^-129 relative error in case
+the binade of a is higher than that of h.
 */
 
 static inline void qint_fromdd(qint64_t* a, double h, double l) {
@@ -266,6 +270,8 @@ static inline void qint_fromdd(qint64_t* a, double h, double l) {
 			if(__builtin_expect(new_mantissa < mantissa, 0)) { // overflow
 				a->ex += 1;
 				new_mantissa >>= 1;
+	      // If exponent difference is exactly 75, this may contribute 1 ulp of
+	      // error.
 				new_mantissa |= (unsigned __int128)(1) << 127;
 			}
 		}

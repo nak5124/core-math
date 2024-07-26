@@ -1175,14 +1175,14 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 
 	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
-        int i1 = cvt_x.m>>56 & 0x7f; // index in the coarse[] table
+	int i1 = cvt_x.m>>56 & 0x7f; // index in the coarse[] table
 	lut_t l = coarse[i1];
 	POWL_DPRINTF("key=0x%lx\n", i1);
 	extra_int += l.z;
 	xh *= l.r; xl *= l.r; // exact (see compute_log2pow)
 
 	b64u64_t cvt_xh = {.f = xh};
-        int i2 = (cvt_xh.u>>40) & 0x7f; // index in the fine[] table
+	int i2 = (cvt_xh.u>>40) & 0x7f; // index in the fine[] table
 	lut_t l2 = fine[i2];
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
 	POWL_DPRINTF("key2 = 0x%lx\n", i2);
@@ -1194,8 +1194,16 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 
 	qint64_t reducted[1];
 	qint_fromdd(reducted, xh, xl);
-	/* Much like in the fastpath, computing reducted is exact. We also have
-	   the guarantee that |reducted| <= 2^-11.999.
+	/* From the fastpath we know that we should have |reducted| <= 2^-11.999.
+
+	   Note that xl is a multiple of 2^(-63)*2^-9*2^-13 = 2^-85. Furthermore,
+	   it is at most 4*2^-32 = 2^-30. On the other hand, xh is a multiple of
+	   2^(-32)*2^-9*2^-13 = 2^-54, and is at most 2^-12.
+	   This ensures that when xh != 0 and xl != 0, the exponent difference
+	   between xh and xl is at most 85 - 12 = 73, so that qint_fromdd's
+	   precondition applies; computing reducted is exact.
+	   Also, reducted must be a multiple of 2^-86
+	   which is less than 2^-11.999 therefore reducted fits in 128 bits.
 	*/
 	POWL_DPRINTF("reducted = "SAGE_QR"\n",
 	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,
