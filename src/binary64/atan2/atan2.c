@@ -401,7 +401,7 @@ double __attribute__((noinline)) as_atan2_special(double y0, double x0){
       // atan2(+/-0,x) = +/-0 for x>0
       if (x0 > 0) return y0/x0;
       // atan2(+/-0,x) = +/-pi for x<0
-      return (y0>0) ? PI_H + PI_L : -PI_H - PI_L;
+      return (!(iy.u>>63)) ? PI_H + PI_L : -PI_H - PI_L;
     }
     // now only x is zero
     // atan2(y,+/-0) = -pi/2 for y<0
