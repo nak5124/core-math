@@ -813,4 +813,75 @@ def get_acc_finetbl(out=None):
          s = 1
       print_out (out, "    {.hh = " + hex(hh) + ", .hl = " + hex(hl) + ", .lh = " + hex(lh) + ", .ll = " + hex(ll) + ", .ex = " + str(e) + ", .sgn = " + hex(s) + "},")
    print_out (out, "};")
-      
+
+# p is the output from "sollya accurate_log2.sollya"
+def output_logpoly(p):
+   R.<x> = RealField(256)[]
+   p = R(p)
+   for d in range(18,-1,-1):
+      print_qint (p[d].exact_rational())
+
+# p is the output from "sollya accurate_log2.sollya"
+# analyze_q_logpoly(p)
+# err0= -63.0000000000000
+# err1= -73.9982948983342
+# err2= -85.4110985880224
+# err3= -96.9940620244550
+# err4= -108.670209952604
+# err5= -120.361211380067
+# err6= -125.401435026550
+# err7= -125.414630694351
+# err8= -137.242906129466
+# err9= -149.089114668707
+# err10= -160.949831594452
+# err11= -172.822528286469
+# err12= -184.705284520894
+# err13= -196.596607701158
+# err14= -208.495314610118
+# err15= -220.400451404354
+# err16= -232.311234497079
+# err17= -244.213892912167
+# err18= -250.959492847343
+# err= -249.591773733218
+def analyze_q_logpoly(p):
+   R.<x> = RealField(256)[]
+   p = R(p)
+   RIF64 = RealIntervalField(64)
+   RIF128 = RealIntervalField(128)
+   RIF256 = RealIntervalField(256)
+   x = RIF64(-2^-11.999,2^-11.999)
+   err = dict()
+   # mul_qint_11(r, x, &P[0])
+   r = x*RIF64(p[0])
+   # mul_qint_11 neglects the lower part of x
+   # we analyze the relative error
+   err[0] = 2^-63. # the error on r is less than err[0]*|r|
+   print ("err0=", log(err[0])/log(2.))
+   # for(int i = 1; i <= 7; i++)
+   for i in [1..7]:
+      # add_qint_22(r, &P[i], r)
+      r_old = r
+      r = RIF(p[i])+r
+      # add_qint_22 has error < 2ulp_128
+      err[i] = 2*2^-127
+      err[i] += err[i-1]*(r_old/r).abs().upper() # relative error on r_old
+      # mul_qint_22(r, r, x)
+      r = r*x
+      err[i] += 2^-127 # mul_qint_22 neglects the low 2 limbs from r_old
+      print ("err" + str(i) + "=", log(err[i])/log(2.))
+   # for(int i = 8; i <= 18; i++)
+   for i in [8..18]:
+      # add_qint(r, &P[i], r)
+      r_old = r
+      r = RIF(p[i])+r
+      # add_qint has error < 2ulp_256
+      err[i] = 2*2^-255
+      err[i] += err[i-1]*(r_old/r).abs().upper() # relative error on r_old
+      # mul_qint(r, r, x)
+      r = r*x
+      # mul_qint has error < 14 ulps
+      err[i] += 14 * 2^-255
+      print ("err" + str(i) + "=", log(err[i])/log(2.))
+   # add relative error < 2^-250.299 from the polynomial
+   err_rel = err[18] + 2^-250.299 + err[18]*2^-250.299
+   print ("err=", log(err_rel)/log(2.))

@@ -1097,10 +1097,8 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 }
 
 /* Given |x| < 2^-11.999 fitting in 128 bits,
-(FIXME: if xh,xl have their exponents differing by 75 in q_log2pow,
-then x (reducted in q_log2pow) might have up to 181 bits).
 computes an approximation of log2(1 + x).
-Relative error at most 2^-249.998
+Relative error at most 2^-249.591 (see analyze_q_logpoly() in powl.sage)
 */
 inline static
 void q_logpoly(qint64_t* r, const qint64_t* x) {
@@ -1135,6 +1133,8 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 	};
 
 	mul_qint_11(r, x, &P[0]); // Relative error ~2^-64 here is fine
+        /* mul_qint_11 is exact when its inputs have only one limb, but here x might have
+           up to 75 bits, thus the relative error is < 2^-63 */
 	
 	for(int i = 1; i <= 7; i++) {
 		add_qint_22(r, &P[i], r);
@@ -1172,6 +1172,7 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	double xh, xl; // 33 and 31 bits
 	split(&xh, &xl, x);
         // x = xh + xl with 1 <= |xh| <= 2 and |xl| < 2^-32
+        // since 1 <= |x| < 2, xl is multiple of 2^-63
 
 	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
@@ -1196,13 +1197,15 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	qint_fromdd(reducted, xh, xl);
 	/* From the fastpath we know that we should have |reducted| <= 2^-11.999.
 
-	   Note that xl is a multiple of 2^(-63)*2^-9*2^-13 = 2^-85. Furthermore,
-	   it is at most 4*2^-32 = 2^-30. On the other hand, xh is a multiple of
-	   2^(-32)*2^-9*2^-13 = 2^-54, and is at most 2^-12.
+           Since the original xl was multiple of 2^-63, r1 is multiple of 2^-9
+           and r2 is multiple of 2^13, xl is a multiple of 2^-63*2^-9*2^-13 = 2^-85.
+           Furthermore, since the original xl satisfied |xl| < 2^-32, r1 <= 1 and r2 <= 2,
+           xl is at most 2*2^-32 = 2^-31. On the other hand, xh is a multiple of
+	   2^-32*2^-9*2^-13 = 2^-54, and is at most 2^-12.
 	   This ensures that when xh != 0 and xl != 0, the exponent difference
 	   between xh and xl is at most 85 - 12 = 73, so that qint_fromdd's
 	   precondition applies; computing reducted is exact.
-	   Also, reducted must be a multiple of 2^-86
+	   Also, reducted must be a multiple of 2^-85
 	   which is less than 2^-11.999 therefore reducted fits in 128 bits.
 	*/
 	POWL_DPRINTF("reducted = "SAGE_QR"\n",
