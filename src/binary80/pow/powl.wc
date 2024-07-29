@@ -334,7 +334,7 @@
 0xc.000000000000001p-4,0x2p+0
 # worst-cases for y=0x1p-5 with at least 63 identical
 # bits after the round bit (-m 64 with bacsel)
-# in the range [1/2,2^15)
+# in the range [1/2,2^31)
 0x1p+0,0x1p-5
 0x2.c633fda9e1221c94p+0,0x1p-5
 0xd.45e4393b8e78b8cp+0,0x1p-5
@@ -356,9 +356,35 @@
 0x2.127356c61d61e5e8p+12,0x1p-5
 0x1.40f9c4df27d3172p+14,0x1p-5
 0x1.d9d1b277eeff939ap+14,0x1p-5
+0x1.1a47ff8e132b9834p+15,0x1p-5
+0x1.abd2a985452fb0ccp+15,0x1p-5
+0x1.1b9fb77fd4b6ddbep+17,0x1p-5
+0x1.6de8e42641c406e6p+18,0x1p-5
+0x1.897279ae9a233dep+18,0x1p-5
+0x1.a2791d867031556p+18,0x1p-5
+0x1.a553f8878fa04p+18,0x1p-5
+0x1.0f687919a6513134p+19,0x1p-5
+0x1.8fe8ee39c2bfb8a6p+19,0x1p-5
+0x1.2029461849bc30d6p+20,0x1p-5
+0x1.69c5e78105e0f546p+20,0x1p-5
+0x1.6ba4829d6bcd922ap+20,0x1p-5
+0x1.0fd37583d020892p+23,0x1p-5
+0x1.49730d8227aba174p+23,0x1p-5
+0x1.81bea5f130d1bb3p+23,0x1p-5
+0x1.dd9a2da3142ca012p+23,0x1p-5
+0x1.8cc795af93143ef2p+24,0x1p-5
+0x1.95ac4db449e34a9p+24,0x1p-5
+0x1.dea69c7990ede336p+24,0x1p-5
+0x1.a7ab3eb83a689b04p+26,0x1p-5
+0x1.002cddfa0c4735d2p+27,0x1p-5
+0x1.c0680ebece4bb8c6p+28,0x1p-5
+0x1.7b7308ae391e47d8p+29,0x1p-5
+0x1.b1fd666d4e4efa5cp+29,0x1p-5
+0x1.f00e155eb6d64158p+30,0x1p-5
+0x1.ff29aa014ce48734p+30,0x1p-5
 # worst-cases for y=0x1.8p-4 with at least 63 identical
 # bits after the round bit (-m 64 with bacsel)
-# in the range [1/2,2^7)
+# in the range [1/2,2^31)
 0x1p+0,0x1.8p-4
 0x1.810cecde531202acp+0,0x1.8p-4
 0x1.a1f221995893bfdp+0,0x1.8p-4
@@ -416,5 +442,25 @@
 0x1.7a018b97a1f74d92p+23,0x1.8p-4
 0x1.320957c2833956c2p+25,0x1.8p-4
 0x1.004dfb8b50d04bp+26,0x1.8p-4
+0x1.3c40ee255d8da34ap+26,0x1.8p-4
+0x1.9f0b454402174194p+26,0x1.8p-4
+0x1.0e271d5c4b09feap+27,0x1.8p-4
+0x1.594699a3056996cp+27,0x1.8p-4
+0x1.a79ee7280f64810cp+27,0x1.8p-4
+0x1.cb3bf024fc976306p+27,0x1.8p-4
+0x1.cd0fdad60906d328p+27,0x1.8p-4
+0x1.ec3032a00b180cap+27,0x1.8p-4
+0x1.55c55e7ca81394p+28,0x1.8p-4
+0x1.703ecdb0c8d9e4a8p+28,0x1.8p-4
+0x1.8f19a3a795c5f6b4p+29,0x1.8p-4
+0x1.de30a2fef0bcc05ap+29,0x1.8p-4
+0x1.5a633b95ed519986p+30,0x1.8p-4
+0x1.714c2c52bf0d049cp+30,0x1.8p-4
+0x1.c3944be6a1ccecbep+30,0x1.8p-4
+0x1.2e104ebec8e7ca26p+18,0x1.8p-4
+# worst-cases for y=0x1.4p-3 with at least 63 identical
+# bits after the round bit (-m 64 with bacsel)
+# in the range [1/2,2^31)
+0x1p+0,0x1.4p-3
 # exercise underflow test (x^y ~ 2^-16445.3)
 0x1.45f306dc9c883p-2,0x1.372e8de305337p+13
