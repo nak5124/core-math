@@ -494,7 +494,7 @@ double cr_atan2 (double y0, double x0){
   double z2 = z*z;
   z *= __builtin_copysign(1,sgn.f);
   double dz = (z*z2)*(b[0] + z2*(b[1] + z2*b[2]));
-  double eps = __builtin_fabs(z)*0x1.ep-52 + 0x1p-90;
+  double eps = __builtin_fabs(z)*0x1.fp-52 + 0x1p-90;
   double rh = fasttwosum(fh, z, &z);
   double rl = (fl + dz) + z;
   double lb = rh + (rl - eps), ub = rh + (rl + eps);
@@ -512,7 +512,7 @@ double cr_atan2 (double y0, double x0){
     zl += zh*z2*((b[0] + z2*b[1]) + (z2*z2)*(b[2] + z2*b[3]));
     zh *= __builtin_copysign(1,sgn.f);
     zl *= __builtin_copysign(1,sgn.f);
-    eps = 0x1.cp-51*(__builtin_fabs(zh)*z2 + 0x1p-51);
+    eps = 0x1.4p-50*(__builtin_fabs(zh)*z2 + 0x1p-51);
     fh = fastsum(fh,fl,zh,zl,&fl);
     lb = fh + (fl - eps);
     ub = fh + (fl + eps);
