@@ -106,7 +106,7 @@ check (double x, double y)
   t = ref_atan2 (y, x);
   if (!is_equal (z, t))
   {
-    printf ("cr_atan2 and ref_atan2 differ for y=%la x=%la\n", y, x);
+    printf ("cr_atan2 and ref_atan2 differ for y,x=%la,%la\n", y, x);
     printf ("cr_atan2  gives %la\n", z);
     printf ("ref_atan2 gives %la\n", t);
     exit (1);
