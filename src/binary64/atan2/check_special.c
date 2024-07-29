@@ -32,6 +32,7 @@ SOFTWARE.
 #include <mpfr.h>
 #include <omp.h>
 #include <unistd.h>
+#include <math.h>
 
 void doloop (int, int);
 extern double cr_atan2 (double, double);
@@ -145,6 +146,39 @@ check_random_all (void)
     check_random (getpid () + i, nthreads);
 }
 
+// check with |y/x| about 2^-7
+static void
+check_small_aux (int i, int nthreads)
+{
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buffer[1];
+  double x, y;
+  srand48_r (i, buffer);
+  for (unsigned long n = 0; n < N; n += nthreads)
+  {
+    x = get_random (buffer);
+    y = get_random (buffer);
+    int ex, ey;
+    frexp (x, &ex);
+    frexp (y, &ey);
+    y = ldexp (y, ex - ey - 7);
+    check (x, y);
+  }
+}
+
+static void
+check_small (void)
+{
+  int nthreads;
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#pragma omp parallel for
+  for (int i = 0; i < nthreads; i++)
+    check_small_aux (getpid () + i, nthreads);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -186,6 +220,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking small values\n");
+  check_small ();
 
   printf ("Checking random values\n");
   check_random_all ();
