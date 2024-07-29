@@ -132,14 +132,18 @@ check (double x)
   fesetround(rnd1[rnd]);
   double z1 = ref_function_under_test(x);
   double z2 = cr_function_under_test(x);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tests ++;
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
     fflush(stdout);
 #ifdef DO_NOT_ABORT
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     failures ++;
 #else
     exit(1);
@@ -155,7 +159,7 @@ doloop(void)
 
   readstdin(&items, &count);
 
-#ifndef CORE_MATH_NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
   for (int i = 0; i < count; i++) {

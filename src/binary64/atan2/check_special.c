@@ -144,7 +144,9 @@ check_random_all (void)
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
 #endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_random (getpid () + i, nthreads);
 }

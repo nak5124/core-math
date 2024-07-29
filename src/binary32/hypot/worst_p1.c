@@ -503,7 +503,9 @@ gen_solutions (fb2_t f)
 static void
 generate_solutions (uint32_t N)
 {
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(static,1)
+#endif
   for (uint32_t z = 0; z < N; z++)
   {
     cleanup (f2[z]);

@@ -157,23 +157,31 @@ main (int argc, char *argv[])
   // first check values around x0
 #define K 1000000
   printf ("Checking results around log(2^-1075)\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n0 - K; n < n0 + K; n++)
     check (ldexp ((double) n, -43));
   // then check values around x2
   printf ("Checking results around log(2^-1074)\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n2 - K; n < n2 + K; n++)
     check (ldexp ((double) n, -43));
   // then check values around x1
   printf ("Checking results around log(2^-1022)\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n1 - K; n < n1 + K; n++)
     check (ldexp ((double) n, -43));
   printf ("Checking results in subnormal range\n");
 #define SKIP 20000
   n0 += getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n0; n < n1; n += SKIP)
     check (ldexp ((double) n, -43));
 
@@ -183,7 +191,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

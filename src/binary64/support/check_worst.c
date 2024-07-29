@@ -164,7 +164,9 @@ print_binary64 (double x)
 static void
 check (double x, double y)
 {
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tests ++;
   ref_init();
   ref_fesetround(rnd);
@@ -230,7 +232,9 @@ doloop(void)
 
   readstdin(&items, &count);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < count; i++) {
     double x = items[i][0], y = items[i][1];
     check (x, y);

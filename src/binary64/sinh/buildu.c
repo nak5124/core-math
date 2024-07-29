@@ -63,7 +63,9 @@ doit (int i, int k)
   mpfr_sub (x1, x0, x1, MPFR_RNDN);
   mpfr_abs (x1, x1, MPFR_RNDN);
   double err = mpfr_get_d (x1, MPFR_RNDN);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp critical
+#endif
   U[i][0] = mpfr_get_d (x0, MPFR_RNDN);
   mpfr_sinh (x1, x0, MPFR_RNDN);
   U[i][1] = mpfr_get_d (x1, MPFR_RNDN);
@@ -90,7 +92,9 @@ main (int argc, char *argv[])
   for (int i = 0; i < 256; i++)
     U[i][0] = -1;
   printf ("static const double U[256][3] = {\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(dynamic,1)
+#endif
   for (int i = 0; i < 256; i++)
     doit (i, k);
   printf ("};\n");

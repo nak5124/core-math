@@ -72,7 +72,9 @@ check_one (uint64_t p, int64_t q, mpfr_exp_t e)
     }
     mpfr_set_prec (t, 2 * mpfr_get_prec (t));
   }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp critical
+#endif
   if (err < maxerr)
   {
     mpfr_printf ("%Ra,%Ra\n", y, x);
@@ -206,7 +208,9 @@ main (int argc, char *argv[])
       n = n0 + (n % (n1 - n0));
       buf[i] = asfloat64 (n);
     }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(static,1024)
+#endif
       for (int i = 0; i < LENGTH; i++)
         doit (buf[i]);
   }

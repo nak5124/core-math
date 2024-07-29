@@ -159,7 +159,9 @@ check_random_all (void)
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
 #endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_random (getpid () + i, nthreads);
 }
@@ -281,7 +283,9 @@ check_worst (int m)
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
 #endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_worst_i (m, i, nthreads);
 }
@@ -320,7 +324,9 @@ check_triples_subnormal (void)
     s0 ++; // ensures s0 is even and >= 2
 
   // type I: r is odd
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t r = r0; r <= 0x4000000; r += 2 * STEP)
     for (uint64_t s = s0; s < r; s += 2 * STEP)
     {
@@ -344,7 +350,9 @@ check_triples_subnormal (void)
     }
 
   // type II: r is even
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t r = r0+1; r <= 0x4000000; r += 2 * STEP)
     for (uint64_t s = s0-1; s < r; s += 2 * STEP)
     {
@@ -379,7 +387,9 @@ check_near_power_two (int k)
     min = nextafter (min, 0.5);
     max = nextafter (max, 2.0);
   }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int ex = -1074; ex <= 1024; ex++)
   {
     // since emin,emax are thread-local, we need to initialize them here

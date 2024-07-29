@@ -139,7 +139,9 @@ check_exact (void)
   // the smallest exact cube is 2^-16443, it is generated with m=2097152 and e=-5502;
   // the largest exact cube is 0x1.ffffdbd247267c7ap+16383, it is generated with
   // m=2642245 and e=5440
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int e = -5502; e <= 5440; e++)
   {
     uint64_t m;
@@ -209,7 +211,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

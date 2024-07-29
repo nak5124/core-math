@@ -180,7 +180,9 @@ main (int argc, char *argv[])
   nthreads = omp_get_num_threads ();
 #endif
   /* check random values */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_random (getpid () + i);
   return 0;

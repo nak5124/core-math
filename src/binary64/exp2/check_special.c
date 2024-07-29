@@ -156,7 +156,9 @@ main (int argc, char *argv[])
   int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
 #define SKIP 20000
   n0 += getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n0; n < n1; n += SKIP)
     check (ldexp ((double) n, -42));
   /* x2 is the smallest x such that 2^-1022 <= RN(exp2(x)) */
@@ -165,7 +167,9 @@ main (int argc, char *argv[])
      of 10 bits, thus we multiply by 2^43 to get integers */
   n1 = ldexp (x1, 43); /* n1 = -9007199254740992, twice as large as above */
   int64_t n2 = ldexp (x2, 43); /* n2 = -8989607068696576 */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n1; n < n2; n += SKIP)
     check (ldexp ((double) n, -43));
 
@@ -175,7 +179,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

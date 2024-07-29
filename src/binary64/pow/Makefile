@@ -20,10 +20,10 @@ exact: exact.c
 	gcc -W -Wall -O3 -march=native exact.c -lm -lmpfr -o e.out
 
 check_special: check_special.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
-	$(CC) $(LDFLAGS) -fopenmp -o $@ $^ -lmpfr -lm
+	$(CC) $(LDFLAGS) $(OPENMP) -o $@ $^ -lmpfr -lm
 
 check_special.o: check_special.c
-	$(CC) $(CFLAGS) $(CORE_MATH_DEFINES) -I../support -c -fopenmp -o $@ $<
+	$(CC) $(CFLAGS) $(CORE_MATH_DEFINES) -I../support -c $(OPENMP) -o $@ $<
 
 clean_all: clean
 	rm -f *.out

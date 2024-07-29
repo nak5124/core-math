@@ -110,7 +110,9 @@ ref_pow (uint32_t m, int e, float y, mpfr_rnd_t rnd)
   mpfr_set_ui_2exp (xx, m, e, MPFR_RNDN);
   mpfr_set_flt (yy, y, MPFR_RNDN);
   int inex = mpfr_pow (yy, xx, yy, rnd);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_subnormalize (yy, inex, rnd);
   float ret = mpfr_get_flt (yy, MPFR_RNDN);
@@ -130,7 +132,9 @@ ref_pow_inv (uint32_t n, int e, float y, mpfr_rnd_t rnd)
   mpfr_set_flt (yy, y, MPFR_RNDN);
   mpfr_ui_div (yy, 1, yy, MPFR_RNDN);
   int inex = mpfr_pow (yy, zz, yy, rnd);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_subnormalize (yy, inex, rnd);
   float ret = mpfr_get_flt (yy, MPFR_RNDN);
@@ -155,7 +159,9 @@ get_xmin (float y, int *e)
     mpfr_ui_div (u, 1, yy, MPFR_RNDD);         /* u <= 1/y */
     mpfr_set_ui_2exp (z, 1, -150, MPFR_RNDN);  /* exact */
     mpfr_pow (x, z, u, MPFR_RNDD);             /* x <= (2^-150)^(1/y) */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     calls_mpfr_pow ++;
     mpfr_pow (z, x, yy, MPFR_RNDZ);
     calls_mpfr_pow ++;
@@ -163,7 +169,9 @@ get_xmin (float y, int *e)
     {
       mpfr_nextabove (x);
       mpfr_pow (z, x, yy, MPFR_RNDZ);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
       calls_mpfr_pow ++;
     }
   }
@@ -172,7 +180,9 @@ get_xmin (float y, int *e)
     mpfr_ui_div (u, 1, yy, MPFR_RNDZ);         /* u >= 1/y */
     mpfr_set_ui_2exp (z, 1, 128, MPFR_RNDN);   /* exact */
     mpfr_pow (x, z, u, MPFR_RNDU);             /* x >= (2^128)^(1/y) */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     calls_mpfr_pow ++;
     mpfr_pow (z, x, yy, MPFR_RNDZ);
     calls_mpfr_pow ++;
@@ -180,7 +190,9 @@ get_xmin (float y, int *e)
     {
       mpfr_nextabove (x);
       mpfr_pow (z, x, yy, MPFR_RNDZ);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
       calls_mpfr_pow ++;
     }
   }
@@ -209,7 +221,9 @@ get_zmin (float y, int *e)
   mpfr_set_flt (t, (y > 0) ? Xmin : Xmax, MPFR_RNDN);        /* exact */
   mpfr_set_flt (u, y, MPFR_RNDN);           /* exact */
   mpfr_pow (t, t, u, MPFR_RNDU);            /* Xmin^y <= t */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   *e = mpfr_get_exp (t);
   mpfr_mul_2si (t, t, 25 - *e, MPFR_RNDN);
@@ -238,14 +252,18 @@ get_xmax (float y, int *e)
     mpfr_set_ui_2exp (z, 1, 128, MPFR_RNDN);  /* exact */
     mpfr_nextbelow (z);
     mpfr_pow (x, z, u, MPFR_RNDU);            /* 0x1.ffffffp127f^(1/y) <= x */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     calls_mpfr_pow ++;
     mpfr_pow (z, x, yy, MPFR_RNDU);
     while (mpfr_cmp_ui_2exp (z, 0x1ffffff, 103) > 0)
     {
       mpfr_nextbelow (x);
       mpfr_pow (z, x, yy, MPFR_RNDU);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
       calls_mpfr_pow ++;
     }
   }
@@ -254,14 +272,18 @@ get_xmax (float y, int *e)
     mpfr_ui_div (u, 1, yy, MPFR_RNDD);
     mpfr_set_ui_2exp (z, 1, -150, MPFR_RNDN);  /* exact */
     mpfr_pow (x, z, u, MPFR_RNDD);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     calls_mpfr_pow ++;
     mpfr_pow (z, x, yy, MPFR_RNDD);
     while (mpfr_cmp_ui_2exp (z, 1, -150) < 0)
     {
       mpfr_nextbelow (x);
       mpfr_pow (z, x, yy, MPFR_RNDD);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
       calls_mpfr_pow ++;
     }
   }
@@ -290,7 +312,9 @@ get_zmax (float y, int *e)
   mpfr_set_flt (t, (y > 0) ? Xmax : Xmin, MPFR_RNDN);          /* exact */
   mpfr_set_flt (u, y, MPFR_RNDN);             /* exact */
   mpfr_pow (t, t, u, MPFR_RNDD);              /* t <= FLT_MAX^y */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   *e = mpfr_get_exp (t);
   mpfr_mul_2si (t, t, 25 - *e, MPFR_RNDN);
@@ -315,7 +339,9 @@ get_exp (float x)
 static int
 print_sol (float x, float y)
 {
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_print_sol ++;
 
   if (x == 1.0f) /* don't print solutions with x=1 */
@@ -331,20 +357,26 @@ print_sol (float x, float y)
 
   /* first check if x^y is exact on 25 bits */
   int ret = mpfr_pow (zz, xx, yy, MPFR_RNDN);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   ret = mpfr_set (tt, zz, MPFR_RNDN) || ret;
   if (ret == 0)
   {
 #ifdef PRINT_EXACT
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp critical
+#endif
     {
       printf ("%a,%a # exact\n", x, y);
       fflush (stdout);
       found = 1;
     }
 #endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     nexact ++;
     goto end;
   }
@@ -358,19 +390,25 @@ print_sol (float x, float y)
   {
     mpfr_set_prec (zz, 24 + k);
     mpfr_pow (zz, xx, yy, MPFR_RNDN);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     calls_mpfr_pow ++;
     mpfr_set (tt, zz, MPFR_RNDN);
     if (mpfr_cmp (tt, zz) != 0)
       break;
   }
-#pragma	omp critical
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp critical
+#endif
   {
     printf ("%a,%a # %d\n", x, y, k - 1);
     fflush (stdout);
     found = 1;
   }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     nsols ++;
  end:
   mpfr_clear (xx);
@@ -384,7 +422,9 @@ print_sol (float x, float y)
 static int
 print_sol2 (uint32_t x, int e, float y)
 {
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_print_sol ++;
 
   assert (0x800000 <= x && x < 0x1000000);
@@ -406,20 +446,26 @@ print_sol2 (uint32_t x, int e, float y)
 
   /* first check if x^y is exact on 25 bits */
   int ret = mpfr_pow (zz, xx, yy, MPFR_RNDN);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   ret = mpfr_set (tt, zz, MPFR_RNDN) || ret;
   if (ret == 0)
   {
 #ifdef PRINT_EXACT
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp critical
+#endif
     {
       printf ("%a,%a # exact\n", ldexpf (x, e), y);
       fflush (stdout);
       found = 1;
     }
 #endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     nexact ++;
     goto end;
   }
@@ -434,19 +480,25 @@ print_sol2 (uint32_t x, int e, float y)
   {
     mpfr_set_prec (zz, 24 + k);
     mpfr_pow (zz, xx, yy, MPFR_RNDN);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     calls_mpfr_pow ++;
     mpfr_set (tt, zz, MPFR_RNDN);
     if (mpfr_cmp (tt, zz) != 0)
       break;
   }
-#pragma	omp critical
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp critical
+#endif
   {
     printf ("%a,%a # %d\n", ldexpf (x, e), y, k - 1);
     fflush (stdout);
     found = 1;
   }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     nsols ++;
  end:
   mpfr_clear (xx);
@@ -481,7 +533,9 @@ search_binade_mpfr (uint32_t m0, uint32_t m1, int e, float y)
   mpfr_clear (yy);
   mpfr_clear (zz);
   mpfr_clear (tt);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow += calls;
   return m1 - m0 + 1;
 }
@@ -537,7 +591,9 @@ search_binade_mpfr_z (uint32_t n0, uint32_t n1, int e, float y)
   mpfr_clear (iy);
   mpfr_clear (z2);
   mpfr_clear (tt);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow += calls;
   return n1 - n0 + 1;
 }
@@ -614,7 +670,9 @@ init_quadratic (uint32_t m0, uint32_t m1, int e, float y,
   mpfr_exp_t exp_x = mpfr_get_exp (xx);
   mpfr_set_flt (yy, y, MPFR_RNDN);
   mpfr_pow (aa, xx, yy, MPFR_RNDN); /* err < 1 ulp */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_set (bb, aa, MPFR_RNDN);     /* err < 1 ulp */
   mpfr_exp_t exp_a = mpfr_get_exp (aa);
@@ -643,7 +701,9 @@ init_quadratic (uint32_t m0, uint32_t m1, int e, float y,
   *eb = 2; /* 1 ulp for the rounding to 64 bits, and 4*2^(1-89) for the
               above roundings */
   /* 2nd derivative is x^(y-2)*y*(y-1), where we saved x^(y-1)*y in cc */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_div (cc, cc, xx, MPFR_RNDN);
   while (1)
@@ -669,7 +729,9 @@ init_quadratic (uint32_t m0, uint32_t m1, int e, float y,
      (this also holds for y < 0). */
   mpfr_set_ui_2exp (xx, (y >= 3.0f) ? m1 : m0, e, MPFR_RNDU);
   mpfr_pow (dd, xx, yy, MPFR_RNDU);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_div (dd, dd, xx, MPFR_RNDU);
   mpfr_div (dd, dd, xx, MPFR_RNDU);
@@ -729,7 +791,9 @@ init_quadratic_z (uint32_t m0, uint32_t m1, int e, float y,
   mpfr_pow (aa, zz, iy, MPFR_RNDN); /* err < 1 ulp */
   int opt = cmp_significand (aa, zz);
   // if (bug) mpfr_printf ("a=%Ra\n", aa);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_set (bb, aa, MPFR_RNDN);     /* err < 1 ulp */
   mpfr_exp_t exp_a = mpfr_get_exp (aa);
@@ -757,7 +821,9 @@ init_quadratic_z (uint32_t m0, uint32_t m1, int e, float y,
   *eb = 2; /* 1 ulp for the rounding to 64 bits, and 4*2^(1-89) for the
               above roundings */
   /* 2nd derivative is z^(iy-2)*iy*(iy-1), where we saved z^iy in cc */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_div (cc, cc, zz, MPFR_RNDN);
   while (1)
@@ -786,7 +852,9 @@ init_quadratic_z (uint32_t m0, uint32_t m1, int e, float y,
   int cmp = mpfr_cmp_ui (iy, 3) >= 0;
   mpfr_set_ui_2exp (zz, (cmp) ? m1 : m0, e, MPFR_RNDA);
   mpfr_pow (dd, zz, iy, MPFR_RNDA);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   calls_mpfr_pow ++;
   mpfr_div (dd, dd, zz, MPFR_RNDA);
   mpfr_div (dd, dd, zz, MPFR_RNDA);
@@ -964,7 +1032,9 @@ search_binade_x (uint32_t m0, uint32_t m1, int e, float y)
       checks = search_binade_mpfr (m0, m1, e, y);
   }
 #endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tot_checks += checks;
 }
 
@@ -982,7 +1052,9 @@ search_binade_z (uint32_t n0, uint32_t n1, int e, float y)
   if (checks == 0)
     checks = search_binade_mpfr_z (n0, n1, e, y);
   assert (checks != 0);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tot_checks += checks;
 }
 
@@ -1080,7 +1152,9 @@ doit_x (float y)
   }
   /* last binade */
   count += mmax - mmin;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tot_checks += count;
   return;
 #endif
@@ -1116,7 +1190,9 @@ doit_z (float y)
     zmin = 0x1000000;
   }
   count += zmax - zmin;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tot_checks += 2 * count;
   return;
 #endif
@@ -1144,7 +1220,9 @@ doit (uint32_t n)
   else
     doit_z (y);
 #ifdef TIME
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp master
+#endif
   printf ("# y=%a: %dms\n", y, cputime () - st);
 #endif
 }
@@ -1247,9 +1325,13 @@ main (int argc, char *argv[])
   }
   assert (nmin < nmax);
 #ifndef COUNT
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(dynamic,1)
+#endif
 #else
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
 #endif
   for (uint32_t n = nmin; n < nmax; n++)
     doit (n);

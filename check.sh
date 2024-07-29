@@ -74,7 +74,7 @@ fi
 if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
    OPENMP=-fopenmp
 else
-   export CFLAGS="$CFLAGS -DCORE_MATH_NO_OPENMP"
+   OPENMP="-fno-openmp -DCORE_MATH_NO_OPENMP=$CORE_MATH_NO_OPENMP"
 fi
 
 has_symbol () {
@@ -119,7 +119,7 @@ case "$KIND" in
         ;;
     --worst)
         "$MAKE" --quiet -C "$DIR" clean
-        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_worst
+        OPENMP="$OPENMP" "$MAKE" $QUIET -C "$DIR" check_worst
         for MODE in "${MODES[@]}"; do
             echo "Running worst cases check in $MODE mode..."
             $CORE_MATH_LAUNCHER "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"

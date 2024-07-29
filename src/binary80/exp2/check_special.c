@@ -170,7 +170,9 @@ main (int argc, char *argv[])
   uint64_t n1 = ldexpl (x1, 49);
 #define SKIP 32000000
   n0 -= getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = n0; n > n1; n -= SKIP)
     check (-ldexpl ((long double) n, -49));
   /* x2 is the smallest x such that 2^-16382 <= RN(2^-x) */
@@ -180,7 +182,9 @@ main (int argc, char *argv[])
   n1 = ldexpl (x1, 50);
   uint64_t n2 = ldexpl (x2, 50);
   n1 -= getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = n1; n > n2; n -= SKIP)
     check (-ldexpl ((long double) n, -50));
 
@@ -190,7 +194,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

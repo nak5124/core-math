@@ -118,7 +118,9 @@ int tests = 0, failures = 0;
 static void
 check (float x, float y)
 {
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tests ++;
   ref_init();
   ref_fesetround(rnd);
@@ -133,7 +135,9 @@ check (float x, float y)
   if (! is_equal (z1, z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     failures ++;
 #ifndef DO_NOT_ABORT
     exit(1);
@@ -167,7 +171,9 @@ doloop(void)
 
   readstdin(&items, &count);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < count; i++) {
     float x = items[i][0], y = items[i][1];
     check (x, y);
