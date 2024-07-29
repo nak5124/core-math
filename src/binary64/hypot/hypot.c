@@ -39,7 +39,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-static inline fexcept_t get_flags ()
+static inline fexcept_t get_flags (void)
 {
 #ifdef __x86_64__
   return _mm_getcsr ();
@@ -170,7 +170,7 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const
   return xi.f;
 }
 
-static double __attribute__((noinline)) as_hypot_overflow(){
+static double __attribute__((noinline)) as_hypot_overflow (void){
   volatile double z = 0x1.fffffffffffffp1023;
   double f = z + z;
   if(f>z) errno = ERANGE;
