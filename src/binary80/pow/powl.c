@@ -1150,6 +1150,7 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 // put in r an 256-bit approximation of y*log2(x)
 // assume x is normal, not 0, 2^-80 <= |y| < 2^78
 // if x is negative, y should be an integer
+// ensure r = y*log2(x) * (1 + eps) with |eps| < 2^-249.064
 inline static
 void q_log2pow(qint64_t* r, long double x, long double y) {
 	b80u80_t cvt_x = {.f = x};
@@ -1259,26 +1260,30 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	q_logpoly(r, reducted);
 	POWL_DPRINTF("get_hex(R(log2(1 + reducted) -"SAGE_QR"))\n",
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
-	/* As mentioned in q_logpoly(), the relative error on the result is at most
-	   2^-249.998.*/
+	/* As mentioned in q_logpoly(), the relative error on the result is
+           at most 2^-249.591:
+           r = log2(1+reducted) * (1 + eps) with |eps| <= 2^-249.591
+        */
 
 	add_qint(r, mlogr12, r);
 	/* Let us call r_in/r_out the values of r as input/output.
-	   Examining the fastpath's error analysis, we see that we have here
-	   |mlogr12/r_out| <= 2.002. Also |r_in/r_out| <= 1.002. The relative errors
-	   of 2^-252.116 and 2^-249.998, together with the sum's rounding error, make
-	   up for an error bound of
-	     |r_out|*(2^-254 + 2.002*2^-252.116 + 1.002*2^-249.998) 
-	     <= |r_out|*2^-249.388
-	   The total relative error computing log2(x) is therefore at most 2^-249.388.
+           From max_rh_over_rh_prime_all() in powl.sage, we have here
+	   |mlogr12/r_out| <= 2.002 and |r_in/r_out| <= 1.002.
+           The relative errors 2^-252.131 on mlogr12 and 2^-249.591 on r,
+           together with the sum's rounding error, yield an error bound of
+	     |r_out|*(2^-254 + 2.002*2^-252.131 + 1.002*2^-249.591)
+	     <= |r_out|*2^-249.112
+	   The total relative error computing log2(x) is therefore at most
+           2^-249.112:
+           r = log2(x) * (1 + eps) with |eps| <= 2^-249.112.
 	*/
 
 	mul_qint_41(r, r, q_y);
 	POWL_DPRINTF("get_hex(R(1-"SAGE_QR"/(y*log2(x0))))\n",
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
-	/* The product imparts an additional relative rounding error of 2^-254. The
-	   total relative error computing ylog2(x) is thus at most
-	     2^-254 + 2^-249.388 <= 2^-249.330 */
+	/* The product imparts an additional relative rounding error of 2^-254.
+           The total relative error computing y log2(x) is thus at most
+	     (1 + 2^-249.112) * (1 + 2^-254) - 1 < 2^-249.064 */
 }
 
 /* Let f be the low 20 bits of fracpart. Computes r and corr

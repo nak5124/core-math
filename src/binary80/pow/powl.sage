@@ -651,7 +651,8 @@ def get_interval(i1,i2,T1=None,T2=None):
 # (when mlogr12h != 0)
 # max_rh_over_rh_prime(127,125)
 # 1.00183310592127
-def max_rh_over_rh_prime(i1,i2,T1=None,T2=None):
+# With mlogr12=true, compute maximal value of |mlogr12h/(mlogr12h+rh)| instead
+def max_rh_over_rh_prime(i1,i2,T1=None,T2=None,mlogr12=false):
    if T1==None:
       T1 = get_coarsetbl(verbose=false)
    if T2==None:
@@ -670,19 +671,27 @@ def max_rh_over_rh_prime(i1,i2,T1=None,T2=None):
       return 1
    assert rh < mlogr12h, "rh < mlogr12h"
    rh_prime = mlogr12h - rh
-   return rh/rh_prime
+   if mlogr12==false:
+      return abs(rh/rh_prime)
+   else:
+      return abs(mlogr12h/rh_prime)
 
 # compute maximal value of |rh/rh'| for all i1,i2 values
 # max_rh_over_rh_prime_all()
 # 0 0 1
 # 127 125 1.00183310592127
-def max_rh_over_rh_prime_all():
+# With mlogr12=true, compute maximal value of |mlogr12h/rh'| instead
+# max_rh_over_rh_prime_all(mlogr12=true)
+# 0 0 1
+# 0 1 1.50045785683029
+# 127 125 2.00183310592127
+def max_rh_over_rh_prime_all(mlogr12=false):
    maxratio = 0
    S = possible_i1_i2(verbose=false)
    T1 = get_coarsetbl(verbose=false)
    T2 = get_finetbl(verbose=false)
    for i1,i2 in S:
-      ratio = max_rh_over_rh_prime(i1,i2,T1=T1,T2=T2)
+      ratio = max_rh_over_rh_prime(i1,i2,T1=T1,T2=T2,mlogr12=mlogr12)
       if ratio > maxratio:
          print (i1, i2, ratio)
          maxratio = ratio
@@ -821,7 +830,7 @@ def output_logpoly(p):
    for d in range(18,-1,-1):
       print_qint (p[d].exact_rational())
 
-# p is the output from "sollya accurate_log2.sollya"
+# p is the output from "sollya accurate_log2.sollya" (as a string)
 # analyze_q_logpoly(p)
 # err0= -63.0000000000000
 # err1= -73.9982948983342
