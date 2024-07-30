@@ -98,7 +98,8 @@ float cr_tgammaf(float x){
     for(int i=1; i<k; i++, x0 += 1.0) t0 *= x0;
     return t0;
   }
-  if(__builtin_expect(x<-47.0f, 0)){
+  if(__builtin_expect(x<-42.0f, 0)){
+    // for x < -42, x non-integer, |gamma(x)| < 2^-151
     static const float sgn[2] = {0x1p-127, -0x1p-127};
     /* The C standard says that if the function underflows,
        errno is set to ERANGE. */
