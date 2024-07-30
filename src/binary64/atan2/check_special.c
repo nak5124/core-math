@@ -146,7 +146,7 @@ check_random_all (void)
     check_random (getpid () + i, nthreads);
 }
 
-// check with |y/x| about 2^-7
+// check with |y/x| in the range [2^-64,1]
 static void
 check_small_aux (int i, int nthreads)
 {
@@ -156,6 +156,7 @@ check_small_aux (int i, int nthreads)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
+  double ratio = 0, dratio = 64.0 / (N / nthreads);
   for (unsigned long n = 0; n < N; n += nthreads)
   {
     x = get_random (buffer);
@@ -163,8 +164,9 @@ check_small_aux (int i, int nthreads)
     int ex, ey;
     frexp (x, &ex);
     frexp (y, &ey);
-    y = ldexp (y, ex - ey - 7);
+    y = ldexp (y, ex - ey - (int) ratio);
     check (x, y);
+    ratio += dratio;
   }
 }
 
