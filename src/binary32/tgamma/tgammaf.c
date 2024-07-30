@@ -66,7 +66,7 @@ float cr_tgammaf(float x){
     volatile double d = (0x1.fa658c23b1578p-1 - 0x1.d0a118f324b63p-1*z)*z - 0x1.2788cfc6fb619p-1;
     double f = 1.0/z + d;
     float r = f;
-    if(__builtin_fabs(r)>0x1.fffffep+127f) errno = ERANGE;
+    if(__builtin_fabsf(r)>0x1.fffffep+127f) errno = ERANGE;
     b64u64_u rt = {.f = f};
     if(((rt.u+2)&0xfffffff) < 4){
       for(unsigned i=0;i<sizeof(tb)/sizeof(tb[0]);i++)
