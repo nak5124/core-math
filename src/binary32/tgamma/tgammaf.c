@@ -59,7 +59,8 @@ float cr_tgammaf(float x){
       }
       return x;
     }
-    return x; // nan
+    return x + x; /* case x=NaN, where x+x ensures the invalid exception is
+                     set if x=sNaN */
   }
   double z = x;
   if(__builtin_expect(ax<0x6d000000u, 0)){
@@ -75,13 +76,15 @@ float cr_tgammaf(float x){
     return r;
   }
   float fx = __builtin_floor(x);
-  int k = fx;
   if(__builtin_expect(x >= 0x1.18522p+5f, 0)){
     /* The C standard says that if the function overflows,
        errno is set to ERANGE. */
     errno = ERANGE;
     return 0x1p127f * 0x1p127f;
   }
+  /* compute k only after the overflow check, otherwise the case to integer
+     might overflow */
+  int k = fx;
   if(__builtin_expect(fx==x, 0)){
     if(x == 0.0f){
       errno = ERANGE;
