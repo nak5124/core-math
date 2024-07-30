@@ -494,7 +494,7 @@ double cr_atan2 (double y0, double x0){
   double z2 = z*z;
   z *= __builtin_copysign(1,sgn.f);
   double dz = (z*z2)*(b[0] + z2*(b[1] + z2*b[2]));
-  double eps = __builtin_fabs(z)*0x1.fp-52 + 0x1p-90;
+  double eps = __builtin_fabs(z)*0x1.051p-51 + 0x1p-90;
   double rh = fasttwosum(fh, z, &z);
   double rl = (fl + dz) + z;
   double lb = rh + (rl - eps), ub = rh + (rl + eps);
