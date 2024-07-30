@@ -1,6 +1,6 @@
 /* Correctly-rounded true gamma function for binary32 value.
 
-Copyright (c) 2023 Alexei Sibidanov.
+Copyright (c) 2023-2024 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -77,9 +77,10 @@ float cr_tgammaf(float x){
   float fx = __builtin_floor(x);
   int k = fx;
   if(__builtin_expect(x >= 0x1.18522p+5f, 0)){
-    float r = 0x1p127f * 0x1p127f;
-    if(r>0x1.fffffep+127) errno = ERANGE;
-    return r;
+    /* The C standard says that if the function overflows,
+       errno is set to ERANGE. */
+    errno = ERANGE;
+    return 0x1p127f * 0x1p127f;
   }
   if(__builtin_expect(fx==x, 0)){
     if(x == 0.0f){
@@ -96,9 +97,10 @@ float cr_tgammaf(float x){
   }
   if(__builtin_expect(x<-47.0f, 0)){
     static const float sgn[2] = {0x1p-127, -0x1p-127};
-    float r = 0x1p-127f * sgn[k&1];
-    if(r == 0.0f) errno = ERANGE;
-    return r;
+    /* The C standard says that if the function underflows,
+       errno is set to ERANGE. */
+    errno = ERANGE;
+    return 0x1p-127f * sgn[k&1];
   }
   static const double c[] =
     {0x1.c9a76be577123p+0, 0x1.8f2754ddcf90dp+0, 0x1.0d1191949419bp+0, 0x1.e1f42cf0ae4a1p-2,
