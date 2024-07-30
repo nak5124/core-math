@@ -75,7 +75,7 @@ float cr_tgammaf(float x){
     }
     return r;
   }
-  float fx = __builtin_floor(x);
+  float fx = __builtin_floorf(x);
   if(__builtin_expect(x >= 0x1.18522p+5f, 0)){
     /* The C standard says that if the function overflows,
        errno is set to ERANGE. */
@@ -128,9 +128,10 @@ float cr_tgammaf(float x){
   b64u64_u rt = {.f = f};
   float r = f;
   if(__builtin_expect(r==0.0f, 0)) errno = ERANGE;
+  // deal with exceptional cases
   if(__builtin_expect(((rt.u+2)&0xfffffff) < 8, 0)){
-    for(unsigned i=0;i<sizeof(tb)/sizeof(tb[0]);i++) {
-      if(t.u==tb[i].x.u) return tb[i].f + tb[i].df;
+    for(unsigned j=0;j<sizeof(tb)/sizeof(tb[0]);j++) {
+      if(t.u==tb[j].x.u) return tb[j].f + tb[j].df;
     }
   }
   return r;
