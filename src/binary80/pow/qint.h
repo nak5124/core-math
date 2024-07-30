@@ -107,6 +107,11 @@ typedef union {
     uint64_t _sgn;
   };
   struct {
+    /* for a non-zero qint, hh has its most significant bit set,
+       and the significand is in [1, 2):
+       x = (-1)^sgn * m * 2^ex
+       with m = hh/2^63 + hl/2^127 + lh/2^191 + ll/2^255
+    */
     uint64_t ll; /* lower low part */
     uint64_t lh; /* upper low part */
     uint64_t hl; /* lower high part */

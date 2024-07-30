@@ -257,6 +257,17 @@ def format_sollya_poly(s):
 		", .sgn = 0x1}, /* degree " + str(i) + " */")
 	return [get_hex(p[n - i]) for i in [0..n]]
 
+# for i in range(4):
+#    T=corr_tk(k=i)
+#    print(max(abs(T[i][0]) for i in range(32)))
+# Error -294.064083110299
+# 1652397245814591285
+# Error -294.003441498186
+# 1433175892871988186
+# Error -294.051553075173
+# 1596739555728066819
+# Error -294.057449864016
+# 1119274665622562301
 def corr_tk(k=0):
    maxerr = 0
    R = RealField(53)
@@ -291,11 +302,19 @@ def check_trivialzeroes():
       for j in range(2^5):
          for k in range(2^5):
             for l in range(2^5):
-               h0,_,_ = T0[i]
-               h1,_,_ = T1[j]
-               h2,_,_ = T2[k]
-               h3,_,_ = T3[l]
+               h0,lh0,ll0= T0[i]
+               h1,lh1,ll1 = T1[j]
+               h2,lh2,ll2 = T2[k]
+               h3,lh3,ll3 = T3[l]
+               corrl0 = lh0*2^64+ll0
+               corrl1 = lh1*2^64+ll1
+               corrl2 = lh2*2^64+ll2
+               corrl3 = lh3*2^64+ll3
+               corrl = corrl0 + corrl1 + corrl2 + corrl3
+               corrl = (4*corrl) % (2^128)
                if(h0+h1+h2+h3 == 0):
+                  assert i == 0 and j == 0 and k == 0 and l == 0, "Failure!"
+               if corrl == 0:
                   assert i == 0 and j == 0 and k == 0 and l == 0, "Failure!"
    print ("Success")
 

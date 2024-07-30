@@ -1310,10 +1310,17 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	// as an unsigned value, MSB of corr_h has weight 2^-167*2^63 = 2^-104
 	int exponent = -104;
 	int64_t  corr_h = corr0.h + corr1.h + corr2.h + corr3.h;
+        // no overflow in corr_h since each |corri.h| < 2^61
 	unsigned __int128 corr_l = corr0.l + corr1.l + corr2.l + corr3.l;
+        // no overflow in corr_l since each |corri.l| < 2^126
 
-	corr_h += (unsigned)(corr_l >> 126); // add carry
+	corr_h += (unsigned) (corr_l >> 126); // add carry
+        // by inspecting the corri.h values, we see
+        // |corri.h| <= 1652397245814591285 thus no overflow is possible
+        // above
 	corr_l <<= 2; // shift out overlap
+
+        // the correction term is 2^exponent*(corr_h + corr_l/2^128)
 
 	int sgn = corr_h < 0;
 	if(sgn) {
@@ -1321,10 +1328,14 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	   // mantissa being inverted
 		 corr_h = -corr_h - 1;
 		 corr_l = -corr_l;
+                 /* The routine check_trivialzeroes() in powl.sage checks
+                    that corr_l=0 can only happen for i0=i1=i2=i3=0,
+                    thus here corr_l <> 0 and subtracting 1 to corr_h is right.
+                 */
 	}
 
-	/* We use the fact that if corr_h == 0, then the whole reduction was trivial.
-	   This is proven by check_trivialzeroes() in powl.sage */
+	/* We use the fact that if corr_h == 0, then the whole reduction was
+           trivial. This is proven by check_trivialzeroes() in powl.sage */
 	if(__builtin_expect(corr_h == 0, 0)) {
 		cp_qint(corr, &ZERO_Q);
 	} else {
@@ -1348,7 +1359,7 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	mul_qint_22(acc1, tmp2, tmp3);
 	// The products above are exact
 	mul_qint(r, acc0, acc1);
-	/* This product introduces 14 ulps of error, i.e. a relative error
+	/* This product introduces an error <= 14 ulps, i.e. a relative error
 	   |r - tmp0*...*tmp3| <= 14*|r|*2^-255.
 
 	   Therefore
@@ -1394,26 +1405,36 @@ void q_exp2poly(qint64_t* r, const qint64_t* x) {
 }
 
 
-/* Compute 2^x */
+// Put in r an approximation of 2^x, assuming |x| < 2^15
 inline static
 void q_exp2(qint64_t* r, const qint64_t* x) {
 	POWL_DPRINTF("l = "SAGE_QR"\n",
 	   x->hh, x->hl, x->lh, x->ll, x->ex, x->sgn);
 	
 	uint64_t xs = x->ex >= -20 ? (x->hh >> (43 - x->ex)) : 0;
-	// low bit has weight 2^-20
+	// xs = trunc(2^20*x), with low bit of xs having weight 2^-20,
+        // and xs having the same (implicit) sign as x
+
 	qint64_t reducted[1];
 	reducted->hh = x->ex >= -20 ? (xs << (43 - x->ex)) : 0;
 	reducted->hl = reducted->lh = reducted->ll = 0;
 	reducted->sgn = x->sgn ^ 1;
 	reducted->ex = x->ex;
+        // reducted = -xs/2^20
+        
 	add_qint(reducted, x, reducted);
+        // now x = xs/2^20 + reducted
 	// With inlining, probably almost as fast as doing it by hand	
 	// Note that this is exact and that at output, we have
-	// |reducted| <= 2^-20 - 2^-20*2^-64 = 2^-20 - 2^-84 because the result
-	// must fit in 64 bits.
+	// |reducted| < 2^-20
 	
-	// Split xs * (-1)^x->sgn into entire part and fractional part
+	/* Split xs * (-1)^x->sgn into entire part and fractional part.
+           If x >= 0 this is straightforward.
+           If x < 0, then we need to split -xs.
+           Calling e0 = xs>>20 and f0 = xs&0xfffff we have
+	   xs = 2^20*e0 + f0 so -xs = 2^20*(-e0-1) + (2^20 - f0),
+           unless f0 == 0 in which case we need to split like 2^20*(-e0) + 0.
+	*/
 	int extra_exp;
 	uint64_t fracpart;
 	if(x->sgn) {
@@ -1421,17 +1442,14 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 		if(__builtin_expect(xs & 0xfffff, 1)) {
 			extra_exp = -(xs>>20) - 1;
 		} else {
-			extra_exp = -(xs>>20);
+                        extra_exp = -(xs>>20); // case low(fracpart) = 0
 		}
 	} else {
 		extra_exp = xs>>20;
 		fracpart  = xs;
 	}
-	/*If x >= 0 this is straightforward. If x < 0,
-	  then we need to split -xs. Calling e0 = xs>>20 and f0 = xs&0xfffff we have
-	  xs = 2^20*e0 + f0 so -xs = 2^20*(-e0-1) + (2^20 - f0), unless f0 == 0 in
-	  which case we need to split like 2^20*(-e0) + 0.
-	*/
+        // now xs/2^20 * (-1)^x->sgn = extra_exp + low(fracpart)/2^20
+        // with 0 <= low(fracpart) < 2^20
 
 	POWL_DPRINTF("extra_exp = %d\nfracpart = 0x%05lx\n",
 	   extra_exp, fracpart&0xfffff);
@@ -1670,13 +1688,17 @@ long double cr_powl(long double x, long double y) {
 #endif
 
 	qint64_t q_r[1]; q_log2pow(q_r, x, y);
+        // q_r = y*log2|x| * (1 + eps) with |eps| < 2^-249.064
+
 	if(q_r->ex >= 15) {
-			if(q_r->sgn) {
+          // |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.064) > 32767
+			if(q_r->sgn) { // y*log2|x| < -32768: underflow
 				return (sign * 0x1p-16445L)*.5L;
-			} else {
+			} else { // y*log2|x| > 32767: overflow
 				return sign * 0x1p16383L + sign * 0x1p16383L;
 			}
 	}
+
 	q_exp2(q_r, q_r);
 	unsigned rm = get_rounding_mode();
 
