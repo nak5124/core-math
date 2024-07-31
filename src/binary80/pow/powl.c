@@ -1705,7 +1705,7 @@ long double cr_powl(long double x, long double y) {
 #endif
 
 	qint64_t q_r[1]; q_log2pow(q_r, x, y);
-        // q_r = y*log2|x| * (1 + eps) with |eps| < 2^-249.064
+        // q_r = y*log2|x| * (1 + eps_log) with |eps_log| < 2^-249.064
 
 	if(q_r->ex >= 15) {
           // |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.064) > 32767
@@ -1717,6 +1717,16 @@ long double cr_powl(long double x, long double y) {
 	}
 
 	q_exp2(q_r, q_r);
+        /* q_r = 2^(q_r_in) * (1 + eps_exp) with |eps_exp| < 2^-250.085
+           and since q_r_in = y*log2|x| * (1 + eps_log)
+           with |eps_log| < 2^-249.064, and |q_r_in| < 2^15,
+           we have:
+           q_r_in = y*log2|x| + eps with |eps| < 2^15*|eps_log| < 2^-234.064,
+
+           thus q_r = |x|^y * (1 + eps_pow)
+
+           with |eps_pow| = |(1 + eps_exp) * 2^eps - 1| < 2^-234.592
+        */
 	unsigned rm = get_rounding_mode();
 
 	qint64_t final[1];
