@@ -226,6 +226,7 @@ def analyze_p3(neg=false):
    r0 = P_3[0]*z
    # add_qint_22 (r, &P_3[1], r)
    r = P_3[1] + R128(r0)
+   assert r.prec()==128, "r.prec()==128"
    erra = 2*r.ulp()
    err = dict()
    err[1] = erra*abs(z)^16
@@ -236,6 +237,7 @@ def analyze_p3(neg=false):
       erra = R64(r).ulp()*abs(z) # ignored part low(r)*z
       # add_qint_22 (r, &P_3[k], r)
       r = P_3[k] + R128(r0)
+      assert r.prec()==128, "r.prec()==128"
       errb = 2*r.ulp()
       err[k] = (erra + errb)*abs(z)^(17-k)
       print ("err"+str(k)+"=", log(err[k])/log(2.))
@@ -247,6 +249,7 @@ def analyze_p3(neg=false):
       erra = r0.ulp() # ignored part of r in add_qint_22() below
       # add_qint_22 (r, &P_3[k], r)
       r = P_3[k] + r0
+      assert r.prec()==128, "r.prec()==128"
       errb = 2*r.ulp()
       err[k] = (erra + errb)*abs(z)^(17-k)
       print ("err"+str(k)+"=", log(err[k])/log(2.))
@@ -313,6 +316,7 @@ def analyze_q3(neg=false):
    erra = y.ulp()*Q_3[0] # ignored low part of y
    # add_qint_22 (r, &Q_3[1], r)
    r = Q_3[1] + R128(r0)
+   assert r.prec()==128, "r.prec()==128"
    errb = 2*r.ulp()
    errc = R128(r0).ulp()
    err[1] = (erra + errb + errc)*abs(y)^13
@@ -326,6 +330,7 @@ def analyze_q3(neg=false):
       errb = y.ulp()*r      # ignored part of y multiplied by r
       # add_qint_22 (r, &Q_3[k], r)
       r = Q_3[k]+r0
+      assert r.prec()==128, "r.prec()==128"
       errc = R256(r).ulp()*2 # rounding error in add_qint_22
       errd = r0.ulp()        # ignored low 128 bits from r_in
       err[k] = (erra + errb + errc + errd)*abs(y)^(14-k)
