@@ -379,14 +379,15 @@ long double qint_told(qint64_t* a, unsigned rm, bool invert, bool* hard) {
 	POWL_DPRINTF("m = %016lx\n", v.m);
 	POWL_DPRINTF("e = %x (%ld)\n", v.e, a->ex);
 
-	/*d holds the signed distance to the rounding boundary in 128 bits */
+	/* d/2^128 holds the signed distance to the rounding boundary */
 	unsigned __int128 d = a->hl; d <<= 64;
 	d += a->lh;
 
-	/* The relative error is bounded by 2^-235.590.
+	/* The relative error is bounded by 2^-234.592
+           (see analysis of cr_powl in powl.c).
 	   Therefore, if d != 0 and d != -1, then the rounding test must pass
 	   because this implies that the distance to the rounding boundary is
-	   at least 2^(-64-128) > 2^-235.590
+	   at least 2^(-64-128) > 2^-234.592.
 	*/
 	if(__builtin_expect(d != 0 && d+1 != 0, 1)) {*hard = false;}
 	else {
@@ -394,9 +395,11 @@ long double qint_told(qint64_t* a, unsigned rm, bool invert, bool* hard) {
 	  /* d holds the distance to the rounding boundary, scaled by 2^-128.*/
 		unsigned __int128 eps = a->hh; eps <<= 64;
 	  /* If we didn't do anymore scaling this would correspond to a relative
-	     error of 2^-128. Therefore, shift 235 - 128 = 107 left.
+	     error of 2^-128. Since the relative error is < 2^-234.592
+             Therefore, shift by 234 - 128 right.
 	  */
-		eps >>= 107; eps += 1; // Make sure we over-approximate eps.
+		eps >>= 234 - 128;
+                eps += 1; // Make sure we over-approximate eps.
 		*hard = (d + eps) <= 2*eps;
 	}
 
