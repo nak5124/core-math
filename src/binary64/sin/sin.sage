@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # compute table for 1/(2pi)
 def computeT():
    x = n(1/(2*pi),2000)

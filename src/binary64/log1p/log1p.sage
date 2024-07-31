@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # check if log1p(x) rounds identically to log(x) for all rounding modes
 def compare_log(x,verbose=false):
    X = x.exact_rational()

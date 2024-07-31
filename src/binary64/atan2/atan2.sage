@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def print_tint(x):
    s,m,e = x.sign_mantissa_exponent()
    assert m.nbits()==192, "m.nbits()==192"

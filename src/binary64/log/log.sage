@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 from functools import cmp_to_key
 
 def cmp(x,y):

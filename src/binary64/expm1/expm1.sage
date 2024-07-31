@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # return the 'ulp' of the interval x, i.e., max(ulp(t)) for t in x
 # this internal routine is used below
 def RIFulp(x):

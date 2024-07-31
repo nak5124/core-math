@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 from functools import cmp_to_key
 
 # entries are (t0,t1,e)

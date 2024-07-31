@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def output_P2():
    R.<x> = RealField(128)[]
    # output of sollya approximations_r2.sollya

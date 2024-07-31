@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # deal with 2^(e-1) <= x < 2^e
 def doit(e):
    assert -1073 <= e <= 1024, "-1073 <= e <= 1024"
