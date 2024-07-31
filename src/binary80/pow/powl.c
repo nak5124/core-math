@@ -1736,22 +1736,24 @@ long double cr_powl(long double x, long double y) {
 	bool hard = false;
 	long double r = qint_told(final, rm, invert, &hard);
 
-        /* Assume we have computed with BaCSeL all hard-to-round cases with
-           exponent y in the set S that can yield an exact or midpoint case.
-           We want to ensure that if we encounter some "hard" case where the
-           accurate path rounding test fails, and the exponent y is in S,
-           then it is necessarily an exact or midpoint case.
+	/* Assume that (x,y) is a hard case in the sense that the accurate path
+	   rounding test fails. Assume further that (x,y) is potentially exact or
+	   midpoint, i.e. is in S.
 
-           Let m be the parameter used for BaCSeL.
-           If the hard case was not found by BaCSeL, then it is at distance
-           >= 2^-m ulps from a rounding boundary.
+	   Let us note z the approximation we computed. We know that for some rounding
+	   boundary r, |z - r| <= (2^-234 + 2^-255)|z| because the rounding test
+	   failed. We also know that |z - x^y| <= 2^-234.862|z|. This implies that
+	   |x^y - r| <= (2^-234.862 + 2^-234 + 2^-255)|z|. This rewrites as
+	   |x^y - r| <= 2^(-233.367)|x^y| because ||x^y|/|z| - 1| <= 2^-234 + 2^-255.
 
-           On the other hand we have |z - x^y| < 2^-234.862 |x^y|, thus
-           |z - x^y| < 2^-234.862 * 2^63 ulp(x^y) = 2^-171.862 ulp(x^y).
-           if x^y is a rounding boundary (i.e., exactly representable on
-           65 bits), then it is not possible that BaCSeL missed it
-           as soon as m <= 171.
-        */
+	   If we list with BaCSeL all cases where |x^y - r| <= 2^(-233.367)|x^y|,
+	   we may be able to certify that in all these cases, x^y is exact. When
+	   run with parameter m, BaCSeL will output those (x,y) in S such that
+	   |x^y - r'| <= 2^(-63-m)|x^y| for some rounding boundary r'. Therefore,
+	   any full run of BaCSeL with m <= 170 allows us to (hopefully) certify
+	   the exactness check.
+	   (It is obvious that r = r' whenever the discussed situation arises).
+	*/
 
 	POWL_DPRINTF("get_hex(R(1 - r/x^y))\n");
 	if(hard){POWL_DPRINTF("hard\n");}
