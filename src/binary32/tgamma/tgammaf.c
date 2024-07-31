@@ -36,6 +36,7 @@ typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_tgammaf(float x){
+  /* List of exceptional cases.  */
   static const struct {b32u32_u x; float f, df;} tb[] = {
     {{.u = 0x27de86a9u}, 0x1.268266p+47f, 0x1p22f},
     {{.u = 0x27e05475u}, 0x1.242422p+47f, 0x1p22f},
@@ -51,19 +52,19 @@ float cr_tgammaf(float x){
 
   b32u32_u t = {.f = x};
   uint32_t ax = t.u<<1;
-  if(__builtin_expect(ax>=(0xffu<<24), 0)){
-    if(ax==(0xffu<<24)){
-      if(t.u>>31){
+  if(__builtin_expect(ax>=(0xffu<<24), 0)){ /* x=NaN or +/-Inf */
+    if(ax==(0xffu<<24)){ /* x=+/-Inf */
+      if(t.u>>31){ /* x=-Inf */
 	errno = EDOM;
-	return __builtin_nanf("12");
+	return x / x; /* will raise the "Invalid operation" exception */
       }
-      return x;
+      return x; /* x=+Inf */
     }
-    return x + x; /* case x=NaN, where x+x ensures the invalid exception is
-                     set if x=sNaN */
+    return x + x; /* x=NaN, where x+x ensures the "Invalid operation"
+                     exception is set if x is sNaN */
   }
   double z = x;
-  if(__builtin_expect(ax<0x6d000000u, 0)){
+  if(__builtin_expect(ax<0x6d000000u, 0)){ /* |x| < 0x1p-18 */
     volatile double d = (0x1.fa658c23b1578p-1 - 0x1.d0a118f324b63p-1*z)*z - 0x1.2788cfc6fb619p-1;
     double f = 1.0/z + d;
     float r = f;
@@ -85,22 +86,22 @@ float cr_tgammaf(float x){
   /* compute k only after the overflow check, otherwise the case to integer
      might overflow */
   int k = fx;
-  if(__builtin_expect(fx==x, 0)){
+  if(__builtin_expect(fx==x, 0)){ /* x is integer */
     if(x == 0.0f){
       errno = ERANGE;
       return 1.0f/x;
     }
     if(x < 0.0f) {
       errno = EDOM;
-      return __builtin_nanf("12");
+      return 0.0f / 0.0f; /* should raise the "Invalid operation" exception */
     }
     double t0 = 1, x0 = 1;
     for(int i=1; i<k; i++, x0 += 1.0) t0 *= x0;
     return t0;
   }
-  if(__builtin_expect(x<-42.0f, 0)){
-    // for x < -42, x non-integer, |gamma(x)| < 2^-151
-    static const float sgn[2] = {0x1p-127, -0x1p-127};
+  if(__builtin_expect(x<-42.0f, 0)){ /* negative non-integer */
+    /* For x < -42, x non-integer, |gamma(x)| < 2^-151.  */
+    static const float sgn[2] = {0x1p-127f, -0x1p-127f};
     /* The C standard says that if the function underflows,
        errno is set to ERANGE. */
     errno = ERANGE;
@@ -128,7 +129,7 @@ float cr_tgammaf(float x){
   b64u64_u rt = {.f = f};
   float r = f;
   if(__builtin_expect(r==0.0f, 0)) errno = ERANGE;
-  // deal with exceptional cases
+  /* Deal with exceptional cases.  */
   if(__builtin_expect(((rt.u+2)&0xfffffff) < 8, 0)){
     for(unsigned j=0;j<sizeof(tb)/sizeof(tb[0]);j++) {
       if(t.u==tb[j].x.u) return tb[j].f + tb[j].df;
