@@ -103,8 +103,7 @@ def analyze_exp2poly(q):
 # err[17]=  -263.999874962087
 # err[18]=  -255.000000000000
 # abs. error before final product =  -250.297925397070
-# total rel. error =  -249.997996732862645
-
+# total rel. error =  -249.997704460729181
 def analyze_logpoly(p):
 	R64  = RealField(64,  rnd="RNDU")
 	R128 = RealField(128, rnd="RNDU")
@@ -115,12 +114,14 @@ def analyze_logpoly(p):
 	err = dict()
 	err[-1] = 2^-250.299 # Sollya polynomial's error
 	P = R(p)
+	# we take the absolute value of the coefficients
+	# to ensure we get an upper bound of the different values
 	P = [abs(P[18-i]) for i in [0..18]]
 	assert len(P) == 19, "len(P) == 19"
 	# mul_qint_11(r, x, &P[0])
 	r = y*P[0]
-	err[0] = (y.ulp()*P[0]) # ignored low part of y
-	err[0] *= y^17 # r has degree 1 one now and degree 18 at the end
+	err[0] = y.ulp()*P[0] # ignored low part of y
+	err[0] *= y^17 # r has degree 1 now and degree 18 at the end
 	r = R128(r)
 	y = R128(y)
 	for i in range(1,7+1):
@@ -131,7 +132,7 @@ def analyze_logpoly(p):
 		# mul_qint_22(r, r, x)
 		r_in = r
 		r = r*y # now r has degree i+1
-		errb = y*r_in.ulp() # ignored low limbs of the product
+		errb = r_in.ulp()*y # ignored low limbs of the product
 		errc = r_in*y.ulp()
 		errbc = (errb+errc)*y^(18-(i+1))
 		err[i] = erra+errbc
@@ -151,12 +152,14 @@ def analyze_logpoly(p):
 	r = P[i] + r
 	erra = R256(r).ulp()*2 # rounding error in the addition	
 	err[18] = erra
-
 	for i in range(-1, 18 + 1):
 		print("err["+str(i)+"]= ", log(err[i])/log(2.))
 	tot = add(err[i] for i in [-1..10])
 	print("abs. error before final product = ", log(tot)/log(2.))
-	rel = tot/(log(1 + 2^-11.999)/(2^-11.999*log(2.)))
+	# before the last product, r approximates log2(1+x)/x
+	# for |x| < 2^-11.999, |log2(1+x)/x| > 1.442
+	# thus the relative error is bounded by tot/1.442
+	rel = tot/1.442
 	rel += 2^-255 * 14 # relative rounding error of the product
 	print("total rel. error = ", R64(log(rel)/log(2.)))
 	

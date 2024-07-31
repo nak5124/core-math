@@ -1098,7 +1098,8 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 
 /* Given |x| < 2^-11.999 fitting in 128 bits,
 computes an approximation of log2(1 + x).
-Relative error at most 2^-249.591 (see analyze_q_logpoly() in powl.sage)
+Relative error at most 2^-249.997 (see analyze_logpoly() in
+accurate_analysis.sage)
 */
 inline static
 void q_logpoly(qint64_t* r, const qint64_t* x) {
@@ -1107,8 +1108,8 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 
 	   Coefficients for log2(1 + x)/x
 
-           Minimax polynomial from accurate_log2.sollya, with maximal
-           relative error < 2^-250.299.
+           Minimax polynomial of degree 18 from accurate_log2.sollya,
+           with maximal relative error < 2^-250.299.
 	*/
 	static const qint64_t P[19] = {
 		{.hh = 0x9b81e344cc4acd3f, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x0}, /* degree 18 */
@@ -1261,21 +1262,21 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	POWL_DPRINTF("get_hex(R(log2(1 + reducted) -"SAGE_QR"))\n",
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
 	/* As mentioned in q_logpoly(), the relative error on the result is
-           at most 2^-249.591:
-           r = log2(1+reducted) * (1 + eps) with |eps| <= 2^-249.591
+           at most 2^-249.997:
+           r = log2(1+reducted) * (1 + eps) with |eps| <= 2^-249.997
         */
 
 	add_qint(r, mlogr12, r);
 	/* Let us call r_in/r_out the values of r as input/output.
            From max_rh_over_rh_prime_all() in powl.sage, we have here
 	   |mlogr12/r_out| <= 2.002 and |r_in/r_out| <= 1.002.
-           The relative errors 2^-252.131 on mlogr12 and 2^-249.591 on r,
+           The relative errors 2^-252.131 on mlogr12 and 2^-249.997 on r,
            together with the sum's rounding error, yield an error bound of
-	     |r_out|*(2^-254 + 2.002*2^-252.131 + 1.002*2^-249.591)
-	     <= |r_out|*2^-249.112
+	     |r_out|*(2^-254 + 2.002*2^-252.131 + 1.002*2^-249.997)
+	     <= |r_out|*2^-249.392
 	   The total relative error computing log2(x) is therefore at most
-           2^-249.112:
-           r = log2(x) * (1 + eps) with |eps| <= 2^-249.112.
+           2^-249.392:
+           r = log2(x) * (1 + eps) with |eps| <= 2^-249.392.
 	*/
 
 	mul_qint_41(r, r, q_y);
@@ -1283,7 +1284,7 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
 	/* The product imparts an additional relative rounding error of 2^-254.
            The total relative error computing y log2(x) is thus at most
-	     (1 + 2^-249.112) * (1 + 2^-254) - 1 < 2^-249.064 */
+	     (1 + 2^-249.392) * (1 + 2^-254) - 1 < 2^-249.334 */
 }
 
 /* Let f be the low 20 bits of fracpart. Computes r and corr
@@ -1705,10 +1706,10 @@ long double cr_powl(long double x, long double y) {
 #endif
 
 	qint64_t q_r[1]; q_log2pow(q_r, x, y);
-        // q_r = y*log2|x| * (1 + eps_log) with |eps_log| < 2^-249.064
+        // q_r = y*log2|x| * (1 + eps_log) with |eps_log| < 2^-249.334
 
 	if(q_r->ex >= 15) {
-          // |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.064) > 32767
+          // |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.334) > 32767
 			if(q_r->sgn) { // y*log2|x| < -32768: underflow
 				return (sign * 0x1p-16445L)*.5L;
 			} else { // y*log2|x| > 32767: overflow
@@ -1719,13 +1720,13 @@ long double cr_powl(long double x, long double y) {
 	q_exp2(q_r, q_r);
         /* q_r = 2^(q_r_in) * (1 + eps_exp) with |eps_exp| < 2^-250.085
            and since q_r_in = y*log2|x| * (1 + eps_log)
-           with |eps_log| < 2^-249.064, and |q_r_in| < 2^15,
+           with |eps_log| < 2^-249.334, and |q_r_in| < 2^15,
            we have:
-           q_r_in = y*log2|x| + eps with |eps| < 2^15*|eps_log| < 2^-234.064,
+           q_r_in = y*log2|x| + eps with |eps| < 2^15*|eps_log| < 2^-234.334,
 
            thus q_r = |x|^y * (1 + eps_pow)
 
-           with |eps_pow| = |(1 + eps_exp) * 2^eps - 1| < 2^-234.592
+           with |eps_pow| = |(1 + eps_exp) * 2^eps - 1| < 2^-234.862
         */
 	unsigned rm = get_rounding_mode();
 
@@ -1745,8 +1746,8 @@ long double cr_powl(long double x, long double y) {
            If the hard case was not found by BaCSeL, then it is at distance
            >= 2^-m ulps from a rounding boundary.
 
-           On the other hand we have |z - x^y| < 2^-234.592 |x^y|, thus
-           |z - x^y| < 2^-234.592 * 2^63 ulp(x^y) = 2^-171.592 ulp(x^y).
+           On the other hand we have |z - x^y| < 2^-234.862 |x^y|, thus
+           |z - x^y| < 2^-234.862 * 2^63 ulp(x^y) = 2^-171.862 ulp(x^y).
            if x^y is a rounding boundary (i.e., exactly representable on
            65 bits), then it is not possible that BaCSeL missed it
            as soon as m <= 171.
