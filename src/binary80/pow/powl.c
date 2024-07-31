@@ -1287,7 +1287,8 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 }
 
 /* Let f be the low 20 bits of fracpart. Computes r and corr
-such that 2^(f/2^20)*2^corr = r*(1 + e) with |e| <= 2^-251.192
+such that 2^(f/2^20)*2^corr = r*(1 + e) with |e| < 2^-251.192,
+and |corr| < 2^-103.
 */
 inline static
 void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
@@ -1320,7 +1321,7 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
         // above
 	corr_l <<= 2; // shift out overlap
 
-        // the correction term is 2^exponent*(corr_h + corr_l/2^128)
+        // the correction term is 2^exponent/2^63*(corr_h + corr_l/2^128)
 
 	int sgn = corr_h < 0;
 	if(sgn) {
@@ -1366,27 +1367,31 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	   |r - 2^(f/2^20)*2^-corr| <= |r - tmp0*...tmp3| + |(2^e0 - 1)*tmp0...tmp3|
 	                            <= 14*2^-255|r| + |2^e0-1|(1 + 14*2^-255)|r|
 	   This gives a total relative error of at most
-	     14*2^-255 + (1 + 14*2^-255)*(2^(2^-292.043) - 1) <= 2^-251.192
+	     14*2^-255 + (1 + 14*2^-255)*(2^(2^-292.043) - 1) < 2^-251.192
 	*/
 }
 
-/* Approximates 2^x with a polynomial for |x| < 2^-20.
-Absolute error is bounded by 2^-253.967 (see accurate_analysis.sage)
+/* Approximates 2^x with a polynomial for |x| < 2^-20 + 2^-103.
+Absolute error is bounded by 2^-253.966 (see accurate_analysis.sage)
 */
 inline static
 void q_exp2poly(qint64_t* r, const qint64_t* x) {
+  /* This is a polynomial of degree 10 approximating 2^x on
+     [-2^-20-2^-103,2^-20+2^-103] with relative error bounded by 2^-261.066.
+     Polynomial output with output_exppoly() from powl.sage.
+  */
 	static const qint64_t Q[11] = {
-		{.hh = 0xf267a8ac5c749bda, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -28, .sgn = 0x0}, /* degree 10 */
-		{.hh = 0xda929e9caf40bee9, .hl = 0x28ba755cfbeb15af, .lh = 0x0, .ll = 0x0, .ex = -24, .sgn = 0x0}, /* degree 9 */
-		{.hh = 0xb160111d2e411fec, .hl = 0x7ff30374d01cdca8, .lh = 0x0, .ll = 0x0, .ex = -20, .sgn = 0x0}, /* degree 8 */
-		{.hh = 0xffe5fe2c45863435, .hl = 0x8a8e64398706e1c3, .lh = 0x0, .ll = 0x0, .ex = -17, .sgn = 0x0}, /* degree 7 */
-		{.hh = 0xa184897c363c3b7a, .hl = 0x58544c3591a0f9f6, .lh = 0x62916db41ee8676d, .ll = 0x9a0f49f229e8311a, .ex = -13, .sgn = 0x0}, /* degree 6 */
-		{.hh = 0xaec3ff3c53398883, .hl = 0x8bfb4d28a5f61982, .lh = 0xbb69ccdf430a035d, .ll = 0xc86feff9c1904fe0, .ex = -10, .sgn = 0x0}, /* degree 5 */
-		{.hh = 0x9d955b7dd273b94e, .hl = 0x65df05a9f7562839, .lh = 0x23c7529f31c88ec9, .ll = 0x10b5dbd81066669c, .ex = -7, .sgn = 0x0}, /* degree 4 */
-		{.hh = 0xe35846b82505fc59, .hl = 0x9d3b15d995e96f74, .lh = 0xf5c47444da0110e2, .ll = 0x5a29dd80d795db82, .ex = -5, .sgn = 0x0}, /* degree 3 */
-		{.hh = 0xf5fdeffc162c7543, .hl = 0x78b583764b9afe55, .lh = 0x1d13a8e186734ea6, .ll = 0x15f49ddd89a9bc73, .ex = -3, .sgn = 0x0}, /* degree 2 */
-		{.hh = 0xb17217f7d1cf79ab, .hl = 0xc9e3b39803f2f6af, .lh = 0x40f343267298b62d, .ll = 0x8a0d175b8bb03a5a, .ex = -1, .sgn = 0x0}, /* degree 1 */
-		{.hh = 0x8000000000000000, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x0}, /* degree 0 */
+    {.hh = 0xf267a8ac5c749bda, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -28, .sgn = 0x0},
+    {.hh = 0xda929e9caf40bee9, .hl = 0x28ba755cfbeb15af, .lh = 0x0, .ll = 0x0, .ex = -24, .sgn = 0x0},
+    {.hh = 0xb160111d2e411fec, .hl = 0x7ff30374d01cdca8, .lh = 0x0, .ll = 0x0, .ex = -20, .sgn = 0x0},
+    {.hh = 0xffe5fe2c45863435, .hl = 0x8a8e64398706e1c3, .lh = 0x0, .ll = 0x0, .ex = -17, .sgn = 0x0},
+    {.hh = 0xa184897c363c3b7a, .hl = 0x58544c3591a0f9f6, .lh = 0x62916db41ee8676d, .ll = 0x9a0f49f2428577c7, .ex = -13, .sgn = 0x0},
+    {.hh = 0xaec3ff3c53398883, .hl = 0x8bfb4d28a5f61982, .lh = 0xbb69ccdf430a035d, .ll = 0xc86feff9c6e5d36f, .ex = -10, .sgn = 0x0},
+    {.hh = 0x9d955b7dd273b94e, .hl = 0x65df05a9f7562839, .lh = 0x23c7529f31c88ec9, .ll = 0x10b5dbd81066669c, .ex = -7, .sgn = 0x0},
+    {.hh = 0xe35846b82505fc59, .hl = 0x9d3b15d995e96f74, .lh = 0xf5c47444da0110e2, .ll = 0x5a29dd80d795db82, .ex = -5, .sgn = 0x0},
+    {.hh = 0xf5fdeffc162c7543, .hl = 0x78b583764b9afe55, .lh = 0x1d13a8e186734ea6, .ll = 0x15f49ddd89a9bc73, .ex = -3, .sgn = 0x0},
+    {.hh = 0xb17217f7d1cf79ab, .hl = 0xc9e3b39803f2f6af, .lh = 0x40f343267298b62d, .ll = 0x8a0d175b8bb03a5a, .ex = -1, .sgn = 0x0},
+    {.hh = 0x8000000000000000, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = 0, .sgn = 0x0},
 	};
 
 	mul_qint_11(r, &Q[0], x); // relative error of 2^-64 is fine here
@@ -1456,17 +1461,22 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 
 	qint64_t corr[1], exp2frac[1];
 	q_exp2xs(exp2frac, fracpart, corr);
+        // 2^(low(fracpart)/2^20) * 2^corr = exp2frac * (1 + e)
+        // with |e| < 2^-251.192
 	POWL_DPRINTF("exp2frac = "SAGE_QR"\n",
 	   exp2frac->hh, exp2frac->hl, exp2frac->lh, exp2frac->ll,
 	   exp2frac->ex, exp2frac->sgn);
 	POWL_DPRINTF("corr = "SAGE_QR"\n",
 	   corr->hh, corr->hl, corr->lh, corr->ll, corr->ex, corr->sgn);
+
+        /* Now we have to multiply exp2frac by 2^reducted and divide
+           by 2^corr, thus multiply by 2^(reducted-corr) */
 	corr->sgn ^= 1;
 	add_qint(reducted, corr, reducted);
-	/* Remark that the result is at most 2^-20 + 2^-103 - 2^-87 < 2^-20.
-	   Therefore the addition's rounding error is at most 2^-254*2^-19 = 2^-273. 
-	   This contributes a relative error of 2^(2^-273) - 1 <= 2^-273.528 to the
-	   final result.
+	/* Remark that the result is at most 2^-20 + 2^-103 < 2^-19.999.
+	   Therefore the addition's rounding error is at most
+           2*ulp_256(2^-19.999) = 2^-274. This contributes a relative error
+           of 2^(2^-274) - 1 <= 2^-274.528 to the final result.
 	*/
 	POWL_DPRINTF("red = "SAGE_QR"\n",
 	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,

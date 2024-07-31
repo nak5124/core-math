@@ -1,36 +1,29 @@
 # based on ../../binary64/pow/qint.sage
 # analyze_exp2poly()
 # err[-1]=  -261.066000000000
-# err[0]=  -310.078724844166
-# err[1]=  -330.999999999996
-# err[2]=  -306.999999999997
-# err[3]=  -283.999999999996
-# err[4]=  -259.999999999997
-# err[5]=  -363.999990369004
-# err[6]=  -340.999990369004
-# err[7]=  -318.999990369004
-# err[8]=  -296.999990369004
-# err[9]=  -274.999990369004
+# err[0]=  -310.068724844166
+# err[1]=  -330.990999999996
+# err[2]=  -306.991999999997
+# err[3]=  -283.992999999995
+# err[4]=  -259.993999999997
+# err[5]=  -363.994990369004
+# err[6]=  -340.995990369004
+# err[7]=  -318.996990369004
+# err[8]=  -296.997990369004
+# err[9]=  -274.998990369004
 # err[10]=  -254.000000000000
-# abs. error =  -253.967068875115
-# rel. error =  -253.967069828789
-def analyze_exp2poly():
+# abs. error =  -253.966977052461
+# rel. error =  -253.966978006136
+# q is the polynomial string output by "sollya accurate_exp2.sollya"
+def analyze_exp2poly(q):
 	R64  = RealField(64,  rnd="RNDU")
 	R128 = RealField(128, rnd="RNDU")
 	R192 = RealField(192, rnd="RNDU")
 	R256 = RealField(256, rnd="RNDU")
-	y = R64(2^-20)
-	Q = [R256('0x1.e4cf5158b8e937b4p-28',16).exact_rational(),
- R256('0x1.b5253d395e817dd25174eab9f7d62b5ep-24',16).exact_rational(),
- R256('0x1.62c0223a5c823fd8ffe606e9a039b95p-20',16).exact_rational(),
- R256('0x1.ffcbfc588b0c686b151cc8730e0dc386p-17',16).exact_rational(),
- R256('0x1.430912f86c7876f4b0a8986b2341f3ecc522db683dd0cedb341e93e453d06234p-13',16).exact_rational(),
- R256('0x1.5d87fe78a673110717f69a514bec330576d399be861406bb90dfdff383209fcp-10',16).exact_rational(),
- R256('0x1.3b2ab6fba4e7729ccbbe0b53eeac5072478ea53e63911d92216bb7b020cccd38p-7',16).exact_rational(),
- R256('0x1.c6b08d704a0bf8b33a762bb32bd2dee9eb88e889b40221c4b453bb01af2bb704p-5',16).exact_rational(),
- R256('0x1.ebfbdff82c58ea86f16b06ec9735fcaa3a2751c30ce69d4c2be93bbb135378e6p-3',16).exact_rational(),
- R256('0x1.62e42fefa39ef35793c7673007e5ed5e81e6864ce5316c5b141a2eb7176074b4p-1',16).exact_rational(),
- R256('0x1p+0', 16).exact_rational()]
+	y = R64(2^-19.999)
+	R.<x> = RealField(256)[]
+	Q = R(q)
+	Q = [Q[10-i] for i in [0..10]]
 	assert len(Q) == 11, "len(Q)==11"
 	err = dict()
 	err[-1] = 2^-261.066

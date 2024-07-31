@@ -913,3 +913,10 @@ def analyze_q_logpoly(p):
    # add relative error < 2^-250.299 from the polynomial
    err_rel = err[18] + 2^-250.299 + err[18]*2^-250.299
    print ("err=", log(err_rel)/log(2.))
+
+# p is the output from "sollya accurate_exp2.sollya"
+def output_exppoly(p):
+   R.<x> = RealField(256)[]
+   p = R(p)
+   for d in range(10,-1,-1):
+      print_qint (p[d].exact_rational())
