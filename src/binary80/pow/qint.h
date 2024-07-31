@@ -567,7 +567,7 @@ add_qint (qint64_t *r, const qint64_t *a, const qint64_t *b) {
 }
 
 /* same as add_qint, but only considers the upper 2 limbs of a and b,
-   with rounding error < 2 ulps(128) */
+   with rounding error < 2 ulp_128(r) */
 static inline void
 add_qint_22 (qint64_t *r, const qint64_t *a, const qint64_t *b) {
   if (a->rh == 0) {

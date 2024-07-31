@@ -1,21 +1,23 @@
 # based on ../../binary64/pow/qint.sage
-# analyze_exp2poly()
-# err[-1]=  -261.066000000000
-# err[0]=  -310.068724844166
-# err[1]=  -330.990999999996
-# err[2]=  -306.991999999997
-# err[3]=  -283.992999999995
-# err[4]=  -259.993999999997
-# err[5]=  -363.994990369004
-# err[6]=  -340.995990369004
-# err[7]=  -318.996990369004
-# err[8]=  -296.997990369004
-# err[9]=  -274.998990369004
-# err[10]=  -254.000000000000
-# abs. error =  -253.966977052461
-# rel. error =  -253.966978006136
 # q is the polynomial string output by "sollya accurate_exp2.sollya"
+# analyze_exp2poly(q)
+# err[-1]=  -261.066000000000
+# err[0]=  -290.069724844166
+# err[1]=  -328.756371037638
+# err[2]=  -304.859494179307
+# err[3]=  -281.671700703331
+# err[4]=  -257.902813711393
+# err[5]=  -360.995874962087
+# err[6]=  -337.996874962087
+# err[7]=  -315.997874962087
+# err[8]=  -293.998874962087
+# err[9]=  -271.999874962087
+# err[10]=  -254.000000000000
+# abs. error =  -253.896573138428
+# rel. error =  -253.896572184093
 def analyze_exp2poly(q):
+	# since all coefficients of Q are positive, we can get an upper
+	# bound of each variable by taking y positive and rounding upwards
 	R64  = RealField(64,  rnd="RNDU")
 	R128 = RealField(128, rnd="RNDU")
 	R192 = RealField(192, rnd="RNDU")
@@ -25,33 +27,46 @@ def analyze_exp2poly(q):
 	Q = R(q)
 	Q = [Q[10-i] for i in [0..10]]
 	assert len(Q) == 11, "len(Q)==11"
+	for i in [0..10]:
+	    assert Q[i]>=0, "Q[i]>=0"
 	err = dict()
-	err[-1] = 2^-261.066
+	err[-1] = 2^-261.066 # polynomial error given by Sollya
 	# mul_qint_11(r, &Q[0], x)
 	r = y*Q[0]
-	err[0] = (y.ulp()*Q[0])*y^10 # ignored low part of y
+	err[0] = y.ulp()*Q[0] # ignored low part of y
+	err[0] *= y^9         # r has degree 1 now, and degree 10 at the end
 	r = R128(r)
 	y = R128(y)
 	for i in range(1,4+1):
+		# check Q[i] is exact representable on 128 bits
+		assert R128(Q[i]) == Q[i], "R128(Q[i]) == Q[i]"
 		# add_qint_22(r, &Q[i], r)
 		r = Q[i] + r
-		erra = R256(r).ulp()*2 # rounding error in the addition
-		errb = r.ulp() # error due to the ignored 128 low bits of r_in
+		# Warning: the error of add_qint_22 is bounded by 2 ulp_128(r)
+		# not 2 ulp_256(r)
+		erra = R128(r).ulp()*2 # rounding error in the addition
+                # r has degree i now
+		erra *= y^(10-i)
 		# mul_qint_22(r, r, x)
+		r_in = r
 		r = r*y
-		errc = y*r.ulp()
-		errd = r*y.ulp() # ignored low parts of the product
-		err[i] = (erra+errb+errc+errd)*y^(10 - i)
+		errc = r_in.ulp()*y # ignored low part of the product
+		errd = r_in*y.ulp() # ignored low part of the product
+                # r has degree i+1 now
+		errcd = (errc+errd)*y^(10-(i+1))
+		err[i] = erra+errcd
 	r = R256(r)
 	y = R256(y)
 	for i in range(5, 9+1):
 		# add_qint(r, &Q[i], r)
 		r = Q[i] + r
 		erra = R256(r).ulp()*2 # rounding error in the addition	
+		erra *= y^(10-i)
 		# mul_qint(r, r, x)
 		r = r*y
 		errb = r.ulp() * 14 # rounding error of the product
-		err[i] = (erra+errb)*y^(10 - i)
+		errb *= y^(10-(i+1))
+		err[i] = erra+errb
 	# add_qint(r, &Q[10], r)
 	r = Q[10] + r
 	err[10] = r.ulp()*2
@@ -59,7 +74,10 @@ def analyze_exp2poly(q):
 		print("err["+str(i)+"]= ", log(err[i])/log(2.))
 	tot = add(err[i] for i in [-1..10])
 	print("abs. error = ", log(tot)/log(2.))
-	print("rel. error = ", log(tot)/log(2.) - 2^-20)
+	# since |y| <= 2^-19.999, |2^y| >= 2^(-2^-19.999)
+	# thus the relative error is bounded by tot/2^(-2^-19.999)
+	rel = tot/2^(-y)
+	print("rel. error = ", log(rel)/log(2.))
 
 # based on ../../binary64/qint.h
 # sage: analyze_logpoly()
