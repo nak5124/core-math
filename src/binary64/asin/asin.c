@@ -27,6 +27,7 @@ SOFTWARE.
 #include <errno.h>
 #include <math.h>
 #include <fenv.h>
+#include <stdint.h>
 
 #ifdef __x86_64__
 #include <x86intrin.h>
@@ -51,8 +52,8 @@ static inline int get_rounding_mode (void)
 
 typedef unsigned __int128 u128;
 typedef __int128 i128;
-typedef unsigned long u64;
-typedef long i64;
+typedef uint64_t u64;
+typedef int64_t i64;
 typedef union {u128 a; u64 b[2];} u128_u;
 typedef union {double f; unsigned long u;} b64u64_u;
 
@@ -137,11 +138,11 @@ static double asin_acc(double x){
 
   const unsigned rm = get_rounding_mode ();
   b64u64_u t = {.f = x};
-  int se = ((t.u>>52)&0x7ff)-0x3ff;
-  i64 xsign = t.u&(1l<<63);
+  int se = (((i64)t.u>>52)&0x7ff)-0x3ff;
+  i64 xsign = t.u&((i64)1<<63);
   double ax = __builtin_fabs(x);
   u128_u fi;
-  u64 sm = (t.u<<11)|1l<<63;
+  u64 sm = (t.u<<11)|(i64)1<<63;
   u128_u sm2 = {.a = (u128)sm * sm};
   if(__builtin_expect(ax<0.0131875,0)) {
     int ss = 2*se;
@@ -159,8 +160,8 @@ static double asin_acc(double x){
     double c2 = ch[2] + ax*ch[3];
     c0 += x2*c2;
     b64u64_u ic = {.f = c0*c.f + 64.0};
-    int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7)))>>(52-6);
-    u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
+    int indx = ((ic.u&(~0ul>>12)) + ((i64)1<<(52-7)))>>(52-6);
+    u64 cm = (c.u<<11)|(i64)1<<63; int ce = ((i64)c.u>>52) - 0x3ff;
     u128_u cm2 = {.a = (u128)cm * cm};
     const int off = 36 - 22 + 14;
     int ss = 128 - 104 + 2*se + off;
@@ -169,7 +170,7 @@ static double asin_acc(double x){
     shl(&cm2, sc);
     sm2.a += cm2.a;
     i64 h = sm2.b[1];
-    u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
+    u64 ixm = (ixx.u&(~0ul>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
     i64 dc = mh(h, ixm);
     u128_u dsm2 = {.a = (u128)imul(dc,cm>>1)};
     dsm2.a <<= 13;
@@ -285,11 +286,11 @@ double cr_asin(double x){
   static const double ch[] = {0x1.ffb77e06e54aap+5, -0x1.3b200d87cc0fep+5, 0x1.79457faf679e3p+4, -0x1.dc7d5a91dfb7ep+2};
   const unsigned rm = get_rounding_mode ();
   b64u64_u t = {.f = x};
-  int e = ((t.u>>52)&0x7ff)-0x3ff;
+  int e = (((i64)t.u>>52)&0x7ff)-0x3ff;
   /* x = 2^e*y with 1 <= |y| < 2 */
-  i64 xsign = t.u&(1l<<63);
+  i64 xsign = t.u&((i64)1<<63);
   /* xsign=0 for x > 0, xsign=1 for x < 0 */
-  u64 sm = (t.u<<11)|1l<<63;
+  u64 sm = (t.u<<11)|(i64)1<<63;
   /* sm contains in its high 53 bits: the implicit leading bit, and the
      the 52 explicit bits from the significand, thus |x| = 2^(e+1)*sm/2^64
      where 2^63 <= sm < 2^64 */
@@ -402,7 +403,7 @@ double cr_asin(double x){
     c0 += 64;
     /* now c0 approximates 64+64*acos(x)/(pi/2), which lies in [64,128] */
     b64u64_u ic = {.f = c0};
-    int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7))) >> (52-6);
+    int indx = ((ic.u&(~0ul>>12)) + ((i64)1<<(52-7))) >> (52-6);
     /* indx = round(c0)-64. We have indx < 64 since c0 is decreasing with
        |x|, thus the largest value is obtained for |x| = 2^-6, and for this
        value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
@@ -414,7 +415,7 @@ double cr_asin(double x){
        thus:
        y = y[i] + asin(x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]))
        where x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is small. */
-    u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
+    u64 cm = (c.u<<11)|(i64)1<<63; int ce = ((i64)c.u>>52) - 0x3ff;
     /* cm contains in its high bits the 53 significant bits from c,
        which approximates sqrt(1-x^2), including the implicit bit,
        ce is the corresponding exponent, such that c = 2^ce*cm/2^63.
@@ -448,7 +449,7 @@ double cr_asin(double x){
     i64 h = sm2.b[1];
     /* h/2^64 approximates 2^50*(x^2+c^2) mod 1, with error bounded by
        1/2^64 for the truncated part sm2.b[0]/2^128. */
-    u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
+    u64 ixm = (ixx.u&(~0ul>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
     /* ixx = ixm*2^(ixe-52) */
     /* x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is computed as
        (x-sin(y[i]))*cos(y[i]) - (sqrt(1-x^2)-cos(y[i]))*sin(y[i]) */
@@ -529,8 +530,8 @@ double cr_asin(double x){
     /* The error is bounded by 24.08*2^59 here, thus by 386*2^55.
        For reference, the original (non proven) error bounds are:
        u.a += 50l<<55 and d.a -= 27l<<55. */
-    u.a += 386l<<55;
-    d.a -= 386l<<55;
+    u.a += (i64)386<<55;
+    d.a -= (i64)386<<55;
     if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
       return asin_acc(x);
     }
