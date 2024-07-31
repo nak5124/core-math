@@ -1717,6 +1717,14 @@ long double cr_powl(long double x, long double y) {
 	}
 
 	q_exp2(q_r, q_r);
+	/* The relative error of the input is at most 2^-249.064 (see q_log2pow).
+	   If we don't end up overflowing, this implies an absolute error of
+	   at most 2^-235.063. This absolute error translates to a relative error
+	   2^(2^-235.063) - 1 <= 2^-235.591.
+	   Furthermore, q_exp2 introduces a relative error at most 2^-250.085.
+	   The total relative error on the result is therefore at most
+	     (1 + 2^-235.591)*(1+2^-250.085) - 1 <= 2^-235.590.
+	*/
 	unsigned rm = get_rounding_mode();
 
 	qint64_t final[1];
@@ -1728,6 +1736,8 @@ long double cr_powl(long double x, long double y) {
 	POWL_DPRINTF("get_hex(R(1 - r/x^y))\n");
 	if(hard){POWL_DPRINTF("hard\n");}
 	if(hard && exact_if_hard) {
+	  // TODO: save inexact flag and restore it here
+		// Can we do it without a library call ?
 		POWL_DPRINTF("Boundary!\n");
 		exactify(q_r);
 		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
