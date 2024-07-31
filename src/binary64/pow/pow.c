@@ -236,8 +236,7 @@ static inline void q_2 (dint64_t *r, dint64_t *y) {
 }
 
 /* Given |y| < 0.00016923 < 2^-12.52, put in r an approximation of exp(y),
-   with 0.999830 < r < 1.000170, relative error bounded by 2^-242.00, and
-   absolute error bounded by 2^-242.00.
+   with 0.999830 < r < 1.000170, absolute/relative error bounded by 2^-241.11.
    The error analysis is from the analyze_q3() function in the accompanying
    file qint.sage. */
 static inline void q_3 (qint64_t *r, qint64_t *y) {
@@ -297,9 +296,9 @@ static inline void q_3 (qint64_t *r, qint64_t *y) {
   }
 
   /* The function analyze_q3() from the accompanying qint.sage file gives
-     a total absolute error bounded by 2^-242.006. Since r > exp(-0.00016923),
-     this corresponds to a relative error < 2^-242.006/exp(-0.00016923)
-     < 2^-242.00. */
+     a total absolute error bounded by 2^-241.113. Since r > exp(-0.00016923),
+     this corresponds to a relative error < 2^-241.113/exp(-0.00016923)
+     < 2^-241.11. */
 }
 
 /**************** polynomial approximations of log(1+x) **********************/
@@ -1112,7 +1111,7 @@ static void exp_2 (dint64_t *r, dint64_t *x) {
 }
 
 /* put in r an approximation of exp(x), for |x| < 744.45,
-   with relative error < 2^-241.99 */
+   with relative error < 2^-241.10 */
 static void exp_3 (qint64_t *r, qint64_t *x) {
   qint64_t K, y;
 
@@ -1154,7 +1153,7 @@ static void exp_3 (qint64_t *r, qint64_t *x) {
   int64_t i2 = (k >> 6) & 0x3f;
   int64_t i1 = k & 0x3f;
 
-  q_3 (r, &y); /* relative error bounded by 2^-242.00, with |r| < 1.0002 */
+  q_3 (r, &y); /* relative error bounded by 2^-241.11, with |r| < 1.0002 */
 
   mul_qint (r, &T1_3[i2], r);
   /* the rounding error of mul_qint() is bounded by 14 ulps, which translates
@@ -1167,11 +1166,11 @@ static void exp_3 (qint64_t *r, qint64_t *x) {
      the approximation error for T2_3[i2] is bounded by 2^-128 relatively. */
 
   /* Total relative errors:
-     2^-242.00 from q_3()
+     2^-241.11 from q_3()
      14*2^-255 and 2^-256 from the multiplication by T1_3[i2]
      14*2^-255 and 2^-256 from the multiplication by T2_3[i1].
-     With e1=2^-242.00, e2=14*2^-255 and e3=2^-256, this gives:
-     (1+e1)*(1+e2)^2*(1+e3)^2 - 1 < 2^-241.99. */
+     With e1=2^-241.11, e2=14*2^-255 and e3=2^-256, this gives:
+     (1+e1)*(1+e2)^2*(1+e3)^2 - 1 < 2^-241.10. */
 
   r->ex = r->ex + M; /* exact */
 }
@@ -1821,17 +1820,17 @@ double cr_pow (double x, double y) {
      qR = y*log|x| * (1+eps1) with |eps1| < 2^-250.59 */
 
   qint64_t qZ;
-  exp_3 (&qZ, &qR); /* relative error < 2^-241.99:
-                       qZ = exp(qR) * (1+eps2) with |eps2| < 2^-241.99 */
+  exp_3 (&qZ, &qR); /* relative error < 2^-241.10:
+                       qZ = exp(qR) * (1+eps2) with |eps2| < 2^-241.10 */
 
   /* We thus have qZ = |x|^y * exp(y*log|x|*eps1) * (1+eps2).
      Since y*log|x| < 744.45, we have |y*log|x|*eps1| < 744.45*2^-250.59
      < eps3 = 2^-241.049 thus the relative error is bounded by
-     exp(eps3)*(1+eps2)-1 < 2^-240.44.
-     This corresponds to an error of at most 2^-240.44*2^256 < 48309 ulps. */
+     exp(eps3)*(1+eps2)-1 < 2^-240.07.
+     This corresponds to an error of at most 2^-240.07*2^256 < 62433 ulps. */
 
   /* extra rounding test */
-#define ERR_BND_3 47 /* floor(48309/2^10) */
+#define ERR_BND_3 60 /* floor(62433/2^10) */
   uint64_t r1 = qZ.hh << 54 | qZ.hl >> 10;
   uint64_t r2 = qZ.hl << 54 | qZ.lh >> 10;
   uint64_t r3 = qZ.lh << 54 | qZ.ll >> 10;
