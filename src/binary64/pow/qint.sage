@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # internal routine
 def get_qint(hh,hl,lh,ll,ex):
    return 2^ex*(hh/2^63+hl/2^127+lh/2^191+ll/2^255)

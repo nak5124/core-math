@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def sinh_ok(x,k):
    R = RealField(53+k)
    y = sinh(R(x))

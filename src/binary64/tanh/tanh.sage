@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def fast_two_sum(a,b):
    hi = a+b
    e = hi-a

@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # inv_dint()
 # hmin i= 0 9223372036854775808
 # hmin i= 2 9439544818968559616

@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # print bacsel command for 2^(e-1) <= x < 2^e
 def bacsel_doit(e):
    assert -1073 <= e, "-1073 <= e"

@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def print_T2():
    print ("static const long double T2[32][2] = {")
    R = RealField(64)
