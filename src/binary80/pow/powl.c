@@ -1086,7 +1086,7 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	bool b1 = (uint64_t)(ml + eps) <= (uint64_t)(2*eps); 
 	*fail = b1;
 
-	// Denormals *inside* the computation don't seem to pause a problem
+	// Denormals *inside* the computation don't seem to be a problem
 	// given the error analysis (we used absolute bounds mostly)
 
 	// Infinity output case
