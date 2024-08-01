@@ -186,7 +186,7 @@ main (int argc, char *argv[])
       for (int r = 0; r < repeat; r++) {
         TYPE_UNDER_TEST accu = 0;
         for (int i = 0; i < count; i++) {
-          accu = CALL_LATENCY(i);
+          CALL_LATENCY(accu, i);
         }
       }
     } else {
