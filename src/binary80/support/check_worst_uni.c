@@ -136,7 +136,7 @@ check (long double x)
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-  if (is_equal (z1, z2) == 0) {
+	if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%La ref=%La z=%La\n", x, z1, z2);
     fflush(stdout);
 #ifdef DO_NOT_ABORT
@@ -182,12 +182,14 @@ doloop(void)
   for (int i = 0; i < count; i++) {
     long double x = items[i];
     tests ++;
-    if (check (x))
-      failures ++;
+    int c = check(x);
+    if (c)
+      {failures ++;}
 #ifdef WORST_SYMMETRIC
     tests ++;
-    if (check (-x))
-      failures ++;
+    c = check(-x);
+    if (c)
+      {failures ++;}
 #endif
   }
 
