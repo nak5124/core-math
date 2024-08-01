@@ -301,7 +301,10 @@ static inline void qint_fromsi(qint64_t* a, int32_t d) {
 	a->hl = a->lh = a->ll = 0;
 }
 
-void qint_subnormalize(qint64_t* a, const qint64_t* x) {
+// expects x->ex >= -16447
+// Causes a loss of precision for very small numbers. The introduced
+// error is at most 2^-256|x|.
+void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 	if(__builtin_expect(!x->hh, 0)) {
 		cp_qint(a, &ZERO_Q);
 		a->sgn = x->sgn;
@@ -312,18 +315,15 @@ void qint_subnormalize(qint64_t* a, const qint64_t* x) {
 		int shiftby = -x->ex - 16383 + 1;
 		POWL_DPRINTF("shiftby = %d\n", shiftby);
 		a->ex = -16383;
-		if(__builtin_expect(shiftby > 64, 0)) {
-			a->hh = 0; a->hl = 1ul << 62; a->lh = a->ll = 0;
-			a->sgn = x->sgn;
-			return;
-		}
-
-		if(__builtin_expect(shiftby == 64, 0)) {
+		if(__builtin_expect(shiftby >= 64, 0)) {
+			shiftby -= 64;
 			a->hh = 0;
-			a->hl = x->hh;
-			a->lh = x->hl;
-			a->ll = x->ll;
+			a->hl = x->hh >> shiftby;
+			a->lh = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
+			a->ll = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
+			*extralow = (x->lh << (64 - shiftby)) | (x->ll >> shiftby);
 			a->sgn = x->sgn;
+
 			return;
 		}
 
@@ -332,26 +332,31 @@ void qint_subnormalize(qint64_t* a, const qint64_t* x) {
 		a->hl = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
 		a->lh = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
 		a->ll = (x->lh << (64 - shiftby)) | (x->ll >> shiftby);
+		*extralow = x->ll << (64 - shiftby);
+		a->sgn = x->sgn;
+
 		return;
 	}
 	cp_qint(a, x);
+	*extralow = 0;
 }
 
 // Subnormalization is already done, this only deals with infinities/zeroes
 // and rounding.
-long double qint_told(qint64_t* a, unsigned rm, bool invert, bool* hard) {
+long double qint_told(qint64_t* a, uint64_t extralow,
+unsigned rm, bool invert, bool* hard) {
 	bool f = false;
 	if(rm==FE_TONEAREST) {
 		a->hh += (a->hl>>63);
 		f = a->hl>>63;
 		a->hl ^= (1ul << 63);
-		if(a->hl == 0 && a->lh == 0 && a->ll == 0 && (a->hh&1)) {
+		if(a->hl == 0 && a->lh == 0 && a->ll == 0 && extralow==0 && (a->hh&1)) {
 		// We were on the rounding boundary and rounded away instead of to zero
 			a->hh -= 1;
 			f = false;
 		} 
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
-		a->hh += a->hl||a->lh||a->ll;
+		a->hh += a->hl||a->lh||a->ll||extralow;
 		f = true;
 	}
 
@@ -360,6 +365,7 @@ long double qint_told(qint64_t* a, unsigned rm, bool invert, bool* hard) {
 	if(__builtin_expect(f && (a->hh == 0), 0)) {// overflow
 			a->hh = 1ul << 63;
 
+			extralow = (extralow >> 1) | (a->ll << 63);
 			a->ll = (a->ll >> 1) | (a->lh << 63);
 			a->lh = (a->lh >> 1) | (a->hl << 63);
 			a->hl = (a->hl >> 1) | (a->hl << 63); // Sign extend
@@ -387,20 +393,48 @@ long double qint_told(qint64_t* a, unsigned rm, bool invert, bool* hard) {
            (see analysis of cr_powl in powl.c).
 	   Therefore, if d != 0 and d != -1, then the rounding test must pass
 	   because this implies that the distance to the rounding boundary is
-	   at least 2^(-64-128) > 2^-234.862.
+	   at least 2^(-64-128) > 2^-234.861 (assume a normal result).
+	   If we are in the denormal range, d has even more relative weight
+	   and this stays true.
 	*/
 	if(__builtin_expect(d != 0 && d+1 != 0, 1)) {*hard = false;}
 	else {
-		d = ((unsigned __int128)d) << 64; d += a->ll; // avoid UB
+		d = d << 64; d += a->ll; uint64_t d_extra = extralow;
+
 	  /* d holds the distance to the rounding boundary, scaled by 2^-128.*/
 		unsigned __int128 eps = a->hh; eps <<= 64;
+		uint64_t eps_extra  = 0;
+
 	  /* If we didn't do anymore scaling this would correspond to a relative
-	     error of 2^-128. Since the relative error is < 2^-234.862
-             Therefore, shift by 234 - 128 right.
+	     error of 2^-128. The relative error is < 2^-234.861
+		   therefore, shift by 234 - 128 right.
 	  */
+		eps_extra = (uint64_t)(eps >> (234 - 128 - 64));
+	  // Grab the highest low bits which would be lost
 		eps >>= 234 - 128;
-                eps += 1; // Make sure we over-approximate eps.
-		*hard = (d + eps) <= 2*eps;
+		eps_extra += 1; // Make sure we over-approximate eps.
+
+		/* The scaling introduces an error at most 1 lsb of eps_extra. We know that
+		   initially a's MSB is at most at position 65 counting from the highest bit
+		   of the mantissa. Therefore 1 lsb of eps_extra has relative weight
+	     2^(-255 - 64 + 65) = 2^-254.
+
+	     Failure of the rounding test therefore implies that
+	       |z - r| <= (2^-234 + 2^-254)|z|
+		*/
+
+		/* Implements the usual rounding test d + eps <= 2*eps on 192 bits */
+		uint64_t d_plus_eps_extra = eps_extra + d_extra; 
+		unsigned __int128 d_plus_eps = d + eps;
+		if(d_plus_eps_extra < eps_extra) {
+			d_plus_eps++;
+		}
+
+		uint64_t eps2_extra = eps_extra << 1;
+		unsigned __int128 eps2 = (eps << 1) | (eps_extra >> 63);
+
+		*hard = (d_plus_eps < eps2) ||
+	          (d_plus_eps == eps2 && d_plus_eps_extra < eps2_extra);
 	}
 
 	if(__builtin_expect(a->ex >= 16384, 0)) {

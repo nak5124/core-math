@@ -1183,7 +1183,7 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	// Uses the high 7 bits of x's mantissa.
 	int i1 = cvt_x.m>>56 & 0x7f; // index in the coarse[] table
 	lut_t l = coarse[i1];
-	POWL_DPRINTF("key=0x%lx\n", i1);
+	POWL_DPRINTF("key=0x%x\n", i1);
 	extra_int += l.z;
 	xh *= l.r; xl *= l.r; // exact (see compute_log2pow)
 
@@ -1191,7 +1191,7 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	int i2 = (cvt_xh.u>>40) & 0x7f; // index in the fine[] table
 	lut_t l2 = fine[i2];
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
-	POWL_DPRINTF("key2 = 0x%lx\n", i2);
+	POWL_DPRINTF("key2 = 0x%x\n", i2);
 	POWL_DPRINTF("r1 = " SAGE_RR "\n", l.r);
 	POWL_DPRINTF("r2 = " SAGE_RR "\n", l2.r);
 	xh = __builtin_fma(l2.r, xh, -1); xl *= l2.r;
@@ -1230,11 +1230,11 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
         // mlogr12 approximates extra_int - log2(2^z*r1) - log2(r2)
 	
 	/* We have log2(x)= reduction + log2(1 + xr) */
-	POWL_DPRINTF("reduction = R("SAGE_QR")\n",
+	/*POWL_DPRINTF("reduction = R("SAGE_QR")\n",
 	   reduction->hh, reduction->hl, reduction->lh, reduction->ll,
 	   reduction->ex, reduction->sgn);
 	POWL_DPRINTF("get_hex(R(reduction + log2(r1) + log2(r2) - ei))\n");
-
+*/
 	/* Since the accurate tables merely extend the precision of the fast
            tables, the ratios computed by high_sum.c (-DMODE=0) stay valid.
 	   By analogy to the fastpath, let us call mlogr1 and mlogr2 the values
@@ -1714,7 +1714,7 @@ long double cr_powl(long double x, long double y) {
 	if(q_r->ex >= 15) {
           // |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.334) > 32767
 			if(q_r->sgn) { // y*log2|x| < -32768: underflow
-				return (sign * 0x1p-16445L)*.5L;
+				return (sign * 0x1p-16445L)*.25L;
 			} else { // y*log2|x| > 32767: overflow
 				return sign * 0x1p16383L + sign * 0x1p16383L;
 			}
@@ -1734,28 +1734,43 @@ long double cr_powl(long double x, long double y) {
 	unsigned rm = get_rounding_mode();
 
 	qint64_t final[1];
-	qint_subnormalize(final, q_r);
+	uint64_t extralow[1] = {0};
+	if(q_r->ex <= -16448) { 
+		/* If q_r->ex = -16447 we may still really have exponent -16446 because
+		   of errors, then round to 1p-16445.
+		*/
+		return (sign * 0x1p-16445L) * .25L;
+	}
+
+	// Extra-low limb to avoid loss of precision
+	// when the final result is denormal. 
+	qint_subnormalize(final, extralow, q_r);
+	// In corner cases, qint_subnormalize creates a relative error 2^-256. This
+	// implies that the total relative error is at most
+	// 2^-234.862 + 2^-256 + 2^-256 * 2^-234.862 <= 2^-234.861 
+
 	bool exact_if_hard = check_rb(x,y,q_r);
 	bool hard = false;
-	long double r = qint_told(final, rm, invert, &hard);
+	long double r = qint_told(final, *extralow, rm, invert, &hard);
 
 	/* Assume that (x,y) is a hard case in the sense that the accurate path
 	   rounding test fails. Assume further that (x,y) is potentially exact or
 	   midpoint, i.e. is in the set S defined in reference [2].
 
 	   Let us note z the approximation we computed. We know that for some rounding
-	   boundary r, |z - r| <= (2^-234 + 2^-255)|z| because the rounding test
-	   failed. We also know that |z - x^y| <= 2^-234.862|z|. Thus we have
-           x^y = z * (1 + eps) with |eps| <= 2^-234.862, or |x^y/z - 1| <= 2^-234.862.
-           This implies that |x^y - r| <= (2^-234.862 + 2^-234 + 2^-255)|z|, or
-           |x^y - r| <= (2^-234.862+2^-234+2^-255)/(1-2^-234.862) |x^y| <= 2^-233.367 |x^y|.
+	   boundary r, |z - r| <= (2^-234 + 2^-254)|z| because the rounding test
+	   failed. We also know that |z - x^y| <= 2^-234.861|z|. Thus we have
+	   x^y = z * (1 + eps) with |eps| <= 2^-234.861, or |x^y/z - 1| <= 2^-234.861.
+	   This implies that |x^y - r| <= (2^-234.861 + 2^-234 + 2^-254)|z|, or
+	   |x^y - r| <= (2^-234.861+2^-234+2^-254)/(1-2^-234.861) |x^y|
+	             <= 2^-233.367 |x^y|.
 
 	   If we list with BaCSeL all cases where |x^y - r| <= 2^-233.367 |x^y|,
 	   we may be able to certify that in all these cases, x^y is exact. When
 	   run with parameter m, BaCSeL will output all pairs (x,y) in S at distance
-           less than 2^-m ulp(r') from a rounding boundary r'.
-           Since |x^y - r| <= 2^-233.367 |x^y| implies |x^y - r| <= 2^-169.367 ulp(r),
-           taking m=169 ensures we miss no hard case in S.
+	   less than 2^-m ulp(r') from a rounding boundary r'.
+	   Since |x^y - r| <= 2^-233.367 |x^y| implies |x^y - r| <= 2^-169.367 ulp(r),
+	   taking m=169 ensures we miss no hard case in S.
 	   (It is obvious that r = r' whenever the discussed situation arises).
 	*/
 
@@ -1768,9 +1783,9 @@ long double cr_powl(long double x, long double y) {
 		exactify(q_r);
 		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
 			q_r->ex, q_r->sgn);
-		qint_subnormalize(final, q_r);
+		qint_subnormalize(final,extralow, q_r);
 		POWL_DPRINTF("exact_sub = "SAGE_QR"\n",
 			final->hh, final->hl, final->lh, final->ll, final->ex, final->sgn);
-		return qint_told(final, rm, invert, &hard);
+		return qint_told(final,*extralow, rm, invert, &hard);
 	} else {return r;}
 }
