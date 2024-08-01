@@ -27,6 +27,9 @@ SOFTWARE.
 /* References:
    [1] Note on FastTwoSum with Directed Roundings, Sélène Corbineau and Paul
        Zimmermann, July 2024, https://inria.hal.science/hal-03798376.
+   [2] An efficient rounding boundary test for pow(x,y) in double precision,
+       Christoph Lauter and Vincent Lefèvre, IEEE Transactions on Computers,
+       vol. 58, nb. 2, pages 197-207, 2009.
  */
 
 #include <stdint.h>
@@ -1738,20 +1741,21 @@ long double cr_powl(long double x, long double y) {
 
 	/* Assume that (x,y) is a hard case in the sense that the accurate path
 	   rounding test fails. Assume further that (x,y) is potentially exact or
-	   midpoint, i.e. is in S.
+	   midpoint, i.e. is in the set S defined in reference [2].
 
 	   Let us note z the approximation we computed. We know that for some rounding
 	   boundary r, |z - r| <= (2^-234 + 2^-255)|z| because the rounding test
-	   failed. We also know that |z - x^y| <= 2^-234.862|z|. This implies that
-	   |x^y - r| <= (2^-234.862 + 2^-234 + 2^-255)|z|. This rewrites as
-	   |x^y - r| <= 2^(-233.367)|x^y| because ||x^y|/|z| - 1| <= 2^-234 + 2^-255.
+	   failed. We also know that |z - x^y| <= 2^-234.862|z|. Thus we have
+           x^y = z * (1 + eps) with |eps| <= 2^-234.862, or |x^y/z - 1| <= 2^-234.862.
+           This implies that |x^y - r| <= (2^-234.862 + 2^-234 + 2^-255)|z|, or
+           |x^y - r| <= (2^-234.862+2^-234+2^-255)/(1-2^-234.862) |x^y| <= 2^-233.367 |x^y|.
 
-	   If we list with BaCSeL all cases where |x^y - r| <= 2^(-233.367)|x^y|,
+	   If we list with BaCSeL all cases where |x^y - r| <= 2^-233.367 |x^y|,
 	   we may be able to certify that in all these cases, x^y is exact. When
-	   run with parameter m, BaCSeL will output those (x,y) in S such that
-	   |x^y - r'| <= 2^(-63-m)|x^y| for some rounding boundary r'. Therefore,
-	   any full run of BaCSeL with m <= 170 allows us to (hopefully) certify
-	   the exactness check.
+	   run with parameter m, BaCSeL will output all pairs (x,y) in S at distance
+           less than 2^-m ulp(r') from a rounding boundary r'.
+           Since |x^y - r| <= 2^-233.367 |x^y| implies |x^y - r| <= 2^-169.367 ulp(r),
+           taking m=169 ensures we miss no hard case in S.
 	   (It is obvious that r = r' whenever the discussed situation arises).
 	*/
 
