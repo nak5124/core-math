@@ -162,9 +162,9 @@ float cr_log2p1f(float x) {
       l = 0x1.fp-21;
       return h + l;
     }
-    b64u64_u t = {.f = z + 1.0};
-    unsigned long m = t.u&(~0ul>>12);
-    int e = (t.u>>52) - 0x3ff;
+    b64u64_u tp = {.f = z + 1.0};
+    unsigned long m = tp.u&(~0ul>>12);
+    int e = (tp.u>>52) - 0x3ff;
     int j = (m + (1l<<(52-8)))>>(52-7), k = j>53;
     e += k;
     b64u64_u xd = {.u = m | 0x3fful<<52};

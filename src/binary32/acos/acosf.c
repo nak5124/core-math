@@ -97,7 +97,9 @@ float cr_acosf(float x){
       {0x1.6a09e667f3bcbp+0, 0x1.e2b7dddff2db9p-4, 0x1.b27247ab42dbcp-6, 0x1.02995cc4e0744p-7,
        0x1.5ffb0276ec8eap-9, 0x1.033885a928decp-10, 0x1.911f2be23f8c7p-12, 0x1.4c3c55d2437fdp-13,
        0x1.af477e1d7b461p-15, 0x1.abd6bdff67dcbp-15, -0x1.1717e86d0fa28p-16, 0x1.6ff526de46023p-16};
-    double ax = __builtin_fabs(xs), z = 1.0 - ax, s = __builtin_copysign(__builtin_sqrt(z), xs);
+    double bx = __builtin_fabs(xs);
+    double z = 1.0 - bx;
+    double s = __builtin_copysign(__builtin_sqrt(z), xs);
     r = o[t.u>>31] + s*poly12(z, c);
   }
   return r;

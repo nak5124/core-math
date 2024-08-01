@@ -124,7 +124,8 @@ float cr_log10f(float x){
     double f = z*((c[0] + z*c[1]) + z2*((c[2] + z*c[3]) + z2*(c[4] + z*c[5] + z2*c[6])));
     f -= 0x1.0cee0ed4ca7e9p-54*e;
     f += l-tl[0];
-    double el = e*0x1.34413509f7ap-2, r = el + f;
+    double el = e*0x1.34413509f7ap-2;
+    r = el + f;
     ub = r;
     tz.f = r;
     if(__builtin_expect(!((tz.u)&((1<<28)-1)), 0) ){

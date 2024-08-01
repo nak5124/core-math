@@ -130,8 +130,11 @@ float cr_expm1f(float x){
     if(__builtin_expect(ux>0xc18aa123u, 0)) // x < -17.32
       return -1.0f + 0x1p-26f;
     const double iln2h = 0x1.7154765p+5, iln2l = 0x1.5c17f0bbbe88p-26;
-    double h = (iln2h*z - ia) + iln2l*z, s = sv.f, h2 = h*h, w = s*h;
-    double r = (s-1) + w*((ch[0] + h*ch[1]) + h2*((ch[2] + h*ch[3]) + h2*(ch[4] + h*ch[5])));
+    double s = sv.f;
+    h = (iln2h*z - ia) + iln2l*z;
+    h2 = h*h;
+    double w = s*h;
+    r = (s-1) + w*((ch[0] + h*ch[1]) + h2*((ch[2] + h*ch[3]) + h2*(ch[4] + h*ch[5])));
     ub = r;
   }
   return ub;

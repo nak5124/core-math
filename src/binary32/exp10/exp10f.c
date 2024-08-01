@@ -133,8 +133,11 @@ float cr_exp10f(float x){
   double h2 = h*h, r = ((b[0] + h*b[1]) + h2*(b[2] + h*(b[3])))*(sv.f);
   float ub = r, lb = r - r*1.45e-10;
   if(__builtin_expect(ub != lb, 0)){
-    double h = (iln102h*z - ia*0.03125) + iln102l*z, s = sv.f, h2 = h*h, w = s*h;
-    double r = s + w*((c[0] + h*c[1]) + h2*((c[2] + h*c[3]) + h2*(c[4] + h*c[5])));
+    h = (iln102h*z - ia*0.03125) + iln102l*z;
+    double s = sv.f;
+    h2 = h*h;
+    double w = s*h;
+    r = s + w*((c[0] + h*c[1]) + h2*((c[2] + h*c[3]) + h2*(c[4] + h*c[5])));
     ub = r;
   }
   return ub;

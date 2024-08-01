@@ -128,7 +128,7 @@ float cr_log10p1f(float x){
       z /= 2.0 + z;
       double z2 = z*z, z4 = z2*z2;
       static const double c[] = {0x1.bcb7b1526e50fp-1, 0x1.287a76370129dp-2, 0x1.63c62378fa3dbp-3, 0x1.fca4139a42374p-4};
-      double r = z*((c[0] + z2*c[1]) + z4*(c[2] + z2*c[3]));
+      r = z*((c[0] + z2*c[1]) + z4*(c[2] + z2*c[3]));
       return r;
     }
     if(__builtin_expect(ux==0x7956ba5eu,0)) return 0x1.16bebap+5f + 0x1p-20f;
@@ -136,9 +136,10 @@ float cr_log10p1f(float x){
     static const double c[] =
       {0x1.bcb7b1526e50ep-2, -0x1.bcb7b1526e53dp-3, 0x1.287a7636f3fa2p-3, -0x1.bcb7b146a14b3p-4,
        0x1.63c627d5219cbp-4, -0x1.2880736c8762dp-4, 0x1.fc1ecf913961ap-5};
-    double f = v*((c[0] + v*c[1]) + v2*((c[2] + v*c[3]) + v2*(c[4] + v*c[5] + v2*c[6])));
+    f = v*((c[0] + v*c[1]) + v2*((c[2] + v*c[3]) + v2*(c[4] + v*c[5] + v2*c[6])));
     f += l - tl[0];
-    double el = e*0x1.34413509f79ffp-2, r = el + f;
+    double el = e*0x1.34413509f79ffp-2;
+    r = el + f;
     ub = r;
     tz.f = r;
   }
