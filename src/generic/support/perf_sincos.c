@@ -1,6 +1,6 @@
-/* Performance of univariate functions.
+/* Performance of sincos-like functions.
 
-Copyright (c) 2022 Stéphane Glondu, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -39,20 +39,24 @@ SOFTWARE.
 #ifdef __x86_64__
 #include <x86intrin.h>
 #endif
-#ifdef __INTEL_CLANG_COMPILER
-#include <mathimf.h>
-#endif
 
 #include "random_under_test.h"
 
-typedef TYPE_UNDER_TEST function_type_under_test (TYPE_UNDER_TEST);
+typedef void function_type_under_test (TYPE_UNDER_TEST, TYPE_UNDER_TEST*, TYPE_UNDER_TEST*);
 
 function_type_under_test cr_function_under_test;
 function_type_under_test function_under_test;
 
 #define SAMPLE_SIZE (sizeof(TYPE_UNDER_TEST))
-#define CALL_LATENCY(accu,i) \
-  accu = p_function_under_test(randoms[i] + 0 * accu)
-#define CALL_THROUGHPUT(i) (p_function_under_test(randoms[i]))
+#define CALL_LATENCY(accu,i) do {                           \
+  TYPE_UNDER_TEST x, y;                                     \
+  p_function_under_test(randoms[i] + 0 * accu, &x, &y);     \
+  accu = x;                                                 \
+  } while (0)
+
+#define CALL_THROUGHPUT(i) do {                 \
+  TYPE_UNDER_TEST x, y;                         \
+  p_function_under_test(randoms[i], &x, &y); \
+  } while (0)
 
 #include "perf_common.h"

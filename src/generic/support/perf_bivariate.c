@@ -48,7 +48,8 @@ function_type_under_test cr_function_under_test;
 function_type_under_test function_under_test;
 
 #define SAMPLE_SIZE (2 * sizeof(TYPE_UNDER_TEST))
-#define CALL_LATENCY(i) (p_function_under_test(randoms[2 * i] + 0 * accu, randoms[2 * i + 1]))
+#define CALL_LATENCY(accu,i) \
+  accu = p_function_under_test(randoms[2 * i] + 0 * accu, randoms[2 * i + 1])
 #define CALL_THROUGHPUT(i) (p_function_under_test(randoms[2 * i], randoms[2 * i + 1]))
 
 #include "perf_common.h"

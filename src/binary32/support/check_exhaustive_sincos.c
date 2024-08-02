@@ -1,6 +1,6 @@
-/* Check correctness of sincosf function by exhaustive search.
+/* Check correctness of binary32 function like sincos by exhaustive search.
 
-Copyright (c) 2022-2024 Alexei Sibidanov.
+Copyright (c) 2022 Alexei Sibidanov.
 Copyright (c) 2022-2024 Paul Zimmermann, INRIA.
 
 This file is part of the CORE-MATH project
@@ -84,37 +84,33 @@ is_equal (float y1, float y2)
 void
 doit (uint32_t n)
 {
-  float x, y, z, u, v;
+  float x, y1, y2, z1, z2;
   x = asfloat (n);
   ref_init ();
   ref_fesetround (rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
-  ref_function_under_test (x, &y, &z);
-  mpfr_flags_t inex = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+  ref_function_under_test (x, &y1, &y2);
+  mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
-  cr_function_under_test (x, &u, &v);
-  fexcept_t inex_mpfr;
-  fegetexceptflag (&inex_mpfr, FE_INEXACT);
-  if (!is_equal (y, u))
+  cr_function_under_test (x, &z1, &z2);
+  // we use a 64-bit int for inex_z since fexcept_t might have different
+  // sizes (2 bytes in GNU libc, 4 in LLVM libc)
+  uint64_t inex_z = 0;
+  fegetexceptflag ((fexcept_t*)&inex_z, FE_INEXACT);
+  if (!is_equal (y1, z1) || !is_equal (y2, z2))
   {
-    printf ("FAIL x=%a sin: ref=%a y=%a\n", x, y, u);
+    printf ("FAIL x=%a ref=(%a,%a) z=(%a,%a)\n", x, y1, y2, z1, z2);
     fflush (stdout);
     if (!keep) exit (1);
   }
-  if (!is_equal (z, v))
-  {
-    printf ("FAIL x=%a cos: ref=%a y=%a\n", x, z, v);
-    fflush (stdout);
-    if (!keep) exit (1);
-  }
-  if ((inex != 0) && (inex_mpfr == 0))
+  if ((inex_y == 0) && (inex_z != 0))
   {
     printf ("Spurious inexact exception for x=%a\n", x);
     fflush (stdout);
     if (!keep) exit (1);
   }
-  if ((inex == 0) && (inex_mpfr != 0))
+  if ((inex_y != 0) && (inex_z == 0))
   {
     printf ("Missing inexact exception for x=%a\n", x);
     fflush (stdout);
