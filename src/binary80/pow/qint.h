@@ -322,12 +322,13 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 			a->lh = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
 			a->ll = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
 			*extralow = (x->lh << (64 - shiftby)) | (x->ll >> shiftby);
+                        // the low shiftby bits of x->ll are lost
 			a->sgn = x->sgn;
 
 			return;
 		}
 
-		// Here 1 < shiftby < 64
+		// Here 1 <= shiftby < 64
 		a->hh = x->hh >> shiftby;
 		a->hl = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
 		a->lh = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
