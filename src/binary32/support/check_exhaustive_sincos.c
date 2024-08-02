@@ -98,7 +98,7 @@ doit (uint32_t n)
   fegetexceptflag (&inex_z, FE_INEXACT);
   if (!is_equal (y1, z1) || !is_equal (y2, z2))
   {
-    printf ("FAIL x=%a ref=(%a,%a) z=(%a,%a)\n", x, z1, z2, y1, y2);
+    printf ("FAIL x=%a ref=(%a,%a) z=(%a,%a)\n", x, y1, y2, z1, z2);
     fflush (stdout);
     if (!keep) exit (1);
   }
