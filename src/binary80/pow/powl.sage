@@ -361,6 +361,10 @@ def print_bacsel_command(out,y,e,m,t,t0,t1,d,alpha,nthreads):
 # real 7m31.157s, user 429m57.373s
 # check_S(out="/tmp/in",width=2^46,m=169,t=30,d=5)
 # real 10m2.100s, user 586m17.811s
+# check_S(out="/tmp/in",width=2^47,m=169,t=30,d=5)
+# real 20m42.155, user 1206m57.888s
+# check_S(out="/tmp/in",width=2^47,m=169,t=30,d=6)
+# real 20m13.461s, user 1207m2.257
 def check_S(m=55,t=20,width=2^30,d=2,alpha=2,nthreads=64,out=None):
    if out != None:
       out = open(out,"w")
