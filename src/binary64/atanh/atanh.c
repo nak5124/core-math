@@ -109,7 +109,7 @@ static double __attribute__((noinline)) as_atanh_zero(double x){
   double y0 = fasttwosum(x, y1, &y1);
   y1 = fasttwosum(y1, y2, &y2);
   b64u64_u t = {.f = y1};
-  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+  if(__builtin_expect(!(t.u&(~(uint64_t)0>>12)), 0)){
     b64u64_u w = {.f = y2};
     if((w.u^t.u)>>63)
       t.u--;
@@ -223,12 +223,12 @@ double cr_atanh(double x){
 
   b64u64_u t = {.f = th};
   int ex = t.u>>52, e = ex - 0x3ff;
-  t.u &= ~0ul>>12;
+  t.u &= ~(uint64_t)0>>12;
   double ed = e;
   u64 i = t.u>>(52-5);
-  long d = t.u & (~0ul>>17);
-  u64 j = (t.u + ((u64)B[i].c0<<33) + ((long)B[i].c1*(d>>16)))>>(52-10);
-  t.u |= 0x3ffl<<52;
+  int64_t d = t.u & (~(uint64_t)0>>17);
+  u64 j = (t.u + ((u64)B[i].c0<<33) + ((int64_t)B[i].c1*(d>>16)))>>(52-10);
+  t.u |= (u64)0x3ff<<52;
   int i1 = j>>5, i2 = j&0x1f;
   double r = (0.5*r1[i1])*r2[i2], dx = __builtin_fma(r, t.f, -0.5), dx2 = dx*dx, rx = r*t.f, dxl = __builtin_fma(r,t.f,-rx);
   double f = dx2*((c[0] + dx*c[1]) + dx2*(c[2] + dx*c[3] + dx2*c[4]));
@@ -363,11 +363,11 @@ double as_atanh_refine(double x, double zh, double zl, double a){
   static const double cl[3] = {-0x1p-3, 0x1.9999999a0754fp-4,-0x1.55555555c3157p-4};
   b64u64_u t = {.f = zh};
   int ex = t.u>>52, e = ex-0x3ff;
-  t.u &= ~0ul>>12;
-  t.u |= 0x3fful<<52;
+  t.u &= ~(uint64_t)0>>12;
+  t.u |= (u64)0x3ff<<52;
   double ed = e;
   b64u64_u v = {.f = a - ed + 0x1.00008p+0};
-  u64 i = (v.u - (0x3fful<<52))>>(52-16);  
+  u64 i = (v.u - ((u64)0x3ff<<52))>>(52-16);
   int i1 = i>>12, i2 = (i>>8)&0xf, i3 = (i>>4)&0xf, i4 = i&0xf;
   const double l20 = 0x1.62e42fefa3ap-2, l21 = -0x1.0ca86c3898dp-50, l22 = 0x1.f97b57a079ap-104;
   double el2 = l22*ed, el1 = l21*ed, el0 = l20*ed;
@@ -381,7 +381,7 @@ double as_atanh_refine(double x, double zh, double zl, double a){
   double sh = tl*t.f, sl = __builtin_fma(tl,t.f,-sh);
   double xl, xh = fasttwosum(dh-1, dl, &xl);
   t.f = zl;
-  t.u -= (long)e<<52;
+  t.u -= (int64_t)e<<52;
   xl += th*t.f;
   xh = adddd(xh, xl, sh, sl, &xl);
   sl = xh*(cl[0] + xh*(cl[1] + xh*cl[2]));
@@ -391,7 +391,7 @@ double as_atanh_refine(double x, double zh, double zl, double a){
   sh = adddd(sh, sl, L[1], L[2], &sl);
   double v2, v0 = fasttwosum(L[0], sh, &v2), v1 = fasttwosum(v2, sl, &v2);
   t.f = v1;
-  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+  if(__builtin_expect(!(t.u&(~(uint64_t)0>>12)), 0)){
     b64u64_u w = {.f = v2};
     if((w.u^t.u)>>63)
       t.u--;
@@ -400,7 +400,7 @@ double as_atanh_refine(double x, double zh, double zl, double a){
     v1 = t.f;
   }
   b64u64_u t0 = {.f = v0};
-  uint64_t er = ((t.u + 1) & (~0ul>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
+  uint64_t er = ((t.u + 1) & (~(uint64_t)0>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
   v0 *= __builtin_copysign(1,x);
   v1 *= __builtin_copysign(1,x);
   double res = v0 + v1;

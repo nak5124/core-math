@@ -84,20 +84,22 @@ cr_cbrt (double x)
   unsigned int rm = get_rounding_mode (&flag);
   /* rm=0 for rounding to nearest, and other values for directed roundings */
   b64u64_u cvt0 = {.f = x};
-  uint64_t hx = cvt0.u, mant = hx&((~0ul)>>12), sign = hx>>63;
+  uint64_t hx = cvt0.u, mant = hx&((~(uint64_t)0)>>12), sign = hx>>63;
   unsigned e = (hx>>52)&0x7ff;
   if(__builtin_expect(((e+1)&0x7ff)<2, 0)){
-    uint64_t ix = hx&((~0ul)>>1);
+    uint64_t ix = hx&((~(uint64_t)0)>>1);
     if(e==0x7ff||ix==0) return x + x; /* 0, inf, nan: we return x + x instead of simply x,
                                          to that for x a signaling NaN, it correctly triggers
                                          the invalid exception. */
-    int nz = __builtin_clzl(ix) - 11;  /* subnormal */
+    /* use __builtin_clzll otherwise ix might be truncated to 32 bits
+       on 32-bit processors */
+    int nz = __builtin_clzll(ix) - 11;  /* subnormal */
     mant <<= nz;
-    mant &= (~(0ul))>>12;
+    mant &= (~((uint64_t)0))>>12;
     e -= nz - 1;
   }
   e += 3072;
-  b64u64_u cvt1 = {.u = mant|(0x3fful<<52)}, cvt5 = {.u = cvt1.u};
+  b64u64_u cvt1 = {.u = mant|((uint64_t)0x3ff<<52)}, cvt5 = {.u = cvt1.u};
   unsigned et = e/3, it = e%3;
   /* 2^(3k+it) <= x < 2^(3k+it+1), with 0 <= it <= 3 */
   cvt5.u += (int64_t)it<<52;
@@ -176,7 +178,7 @@ cr_cbrt (double x)
     }
   }
   b64u64_u cvt3 = {.f = y1};
-  cvt3.u += (long)(et - 342 - 1023)<<52;
+  cvt3.u += (int64_t)(et - 342 - 1023)<<52;
   int64_t m0 = cvt3.u<<30, m1 = m0>>63;
   if(__builtin_expect((uint64_t)(m0^m1)<=(1ul<<30),0)){
     b64u64_u cvt4 = {.f = y1};
