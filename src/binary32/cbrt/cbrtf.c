@@ -86,8 +86,8 @@ float cr_cbrtf (float x){
   cvt1.f = r;
   ub = r;
   int64_t m0 = cvt1.u<<19, m1 = m0>>63;
-  if(__builtin_expect((m0^m1)<(1l<<31),0)){
-    cvt1.u = (cvt1.u + (1ul<<31))&0xffffffff00000000ul;
+  if(__builtin_expect((m0^m1)<((int64_t)1<<31),0)){
+    cvt1.u = (cvt1.u + ((uint64_t)1<<31))&(uint64_t)0xffffffff00000000ul;
     ub = cvt1.f;
 #if INEXACTFLAG!=0
     _mm_setcsr(flag); /* restore MXCSR Control/Status Register for exact roots to get rid of the inexact flag if risen inside the function */

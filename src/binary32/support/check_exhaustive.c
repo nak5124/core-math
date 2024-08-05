@@ -90,7 +90,9 @@ doit (uint32_t n)
   ref_fesetround (rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   y = ref_function_under_test (x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   z = cr_function_under_test (x);
@@ -104,6 +106,7 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex_y == 0) && (inex_z != 0))
   {
     printf ("Spurious inexact exception for x=%a\n", x);
@@ -116,6 +119,7 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+#endif
 }
 
 int
