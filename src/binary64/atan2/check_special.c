@@ -179,10 +179,14 @@ check_small_aux (int i, int nthreads)
 static void
 check_small (void)
 {
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_small_aux (getpid () + i, nthreads);
 }

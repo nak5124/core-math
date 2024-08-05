@@ -165,7 +165,9 @@ main (int argc, char *argv[])
   unsigned long skip = dx / ulp; // distance between two checked numbers
   int n0 = seed % skip;
   x0 += (long double) n0 * ulp;  // we start at a random x0
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
     check (x0 + (long double) n * dx);
 
@@ -173,7 +175,9 @@ main (int argc, char *argv[])
   long double x2 = -0x1.62d918ce2421d65ep+13L;
   dx = (x2 - x1) / (long double) N;
   x1 += (long double) n0 * ulp;  // we start at a random x1
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++) {
     ref_init ();
     ref_fesetround (rnd);
@@ -188,7 +192,9 @@ main (int argc, char *argv[])
 	skip = dx / ulp;
 	n0 = seed % skip;
 	x3 += (long double) n0 * ulp - (skip/2) * ulp;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
 	for (uint64_t n = 0; n < N; n++) {
     ref_init ();
     ref_fesetround (rnd);
@@ -196,7 +202,9 @@ main (int argc, char *argv[])
 	}
 
   printf ("Checking random values with |x| < 2^-20\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();
@@ -209,7 +217,9 @@ main (int argc, char *argv[])
   }
 
   printf ("Checking random values\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

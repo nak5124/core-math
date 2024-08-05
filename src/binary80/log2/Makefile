@@ -17,4 +17,4 @@ check_exact: check_exact.o $(CORE_MATH_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 check_exact.o: check_exact.c
-	$(CC) $(CORE_MATH_DEFINES) -o $@ $^ -c
+	$(CC) $(CFLAGS) $(CORE_MATH_DEFINES) -o $@ $^ -c
