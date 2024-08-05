@@ -116,7 +116,7 @@ float cr_log10f(float x){
   je = (je*0x4d104d4)>>28;
   if(__builtin_expect(ux == st[je].u, 0)) return je;
 
-  b64u64_u tz = {.u = ((long)m|(1023l<<23))<<(52-23)};
+  b64u64_u tz = {.u = ((int64_t)m|((int64_t)1023<<23))<<(52-23)};
   double z = tz.f*ix - 1, z2 = z*z;
   double r = ((e*0x1.34413509f79ffp-2 + l) + z*b[0]) + z2*(b[1] + z*b[2]);
   float ub = r, lb = r + 0x1.b008p-34;

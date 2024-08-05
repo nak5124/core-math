@@ -159,13 +159,13 @@ float cr_powf(float x0, float y0){
   };
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
-  if(__builtin_expect (tx.u == 0x3fful<<52, 0)) return x0;
+  if(__builtin_expect (tx.u == (uint64_t)0x3ff<<52, 0)) return x0;
   if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;
-  if(__builtin_expect ((ty.u<<1) >= (0x7fful<<53), 0)){
-    if((tx.u<<1) == 0x3fful<<53) return 1.0f;
-    if((tx.u<<1) > (0x7fful<<53)) return x0;
-    if((ty.u<<1) == (0x7fful<<53)){
-      if(((tx.u<<1) < (0x3fful<<53)) ^ (ty.u>>63)){
+  if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){
+    if((tx.u<<1) == (uint64_t)0x3ff<<53) return 1.0f;
+    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0;
+    if((ty.u<<1) == (uint64_t)0x7ff<<53){
+      if(((tx.u<<1) < ((uint64_t)0x3ff<<53)) ^ (ty.u>>63)){
 	return 0;
       } else {
 	return __builtin_inf();
@@ -173,13 +173,13 @@ float cr_powf(float x0, float y0){
     }
     return y0;
   }
-  if(__builtin_expect (tx.u >= 0x7fful<<52, 0)){ // x is Inf, NaN or less than 0
-    if((tx.u<<1) == (0x7fful<<53)){
+  if(__builtin_expect (tx.u >= (uint64_t)0x7ff<<52, 0)){ // x is Inf, NaN or less than 0
+    if((tx.u<<1) == (uint64_t)0x7ff<<53){
       if(!isodd(y0)) x0 = __builtin_fabsf(x0);
       if(ty.u>>63)return 1/x0; else return x0;
     }
-    if((tx.u<<1) > (0x7fful<<53)){return x0;}
-    if(__builtin_expect(tx.u > 0x7fful<<52, 0))
+    if((tx.u<<1) > (uint64_t)0x7ff<<53){return x0;}
+    if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0))
       if(!isint(y0)) return __builtin_nanf("");
   }
   if(__builtin_expect (isint(y0), 0)){
@@ -210,9 +210,9 @@ float cr_powf(float x0, float y0){
   }
   uint64_t m = tx.u & ~0ul>>12;
   int e = ((tx.u>>52)&0x7ff) - 0x3ff;
-  int j = (m + (1l<<(52-6)))>>(52-5), k = j>13;
+  int j = (m + ((int64_t)1<<(52-6)))>>(52-5), k = j>13;
   e += k;
-  b64u64_u xd = {.u = m | 0x3fful<<52};
+  b64u64_u xd = {.u = m | (uint64_t)0x3ff<<52};
   double z = __builtin_fma(xd.f, ix[j], -1.0);
   static const double c[] =
     {0x1.71547652b82fep+0, -0x1.71547652b82fep-1, 0x1.ec709dc3a2d0bp-2, -0x1.71547652bc4a9p-2,
@@ -254,7 +254,7 @@ float cr_powf(float x0, float y0){
   long il = ia, jl = il&0xf, el = il - jl;
   el >>= 4;
   double s = tb[jl];
-  b64u64_u su = {.u = (el + 0x3fful)<<52};
+  b64u64_u su = {.u = (el + (uint64_t)0x3ff)<<52};
   s *= su.f;
   double h2 = h*h;
   c0 = ce[0] + h*ce[1];
@@ -299,7 +299,7 @@ float as_powf_accurate2(float x0, float y0){
   t.u &= ~0ul>>12;
   int k = t.u > 0x6a09e667f3bcdul;
   e += k;
-  t.u |= 0x3ffl<<52;
+  t.u |= (int64_t)0x3ff<<52;
   x = t.f;
   double xm = x-o[k], xp = x+o[k], zh = xm/xp, zl = __builtin_fma(zh,-xp,xm)/xp;
   double z2l, z2h = muldd(zh, zl, zh, zl, &z2l);
@@ -309,7 +309,7 @@ float as_powf_accurate2(float x0, float y0){
   double ey = e*y, eh = ey + zh, el = ((ey - eh) + zh) + zl, ee = __builtin_roundeven(eh);
   eh -= ee;
   eh = polydd(eh, el, 18, ce, &el);
-  b64u64_u r = {.u = (0x3fful+(long)ee)<<52};
+  b64u64_u r = {.u = ((uint64_t)0x3ff+(int64_t)ee)<<52};
   b32u32_u ty = {.f = y0};
   int et = ((ty.u>>23)&0xff) - 0x7f;
   unsigned kk = ty.u<<(8+et), isint = !(kk<<1|et>>31) || et>=23;

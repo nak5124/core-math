@@ -100,7 +100,7 @@ float cr_log1pf(float x) {
     unsigned long m52 = t.u&(~0ul>>12);
     unsigned j = (t.u >> (52-5))&31;
     e -= 0x3ff;
-    b64u64_u xd = {.u = m52 | (0x3fful<<52)};
+    b64u64_u xd = {.u = m52 | ((uint64_t)0x3ff<<52)};
     double z = xd.f*x0[j] - 1;
     static const double c[] =
       {-0x1.3902c33434e7fp-43, 0x1.ffffffe1cbed5p-1, -0x1.ffffff7d1b014p-2, 0x1.5564e0ed3613ap-2, -0x1.0012232a00d4ap-2};

@@ -56,12 +56,12 @@ float cr_cbrtf (float x){
     e -= nz-1;
   }
   uint32_t mant = au&0xffffff;
-  b64u64_u cvt1 = {.u = (uint64_t)mant<<28|(0x3fful<<52)};
+  b64u64_u cvt1 = {.u = (uint64_t)mant<<28|((uint64_t)0x3ff<<52)};
   e += 899;
   uint32_t et = e/3, it = e%3;
   uint64_t isc = ((const uint64_t*)escale)[it];
-  isc += (long)(et - 342)<<52;
-  isc |= (long)sgn<<63;
+  isc += (int64_t)(et - 342)<<52;
+  isc |= (int64_t)sgn<<63;
   b64u64_u cvt2 = {.u = isc};
   static const double c[] =
     {0x1.2319d352ea5d5p-1, 0x1.67ad8ee258d1ap-1, -0x1.9342edf9cbad9p-2, 0x1.b6388fc510a75p-3,
@@ -73,7 +73,7 @@ float cr_cbrtf (float x){
   if(__builtin_expect(ub==lb, 1)){
 #if INEXACTFLAG!=0
     cvt2.f = r;
-    if(__builtin_expect((cvt2.u&(0x1fffffl<<24)) == 0, 0)){
+    if(__builtin_expect((cvt2.u&((int64_t)0x1fffff<<24)) == 0, 0)){
       _mm_setcsr(flag); /* restore MXCSR Control/Status Register for exact roots to get rid of the inexact flag if risen inside the function */
     }
 #endif
@@ -85,7 +85,7 @@ float cr_cbrtf (float x){
   r = f * cvt2.f;
   cvt1.f = r;
   ub = r;
-  long m0 = cvt1.u<<19, m1 = m0>>63;
+  int64_t m0 = cvt1.u<<19, m1 = m0>>63;
   if(__builtin_expect((m0^m1)<(1l<<31),0)){
     cvt1.u = (cvt1.u + (1ul<<31))&0xffffffff00000000ul;
     ub = cvt1.f;

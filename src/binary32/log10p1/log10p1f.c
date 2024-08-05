@@ -112,8 +112,8 @@ float cr_log10p1f(float x){
 
   b64u64_u tz = {.f = z + 1.0};
   uint64_t m = tz.u&(~0ul>>12);
-  int32_t e = (tz.u>>52) - 1023, j = ((m + (1l<<45))>>46);
-  tz.u = m | (0x3fful<<52);
+  int32_t e = (tz.u>>52) - 1023, j = ((m + ((int64_t)1<<45))>>46);
+  tz.u = m | ((uint64_t)0x3ff<<52);
   double ix = tr[j], l = tl[j];
   double off = e*0x1.34413509f79ffp-2 + l, v = tz.f*ix - 1;
 
