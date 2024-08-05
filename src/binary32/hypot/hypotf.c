@@ -47,23 +47,24 @@ float cr_hypotf(float x, float y){
   }
   float at = __builtin_fmaxf(ax, ay);
   ay = __builtin_fminf(ax, ay);
-  double xd = at, yd = ay, x2 = xd*xd, y2 = yd*yd, r2 = x2 + y2;
+  double xd = at, yd = ay, x2 = xd*xd, y2 = yd*yd;
+  volatile double r2 = x2 + y2;
   if(__builtin_expect(yd < xd*0x1.fffffep-13, 0)) return __builtin_fmaf(0x1p-13f, ay, at);
-  double r = __builtin_sqrt(r2);
+  volatile double r = __builtin_sqrt(r2);
   b64u64_u t = {.f = r};
   float c = r;
   if(t.u>(uint64_t)0x47efffffe0000000ul){
     if(c>0x1.fffffep127f) errno = ERANGE;
     return c;
   }
-  if(__builtin_expect(((t.u + 1)&0xfffffff) > 2, 1)) return c;
+  if(__builtin_expect(((t.u + 1)&(uint64_t)0xffffffful) > 2, 1)) return c;
   double cd = c;
   if((cd*cd - x2) - y2 == 0.0) return c;
   double ir2 = 0.5/r2, dr2 = (x2 - r2) + y2;
   double rs = r*ir2, dz = dr2 - __builtin_fma(r, r, -r2), dr = rs*dz;
   double rh = r + dr, rl = dr + (r - rh);
   t.f = rh;
-  if(__builtin_expect((t.u&0xfffffff) == 0, 1)){
+  if(__builtin_expect((t.u&(uint64_t)0xffffffful) == 0, 1)){
     if(rl>0.0) t.u += 1;
     if(rl<0.0) t.u -= 1;
   }
