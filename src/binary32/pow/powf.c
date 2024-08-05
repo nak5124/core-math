@@ -208,7 +208,7 @@ float cr_powf(float x0, float y0){
 	return 0.0f;
     }
   }
-  uint64_t m = tx.u & ~0ul>>12;
+  uint64_t m = tx.u & ~(uint64_t)0>>12;
   int e = ((tx.u>>52)&0x7ff) - 0x3ff;
   int j = (m + ((int64_t)1<<(52-6)))>>(52-5), k = j>13;
   e += k;
@@ -251,7 +251,7 @@ float cr_powf(float x0, float y0){
      0x1.306fe0a31b715p+0, 0x1.3dea64c123422p+0, 0x1.4bfdad5362a27p+0, 0x1.5ab07dd485429p+0,
      0x1.6a09e667f3bcdp+0, 0x1.7a11473eb0187p+0, 0x1.8ace5422aa0dbp+0, 0x1.9c49182a3f09p+0,
      0x1.ae89f995ad3adp+0, 0x1.c199bdd85529cp+0, 0x1.d5818dcfba487p+0, 0x1.ea4afa2a490dap+0};
-  long il = ia, jl = il&0xf, el = il - jl;
+  int64_t il = ia, jl = il&0xf, el = il - jl;
   el >>= 4;
   double s = tb[jl];
   b64u64_u su = {.u = (el + (uint64_t)0x3ff)<<52};
@@ -296,7 +296,7 @@ float as_powf_accurate2(float x0, float y0){
   double x = x0, y = y0;
   b64u64_u t = {.f = x};
   int e = ((t.u>>52)&0x7ff) - 0x3ff;
-  t.u &= ~0ul>>12;
+  t.u &= ~(uint64_t)0>>12;
   int k = t.u > 0x6a09e667f3bcdul;
   e += k;
   t.u |= (int64_t)0x3ff<<52;

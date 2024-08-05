@@ -75,7 +75,7 @@ float cr_erfcf(float xf){
   double axd = axf, x2 = axd*axd;
   b32u32_u t = {.f = xf};
   unsigned at = t.u&(~0u>>1), sgn = t.u>>31;
-  long i = at > 0x40051000;
+  int64_t i = at > 0x40051000;
   /* for x < -0x1.ea8f94p+1, erfc(x) rounds to 2 (to nearest) */
   if(__builtin_expect(t.u > 0xc07547ca, 0)){    // xf < -0x1.ea8f94p+1
     if(__builtin_expect(t.u >= 0xff800000, 0)){ // -Inf or NaN

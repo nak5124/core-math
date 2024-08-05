@@ -118,7 +118,7 @@ float cr_log2f(float x) {
     // subnormal
     int nz = __builtin_clzll(m);
     m <<= nz-11;
-    m &= ~0ul>>12;
+    m &= ~(uint64_t)0>>12;
     e -= nz-12;
   }
   if(__builtin_expect(!m, 0)) return e;

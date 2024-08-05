@@ -70,7 +70,7 @@ static double as_ln(double x){
      0x1.5555555555555p-1, 0x1.47ae147ae147bp-1, 0x1.3b13b13b13b14p-1, 0x1.2f684bda12f68p-1,
      0x1.2492492492492p-1, 0x1.1a7b9611a7b96p-1, 0x1.1111111111111p-1, 0x1.0842108421084p-1};
   int i = (t.u>>48)&0xf;
-  t.u = (t.u&(~0ul>>12))|((int64_t)0x3ff<<52);
+  t.u = (t.u&(~(uint64_t)0>>12))|((int64_t)0x3ff<<52);
   double z = ix[i]*t.f - 1, z2 = z*z, z4 = z2*z2;
   return e*0x1.62e42fefa39efp-1 + il[i] + z*((c[0] + z*c[1]) + z2*(c[2] + z*c[3]) + z4*((c[4] + z*c[5]) + z2*(c[6] + z*c[7])));
 }

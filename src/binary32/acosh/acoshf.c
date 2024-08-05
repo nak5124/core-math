@@ -132,7 +132,7 @@ float cr_acoshf(float x) {
   } else if(__builtin_expect(t.u<0x7f800000u, 1)){
     double xd = x, x2 = xd*xd;
     b64u64_u t = {.f = xd + __builtin_sqrt(x2 - 1)};
-    uint64_t m = t.u&(~0ul>>12);
+    uint64_t m = t.u&(~(uint64_t)0>>12);
     int j = (m + ((int64_t)1<<(52-8)))>>(52-7);
     int e = (t.u>>52) - 0x3ff;
     b64u64_u w = {.u = m | (uint64_t) 0x3ff<<52};

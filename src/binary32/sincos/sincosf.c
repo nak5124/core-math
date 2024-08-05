@@ -48,7 +48,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   u128 p2 = (u128)m*ipi[2]; p2 += p1>>64;
   u128 p3 = (u128)m*ipi[3]; p3 += p2>>64;
   u64 p3h = p3>>64, p3l = p3, p2l = p2, p1l = p1;
-  long a;
+  int64_t a;
   int k = e-124, s = k-23;
   /* in cr_sinf(), rbig() is called in the case 127+28 <= e < 0xff
      thus 155 <= e <= 254, which yields 28 <= k <= 127 and 5 <= s <= 104 */
@@ -63,7 +63,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
     a = p2l<<(s-64)|p1l>>(128-s);
   }
   int sgn = u; sgn >>= 31;
-  long sm = a>>63;
+  int64_t sm = a>>63;
   i -= sm;
   double z = (a^sgn)*0x1p-64;
   i = (i^sgn) - sgn;
@@ -149,7 +149,7 @@ static void __attribute__((noinline)) as_sincosf_big(float x, float *sout, float
   double c = c0 - z*(aa*s0 + bb*c0);
   *sout = s;
   *cout = c;
-  b64u64_u tr = {.f = c}; u64 tail = (tr.u + 6)&(~0ul>>36);
+  b64u64_u tr = {.f = c}; u64 tail = (tr.u + 6)&(~(uint64_t)0>>36);
   if(__builtin_expect(tail<=12, 0)) return as_sincosf_database(x, sout, cout);
 }
 

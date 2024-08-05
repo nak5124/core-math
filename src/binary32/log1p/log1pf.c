@@ -97,7 +97,7 @@ float cr_log1pf(float x) {
     if(__builtin_expect(ux>=0xbf800000u||ax>=0x7f800000u, 0)) return as_special(x);
     b64u64_u t = {.f = z + 1};
     int e = t.u>>52;
-    unsigned long m52 = t.u&(~0ul>>12);
+    uint64_t m52 = t.u&(~(uint64_t)0>>12);
     unsigned j = (t.u >> (52-5))&31;
     e -= 0x3ff;
     b64u64_u xd = {.u = m52 | ((uint64_t)0x3ff<<52)};

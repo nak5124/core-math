@@ -111,7 +111,7 @@ float cr_log10p1f(float x){
   if(__builtin_expect(ux == st[je].u, 0)) return je;
 
   b64u64_u tz = {.f = z + 1.0};
-  uint64_t m = tz.u&(~0ul>>12);
+  uint64_t m = tz.u&(~(uint64_t)0>>12);
   int32_t e = (tz.u>>52) - 1023, j = ((m + ((int64_t)1<<45))>>46);
   tz.u = m | ((uint64_t)0x3ff<<52);
   double ix = tr[j], l = tl[j];

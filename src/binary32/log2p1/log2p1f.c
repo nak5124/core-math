@@ -163,7 +163,7 @@ float cr_log2p1f(float x) {
       return h + l;
     }
     b64u64_u t = {.f = z + 1.0};
-    unsigned long m = t.u&(~0ul>>12);
+    uint64_t m = t.u&(~(uint64_t)0>>12);
     int e = (t.u>>52) - 0x3ff;
     int j = (m + ((int64_t)1<<(52-8)))>>(52-7), k = j>53;
     e += k;
