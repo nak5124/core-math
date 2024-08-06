@@ -118,7 +118,8 @@ float cr_logf(float x){
     f -= 0x1.0ca86c3898dp-49*e;
     f += z;
     f += tl[j]-tl[0];
-    double el = e*0x1.62e42fefa3ap-1, r = el + f;
+    double el = e*0x1.62e42fefa3ap-1;
+    r = el + f;
     ub = r;
     tz.f = r;
     if(__builtin_expect(!(tz.u&((1u<<28)-1u)), 0) ){

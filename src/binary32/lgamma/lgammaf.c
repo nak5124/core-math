@@ -224,7 +224,7 @@ float cr_lgammaf(float x){
   uint64_t tl = (rt.u+5)&0xfffffff;
   float r = f;
   if(__builtin_expect(tl <= 31u, 0)){
-    b32u32_u t = {.f = x};
+    t.f = x;
     for(unsigned i=0;i<sizeof(tb)/sizeof(tb[0]);i++){
       if(t.u == tb[i].x.u) return tb[i].f + tb[i].df;
     }

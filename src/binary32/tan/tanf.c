@@ -162,12 +162,12 @@ float cr_tanf(float x){
       {{0x1.6a0b76p+102f}, -0x1.e42a1ep+0f, -0x1.1dc906p-52f},
     };
     uint32_t ax = t.u&(~0u>>1), sgn = t.u>>31;
-    for(int i=0;i<8;i++) {
-      if(__builtin_expect(st[i].uarg == ax, 0)){
+    for(int j=0;j<8;j++) {
+      if(__builtin_expect(st[j].uarg == ax, 0)){
 	if(sgn)
-	  return -st[i].rh - st[i].rl;
+	  return -st[j].rh - st[j].rl;
 	else
-	  return  st[i].rh + st[i].rl;
+	  return  st[j].rh + st[j].rl;
       }
     }
   }
