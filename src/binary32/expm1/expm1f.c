@@ -122,7 +122,7 @@ float cr_expm1f(float x){
   double a = iln2*z, ia = __builtin_roundeven(a), h = a - ia, h2 = h*h;
   b64u64_u u = {.f = ia + big};
   double c2 = c[2] + h*c[3], c0 = c[0] + h*c[1];
-  const unsigned int64_t *tdl = (const unsigned int64_t *)td;
+  const uint64_t *tdl = (uint64_t *)((void*)td);
   b64u64_u sv = {.u = tdl[u.u&0x1f] + ((u.u>>5)<<52)};
   double r = (c0 + h2*c2)*sv.f - 1.0;
   float ub = r, lb = r - sv.f*0x1.3b3p-33;
