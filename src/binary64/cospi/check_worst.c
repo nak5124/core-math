@@ -144,7 +144,7 @@ void test(){
 int transform(double x, double *out){
   static int first = 1;
   static b64u64_u px = {.u = 0x7ff8000000054312ul};
-  static long k, kmax;
+  static int64_t k, kmax;
   b64u64_u s = {.f = x};
   if (first || px.u != s.u) {
     first = 0;
@@ -159,7 +159,7 @@ int transform(double x, double *out){
   }
   if(0x1p-1022<=x && x<0x1p-1021){
     if(++k<969*2){
-      long e = k>>1, sgn = k&1;
+      int64_t e = k>>1, sgn = k&1;
       s.u += e<<52;
       s.u |= sgn<<63;
       *out = s.f;
@@ -169,7 +169,7 @@ int transform(double x, double *out){
     }
   } else {
     if(++k<kmax){
-      long i = (k>>1)+1;
+      int64_t i = (k>>1)+1;
       s.u |= ~i<<63;
       s.f = (i>>1) + s.f;
       s.u ^= k<<63;

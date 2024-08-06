@@ -197,7 +197,7 @@ double cr_acos (double x){
   }
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
-  long j = jd;
+  int64_t j = jd;
   const double *c = cc[j];
   double t2 = t*t, d = t*((c[2] + t*c[3]) + t2*((c[4] + t*c[5]) + t2*(c[6] + t*c[7])));
   double fh = c[0], fl = c[1] + d;
@@ -222,7 +222,7 @@ double as_acos_refine(double x, double phi){
   double ch = __builtin_sqrt(c2f);
   double cl = (c2l - __builtin_fma(ch,ch,-c2f))*((0.5/c2f)*ch);
 
-  long jf = __builtin_roundeven(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
+  int64_t jf = __builtin_roundeven(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
   // sin(pi/64*j) in the double-double format
   static const double s[33][2] = {
     {0x0p+0, 0x0p+0}, {-0x1.912bd0d569a9p-61, 0x1.91f65f10dd814p-5},
@@ -282,8 +282,8 @@ double as_acos_refine(double x, double phi){
   e = 52-(107+e);
   e = e<0?0:e;
   e = e>52?52:e;
-  u64 m = ((u64)1<<52)-(1ul<<e);
-  if(__builtin_expect(!((t.u+(1l<<(e-1)))&m), 0)){
+  u64 m = ((u64)1<<52)-((u64)1<<e);
+  if(__builtin_expect(!((t.u+((i64)1<<(e-1)))&m), 0)){
     if(x==-0x1.771164bfd1f84p-3 ) return 0x1.c14601daaf657p+0  - 0x1p-54;
     if(x==-0x1.4510ee8eb4e67p-1 ) return 0x1.211c0e2c2559ep+1  - 0x1p-53;
     if(x==-0x1.011c543f23a17p-2 ) return 0x1.d318c90d9e8b7p+0  - 0x1p-54;

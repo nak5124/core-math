@@ -107,7 +107,7 @@ static int
 is_nan (long double x)
 {
   b80u80_t v = {.f = x};
-  return ((v.e & 0x7ffful) == 0x7fff && (v.m != (1ul << 63)));
+  return ((v.e & (uint64_t)0x7fff) == 0x7fff && (v.m != ((uint64_t)1 << 63)));
 }
 
 static inline int
@@ -129,7 +129,9 @@ check (long double x)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   long double z1 = ref_function_under_test(x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   long double z2 = cr_function_under_test(x);
@@ -145,6 +147,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La (y=%La)\n", x, z1);
@@ -165,6 +168,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#endif
   return 0;
 }
 

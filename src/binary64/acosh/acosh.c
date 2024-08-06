@@ -228,11 +228,11 @@ double cr_acosh(double x){
     }
   }
   int ex = t.u>>52, e = ex - off;
-  t.u &= ~0ul>>12;
+  t.u &= ~(u64)0>>12;
   double ed = e;
   u64 i = t.u>>(52-5);
-  long d = t.u & (~0ul>>17);
-  u64 j = (t.u + ((u64)B[i].c0<<33) + ((long)B[i].c1*(d>>16)))>>(52-10);
+  int64_t d = t.u & (~(u64)0>>17);
+  u64 j = (t.u + ((u64)B[i].c0<<33) + ((int64_t)B[i].c1*(d>>16)))>>(52-10);
   t.u |= (u64)0x3ff<<52;
   int i1 = j>>5, i2 = j&0x1f;
   double r = r1[i1]*r2[i2], dx = __builtin_fma(r, t.f, -1), dx2 = dx*dx;
@@ -388,7 +388,7 @@ double as_acosh_refine(double x, double a){
   }
   b64u64_u t = {.f = zh};
   int ex = t.u>>52, e = ex-0x3ff + (zl==0.0);
-  t.u &= ~0ul>>12;
+  t.u &= ~(u64)0>>12;
   t.u |= (u64)0x3ff<<52;
   double ed = e;
   b64u64_u v = {.f = a - ed + 0x1.00008p+0};
@@ -422,7 +422,7 @@ double as_acosh_refine(double x, double a){
   v1 *= 2;
   v2 *= 2;
   t.f = v1;
-  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+  if(__builtin_expect(!(t.u&(~(u64)0>>12)), 0)){
     b64u64_u w = {.f = v2};
     if((w.u^t.u)>>63)
       t.u--;
@@ -431,7 +431,7 @@ double as_acosh_refine(double x, double a){
     v1 = t.f;
   }
   b64u64_u t0 = {.f = v0};
-  uint64_t er = ((t.u + 7) & (~0ul>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
+  uint64_t er = ((t.u + 7) & (~(u64)0>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
   double res = v0 + v1;
   if(__builtin_expect(de>102 || er<15, 0)) return as_acosh_database(x,res);
   return res;

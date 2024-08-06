@@ -118,7 +118,7 @@ static double as_sinpi_refine(int iq, double z){
   double tsl, tsh = fasttwosum(sch, csh, &tsl); tsl += csl + scl;
   double tsl2; tsh = fasttwosum(sbh, tsh, &tsl2); tsl = sbl + tsl + tsl2;
   b64u64_u t = {.f = tsl};
-  if((t.u|(0xffful<<52)) == ~0ul || (t.u<<12) == 0){
+  if((t.u|((uint64_t)0xfff<<52)) == ~(uint64_t)0 || (t.u<<12) == 0){
     static const struct {int iq; double x, r, d;} db[] = {
       {903, -0x1.bdd02d1ad60p-2, 0x1.f72c906962631p-1,  0x1p-55},
       {1029, -0x1.a4ad070549dp-3, 0x1.fffc4d2c6ca51p-1,  0x1p-55},
@@ -145,7 +145,7 @@ double cr_cospi(double x){
   if(__builtin_expect(ax==0, 0)) return 1.0;
   int32_t e = ax>>52;
   // e is the unbiased exponent, we have 2^(e-1023) <= |x| < 2^(e-1022)
-  int64_t m = (ix.u&(~0ul>>12))|(1ul<<52);
+  int64_t m = (ix.u&(~0ul>>12))|((uint64_t)1<<52);
   int32_t s = 1063 - e; // 2^(40-s) <= |x| < 2^(41-s)
   if(__builtin_expect(s<0, 0)){ // |x| >= 2^41
     if(__builtin_expect(e == 0x7ff, 0)){

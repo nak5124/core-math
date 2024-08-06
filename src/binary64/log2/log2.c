@@ -33,7 +33,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef unsigned long u64;
+typedef uint64_t u64;
 typedef unsigned short ushort;
 typedef union {double f; u64 u;} b64u64_u;
 
@@ -145,17 +145,17 @@ double cr_log2(double x){
   }
   if (__builtin_expect(ex >= 0x7ff, 0)){
     if(!(t.u<<1)) return -1.0 / 0.0; // 0
-    if((t.u<<1)>(0x7fful<<53)) return x; // nan
+    if((t.u<<1)>((u64)0x7ff<<53)) return x; // nan
     if(t.u>>63) return 0.0 / 0.0; // < 0
     return x; // inf
   }
-  t.u &= ~0ul>>12;
+  t.u &= ~(u64)0>>12;
   if(__builtin_expect(t.u==0, 0)) return as_log2_exact(e);
   double ed = e;
   u64 i = t.u>>(52-5);
-  long d = t.u & (~0ul>>17);
-  u64 j = (t.u + ((u64)B[i].c0<<33) + ((long)B[i].c1*(d>>16)))>>(52-10);
-  t.u |= 0x3ffl<<52;
+  int64_t d = t.u & (~(u64)0>>17);
+  u64 j = (t.u + ((u64)B[i].c0<<33) + ((int64_t)B[i].c1*(d>>16)))>>(52-10);
+  t.u |= (int64_t)0x3ff<<52;
   int i1 = j>>5, i2 = j&0x1f;
   const double l2h = 0x1.71548p+0, l2l = -0x1.ad47a2f472159p-22;
   double r = r1[i1]*r2[i2];
@@ -263,11 +263,11 @@ static double __attribute__((noinline)) as_log2_refine(double x, double a){
     e -= k-12;
     t.u <<= k-11;
   }
-  t.u &= ~0ul>>12;
-  t.u |= 0x3fful<<52;
+  t.u &= ~(u64)0>>12;
+  t.u |= (u64)0x3ff<<52;
   double ed = e;
   b64u64_u v = {.f = a - ed + 0x1.00008p+0};
-  u64 i = (v.u - (0x3fful<<52))>>(52-16);  
+  u64 i = (v.u - ((u64)0x3ff<<52))>>(52-16);  
   int i1 = i>>12, i2 = (i>>8)&0xf, i3 = (i>>4)&0xf, i4 = i&0xf;
   double L[3];
   L[0] = LL[0][i1][0] + LL[1][i2][0] + (LL[2][i3][0] + LL[3][i4][0]) + ed;
@@ -285,7 +285,7 @@ static double __attribute__((noinline)) as_log2_refine(double x, double a){
   sh = adddd(sh, sl, L[1], L[2], &sl);
   double v2, v0 = fasttwosum(L[0], sh, &v2), v1 = fasttwosum(v2, sl, &v2);
   t.f = v1;
-  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+  if(__builtin_expect(!(t.u&(~(u64)0>>12)), 0)){
     b64u64_u w = {.f = v2};
     if((w.u^t.u)>>63)
       t.u--;

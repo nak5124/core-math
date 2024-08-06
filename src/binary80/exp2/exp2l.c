@@ -450,12 +450,12 @@ static long double fast_path (int *needmoreaccuracy, long double x){
   // let e = (v.e&0x7fff) - 0x3fff: we have 2^e <= |x| < 2^(e+1)
   // thus with s = 48 - e: 2^(48-s) <= |x| < 2^(49-s)
   // With the input range for x we have -65 <= e <= 14 thus 34 <= s <= 113
-  uint64_t m = v.m + (1l<<(s-1)), sgn = -(v.e>>15);
+  uint64_t m = v.m + ((int64_t)1<<(s-1)), sgn = -(v.e>>15);
   // x = (-1)^sgn*m/2^63*2^e
   // bit s in v.m (when x is multiplied by 2^15) corresponds to 1, thus bit s-1 to 1/2
   if(__builtin_expect(m<v.m,0)) { // exponent shift in 2^15*x+1/2
     s--;
-    m = (v.m>>1) + (1l<<(s-1));
+    m = (v.m>>1) + ((int64_t)1<<(s-1));
   }
   // bit s in v.m corresponds to 1 in 2^15*x+1/2
   if(s>63) m = 0; // |x| < 2^-16
@@ -507,13 +507,13 @@ static long double fast_path (int *needmoreaccuracy, long double x){
      2^-84.969/0.999989 < 2^-84.968.
    */
   b64u64_u th = {.f = h}, tl = {.f = l};
-  long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
+  int64_t eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
   // the high part is always positive, the low part can be positive or negative
   // represent the mantissa of the low part in two's complement format
-  long ml = (tl.u&~(0xfffl<<52))|1l<<52, sgnl = -(tl.u>>63);
+  int64_t ml = (tl.u&~((int64_t)0xfff<<52))|(int64_t)1<<52, sgnl = -(tl.u>>63);
   ml = (ml^sgnl) - sgnl;
   int64_t mlt;
-  long sh = de-11;
+  int64_t sh = de-11;
   if(__builtin_expect(sh>63,0)){
     mlt = sgnl;
     if(__builtin_expect(sh-64>63,0))
@@ -525,10 +525,10 @@ static long double fast_path (int *needmoreaccuracy, long double x){
     ml <<= 64-sh;
   }
   // construct the mantissa of the long double number
-  uint64_t mh = ((th.u<<11)|1l<<63);
+  uint64_t mh = ((th.u<<11)|(int64_t)1<<63);
   /* The relative error is bounded by 2^-84.968 * mh < 0x1.06p-85 * mh.
      Since we add it to ml, we have to add 0x1.06p-85 * mh * 2^64 = 0x106p-29 * mh. */
-  long eps = 0x106*(mh>>29);
+  int64_t eps = 0x106*(mh>>29);
   mh += mlt;
   if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
 				     // can unset the msb so shift the
@@ -540,7 +540,7 @@ static long double fast_path (int *needmoreaccuracy, long double x){
   }
   if(rm==FE_TONEAREST){ // round to nearest
     mh += (uint64_t)ml>>63;
-    ml -= (1ul<<63);
+    ml -= (uint64_t)1<<63;
   } else if(rm==FE_UPWARD) { // round to +inf
     mh += 1;
     ml = -ml;
@@ -720,7 +720,7 @@ accurate_path (long double *h, long double *l, long double x)
       b96u96_u v = {.f = *h};
       v.e -= 66;
       v.e |= ((dbt[m/64]>>(m%64))&1)<<15;
-      v.m = 1ul<<63;
+      v.m = (uint64_t)1<<63;
       *l = v.f;
       return;
     } else
@@ -810,10 +810,10 @@ cr_exp2l (long double x)
       int sgn = -(v.e>>15);
       k = ((v.m>>(64-k))^sgn) - sgn;
       if(k>-16383){
-	v.m = 1ul<<63;
+	v.m = (uint64_t)1<<63;
 	v.e = k + 16383;
       } else { // denormal
-	v.m = 1ul<<(16445+k);
+	v.m = (uint64_t)1<<(16445+k);
 	v.e = 0;
       }
       return v.f;

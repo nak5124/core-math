@@ -96,7 +96,7 @@ static inline double as_ldexp(double x, i64 i){
 
 static inline double as_todenormal(double x){
 #ifdef __x86_64__
-  __m128i sb = {~0ul>>12, 0};
+  __m128i sb = {~(u64)0>>12, 0};
 #if defined(__clang__)
   __m128d r = _mm_set_sd(x);
 #else
@@ -106,7 +106,7 @@ static inline double as_todenormal(double x){
   return r[0];
 #else
   b64u64_u ix = {.f = x};
-  ix.u &= ~0ul>>12;
+  ix.u &= ~(u64)0>>12;
   return ix.f;
 #endif
 }
@@ -134,10 +134,10 @@ static __attribute__((noinline)) double as_exp2_database(double x, double f){
       a = m + 1;
     else if (t == ix.u) {
       static const u64 s2[2] = {0x3b216fbd5fd7665f, 0x34c797};
-      const long k = 8677191773140ul;
+      const int64_t k = 8677191773140ul;
       u64 p = (s2[m>>5]>>((m*2)&63))&3;
       b64u64_u jf = {.f = f}, dy = {.u = (0x3c90|((k>>m)<<15))<<48};
-      for(long i=-1;i<=1;i++){
+      for(int64_t i=-1;i<=1;i++){
 	b64u64_u y = {.u = jf.u + i};
 	if( (y.u&3) == p) return y.f + dy.f;
       }
@@ -222,7 +222,7 @@ static const double t1[][2] = {
 static double __attribute__((noinline)) as_exp2_accurate(double x){
   b64u64_u ix = {.f = x};
   double sx = 4096.0*x, fx = __builtin_roundeven(sx), z = sx - fx;
-  long k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
+  int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
   double tl, th = muldd(t0h,t0l, t1h,t1l, &tl);
@@ -242,7 +242,7 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
       fh = fasttwosum(th,fh, &e);
       fl = fasttwosum(e, fl, &e);
       ix.f = fl;
-      if((ix.u&(~0ul>>12))==0) { // fl is a power of 2
+      if((ix.u&(~(u64)0>>12))==0) { // fl is a power of 2
 	if((ix.u>>52)&0x7ff){    // |fl| is Inf
 	  b64u64_u v = {.f = e};
 	  i64 d = ((((i64)ix.u>>63)^((i64)v.u>>63))<<1) + 1;
@@ -256,7 +256,7 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
     }
     fh = fasttwosum(fh,fl, &fl);
     ix.f = fl;
-    u64 d = (ix.u + 2)&(~0ul>>12);
+    u64 d = (ix.u + 2)&(~(u64)0>>12);
     if(__builtin_expect(d<=2, 0)) fh = as_exp2_database(x, fh);
     fh = as_ldexp(fh, ie);
   } else {
@@ -292,7 +292,7 @@ double cr_exp2(double x){
   }
   u64 m = ix.u<<12, ex = (ax>>53) - 0x3ff, frac = ex>>63 | m<<ex;
   double sx = 4096.0*x, fx = __builtin_roundeven(sx), z = sx - fx, z2 = z*z;
-  long k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
+  int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
   double tl, th = muldd(t0h,t0l, t1h,t1l, &tl);

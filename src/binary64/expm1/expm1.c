@@ -271,7 +271,7 @@ static double __attribute__((noinline)) as_expm1_accurate(double x){
     v0 = fasttwosum(v0,v1, &v1);
     v1 = fasttwosum(v1,v2, &v2);
     ix.f = v1;
-    if((ix.u&(~0ul>>12))==0) {
+    if((ix.u&(~(u64)0>>12))==0) {
       if(!(ix.u<<1)) return as_expm1_database(x,v0);
       b64u64_u v = {.f = v2};
       i64 d = ((((i64)ix.u>>63)^((i64)v.u>>63))<<1) + 1;
@@ -311,7 +311,7 @@ static double __attribute__((noinline)) as_expm1_accurate(double x){
     fl += e;
     fh = fasttwosum(fh,fl, &fl);
     ix.f = fl;
-    u64 d = (ix.u + 8)&(~0ul>>12);
+    u64 d = (ix.u + 8)&(~(u64)0>>12);
     if(__builtin_expect(d<=8, 0)) fh = as_expm1_database(x, fh);
     fh = as_ldexp(fh, ie);
     return fh;
@@ -320,7 +320,7 @@ static double __attribute__((noinline)) as_expm1_accurate(double x){
 
 double cr_expm1(double x){
   b64u64_u ix = {.f = x};
-  u64 aix = ix.u & (~0ul>>1);
+  u64 aix = ix.u & (~(u64)0>>1);
   if(__builtin_expect(aix < 0x3fd0000000000000ul, 1)){
     if( __builtin_expect(aix < 0x3ca0000000000000ul, 0)) {
       if( !aix ) return x;

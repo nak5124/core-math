@@ -328,17 +328,17 @@ P (double *h, double *l, double xh, double xl)
 /* put in h+l an approximation of e + log2(x) for 1 <= x < 2
    with |h + l - (e + log2(x))| < 2^-84.19 and |l| < 2^-36.99 */
 static void
-fast_path (double *h, double *l, unsigned long vm, int e)
+fast_path (double *h, double *l, uint64_t vm, int e)
 {
   /* convert x to double-double representation xh + xl, where xh is a
      multiple of 2^-38, thus is representable on 39 bits */
 
-  b64u64_u th = {.u = (0x3fful<<52) | ((vm >> 25) << 14)};
-  b64u64_u tl = {.u = (0x3d9ul<<52) | ((vm << 39) >> 12)};
+  b64u64_u th = {.u = ((uint64_t)0x3ff<<52) | ((vm >> 25) << 14)};
+  b64u64_u tl = {.u = ((uint64_t)0x3d9<<52) | ((vm << 39) >> 12)};
   double xh = th.f, xl = tl.f - 0x1p-38;
   // 1 <= xh < 2 and 0 <= xl < 2^-38
 
-  long i = (vm << 1) >> 58; // 0 <= i < 2^6
+  int64_t i = (vm << 1) >> 58; // 0 <= i < 2^6
   if (i > 26)
   {
     xh = xh * 0.5;
@@ -776,7 +776,7 @@ cr_log2l (long double x)
   }
   if (__builtin_expect (ex >= 0x7fff, 0)) // x<=0 or Inf or NaN
   {
-    if (t.m == (1ul << 63) && (ex == 0x7fff)) return x; // x=+Inf
+    if (t.m == ((uint64_t)1 << 63) && (ex == 0x7fff)) return x; // x=+Inf
     return 0.0L / 0.0L; // x < 0 or qNaN or sNaN
   }
 

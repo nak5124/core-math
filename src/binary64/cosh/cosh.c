@@ -253,9 +253,9 @@ double cr_cosh(double x){
     if(lb == ub) return lb;
     return as_cosh_zero(x);
   }
-  long il = ((long)jt.u<<14)>>40, jl = -il;
-  long i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
-  long j1 = jl&0x3f, j0 = (jl>>6)&0x3f, je = jl>>12;
+  int64_t il = ((int64_t)jt.u<<14)>>40, jl = -il;
+  int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
+  int64_t j1 = jl&0x3f, j0 = (jl>>6)&0x3f, je = jl>>12;
   b64u64_u sp = {.u = (1022 + ie)<<52}, sm = {.u = (1022 + je)<<52};
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
@@ -280,7 +280,7 @@ double cr_cosh(double x){
       th = as_exp_accurate(ax, t, th, tl, &tl);
       th = fasttwosum(th, tl, &tl);
       b64u64_u uh = {.f = th}, ul = {.f = tl};
-      long eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
+      int64_t eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
       th += tl;
       th *= 2;
       th *= sp.f;
@@ -334,7 +334,7 @@ double cr_cosh(double x){
   }
   rh = fasttwosum(rh, rl, &rl);
   b64u64_u uh = {.f = rh}, ul = {.f = rl};
-  long eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
+  int64_t eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
   rh += rl;
   if(__builtin_expect(ml<=16 || eh-el>103,0)) return as_cosh_database(x, rh);
   return rh;

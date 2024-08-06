@@ -253,7 +253,7 @@ double cr_tanh(double x){
 #endif
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
-  long i1 = (jt.u>>27)&0x3f, i0 = (jt.u>>33)&0x3f, ie = (long)(jt.u<<13)>>52;
+  int64_t i1 = (jt.u>>27)&0x3f, i0 = (jt.u>>33)&0x3f, ie = (int64_t)(jt.u<<13)>>52;
   const b64u64_u sp = {.u = (1023 + ie)<<52};
   static const double ch[] = {0x1p+1, 0x1p+1, 0x1.55555557e54ffp+0, 0x1.55555553a12f4p-1};
   double t0h = t0[i0][1], t1h = t1[i1][1], th = t0h*t1h, tl;
