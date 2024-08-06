@@ -7,3 +7,10 @@ check:
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
     - ./ci.sh
+
+check_dry:
+  stage: test
+  image: debian:12
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - FORCE=true DRY=--dry ./ci.sh

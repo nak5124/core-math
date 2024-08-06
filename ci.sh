@@ -1,4 +1,8 @@
 #!/bin/bash
+# Usage:
+# DRY=--dry ./ci.sh to only try compilation (of last modified functions)
+# FORCE=true DRY=--dry ./ci.sh to only try compilation (of all functions)
+# FORCE_FUNCTIONS="xxx yyy" ./ci.sh to force checking xxx and yyy
 
 set -e
 
@@ -18,11 +22,18 @@ echo "Reference commit is $LAST_COMMIT"
 
 check () {
     KIND="$1"
-    if ! { echo "$FORCE_FUNCTIONS" | tr ' ' '\n' | grep --quiet '^'"$FUNCTION"'$'; } && git diff --quiet "$LAST_COMMIT".. -- src/*/*/$FUNCTION.c; then
-        echo "Skipped $FUNCTION"
+    if [ "$FORCE" != "" ]; then
+        doit=1
+    elif ! { echo "$FORCE_FUNCTIONS" | tr ' ' '\n' | grep --quiet '^'"$FUNCTION"'$'; } && git diff --quiet "$LAST_COMMIT".. -- src/*/*/$FUNCTION.c; then
+        doit=0
+    else
+        doit=1
+    fi
+    if [ "$doit" == "0" ]; then
+        echo "Skip $FUNCTION"
     else
         echo "Checking $FUNCTION..."
-        ./check.sh "$KIND" "$FUNCTION"
+        ./check.sh $DRY "$KIND" "$FUNCTION"
     fi
 }
 
