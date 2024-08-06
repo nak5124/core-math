@@ -267,9 +267,9 @@ double cr_tanpi(double x){
       th = ith;
     } else {
       double nl = T[iq][0], nh = T[iq][1];
-      static const double s[2] = {-1, 1};
-      nh *= s[ms+1];
-      nl *= s[ms+1];
+      static const double s2[2] = {-1, 1};
+      nh *= s2[ms+1];
+      nl *= s2[ms+1];
       double ml, mh = muldd(th,tl,nh,nl, &ml), dm, dn;
       mh = fasttwosub(1.0, mh, &dm);
       ml = dm - ml;
@@ -299,9 +299,9 @@ double cr_tanpi(double x){
       th = ith;
     } else {
       double nl = T[iq][0], nh = T[iq][1];
-      static const double s[2] = {-1, 1};
-      nh *= s[ms+1];
-      nl *= s[ms+1];
+      static const double s2[2] = {-1, 1};
+      nh *= s2[ms+1];
+      nl *= s2[ms+1];
       double ml, mh = muldd(th,tl,nh,nl, &ml), dm, dn;
       mh = fasttwosub(1.0, mh, &dm);
       ml = dm - ml;
@@ -336,9 +336,9 @@ double cr_tanpi(double x){
 	res = th;
       }
     } else {
-      static const double c[] = {0x1.4abbce625be53p+3, 0x1.466bc6775aa2ap+5, 0x1.46000158496c2p+7};
+      static const double c2[] = {0x1.4abbce625be53p+3, 0x1.466bc6775aa2ap+5, 0x1.46000158496c2p+7};
       double x2 = x*x, x3 = x*x2;
-      double f = x3*(c[0] + x2*(c[1] + x2*(c[2])));
+      double f = x3*(c2[0] + x2*(c2[1] + x2*(c2[2])));
       double px1, px0 = mulddd(pi0,pi1,x,&px1);
       th = fastsumddd(px0,px1,f,&tl);
       double eps = x*(x2*0x1.1p-47 + 0x1p-101);

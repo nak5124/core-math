@@ -1405,7 +1405,7 @@ reduce (dint64_t *X)
        Since X is normalized at input, hi_in >= 2^63, and since T[0] >= 2^61,
        we have hi >= 2^(63+61-64) = 2^60, thus the normalize() below
        perform a left shift by at most 3 bits */
-    int e = X->ex;
+    e = X->ex;
     normalize (X);
     e = e - X->ex;
     // put the upper e bits of tiny into X->lo
@@ -1565,7 +1565,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
       c0 = c0 << 52;
       if (c0)
         {
-          int g = __builtin_clzl (c0);
+          g = __builtin_clzl (c0);
           c0 = c0 << (g+1);
           t.u = ((f - 64 - g) << 52) | (c0 >> 12);
           *l = t.f;
@@ -1973,10 +1973,10 @@ cos_accurate (double x)
         {0x1.20000000000f3p-20, 0x1.fffffffffebcp-1, 0x1.37642666666fdp-127},
         {0x1.800000000024p-20,  0x1.fffffffffdcp-1,  0x1.b5666666667ddp-125},
       };
-      for (int i = 0; i < 5; i++)
+      for (int k = 0; k < 5; k++)
         {
-          if (__builtin_fabs (x) == exceptions[i][0])
-            return exceptions[i][1] + exceptions[i][2];
+          if (__builtin_fabs (x) == exceptions[k][0])
+            return exceptions[k][1] + exceptions[k][2];
         }
       printf ("Rounding test of accurate path failed for cos(%la)\n", x);
       printf ("Please report the above to core-math@inria.fr\n");

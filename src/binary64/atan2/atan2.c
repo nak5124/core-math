@@ -493,11 +493,12 @@ double cr_atan2 (double y0, double x0){
     dl += e;
     double nh = x*t0, nl = __builtin_fma(x,t0,-nh);
     nh = fasttwosum(y-nh, -nl, &nl);
-    double zh = nh * rdh, z2 = zh*zh;
+    double zh = nh * rdh;
+    z2 = zh*zh;
     double zl = rdh * (__builtin_fma(dh, -zh, nh) + (nl - (nh*rdh)*dl));
-    static const double b[] =
+    static const double b2[] =
       {-0x1.5555555555555p-2, 0x1.999999999755ep-3, -0x1.24924883596f8p-3, 0x1.c6f7d73531bc2p-4};
-    zl += zh*z2*((b[0] + z2*b[1]) + (z2*z2)*(b[2] + z2*b[3]));
+    zl += zh*z2*((b2[0] + z2*b2[1]) + (z2*z2)*(b2[2] + z2*b2[3]));
     zh *= __builtin_copysign(1,sgn.f);
     zl *= __builtin_copysign(1,sgn.f);
     eps = 0x1.4p-50*(__builtin_fabs(zh)*z2 + 0x1p-51);

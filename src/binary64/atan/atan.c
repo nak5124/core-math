@@ -209,8 +209,8 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
       {0x1.d768804487b07p-3, 0x1.cf5676f373ec1p-3, -0x1p-110},
       {0x1.bb04a79820063p-8, 0x1.bb02ed5c5e956p-8, -0x1p-115}
     };
-    for(unsigned i=0;i<sizeof(db)/sizeof(db[0]);i++)
-      if(ax == db[i][0]) return __builtin_copysign(db[i][1],x) + __builtin_copysign(1.0,x)*db[i][2];
+    for(unsigned j=0;j<sizeof(db)/sizeof(db[0]);j++)
+      if(ax == db[j][0]) return __builtin_copysign(db[j][1],x) + __builtin_copysign(1.0,x)*db[j][2];
     if(!(t1.u&(~(u64)0>>12))){
       b64u64_u w = {.f = v2};
       if((w.u^t1.u)>>63)
@@ -231,12 +231,12 @@ double cr_atan(double x){
   if (__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
     // |x| < 0x1.b21c475e6362ap-8
     if(__builtin_expect(at == 0, 0)) return x; // atan(+/-0) = +/-0
-    static const double ch[] = {
+    static const double ch2[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
     if (at<(u64)0x3e40000000000000ul) // |x| < 0x1p-27
       return __builtin_fma (-0x1p-54, x, x);
     double x2 = x*x, x3 = x*x2, x4 = x2*x2;
-    double f = x3*((ch[0] + x2*ch[1]) + x4*(ch[2] + x2*ch[3]));
+    double f = x3*((ch2[0] + x2*ch2[1]) + x4*(ch2[2] + x2*ch2[3]));
     double ub = (f + f*0x4.8p-52) + x, lb = (f - f*0x2.8p-52) + x;
     if(__builtin_expect(ub == lb, 1)) return ub;
     return as_atan_refine2(x, ub);

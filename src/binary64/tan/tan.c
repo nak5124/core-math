@@ -1528,7 +1528,7 @@ reduce (dint64_t *X)
        Since X is normalized at input, hi_in >= 2^63, and since T[0] >= 2^61,
        we have hi >= 2^(63+61-64) = 2^60, thus the normalize() below
        perform a left shift by at most 3 bits */
-    int e = X->ex;
+    e = X->ex;
     normalize (X);
     e = e - X->ex;
     // put the upper e bits of tiny into X->lo
@@ -1688,7 +1688,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
       c0 = c0 << 52;
       if (c0)
         {
-          int g = __builtin_clzl (c0);
+          g = __builtin_clzl (c0);
           c0 = c0 << (g+1);
           t.u = ((f - 64 - g) << 52) | (c0 >> 12);
           *l = t.f;
@@ -2191,11 +2191,11 @@ tan_accurate (double x)
         /* the following has 72 identical bits after the round bit */
         {0x1.dfffffffffc7cp-21, 0x1.e000000000546p-21, -0x1.658bcedb6e1d4p-147},
       };
-      for (int i = 0; i < 2; i++)
+      for (int j = 0; j < 2; j++)
         {
-          if (__builtin_fabs (x) == exceptions[i][0])
-            return (x > 0) ? exceptions[i][1] + exceptions[i][2]
-              : -exceptions[i][1] - exceptions[i][2];
+          if (__builtin_fabs (x) == exceptions[j][0])
+            return (x > 0) ? exceptions[j][1] + exceptions[j][2]
+              : -exceptions[j][1] - exceptions[j][2];
         }
       printf ("Rounding test of accurate path failed for tan(x)=%la\n", x);
       printf ("Please report the above to core-math@inria.fr\n");

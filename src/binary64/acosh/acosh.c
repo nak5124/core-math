@@ -191,13 +191,14 @@ double cr_acosh(double x){
   int off = 0x3fe;
   b64u64_u t = ix;
   if(ix.u<0x3ff1e83e425aee63ul){
-    double z = x-1, iz = (-0.25)/z, zt = 2*z;
+    z = x-1;
+    double iz = (-0.25)/z, zt = 2*z;
     double sh = __builtin_sqrt(zt), sl = __builtin_fma(sh,sh,-zt)*(sh*iz);
-    static const double c[] = {
+    static const double cl[] = {
       -0x1.5555555555555p-4, 0x1.3333333332f95p-6, -0x1.6db6db6d5534cp-8, 0x1.f1c71c1e04356p-10,
       -0x1.6e8b8e3e40d58p-11, 0x1.1c4ba825ac4fep-12, -0x1.c9045534e6d9ep-14, 0x1.71fedae26a76bp-15,
       -0x1.f1f4f8cc65342p-17};
-    double z2 = z*z, z4 = z2*z2, ds = (sh*z)*(c[0] + z*(((c[1] + z*c[2]) + z2*(c[3] + z*c[4])) + z4*((c[5] + z*c[6]) + z2*(c[7] + z*c[8]))));
+    double z2 = z*z, z4 = z2*z2, ds = (sh*z)*(cl[0] + z*(((cl[1] + z*cl[2]) + z2*(cl[3] + z*cl[4])) + z4*((cl[5] + z*cl[6]) + z2*(cl[7] + z*cl[8]))));
     double eps = ds*0x1.dp-51 - 0x1p-104*sh;
     ds += sl;
     double lb = sh + (ds - eps), ub = sh + (ds + eps);
@@ -211,14 +212,14 @@ double cr_acosh(double x){
     t.f = th;
     g = tl/th;
   } else if(ix.u<0x4087100000000000){
-    static const double c[] = {0x1.5c4b6148816e2p-66, -0x1.000000000005cp-2, -0x1.7fffffebf3e6cp-4, -0x1.aab6691f2bae7p-5};
-    g = c[0] + z*(c[1] + z*(c[2] + z*c[3]));
+    static const double cl[] = {0x1.5c4b6148816e2p-66, -0x1.000000000005cp-2, -0x1.7fffffebf3e6cp-4, -0x1.aab6691f2bae7p-5};
+    g = cl[0] + z*(cl[1] + z*(cl[2] + z*cl[3]));
   } else if(ix.u<0x40e0100000000000){
-    static const double c[] = {-0x1.7f77c8429c6c6p-67, -0x1.ffffffffff214p-3, -0x1.8000268641bfep-4};
-    g = c[0] + z*(c[1] + z*c[2]);
+    static const double cl[] = {-0x1.7f77c8429c6c6p-67, -0x1.ffffffffff214p-3, -0x1.8000268641bfep-4};
+    g = cl[0] + z*(cl[1] + z*cl[2]);
   } else if(ix.u<0x41ea000000000000){
-    static const double c[] = {0x1.7a0ed2effdd1p-67, -0x1.000000017d048p-2};
-    g = c[0] + z*c[1];
+    static const double cl[] = {0x1.7a0ed2effdd1p-67, -0x1.000000017d048p-2};
+    g = cl[0] + z*cl[1];
   } else {
     if(__builtin_expect(ix.u>=0x7ff0000000000000ul, 0)){
       u64 aix = ix.u<<1;

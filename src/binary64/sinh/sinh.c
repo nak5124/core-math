@@ -307,7 +307,8 @@ double cr_sinh(double x){
 	return __builtin_copysign(0x1p1023, x)*2.0;
       }
       sp.u = (1021 + ie)<<52;
-      double rh = th, rl = tl + th*pp;
+      rh = th;
+      rl = tl + th*pp;
       rh *= __builtin_copysign(1, x);
       rl *= __builtin_copysign(1, x);
       double e = 0.11e-18*th, lb = rh + (rl - e), ub = rh + (rl + e);

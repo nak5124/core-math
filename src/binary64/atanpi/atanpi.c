@@ -394,10 +394,10 @@ double cr_atanpi (double x){
     if (at < 0x3c90000000000000) // |x| < 2^-54
       return atanpi_subnormal (x);
     if (__builtin_expect (x == 0, 0)) return x;
-    static const double ch[] = {
+    static const double ch2[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
     double x2 = x*x, x3 = x*x2, x4 = x2*x2;
-    double f = x3*((ch[0] + x2*ch[1]) + x4*(ch[2] + x2*ch[3]));
+    double f = x3*((ch2[0] + x2*ch2[1]) + x4*(ch2[2] + x2*ch2[3]));
     // begin_atanpi
     /* Here x+f approximates atan(x), with absolute error bounded by
        0x4.8p-52*f (see atan.c). After multiplying by 1/pi this error

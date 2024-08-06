@@ -273,7 +273,8 @@ double cr_cosh(double x){
 	return 0x1p1023*2.0;
       }
       sp.u = (1021 + ie)<<52;
-      double rh = th, rl = tl + th*pp;
+      rh = th;
+      rl = tl + th*pp;
       double e = 0.11e-18*th, lb = rh + (rl - e), ub = rh + (rl + e);
       if(lb == ub) return (lb*sp.f)*2;
 

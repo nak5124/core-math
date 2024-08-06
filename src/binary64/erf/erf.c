@@ -543,10 +543,10 @@ cr_erf_accurate_tiny (double *h, double *l, double z)
   };
   double z2 = z * z, th, tl;
   *h = p[21/2+4]; /* degree 21 */
-  for (int j = 19; j > 11; j-=2)
-    *h = __builtin_fma (*h, z2, p[j/2+4]); /* degree j */
+  for (int a = 19; a > 11; a-=2)
+    *h = __builtin_fma (*h, z2, p[a/2+4]); /* degree j */
   *l = 0;
-  for (int j = 11; j > 7; j-=2)
+  for (int a = 11; a > 7; a-=2)
   {
     /* multiply h+l by z^2 */
     a_mul (&th, &tl, *h, z);
@@ -554,18 +554,18 @@ cr_erf_accurate_tiny (double *h, double *l, double z)
     a_mul (h, l, th, z);
     *l = __builtin_fma (tl, z, *l);
     /* add p[j] to h + l */
-    fast_two_sum (h, &tl, p[j/2+4], *h);
+    fast_two_sum (h, &tl, p[a/2+4], *h);
     *l += tl;
   }
-  for (int j = 7; j >= 1; j-=2)
+  for (int a = 7; a >= 1; a-=2)
   {
     /* multiply h+l by z^2 */
     a_mul (&th, &tl, *h, z);
     tl = __builtin_fma (*l, z, tl);
     a_mul (h, l, th, z);
     *l = __builtin_fma (tl, z, *l);
-    fast_two_sum (h, &tl, p[j-1], *h);
-    *l += p[j] + tl;
+    fast_two_sum (h, &tl, p[a-1], *h);
+    *l += p[a] + tl;
   }
   /* multiply by z */
   a_mul (h, &tl, *h, z);

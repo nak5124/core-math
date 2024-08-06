@@ -817,9 +817,9 @@ accurate_path (double x)
     }
     if (x == exceptions[a][0])
     {
-      double h = exceptions[a][1];
-      int8_t l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
-      return h + h * 0x1p-54 * (double) l;
+      double hi = exceptions[a][1];
+      int8_t del = (hi > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
+      return hi + hi * 0x1p-54 * (double) del;
     }
     // for |x| <= 0x1.921fb54442d18p-54, acospi(x) rounds to 0.5 to nearest
     if (absx <= 0x1.921fb54442d18p-54)
@@ -939,19 +939,19 @@ cr_acospi (double x)
     zh = p34 + yy * p56;
     zh = p[2] + y * zh;
     fast_two_sum (&zh, &zl, p[1], y * zh);
-    double u, v;
-    fast_two_sum (&u, &v, p[0], zh * y);
-    v += zl * y;
+    double du, dv;
+    fast_two_sum (&du, &dv, p[0], zh * y);
+    dv += zl * y;
     /* Special case for i=0, since we are obliged to use xmid=0 (so that
        x-xmid is exact) thus we can't use Gal's trick.  This costs about
        0.5 cycle in the average time (for both branches).  */
     if (i == 0)
-      v += 0x4.6989e4b05fa3p-56;
+      dv += 0x4.6989e4b05fa3p-56;
     /* acos(x) ~ u + v for x > 0, pi - (u + v) for x < 0 */
     if (x < 0) /* acos(-x) = pi-acos(x) */
     {
-      fast_two_sum (&u, &zl, pi_hi, -u);
-      v = pi_lo + zl - v;
+      fast_two_sum (&du, &zl, pi_hi, -du);
+      dv = pi_lo + zl - dv;
     }
 
     // acospi_begin
@@ -976,11 +976,11 @@ cr_acospi (double x)
        The total error is thus bounded by:
        2^-62.196 + 2^-108 + 2^-105 + 2^-101.83 < 2^-62.195.
        */
-    d_mul (&u, &v, u, v, ONE_OVER_PIH, ONE_OVER_PIL);
+    d_mul (&du, &dv, du, dv, ONE_OVER_PIH, ONE_OVER_PIL);
     // acospi_end
     
     static const double err = 0x1.c0p-63; // acospi_specific, 2^-62.195 < 0x1.c0p-63
-    double left  = u + (v - err), right = u + (v + err);
+    double left  = du + (dv - err), right = du + (dv + err);
     if (__builtin_expect (left != right, 0))
       return accurate_path (x); /* hard to round case */
     return left;
@@ -1011,14 +1011,14 @@ cr_acospi (double x)
     double l1zh = l1 * zh; /* compute earlier */
     double h1zl = h1 * zl;
     /* acos(x) ~ (h1 + l1) * (zh + zl) */
-    double u, v;
-    dekker (&u, &v, h1, zh);
-    v += l1zh + h1zl;
+    double du, dv;
+    dekker (&du, &dv, h1, zh);
+    dv += l1zh + h1zl;
     if (x < 0) /* acos(x) = pi - (u+v) */
     {
-      fast_two_sum (&u, &zl, pi_hi, -u);
+      fast_two_sum (&du, &zl, pi_hi, -du);
       /* acos(x) = u + zl + pi_lo - v */
-      v = zl + pi_lo - v;
+      dv = zl + pi_lo - dv;
     }
 
     // acospi_begin
@@ -1044,11 +1044,11 @@ cr_acospi (double x)
        The total error is thus bounded by:
        2^-65.899 + 2^-107 + 2^-105 + 2^-101.83 < 2^-65.898
        */
-    d_mul (&u, &v, u, v, ONE_OVER_PIH, ONE_OVER_PIL);
+    d_mul (&du, &dv, du, dv, ONE_OVER_PIH, ONE_OVER_PIL);
     // acospi_end
 
     static const double err = 0x1.13p-66; // acospi_specific, 2^-65.898 < 0x1.13p-66
-    double left  = u + (v - err), right = u + (v + err);
+    double left  = du + (dv - err), right = du + (dv + err);
     if (__builtin_expect (left != right, 0))
       return accurate_path (x); /* hard to round case */
     return left;

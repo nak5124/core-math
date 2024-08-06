@@ -866,10 +866,10 @@ erfc_asympt_fast (double *h, double *l, double x)
   fast_two_sum (&zh, &zl, p[9], *h);
   zl += *l;
 
-  for (int i = 15; i >= 3; i-= 2)
+  for (int j = 15; j >= 3; j-= 2)
   {
     d_mul (h, l, zh, zl, uh, ul);
-    fast_two_sum (&zh, &zl, p[(i+1)/2], *h);
+    fast_two_sum (&zh, &zl, p[(j+1)/2], *h);
     zl += *l;
   }
   /* degree 1: (zh+zl)*(uh+ul)+p[0]+p[1] */

@@ -187,24 +187,24 @@ double cr_asinh(double x){
 	    if(__builtin_expect(!u, 0)) return x;
 	    return __builtin_fma(-0x1p-60,x,x);
 	  }
-	  static const double c[] = {-0x1.5555555555555p-3};
-	  sl = x3h*c[0];
+	  static const double cl[] = {-0x1.5555555555555p-3};
+	  sl = x3h*cl[0];
 	} else {
-	  static const double c[] = {-0x1.5555555555555p-3, 0x1.3333327c57c6p-4};
-	  sl = x3h*(c[0] + x2h*c[1]);
+	  static const double cl[] = {-0x1.5555555555555p-3, 0x1.3333327c57c6p-4};
+	  sl = x3h*(cl[0] + x2h*cl[1]);
 	}
       } else {
-	static const double c[] = {-0x1.5555555555555p-3, 0x1.333333332f2ffp-4, -0x1.6db6d9a665159p-5, 0x1.f186866d775fp-6};
-	sl = x3h*(c[0] + x2h*(c[1] + x2h*(c[2] + x2h*c[3])));
+	static const double cl[] = {-0x1.5555555555555p-3, 0x1.333333332f2ffp-4, -0x1.6db6d9a665159p-5, 0x1.f186866d775fp-6};
+	sl = x3h*(cl[0] + x2h*(cl[1] + x2h*(cl[2] + x2h*cl[3])));
       }
     } else {
-      static const double c[] = {-0x1.5555555555555p-3, 0x1.333333333331p-4, -0x1.6db6db6da466cp-5, 0x1.f1c71c2ea7be4p-6,
+      static const double cl[] = {-0x1.5555555555555p-3, 0x1.333333333331p-4, -0x1.6db6db6da466cp-5, 0x1.f1c71c2ea7be4p-6,
 				 -0x1.6e8b651b09d72p-6, 0x1.1c309fc0e69c2p-6, -0x1.bab7833c1ep-7};
-      double c1 = c[1] + x2h*c[2];
-      double c3 = c[3] + x2h*c[4];
-      double c5 = c[5] + x2h*c[6];
+      double c1 = cl[1] + x2h*cl[2];
+      double c3 = cl[3] + x2h*cl[4];
+      double c5 = cl[5] + x2h*cl[6];
       double x4 = x2h*x2h;
-      sl = x3h*(c[0] + x2h*(c1 + x4*(c3 + x4*c5)));
+      sl = x3h*(cl[0] + x2h*(c1 + x4*(c3 + x4*c5)));
     }
     double eps = 0x1.6p-53*x3h;
     double lb = x + (sl - eps), ub = x + (sl + eps);
