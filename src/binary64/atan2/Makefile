@@ -2,6 +2,8 @@ FUNCTION_UNDER_TEST := atan2
 
 include ../support/Makefile.bivariate
 
+CFLAGS += -ffinite-math-only
+
 check_special: check_special.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
 	$(CC) $(LDFLAGS) $(OPENMP) -o $@ $^ -lmpfr -lm
 

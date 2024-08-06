@@ -88,7 +88,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   u128 p2 = (u128)m*ipi[2]; p2 += p1>>64;
   u128 p3 = (u128)m*ipi[3]; p3 += p2>>64;
   u64 p3h = p3>>64, p3l = p3, p2l = p2, p1l = p1;
-  long a;
+  int64_t a;
   int k = e-124, s = k-23;
   /* in cr_cosf(), rbig() is called in the case 127+28 <= e < 0xff
      thus 155 <= e <= 254, which yields 28 <= k <= 127 and 5 <= s <= 104 */
@@ -103,7 +103,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
     a = p2l<<(s-64)|p1l>>(128-s);
   }
   int sgn = u; sgn >>= 31;
-  long sm = a>>63;
+  int64_t sm = a>>63;
   i -= sm;
   double z = (a^sgn)*0x1p-64;
   i = (i^sgn) - sgn;
@@ -168,7 +168,7 @@ static float __attribute__((noinline)) as_cosf_big(float x){
   double bb = (b[0] + z2*b[1]) + z4*(b[2] + z2*b[3]);
   double s0 = tb[(ia+8)&31], c0 = tb[ia&31];
   double r = c0 + z*(aa*s0 - bb*(z*c0));
-  b64u64_u tr = {.f = r}; u64 tail = (tr.u + 6)&(~0ul>>36);
+  b64u64_u tr = {.f = r}; u64 tail = (tr.u + 6)&(~(u64)0>>36);
   if(__builtin_expect(tail<=12, 0)) return as_cosf_database(x, r);
   return r;
 }

@@ -89,9 +89,16 @@ if [ "$CFLAGS" == "" ]; then
    if [ "$CC" == "clang" ]; then
       # clang does not provide -fsignaling-nans
       # (https://gitlab.inria.fr/core-math/core-math/-/issues/8)
-      export CFLAGS="-O3 -Wall -Wextra -Wshadow -march=native -fno-finite-math-only -frounding-math"
+      export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -DCORE_MATH_CHECK_INEXACT"
    else
-      export CFLAGS="-O3 -Wall -Wextra -Wshadow -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
+      MACHINE=`uname -m`
+      if [ "$MACHINE" == "ppc64le" ]; then
+         # -march=native is not supported by gcc 14 on ppc64le
+         export CFLAGS="-O3 -mcpu=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans -DCORE_MATH_CHECK_INEXACT"
+      else
+         export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans -DCORE_MATH_CHECK_INEXACT"
+      fi
+      unset MACHINE
    fi
 else
    # the core-math code assumes -frounding-math

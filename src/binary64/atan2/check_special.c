@@ -34,6 +34,7 @@ SOFTWARE.
 #include <omp.h>
 #endif
 #include <unistd.h>
+#include <math.h>
 
 void doloop (int, int);
 extern double cr_atan2 (double, double);
@@ -107,7 +108,7 @@ check (double x, double y)
   t = ref_atan2 (y, x);
   if (!is_equal (z, t))
   {
-    printf ("cr_atan2 and ref_atan2 differ for y=%la x=%la\n", y, x);
+    printf ("cr_atan2 and ref_atan2 differ for y,x=%la,%la\n", y, x);
     printf ("cr_atan2  gives %la\n", z);
     printf ("ref_atan2 gives %la\n", t);
     exit (1);
@@ -151,6 +152,45 @@ check_random_all (void)
     check_random (getpid () + i, nthreads);
 }
 
+// check with |y/x| in the range [2^-64,1]
+static void
+check_small_aux (int i, int nthreads)
+{
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buffer[1];
+  double x, y;
+  srand48_r (i, buffer);
+  double ratio = 0, dratio = 64.0 / (N / nthreads);
+  for (unsigned long n = 0; n < N; n += nthreads)
+  {
+    x = get_random (buffer);
+    y = get_random (buffer);
+    int ex, ey;
+    frexp (x, &ex);
+    frexp (y, &ey);
+    y = ldexp (y, ex - ey - (int) ratio);
+    check (x, y);
+    ratio += dratio;
+  }
+}
+
+static void
+check_small (void)
+{
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (int i = 0; i < nthreads; i++)
+    check_small_aux (getpid () + i, nthreads);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -192,6 +232,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking small values\n");
+  check_small ();
 
   printf ("Checking random values\n");
   check_random_all ();

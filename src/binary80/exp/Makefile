@@ -1,6 +1,9 @@
-FUNCTION_UNDER_TEST := rsqrtl
+FUNCTION_UNDER_TEST := expl
 
 include ../support/Makefile.univariate
+
+clean::
+	rm -rf *.o check_special
 
 all:: check_special check_exact
 
@@ -10,11 +13,3 @@ check_special: check_special.o $(CORE_MATH_OBJS) $(FUNCTION_UNDER_TEST)_mpfr.o
 check_special.o: check_special.c
 	$(CC) $(CFLAGS) $(CORE_MATH_DEFINES) $(OPENMP) -o $@ $^ -c
 
-clean::
-	rm -f check_special check_exact
-
-check_exact: check_exact.o $(CORE_MATH_OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^ -lm
-
-check_exact.o: check_exact.c
-	$(CC) $(CFLAGS) $(CORE_MATH_DEFINES) -o $@ $^ -c

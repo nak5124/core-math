@@ -163,11 +163,11 @@ float cr_log2p1f(float x) {
       return h + l;
     }
     b64u64_u tp = {.f = z + 1.0};
-    unsigned long m = tp.u&(~0ul>>12);
+    uint64_t m = tp.u&(~(uint64_t)0>>12);
     int e = (tp.u>>52) - 0x3ff;
-    int j = (m + (1l<<(52-8)))>>(52-7), k = j>53;
+    int j = (m + ((int64_t)1<<(52-8)))>>(52-7), k = j>53;
     e += k;
-    b64u64_u xd = {.u = m | 0x3fful<<52};
+    b64u64_u xd = {.u = m | (uint64_t)0x3ff<<52};
     z = __builtin_fma(xd.f, ix[j], -1.0);
     static const double c[] =
       {0x1.71547652b82fep+0, -0x1.71547652b82ffp-1, 0x1.ec709dc32988bp-2, -0x1.715476521ec2bp-2,

@@ -125,10 +125,10 @@ float cr_asinhf(float x) {
     if(__builtin_expect(t.u>=0x7f800000u, 0)) return x; // +-inf or nan
     double xd = __builtin_fabs(xs), x2 = xd*xd;
     b64u64_u tp = {.f = xd + __builtin_sqrt(x2 + 1)};
-    uint64_t m = tp.u&(~0ul>>12);
-    int j = (m + (1l<<(52-8)))>>(52-7);
+    uint64_t m = tp.u&(~(uint64_t)0>>12);
+    int j = (m + ((int64_t)1<<(52-8)))>>(52-7);
     int e = (tp.u>>52) - 0x3ff;
-    b64u64_u w = {.u = m | 0x3fful<<52};
+    b64u64_u w = {.u = m | (uint64_t)0x3ff<<52};
     double z = __builtin_fma(w.f, ix[j], -1.0);
     static const double c[] = {0x1.0000000066947p+0, -0x1.00007f053d8cbp-1, 0x1.555280111d914p-2};
     double z2 = z*z;
