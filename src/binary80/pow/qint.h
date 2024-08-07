@@ -403,8 +403,9 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 	POWL_DPRINTF("m = %016lx\n", v.m);
 	POWL_DPRINTF("e = %x (%ld)\n", v.e, a->ex);
 
-	/* d/2^128 is the signed distance to the rounding boundary,
-           in terms of ulp(v), with error less than 1/2^-128 */
+	/* cfrac(d/2^128) is the signed distance to the rounding boundary,
+           in terms of ulp(v), with error less than 1/2^-128, where cfrac()
+           is the centered fractional part. */
 	unsigned __int128 d = ((__int128) a->hl << 64) + a->lh;
 
 	/* The relative error is bounded by 2^-234.861 (see analysis of
@@ -420,8 +421,8 @@ long double qint_told(qint64_t* a, uint64_t extralow,
           d = (d << 64) + a->ll;
           uint64_t d_extra = extralow;
 
-	  /* d/2^192 is the signed distance to the rounding boundary,
-             in terms of ulp(v) */
+	  /* cfrac(d/2^128)/2^64 is the signed distance to the rounding
+             boundary, in terms of ulp(v) */
           unsigned __int128 eps = (__int128) a->hh << 64;
           uint64_t eps_extra  = 0;
 
