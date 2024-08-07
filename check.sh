@@ -123,7 +123,11 @@ fi
 
 # define CORE_MATH_NO_OPENMP if you don't want OpenMP
 if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
-   OPENMP=-fopenmp
+   if [ "$CC" == "icx" ]; then
+      OPENMP=-qopenmp # icx prefers -qopenmp
+   else
+      OPENMP=-fopenmp
+   fi
 else
    export CFLAGS="$CFLAGS -DCORE_MATH_NO_OPENMP"
 fi

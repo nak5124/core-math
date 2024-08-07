@@ -20,7 +20,7 @@ check_dry_clang:
   image: silkeh/clang:latest
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
-    - FORCE=true DRY=--dry CC=clang ./ci.sh
+    - CORE_MATH_NO_OPENMP=true FORCE=true DRY=--dry CC=clang ./ci.sh
 
 check_dry_icx:
   stage: test
