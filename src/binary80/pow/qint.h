@@ -304,7 +304,8 @@ static inline void qint_fromsi(qint64_t* a, int32_t d) {
 // expects x->ex >= -16447
 // Causes a loss of precision for very small numbers. The introduced
 // error is at most 2^-256|x|.
-// Put in extralow the low (shifted) part of weight ll/2^64
+// Put in extralow the low (shifted) part of weight ll/2^64.
+// Ensures a->ex >= -16383 at output.
 void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 	if(__builtin_expect(!x->hh, 0)) {
 		cp_qint(a, &ZERO_Q);
@@ -346,28 +347,32 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 
 // Subnormalization is already done, this only deals with infinities/zeroes
 // and rounding.
+// Assumes extralow is an extra limb of weight ll/2^64,
+// and a->ex >= -16383.
+// invert is true iff x^y < 0
 long double qint_told(qint64_t* a, uint64_t extralow,
-unsigned rm, bool invert, bool* hard) {
-	bool f = false;
+                      unsigned rm, bool invert, bool* hard) {
+	bool f = false; // true iff overflow is possible
 	if(rm==FE_TONEAREST) {
-		a->hh += (a->hl>>63);
-		f = a->hl>>63;
-		a->hl ^= (1ul << 63);
+          a->hh += a->hl>>63;
+		f = a->hl>>63; // round bit
+		a->hl ^= (uint64_t) 1 << 63;
 		if(a->hl == 0 && a->lh == 0 && a->ll == 0 && extralow==0 && (a->hh&1)) {
 		// We were on the rounding boundary and rounded away instead of to zero
 			a->hh -= 1;
 			f = false;
 		} 
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
-		a->hh += a->hl||a->lh||a->ll||extralow;
+          // FIXME: since extralow might neglect 1 bit, we might be wrong here
+		a->hh += a->hl || a->lh || a->ll || extralow;
 		f = true;
 	}
 
-	// Note that hl||lh||ll holds the signed distance from the rounding boundary
+	// Note that hl || lh || ll holds the distance from the rounding
+        // boundary, with same sign as hh
 
-	if(__builtin_expect(f && (a->hh == 0), 0)) {// overflow
-			a->hh = 1ul << 63;
-
+	if(__builtin_expect(f && (a->hh == 0), 0)) { // overflow
+                        a->hh = (uint64_t) 1 << 63;
 			extralow = (extralow >> 1) | (a->ll << 63);
 			a->ll = (a->ll >> 1) | (a->lh << 63);
 			a->lh = (a->lh >> 1) | (a->hl << 63);

@@ -1574,8 +1574,8 @@ long double cr_powl(long double x, long double y) {
 	int x_exp = (cvt_x.e&0x7fff) - 16383;
 	int y_exp = (cvt_y.e&0x7fff) - 16383;
 
-	bool invert = false;
-	long double sign = 1.0L;
+	bool invert = false;     // true iff x^y < 0
+	long double sign = 1.0L; // sign of x^y
 
 	static const long double inf = __builtin_infl();	
 	bool lt1 = (x_exp < 0) ^ (cvt_y.e>>15);
