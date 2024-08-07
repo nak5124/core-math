@@ -34,7 +34,6 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdint.h>
-#include <x86intrin.h>
 #include <stdbool.h>
 #include <fenv.h>
 
