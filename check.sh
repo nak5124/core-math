@@ -9,6 +9,9 @@
 # (3) to check the GNU libc 2.27, installed in say /tmp/install:
 #     CORE_MATH_CHECK_STD=true CORE_MATH_LAUNCHER="/tmp/lib/ld-2.27.so --library-path /tmp/lib" LDFLAGS="-L /tmp/lib" ./check.sh --worst --rndn exp
 
+# ensures CI fails in case of an error
+set -e
+
 if [ "`which gmake`" != "" ]; then
    MAKE=gmake
 else
