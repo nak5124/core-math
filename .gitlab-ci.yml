@@ -14,3 +14,10 @@ check_dry:
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
     - FORCE=true DRY=--dry ./ci.sh
+
+check_dry_clang:
+  stage: test
+  image: debian:12
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - FORCE=true DRY=--dry CC=clang ./ci.sh
