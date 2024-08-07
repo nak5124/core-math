@@ -104,7 +104,7 @@ float cr_cbrtf (float x){
   if(__builtin_expect((m0^m1)<((int64_t)1<<31),0)){
     cvt1.u = (cvt1.u + ((uint64_t)1<<31))&(uint64_t)0xffffffff00000000ul;
     ub = cvt1.f;
-    _mm_setcsr(flag); /* restore MXCSR Control/Status Register for exact roots to get rid of the inexact flag if risen inside the function */
+    set_flags (&flag);
   }
   return ub;
 }
