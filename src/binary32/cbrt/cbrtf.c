@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <fenv.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -33,19 +34,35 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-#define INEXACTFLAG 1 // honor inexact exception
-#if INEXACTFLAG!=0
-#  include <x86intrin.h> /* for the x86 architecture with SSE to rise the inexact flag only when the root is indeed inexact */
+#ifdef __x86_64__
+#include <x86intrin.h>
 #endif
 
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
+static inline void get_rounding_mode (fexcept_t *flagp)
+{
+#ifdef __x86_64__
+  *flagp = _mm_getcsr ();
+#else
+  fegetexceptflag (flagp, FE_ALL_EXCEPT);
+#endif
+}
+
+static inline void set_flags (const fexcept_t *flagp)
+{
+#ifdef __x86_64__
+  _mm_setcsr (*flagp);
+#else
+  fesetexceptflag (flagp, FE_ALL_EXCEPT);
+#endif
+}
+
 float cr_cbrtf (float x){
   static const double escale[3] = {1.0, 0x1.428a2f98d728bp+0/* 2^(1/3) */, 0x1.965fea53d6e3dp+0/* 2^(2/3) */};
-#if INEXACTFLAG!=0
-  volatile uint32_t flag = _mm_getcsr(); /* store MXCSR Control/Status Register */
-#endif
+  fexcept_t flag;
+  get_rounding_mode (&flag);
   b32u32_u t = {.f = x};
   uint32_t u = t.u, au = u<<1, sgn = u>>31, e = au>>24;
   if(__builtin_expect(au<1u<<24 || au>=0xffu<<24, 0)){
@@ -71,12 +88,10 @@ float cr_cbrtf (float x){
   double r = f * cvt2.f;
   float ub = r, lb = r - cvt2.f*1.4182e-9;
   if(__builtin_expect(ub==lb, 1)){
-#if INEXACTFLAG!=0
     cvt2.f = r;
     if(__builtin_expect((cvt2.u&((int64_t)0x1fffff<<24)) == 0, 0)){
-      _mm_setcsr(flag); /* restore MXCSR Control/Status Register for exact roots to get rid of the inexact flag if risen inside the function */
+      set_flags (&flag);
     }
-#endif
     return ub;
   }
   const double u0 = -0x1.ab16ec65d138fp+3;
@@ -89,9 +104,7 @@ float cr_cbrtf (float x){
   if(__builtin_expect((m0^m1)<((int64_t)1<<31),0)){
     cvt1.u = (cvt1.u + ((uint64_t)1<<31))&(uint64_t)0xffffffff00000000ul;
     ub = cvt1.f;
-#if INEXACTFLAG!=0
     _mm_setcsr(flag); /* restore MXCSR Control/Status Register for exact roots to get rid of the inexact flag if risen inside the function */
-#endif
   }
   return ub;
 }
