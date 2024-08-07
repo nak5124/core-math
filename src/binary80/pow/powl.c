@@ -1734,7 +1734,6 @@ long double cr_powl(long double x, long double y) {
 	unsigned rm = get_rounding_mode();
 
 	qint64_t final[1];
-	uint64_t extralow[1] = {0};
 	if(q_r->ex <= -16448) { 
 		/* If q_r->ex = -16447 we may still really have exponent -16446 because
 		   of errors, then round to 1p-16445.
@@ -1742,6 +1741,7 @@ long double cr_powl(long double x, long double y) {
 		return (sign * 0x1p-16445L) * .25L;
 	}
 
+	uint64_t extralow[1] = {0};
 	// Extra-low limb to avoid loss of precision
 	// when the final result is denormal. 
 	qint_subnormalize(final, extralow, q_r);

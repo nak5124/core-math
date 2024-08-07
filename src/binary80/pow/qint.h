@@ -304,6 +304,7 @@ static inline void qint_fromsi(qint64_t* a, int32_t d) {
 // expects x->ex >= -16447
 // Causes a loss of precision for very small numbers. The introduced
 // error is at most 2^-256|x|.
+// Put in extralow the low (shifted) part of weight ll/2^64
 void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 	if(__builtin_expect(!x->hh, 0)) {
 		cp_qint(a, &ZERO_Q);
@@ -312,10 +313,10 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 	}
 
 	if(__builtin_expect(x->ex <= -16383, 0)) {
-		int shiftby = -x->ex - 16383 + 1;
+		int shiftby = -x->ex - 16383 + 1; // 1 <= shiftby <= 65
 		POWL_DPRINTF("shiftby = %d\n", shiftby);
 		a->ex = -16383;
-		if(__builtin_expect(shiftby >= 64, 0)) {
+		if(__builtin_expect(shiftby >= 64, 0)) { // shiftby = 64 or 65
 			shiftby -= 64;
 			a->hh = 0;
 			a->hl = x->hh >> shiftby;
