@@ -17,7 +17,14 @@ check_dry:
 
 check_dry_clang:
   stage: test
-  image: debian:12
+  image: silkeh/clang:latest
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
     - FORCE=true DRY=--dry CC=clang ./ci.sh
+
+check_dry_icx:
+  stage: test
+  image: intel/oneapi-hpckit:latest
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - FORCE=true DRY=--dry CC=icx ./ci.sh
