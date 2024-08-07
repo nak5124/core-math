@@ -105,7 +105,7 @@ void split(double* rh, double* rl, long double x) {
            and the difference is exact. */
 }
 
-
+#if 0
 static inline
 void add22(double* zh, double* zl, double xh, double xl, double yh, double yl) {
 	double r,s;
@@ -114,6 +114,7 @@ void add22(double* zh, double* zl, double xh, double xl, double yh, double yl) {
 	*zh = r+s;
 	*zl = (r - (*zh)) + s;
 }
+#endif
 
 // assumes a = 0 or |a| >= |b| (or ulp(a) >= ulp(b))
 // ensures |rl| <= 2^-52*|rh| and a rounding error <= 2^-105*|rh|
