@@ -1576,6 +1576,10 @@ long double cr_powl(long double x, long double y) {
 
 	bool invert = false;     // true iff x^y < 0
 	long double sign = 1.0L; // sign of x^y
+	/* Both these variables hold the same information, but 
+	   invert is more convenient for conditionals (in the rounding tests)
+	   whereas sign is more convenient during special value handling.
+	*/
 
 	static const long double inf = __builtin_infl();	
 	bool lt1 = (x_exp < 0) ^ (cvt_y.e>>15);
