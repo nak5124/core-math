@@ -365,7 +365,7 @@ static inline double as_ldexp(double x, int64_t i){
     r = (__m128d)_mm_add_epi64(sb, (__m128i)r);
     return r[0];
 #else
-    b64u64_u ix = {.f = x};
+    d64u64 ix = {.f = x};
     ix.u += i<<52;
     return ix.f;
 #endif

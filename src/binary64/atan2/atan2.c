@@ -336,7 +336,6 @@ atan2_accurate (double y, double x)
 
 typedef uint64_t u64;
 typedef int64_t i64;
-typedef union {double f; uint64_t u;} b64u64_u;
 static inline double fasttwosum(double x, double y, double *e){
   double s = x + y, z = s - x;
   *e = y - z;
@@ -350,7 +349,7 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
 }
 
 double __attribute__((noinline)) as_atan2_special(double y0, double x0){
-  b64u64_u iy = {.f = y0}, ix = {.f = x0};
+  d64u64 iy = {.f = y0}, ix = {.f = x0};
   u64 aiy = iy.u<<1, aix = ix.u<<1;
 
   if (__builtin_expect (aiy >= 0x7fflu<<53 || aix >= 0x7fflu<<53, 0)){ // NaN or Inf
@@ -449,7 +448,7 @@ double cr_atan2 (double y0, double x0){
     {0x1.921fb54442d18p+1,0x1.1a62633145c07p-53}, {0x1.921fb54442d18p+0,0x1.1a62633145c07p-54},
     {-0x1.921fb54442d18p+1,-0x1.1a62633145c07p-53}, {-0x1.921fb54442d18p+0,-0x1.1a62633145c07p-54}};
 
-  b64u64_u iy = {.f = y0}, ix = {.f = x0};
+  d64u64 iy = {.f = y0}, ix = {.f = x0};
   u64 aiy = iy.u & MASK;
   if(__builtin_expect( aiy==0 || aiy>=0x7fful<<52, 0)) return as_atan2_special(y0,x0);
   u64 aix = ix.u & MASK;
@@ -460,9 +459,9 @@ double cr_atan2 (double y0, double x0){
   u64 GT = aix<aiy;
   u64 dxy = (aix-aiy)^-GT;
   if(__builtin_expect( dxy>=53ul<<52, 0)) return atan2_accurate(y0,x0);
-  b64u64_u sgn = {.f = asgn[GT^sx^sy]};
+  d64u64 sgn = {.f = asgn[GT^sx^sy]};
   u64 kw = sx<<2|sy<<1|GT;
-  b64u64_u jj = {.f = y/x + (2 + 1/128.)};
+  d64u64 jj = {.f = y/x + (2 + 1/128.)};
   i64 jt = ((jj.u>>(52-7))&127);
   double fh = f2[jt][1]*__builtin_copysign(1,sgn.f);
   double fl = f2[jt][0]*__builtin_copysign(1,sgn.f);
