@@ -30,7 +30,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
-#include <math.h>
 #include <mpfr.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
@@ -71,13 +70,22 @@ asuint (float f)
   return u.i;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
 static int
 is_equal (float y1, float y2)
 {
-  if (isnan (y1))
-    return isnan (y2);
-  if (isnan (y2))
-    return isnan (y1);
+  if (is_nan (y1))
+    return is_nan (y2);
+  if (is_nan (y2))
+    return is_nan (y1);
   return asuint (y1) == asuint (y2);
 }
 
