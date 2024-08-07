@@ -304,7 +304,8 @@ static inline void qint_fromsi(qint64_t* a, int32_t d) {
 // expects x->ex >= -16447
 // Causes a loss of precision for very small numbers. The introduced
 // error is at most 2^-255|x|.
-// Puts in extralow the low (shifted) part of weight ll/2^64.
+// Puts in extralow the low (shifted) part of weight ll/2^64
+// (plus maybe an extra bit if ex = -16447)
 // Ensures a->ex >= -16383 at output.
 void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 	if(__builtin_expect(!x->hh, 0)) {

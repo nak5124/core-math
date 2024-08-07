@@ -1750,9 +1750,9 @@ long double cr_powl(long double x, long double y) {
 	// Extra-low limb to avoid loss of precision
 	// when the final result is denormal. 
 	qint_subnormalize(final, extralow, q_r);
-	// In corner cases, qint_subnormalize creates a relative error 2^-256. This
+	// In corner cases, qint_subnormalize creates a relative error 2^-255. This
 	// implies that the total relative error is at most
-	// 2^-234.862 + 2^-256 + 2^-256 * 2^-234.862 <= 2^-234.861 
+	// 2^-234.862 + 2^-255 + 2^-255 * 2^-234.862 <= 2^-234.861
 
 	bool exact_if_hard = check_rb(x,y,q_r);
 	bool hard = false;
