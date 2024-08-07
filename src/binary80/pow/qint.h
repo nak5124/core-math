@@ -303,8 +303,8 @@ static inline void qint_fromsi(qint64_t* a, int32_t d) {
 
 // expects x->ex >= -16447
 // Causes a loss of precision for very small numbers. The introduced
-// error is at most 2^-256|x|.
-// Put in extralow the low (shifted) part of weight ll/2^64.
+// error is at most 2^-255|x|.
+// Puts in extralow the low (shifted) part of weight ll/2^64.
 // Ensures a->ex >= -16383 at output.
 void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 	if(__builtin_expect(!x->hh, 0)) {
@@ -326,9 +326,10 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 			a->hl = x->hh >> shiftby;
 			a->lh = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
 			a->ll = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
-			*extralow = (x->lh << (64 - shiftby)) | (x->ll >> shiftby);
-                        // if shiftby=1 (thus x->ex=-16447) the least
-                        // significant bit from x->ll is lost,
+			*extralow = (x->lh << (64 - shiftby)) | (x->ll >> shiftby) | (x->ll&1);
+		  // If shiftby = 0, the last part does nothing. If shiftby = 1 it ensures
+		  // that we can correctly compute directed roundings. In any case, since
+			// we lose a bit, this introduces error 2^-255|x|.
 			a->sgn = x->sgn;
 
 			return;
@@ -366,7 +367,8 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 			f = false;
 		} 
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
-          // FIXME: since extralow might neglect 1 bit, we might be wrong here
+		// The special handling of extralow described above ensures this is
+		// correct in all cases.
 		a->hh += a->hl || a->lh || a->ll || extralow;
 		f = true;
 	}
@@ -383,7 +385,10 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 			a->ex++;
 	}
 
-	// The result is the smallest normal number
+	/* If we "overflowed" here, we are back to the smallest normal number. Undo
+	   the exponent shift by 1 which was done by qint_subnormalize()
+	   to correctly encode this smallest normal number
+	*/
 	if(__builtin_expect((a->hh>>63) && a->ex == -16383, 0)) {
 		a->ex = -16382;
 	}
