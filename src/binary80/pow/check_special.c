@@ -184,6 +184,18 @@ check_near_one (int N)
   }
 }
 
+// check exact or midpoint 3rd powers in one binade
+static void
+check_exact_or_midpoint_3 (void)
+{
+  long double x, y = 3.0L;
+  for (x = 1664511.0L; x <= 3329021.0L; x++)
+  {
+    check (x, y);
+    check (-x, y);
+  }
+}
+
 // check exact or midpoint values for y integer
 static void
 check_exact_or_midpoint (void)
@@ -276,6 +288,9 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
+
+  printf ("Checking exact/midpoint 3rd powers\n");
+  check_exact_or_midpoint_3 ();
 
   printf ("Checking exact/midpoint values\n");
   check_exact_or_midpoint ();
