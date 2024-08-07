@@ -317,13 +317,14 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 		POWL_DPRINTF("shiftby = %d\n", shiftby);
 		a->ex = -16383;
 		if(__builtin_expect(shiftby >= 64, 0)) { // shiftby = 64 or 65
-			shiftby -= 64;
+			shiftby -= 64; // now shiftby = 0 or 1
 			a->hh = 0;
 			a->hl = x->hh >> shiftby;
 			a->lh = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
 			a->ll = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
 			*extralow = (x->lh << (64 - shiftby)) | (x->ll >> shiftby);
-                        // the low shiftby bits of x->ll are lost
+                        // if shiftby=1 (thus x->ex=-16447) the least
+                        // significant bit from x->ll is lost,
 			a->sgn = x->sgn;
 
 			return;
