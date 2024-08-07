@@ -51,7 +51,7 @@ static __attribute__((noinline)) float as_special(float x){
   if(ax > 0xff000000u) return x; // nan
   errno = EDOM;
   feraiseexcept(FE_INVALID);
-  return __builtin_nanf("<0"); // nan
+  return __builtin_nanf("<0"); // x < 0
 }
 
 float cr_log10p1f(float x){

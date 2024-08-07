@@ -34,7 +34,8 @@ check () {
         echo "Skip $FUNCTION"
     else
         echo "Checking $FUNCTION..."
-        ./check.sh $DRY "$KIND" "$FUNCTION"
+	# we want to detect compiler warnings
+        EXTRA_CFLAGS=-Werror ./check.sh $DRY "$KIND" "$FUNCTION"
     fi
 }
 
