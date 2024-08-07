@@ -1,8 +1,9 @@
 #!/bin/bash
-# Usage:
+# Examples of usage:
 # DRY=--dry ./ci.sh to only try compilation (of last modified functions)
 # FORCE=true DRY=--dry ./ci.sh to only try compilation (of all functions)
 # FORCE_FUNCTIONS="xxx yyy" ./ci.sh to force checking xxx and yyy
+# CC=clang CFLAGS=-Werror ./ci.sh
 
 set -e
 

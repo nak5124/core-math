@@ -44,19 +44,6 @@ typedef union { double f; uint64_t u; } d64u64;
 
 #define MASK 0x7ffffffffffffffful // 2^63-1 (mask the sign bit)
 
-// assume sign bit was removed
-static inline int is_nan (uint64_t u)
-{
-  uint64_t e = u >> 52;
-  return e == 0x7ff && u != (e << 52);
-}
-
-// assume sign bit was removed
-static inline int is_inf (uint64_t u)
-{
-  return u == (0x7fful << 52);
-}
-
 // PI_H+PI_L approximates pi with error bounded by 2^-108.041
 #define PI_H 0x1.921fb54442d18p+1
 #define	PI_L 0x1.1a62633145c07p-53

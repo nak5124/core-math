@@ -51,7 +51,7 @@ FILE *instream;
 
 int transform(double, double*);
 int nextarg(double*);
-void test();
+void test(int);
 
 long parselong(const char *str){
   char *endptr;

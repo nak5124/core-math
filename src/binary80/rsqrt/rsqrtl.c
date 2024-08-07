@@ -36,7 +36,6 @@ SOFTWARE.
 #include <math.h> // for sqrtl
 #include <fenv.h>
 #include <x86intrin.h>
-#include <quadmath.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -163,8 +162,8 @@ long double cr_rsqrtl (long double x){
   u64 c0 = T[j][0], c1 = T[j][1], c2 = T[j][2], c3 = T[j][3]; // polynomial coefficients
   // get an initial approximation r with ~30 bits precision
   u64 dj2 = dj*(u64)dj>>32, r = sc*((c0 - (dj*c1>>37)) + (dj2*(c2 - (dj*c3>>37))>>42))>>32, r2 = r*r;
-  u128 H = (r2<<(1-(e&1)))*(u128)a; // a*r^2
-  i64 h = H>>35, hh = h>>33; //  h = a*r^2 - 1
+  u128 H0 = (r2<<(1-(e&1)))*(u128)a; // a*r^2
+  i64 h = H0>>35, hh = h>>33; //  h = a*r^2 - 1
   // one Newton iteration with x_next = x - x*(h/2 - 3/8*h^2) which provides ~90 bits
   u64 h2 = hh*hh, dh = 3*h2>>28;
   h -= dh;

@@ -236,8 +236,8 @@ static inline double dint_tod_subnormal(dint64_t *a) {
 
   if (ex >= 64) // all bits disappear: |a| < 2^-1074
     switch (fegetround()) {
-    case FE_TONEAREST:
       double ret;
+    case FE_TONEAREST:
       rb = (a->hi >> 63);        // only used when e=64
       sb = (a->hi << 1) | a->lo; // idem
       ret = (ex > 64 || rb == 0 || sb == 0) ? +0.0 : 0x1p-1074;
