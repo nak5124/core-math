@@ -62,8 +62,18 @@ else
     SIZE=${SIZE%%/*}
     case "$SIZE" in
         32)
-            KIND=--exhaustive
-            ;;
+	    case "$FUN" in
+		atan2f)
+		     KIND=--worst;;
+		atan2pif)
+		     KIND=--worst;;
+		hypotf)
+		     KIND=--worst;;
+		powf)
+		     KIND=--worst;;
+		*)
+		    KIND=--exhaustive;;
+	    esac;;
         *)
             KIND=--worst
     esac
