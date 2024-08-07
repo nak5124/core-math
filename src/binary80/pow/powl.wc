@@ -467,3 +467,5 @@
 # worst cases with x < 0 and y odd integer
 -0x8p-4,0x3p+0
 -0x8.000000000000001p-4,0x3p+0
+# exercise some corner case in the accurate path
+0x1.fffffffffffffffcp-16383,0x1p0
