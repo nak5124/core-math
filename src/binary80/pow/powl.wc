@@ -464,3 +464,6 @@
 0x1p+0,0x1.4p-3
 # exercise underflow test (x^y ~ 2^-16445.3)
 0x1.45f306dc9c883p-2,0x1.372e8de305337p+13
+# worst cases with x < 0 and y odd integer
+-0x8p-4,0x3p+0
+-0x8.000000000000001p-4,0x3p+0

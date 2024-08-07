@@ -313,9 +313,12 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 		return;
 	}
 
-	if(__builtin_expect(x->ex <= -16383, 0)) {
+	if(__builtin_expect(x->ex <= -16383, 0)) { // subnormal number
 		int shiftby = -x->ex - 16383 + 1; // 1 <= shiftby <= 65
 		POWL_DPRINTF("shiftby = %d\n", shiftby);
+                /* Put in a->ex the real exponent shifted by one
+                   (it should be -16382), so that qint_told() does not have to
+                   distinguish between normal and subnormal numbers. */
 		a->ex = -16383;
 		if(__builtin_expect(shiftby >= 64, 0)) { // shiftby = 64 or 65
 			shiftby -= 64; // now shiftby = 0 or 1
@@ -386,9 +389,10 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 	}
 
 	b80u80_t v;
-	v.m = a->hh;
-	v.e = a->ex + 16383;
-	if(__builtin_expect(invert, 0)) {v.e+=(1<<15);}
+	v.m = a->hh;         // significand
+	v.e = a->ex + 16383; // biased exponent
+        static const int sign_bit[] = {0, 1<<15};
+        v.e += sign_bit[invert];
 
 	POWL_DPRINTF("m = %016lx\n", v.m);
 	POWL_DPRINTF("e = %x (%ld)\n", v.e, a->ex);
