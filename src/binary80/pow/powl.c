@@ -1092,7 +1092,10 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	*fail = b1;
 
 	/* Also fail if we are too near a floating point number when rounding
-	   to nearest and we have an exponent which may lie in S.
+	   to nearest and we have an exponent y which may lie in S, such that
+           x^y might be exact. This implies x=2^k or y=n*2^F with -5 <= F <= 0
+           and n <= 40. The condition n <= 40 implies that the significand m
+           of y has only its 6 upper bits that might be non-zero.
 	   The speed/accuracy of checking whether y lies in S is essential.
 	*/
 	if(rm == FE_TONEAREST) { ml += 1ul << 63;
@@ -1100,8 +1103,8 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 		b80u80_t cvt_x = {.f = x};
 
 		if(__builtin_expect(
-		   __builtin_expect((uint64_t)(ml + eps) <= (uint64_t)(2*eps),0) &&
-			((__builtin_popcount(cvt_x.m) == 1) || !(cvt_y.m << 6)), 0))
+                   __builtin_expect((uint64_t)(ml + eps) <= (uint64_t)(2*eps),0) &&
+                       ((__builtin_popcount(cvt_x.m) == 1) || !(cvt_y.m << 6)), 0))
 			{*fail = true;
 			POWL_DPRINTF("Forcing accurate path for FE_INEXACT\n");}
 		/* If x is not a power of 2, then y must necessarily have 6 significant
@@ -1783,7 +1786,14 @@ long double cr_powl(long double x, long double y) {
 
 	/* Assume that (x,y) is a hard case in the sense that the accurate path
 	   rounding test fails. Assume further that (x,y) is potentially exact or
-	   midpoint, i.e. is in the set S defined in reference [2].
+	   midpoint, i.e. is in the set S defined in reference [2] for double
+           precision. For extended double the inputs (x,y) such that x^y is
+           exact or midpoint satisfy necessarily one of the following:
+
+           (a) x=2^k and y integer
+           (b) y integer, 2 <= y <= 41 (2 <= y <= 40 if x^y is exact)
+           (c) x=m*2^E and y=n*2^F with -5 <= F <= -1 and 3 <= n <= 41,
+               n odd (with n <= 40 if x^y is exact)
 
 	   Let us note z the approximation we computed. We know that for some rounding
 	   boundary r, |z - r| <= (2^-234 + 2^-254)|z| because the rounding test
