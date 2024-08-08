@@ -6,8 +6,6 @@ include ../../generic/support/Makefile.checkstd
 ifndef OPENMP
 ifdef CORE_MATH_NO_OPENMP
 OPENMP=-fno-openmp -DCORE_MATH_NO_OPENMP=$(CORE_MATH_NO_OPENMP)
-else
-OPENMP=-fopenmp
 endif
 endif
 
