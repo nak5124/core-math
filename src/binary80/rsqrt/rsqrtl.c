@@ -31,10 +31,8 @@ SOFTWARE.
 
 #define TRACE 0x8.000000000000001p-5L
 
-#include <stdio.h> // FIXME: to be removed in final version
 #include <stdint.h>
 #include <math.h> // for sqrtl
-#include <fenv.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)

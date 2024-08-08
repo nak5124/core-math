@@ -43,10 +43,6 @@ SOFTWARE.
  */
 
 #include <stdint.h>
-#include <fenv.h>
-#ifdef __x86_64__
-#include <x86intrin.h>
-#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)

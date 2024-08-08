@@ -34,7 +34,6 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <fenv.h>
 
 #include "expl_tables.h"
 #include "tint.h"
