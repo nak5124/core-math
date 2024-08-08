@@ -611,7 +611,7 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 	// given the error analysis (we used absolute bounds mostly)
 	// rounding test
 	*need_accurate = b1;
-	if(__builtin_expect(b1, 0)) {
+	if(__builtin_expect(b1 != 0, 0)) {
 		ri->fracpart = fracpart;
 		ri->xs = y.f - C;
 		/* y.f - C = r (see above). Since we have
@@ -1094,7 +1094,7 @@ long double accurate_path(long double x, const redinfo* ri) {
 	__int128 roundpart = ((__int128)final->m << 64) | final->l;
 	bool test = (unsigned __int128)(roundpart + eps) <= 2*(unsigned __int128)eps; 
 
-	if(__builtin_expect(test, 0)) {return -1;}
+	if(__builtin_expect(test != 0, 0)) {return -1;}
 
 	b96u96_u retval;
 	retval.e = final->ex;

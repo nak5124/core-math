@@ -92,7 +92,7 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
   if(__builtin_expect(pD != 0, 1)){
     if(__builtin_expect(op == om, 1)){
       i64 sum = pD - 4*rm - 1;
-      if(__builtin_expect(sum, 1))
+      if(__builtin_expect(sum != 0, 1))
 	rm += (sum>>63) + 1;
       else
 	rm += rm&1;
@@ -152,7 +152,7 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const
     if(__builtin_expect(op == om, 1)){
       u64 tm = (rm << k) - (1<<(k-(rm<=(1l<<53))));
       D = m2 - tm*tm;
-      if(__builtin_expect(D, 1))
+      if(__builtin_expect(D != 0, 1))
 	rm += D>>63;
       else
 	rm -= rm&1;

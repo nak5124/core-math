@@ -469,7 +469,7 @@ double cr_atan2 (double y0, double x0){
   fl += O[kw][1];
   if(__builtin_expect(x<0x1p-968, 0)){x *= 0x1p968; y *= 0x1p968;}
   if(__builtin_expect(x>0x1p1022, 0)){
-    if(__builtin_expect(jt,1)){
+    if(__builtin_expect(jt != 0,1)){
       x *= 0x1p-1; y *= 0x1p-1;
     }
   }
