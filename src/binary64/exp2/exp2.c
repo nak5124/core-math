@@ -300,7 +300,7 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
     if(__builtin_expect(d<=2, 0)) fh = as_exp2_database(x, fh);
     fh = as_ldexp(fh, ie);
   } else {
-    ix.u = (1-ie)<<52;
+    ix.u = ((u64)1-ie)<<52;
     fh = muldd(fh,fl, th,tl, &fl);
     fh = fastsum(th,tl, fh,fl, &fl);
     double e;
@@ -341,17 +341,19 @@ double cr_exp2(double x){
   double tz = th*z, fh = th, fl = tz*((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + tl;
   double eps = 1.64e-19;
   if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){
-    if( __builtin_expect(frac, 1)){
+    // warning: on 32-bit machines, __builtin_expect(frac,1) does not work
+    // since only the low 32 bits of frac are taken into account
+    if( __builtin_expect(frac != 0, 1)){
       double ub = fh + (fl + eps); fh += fl - eps;
       if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
     }
     fh = as_ldexp(fh, ie);
   } else {
-    ix.u = (1-ie)<<52;
+    ix.u = ((u64)1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
-    if(__builtin_expect(frac, 1)){
+    if(__builtin_expect(frac != 0, 1)){
       double ub = fh + (fl + eps); fh += fl - eps;
       if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
     }
