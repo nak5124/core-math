@@ -202,10 +202,7 @@ check_exact_or_midpoint_3 (void)
 {
   long double x, y = 3.0L;
   for (x = 1664511.0L; x <= 3329021.0L; x++)
-  {
-    check (x, y);
-    check (-x, y);
-  }
+    check (x, y); // check will also try (-x,y)
 }
 
 // check exact or midpoint values for y integer
