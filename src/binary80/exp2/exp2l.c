@@ -55,16 +55,6 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-static inline int get_rounding_mode (void)
-{
-#ifdef __x86_64__
-  const unsigned flagp = _mm_getcsr ();
-  return (flagp&(3<<13))>>3;
-#else
-  return fegetround ();
-#endif
-}
-
 // anonymous structs, see https://port70.net/~nsz/c/c11/n1570.html#6.7.2.1p19
 typedef union {
   long double f;
