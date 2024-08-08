@@ -56,8 +56,9 @@ is_equal (long double x, long double y)
   return v.e == w.e && v.m == w.m;
 }
 
+// return 1 in case of failure, 0 otherwise
 static int
-check (long double x, long double y)
+check_aux (long double x, long double y)
 {
   long double z, t;
   mpfr_t X, Y, Z;
@@ -81,6 +82,17 @@ check (long double x, long double y)
 #endif
   }
   return 0;
+}
+
+// return the number of failures
+static int
+check (long double x, long double y)
+{
+  int ret = check_aux (x, y);
+  // if y is an integer, also check with -x
+  if (y == (long double) (int64_t) y)
+    ret += check_aux (-x, y);
+  return ret;
 }
 
 // check x=2^n and y, return 1 iff x is in the long double range
