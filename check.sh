@@ -106,7 +106,6 @@ if [ "$CFLAGS" == "" ]; then
       # -fhonor-nans is needed to disable warnings about __builtin_nan()
       # (https://clang.llvm.org/docs/DiagnosticsReference.html#wnan-infinity-disabled)
       export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -DCORE_MATH_CHECK_INEXACT -fhonor-nans"
-      echo $CFLAGS
    elif [ "$CC" == "icx" ]; then
       # icx needs -fp-model=precise and doesn't like -fsignaling-nans
       export CFLAGS="-fp-model=precise -O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -DCORE_MATH_CHECK_INEXACT"
