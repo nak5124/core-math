@@ -131,6 +131,7 @@ if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
    else
       OPENMP=-fopenmp
    fi
+   echo $OPENMP
 else
    export CFLAGS="$CFLAGS -DCORE_MATH_NO_OPENMP"
 fi
