@@ -32,13 +32,19 @@ SOFTWARE.
        Research Report, 2004, https://inria.hal.science/hal-03798376
 */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <fenv.h>
 
 #include "expl_tables.h"
 #include "tint.h"
+
+// Warning: clang also defines __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+
+#pragma STDC FENV_ACCESS ON
 
 typedef union {
 	long double f;
@@ -60,7 +66,8 @@ static inline void a_mul(double *hi, double *lo, double a, double b) {
 /* For rounding to nearest, fast_two_sum_double() is exact.
    However for directed roundings, it is not necessarily.
    The rounding error is bounded by 2^-105 * |s|.
-   See Note on FastTwoSum with Directed Roundings, Paul Zimmermann, 2023,
+   See Note on FastTwoSum with Directed Roundings,
+   Sélène Corbineau and Paul Zimmermann, 2024,
    https://inria.hal.science/hal-03798376 */
 static inline void
 fast_two_sum(double *s, double *t, double a, double b)
@@ -320,8 +327,8 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 	   |ah*bl+t| < 2*2^-50.4+2^-49.1 < 2^-48.2 thus |lo| <= 2^-48.2
 	   and the rounding error on lo is less than
 	   ulp(2^-48.2) = 2^-101. We thus have:
-	   |xs_pow2_h + xs_pow2_l - 2^frac(r)| <
-	   2^-100 + 2^-102 + 2^-101 < 2^-99.1.
+	   |xs_pow2_h + xs_pow2_l - 2^frac(r)|
+	   < 2^-100 + 2^-102 + 2^-101 < 2^-99.1.
 	*/
 
 
@@ -360,7 +367,7 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 	/* We note A = 0x1.c6b08d704a1cdp-5 and B = 0x1.ebfbdff82c696p-3.
 	   Analyzing the fma call:
 	   Neglecting xl * A imparts an error bounded by
-	     |A * xl| <= A*2^-71.63 = 2^-75.8
+	     |A * xl| <= A*2^-71.63 <= 2^-75.8
 	   Since |xh| <= 2^-19.999, |A*xh+B| <= 2^-19.999*A + B < 1/4 - 0.008.
 	   This implies that the fma's result is strictly less than 1/4.
 	   The rounding error of the fma is therefore at most ulp(1/8) = 2^-55.
@@ -480,8 +487,7 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 		   translates to an additional relative error
 		     rho4 <= 2^-98.299/2^(-2^-19.999), so rho4 <= 2^-98.298.
 		   Taking into account rho1, the total relative error is thus at most
-		   (1 + 2^-88.99908)(1 + rho1)(1 + rho4) - 1 <= 2^-87.286:
-		     |finalh + finall - 2^frac(r) * 2^xr| < 2^-87.286.
+		   (1 + 2^-88.99908)(1 + rho1)(1 + rho4) - 1 <= 2^-87.286.
 		*/
 		err = -87;
 		/* Remark: some tests fail with -90, thus the error analysis
@@ -497,7 +503,8 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 		   is very tight. */
 	}
 
-	/* In all cases we have: |finalh + finall - 2^frac(r) * 2^xr| < 2^err */
+	/* In all cases we have:
+	   |finalh + finall - 2^frac(r) * 2^xr| < 2^err*|finalh + finall| */
 
 	/* From exp2/exp2l.c */
 	fast_two_sum(&finalh, &finall, finalh, finall);

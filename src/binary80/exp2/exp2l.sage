@@ -1,4 +1,69 @@
 #load("../../generic/support/common.sage")
+
+# print_S3()
+# Fastpath error -107.221481931184
+def print_S3():
+   print ("static const double S3[32][2] = {")
+   R = RealField(53)
+   maxerr = 0
+   maxerr_acc = 0
+   for i in range(2^5):
+      x = n(2^(i/2^5), 400)
+      h = R(x)
+      l = R(x-h.exact_rational())
+      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
+      maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
+   print ("};")
+   print ("Fastpath error " + str(log(maxerr)/log(2.)))
+
+# print_S2()
+# Fastpath error -107.036364808372
+def print_S2():
+   print ("static const double S2[32][2] = {")
+   R = RealField(53)
+   maxerr = 0
+   maxerr_acc = 0
+   for i in range(2^5):
+      x = n(2^(i/2^10), 400)
+      h = R(x)
+      l = R(x-h.exact_rational())
+      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
+      maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
+   print ("};")
+   print ("Fastpath error " + str(log(maxerr)/log(2.)))
+
+# print_S1()
+# Fastpath error -107.213929456011
+def print_S1():
+   print ("static const double S1[32][2] = {")
+   R = RealField(53)
+   maxerr = 0
+   maxerr_acc = 0
+   for i in range(2^5):
+      x = n(2^(i/2^15), 400)
+      h = R(x)
+      l = R(x-h.exact_rational())
+      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
+      maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
+   print ("};")
+   print ("Fastpath error " + str(log(maxerr)/log(2.)))
+
+# print_S0()
+# Fastpath error -107.009481984509
+def print_S0():
+   print ("static const double t0[32][2] = {")
+   R = RealField(53)
+   maxerr = 0
+   maxerr_acc = 0
+   for i in range(2^5):
+      x = n(2^(i/2^20), 400)
+      h = R(x)
+      l = R(x-h.exact_rational())
+      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
+      maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
+   print ("};")
+   print ("Fastpath error " + str(log(maxerr)/log(2.)))
+
 def print_T2():
    print ("static const long double T2[32][2] = {")
    R = RealField(64)
@@ -9,19 +74,6 @@ def print_T2():
       l = R(x-h.exact_rational())
       print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational())/x)
-   print ("};")
-   print (log(maxerr)/log(2.))
-
-def print_T2fast():
-   print ("static const double T2fast[32][2] = {")
-   R = RealField(53)
-   maxerr = 0
-   for i in range(2^5):
-      x = n(2^(i/2^5), 200)
-      h = R(x)
-      l = R(x-h.exact_rational())
-      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
-      maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
    print ("};")
    print (log(maxerr)/log(2.))
 
@@ -38,19 +90,6 @@ def print_T1():
    print ("};")
    print (log(maxerr)/log(2.))
 
-def print_T1fast():
-   print ("static const double T1fast[32][2] = {")
-   R = RealField(53)
-   maxerr = 0
-   for i in range(2^5):
-      x = n(2^(i/2^10), 200)
-      h = R(x)
-      l = R(x-h.exact_rational())
-      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
-      maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
-   print ("};")
-   print (log(maxerr)/log(2.))
-
 def print_T0():
    print ("static const long double T0[32][2] = {")
    R = RealField(64)
@@ -61,19 +100,6 @@ def print_T0():
       l = R(x-h.exact_rational())
       print ("   {" + get_hex(h) + "L, " + get_hex(l) + "L},")
       maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational())/x)
-   print ("};")
-   print (log(maxerr)/log(2.))
-
-def print_T0fast():
-   print ("static const double T0fast[32][2] = {")
-   R = RealField(53)
-   maxerr = 0
-   for i in range(2^5):
-      x = n(2^(i/2^15), 200)
-      h = R(x)
-      l = R(x-h.exact_rational())
-      print ("   {" + get_hex(h) + ", " + get_hex(l) + "},")
-      maxerr = max(maxerr,abs(x-h.exact_rational()-l.exact_rational()))
    print ("};")
    print (log(maxerr)/log(2.))
 
@@ -94,6 +120,30 @@ def d_mul(ah,al,bh,bl):
    lo = ah*bl+t
    return hi,lo,(RIF(RIulp(t)+RIulp(lo))+RIF(al)*RIF(bl)).abs().upper()
 
+# check that S3[i3]*S2[i2]*S1[i1]*S0[i0] remains < 2
+# we take the largest entry of each table with rounding upwards
+# this gives an upper bound on xs_pow2_h + xs_pow2_l
+def check_S3S2S1S0():
+   R = RealField (53, rnd='RNDU')
+   # largest entry S0[31]
+   S0h = R("0x1.000157cdf54c2p+0", 16)
+   S0l = R("-0x1.ad2ff3ac0a8b3p-56", 16)
+   # largest entry S1[31]
+   S1h = R("0x1.002afd3d6ff51p+0", 16)
+   S1l = R("-0x1.13c6aeb99597p-54", 16)
+   # largest entry S2[31]
+   S2h = R("0x1.056dbbebb786bp+0", 16)
+   S2l = R("0x1.06c87433776c9p-55", 16)
+   # largest entry S3[31]
+   S3h = R("0x1.f50765b6e454p+0", 16)
+   S3l = R("0x1.9d3e12dd8a18bp-54", 16)
+   frcp_acc0_h, frcp_acc0_l,_ = d_mul (t0h, t0l, t1h, t1l)
+   print (get_hex (frcp_acc0_h),_ get_hex (frcp_acc0_l))
+   frcp_acc2_h, frcp_acc2_l,_ = d_mul (t2h, t2l, t3h, t3l)
+   print (get_hex (frcp_acc2_h), get_hex (frcp_acc2_l))
+   xs_pow2_h, xs_pow2_l,_ = d_mul (frcp_acc0_h, frcp_acc0_l, frcp_acc2_h, frcp_acc2_l)
+   return get_hex (xs_pow2_h), get_hex (xs_pow2_l)
+
 # given maximum absolute values, return a bound on the *absolute* error of d_mul,
 # and the maximum value of lo
 # err_d_mul(2.,2^-53.,2.,2^-53.)
@@ -104,76 +154,6 @@ def err_d_mul(ahmax,almax,bhmax,blmax):
    t = almax*bhmax+s
    lo = ahmax*blmax+t
    return t.ulp()+lo.ulp()+almax*blmax, lo
-
-# analyze_P()
-# err1= -104.999991108898
-# err2= -86.9999896091589
-# err3= -87.0575276595616
-# err4= -119.999999999999
-# err5= -118.796973547466
-# err6= -104.999984741210
-# err7= -104.000000000001
-# rel. err= -85.9700916604987
-# max l= 2.22049521164608e-16
-def analyze_P():
-   err0 = 2^-90.627 # absolute error
-   R = RealField(53)
-   RI = RealIntervalField(53)
-   xh = RI(-2^-16,2^-16)
-   xl = RI(-2^-69,2^-69)
-   p4 = RI(R("0x1.3b2a52e855b32p-7",16))
-   p3 = RI(R("0x1.c6b08d7057b35p-5",16))
-   p2 = RI(R("0x1.ebfbdff82c58fp-3",16))
-   p1h = RI(R("0x1.62e42fefa39efp-1",16))
-   p1l = RI(R("0x1.abc9c864cbd56p-56",16))
-   p0 = RI(1)
-   # y = p[5] * xh + p[4]
-   y = p4*xh+p3
-   # we ignored p4*xl
-   err1 = (RIulp(p4*xh)+(p4*xl).abs().upper()+RIulp(y))*xh.abs().upper()^3
-   print ("err1=", log(err1)/log(2.))
-   # y = y * xh + p[3]
-   yin = y
-   y = y*xh+p2
-   # we ignored y*xl
-   err2 = (RIulp(yin*xh)+(yin*xl).abs().upper()+RIulp(y))*xh.abs().upper()^2
-   print ("err2=", log(err2)/log(2.))
-   # a_mul_double (h, l, y, xh)
-   h = y*xh
-   u = RIulp(h)
-   l = RI(-u,u)
-   # fast_two_sum_double (h, &t, p[1], h)
-   h = p1h+h
-   u = RIulp(h)
-   t = RI(-u,u)
-   # we ignored y*xl
-   err3 = (h.abs().upper()*2^-105+(y*xl).abs().upper())*xh.abs().upper()
-   print ("err3=", log(err3)/log(2.))
-   # *l += t + p[2]
-   t += p1l
-   l += t
-   err4 = (RIulp(t)+RIulp(l))*xh.abs().upper()
-   print ("err4=", log(err4)/log(2.))
-   # d_mul_double (h, l, *h, *l, xh, xl)
-   h, l, err5 = d_mul(h,l,xh,xl)
-   print ("err5=", log(err5)/log(2.))
-   # fast_two_sum_double (h, &t, p[0], h)
-   h = p0+h
-   u = RIulp(h)
-   t = RI(-u,u)
-   err6 = h.abs().upper()*2^-105
-   print ("err6=", log(err6)/log(2.))
-   # *l += t
-   l += t
-   err7 = RIulp(l)
-   print ("err7=", log(err7)/log(2.))
-   # convert err0 into relative error
-   err0 = err0*(h+l).abs().upper()
-   err = err0+err1+err2+err3+err4+err5+err6+err7
-   # convert into relative error
-   err = err/(h+l).abs().lower()
-   print ("rel. err=", log(err)/log(2.))
-   print ("max l=", l.abs().upper())
 
 # analyze_Pacc()
 # err1= -152.999997248280
