@@ -353,10 +353,13 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 // Subnormalization is already done, this only deals with infinities/zeroes
 // and rounding.
 // Assumes extralow is an extra limb of weight ll/2^64,
-// and a->ex >= -16383.
+// and b->ex >= -16383.
 // invert is true iff x^y < 0
-long double qint_told(qint64_t* a, uint64_t extralow,
+long double qint_told(const qint64_t* b, uint64_t extralow,
                       unsigned rm, bool invert, bool* hard) {
+	qint64_t a[1];
+	cp_qint(a, b); // Avoid trashing b
+
 	bool f = false; // true iff overflow is possible
 	if(rm==FE_TONEAREST) {
           a->hh += a->hl>>63;
@@ -464,9 +467,9 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 	          (d_plus_eps == eps2 && d_plus_eps_extra < eps2_extra);
 	}
 
-	if(__builtin_expect(a->ex >= 16384, 0)) // overflow case
-          return invert ? (-0x1p16383L - 0x1p16383L)
-            : (0x1p16383L + 0x1p16383L);
+	if(__builtin_expect(a->ex >= 16384, 0)) {// overflow case
+		return invert ? (-0x1p16383L - 0x1p16383L) : (0x1p16383L + 0x1p16383L);
+	}
 	return v.f;
 }
 

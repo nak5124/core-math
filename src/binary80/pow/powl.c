@@ -991,7 +991,8 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 */
 inline static
 long double fastpath_roundtest(double rh, double rl, int extra_exp,
-                               bool invert, bool* fail) {
+                               bool invert, long double x, long double y,
+                               bool* fail) {
 	unsigned rm = get_rounding_mode();
 	fast_two_sum(&rh, &rl, rh, rl); // The fast_two_sum precondition is satisfied
 
@@ -1087,8 +1088,27 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	v.m = mh; // mantissa
 	v.e = wanted_exponent; // exponent
 	if(__builtin_expect(invert, 0)) {v.e += (1<<15);}
-	bool b1 = (uint64_t)(ml + eps) <= (uint64_t)(2*eps); 
+	bool b1 = (uint64_t)(ml + eps) <= (uint64_t)(2*eps);
 	*fail = b1;
+
+	/* Also fail if we are too near a floating point number when rounding
+	   to nearest and we have an exponent which may lie in S.
+	   The speed/accuracy of checking whether y lies in S is essential.
+	*/
+	if(rm == FE_TONEAREST) { ml += 1ul << 63;
+		b80u80_t cvt_y = {.f = y};
+		b80u80_t cvt_x = {.f = x};
+
+		if(__builtin_expect(
+		   __builtin_expect((uint64_t)(ml + eps) <= (uint64_t)(2*eps),0) &&
+			((__builtin_popcount(cvt_x.m) == 1) || !(cvt_y.m << 6)), 0))
+			{*fail = true;
+			POWL_DPRINTF("Forcing accurate path for FE_INEXACT\n");}
+		/* If x is not a power of 2, then y must necessarily have 6 significant
+			 bits at most for it to be in S, since 41 fits in 6 bits.
+		   We have to do a popcount because x may be denormal.
+		*/
+	}
 
 	// Denormals *inside* the computation don't seem to be a problem
 	// given the error analysis (we used absolute bounds mostly)
@@ -1658,6 +1678,8 @@ long double cr_powl(long double x, long double y) {
 	// now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 #ifndef ACCURATE_ONLY
 
+	fexcept_t inex; fegetexceptflag(&inex, FE_INEXACT);
+
 	POWL_DPRINTF("x="SAGE_RE"\n",x);
 	POWL_DPRINTF("y="SAGE_RE"\n",y);
 	// Automatic giveup if x subnormal
@@ -1704,7 +1726,7 @@ long double cr_powl(long double x, long double y) {
                         */
 
 			bool fail = false;
-			r = fastpath_roundtest(resh, resl, extra_exponent, invert, &fail);
+			r = fastpath_roundtest(resh, resl, extra_exponent, invert,x,y, &fail);
 			if(__builtin_expect(!fail, 1)) {	
 				POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
 				return r;
@@ -1738,7 +1760,7 @@ long double cr_powl(long double x, long double y) {
         */
 	unsigned rm = get_rounding_mode();
 
-	qint64_t final[1];
+	qint64_t subqr[1];
 	if(q_r->ex <= -16448) { 
 		/* If q_r->ex = -16447 we may still really have exponent -16446 because
 		   of errors, then round to 1p-16445.
@@ -1749,14 +1771,15 @@ long double cr_powl(long double x, long double y) {
 	uint64_t extralow[1] = {0};
 	// Extra-low limb to avoid loss of precision
 	// when the final result is denormal. 
-	qint_subnormalize(final, extralow, q_r);
+	qint_subnormalize(subqr, extralow, q_r);
 	// In corner cases, qint_subnormalize creates a relative error 2^-255. This
 	// implies that the total relative error is at most
 	// 2^-234.862 + 2^-255 + 2^-255 * 2^-234.862 <= 2^-234.861
 
-	bool exact_if_hard = check_rb(x,y,q_r);
+	bool exact_if_hard = __builtin_expect(check_rb(x,y,q_r),0);
 	bool hard = false;
-	long double r = qint_told(final, *extralow, rm, invert, &hard);
+	long double r = qint_told(subqr, *extralow, rm, invert, &hard);
+	b80u80_t cvt_r = {.f = r};
 
 	/* Assume that (x,y) is a hard case in the sense that the accurate path
 	   rounding test fails. Assume further that (x,y) is potentially exact or
@@ -1776,21 +1799,49 @@ long double cr_powl(long double x, long double y) {
 	   less than 2^-m ulp(r') from a rounding boundary r'.
 	   Since |x^y - r| <= 2^-233.367 |x^y| implies |x^y - r| <= 2^-169.367 ulp(r),
 	   taking m=169 ensures we miss no hard case in S.
-	   (It is obvious that r = r' whenever the discussed situation arises).
+	   (It is obvious that r = r' whenever the discussed situation arises.
+	   The argument above applies even when x^y is subnormal. Indeed, subnormal
+	   rounding boundaries are a subset of the boundaries considered by BaCSeL.)
 	*/
-
+	
 	POWL_DPRINTF("get_hex(R(1 - r/x^y))\n");
-	if(hard){POWL_DPRINTF("hard\n");}
 	if(hard && exact_if_hard) {
-	  // TODO: save inexact flag and restore it here
-		// Can we do it without a library call ?
+	  /* If we are here, then either the rounding mode is not FE_TONEAREST
+		   and we are on an exact number, or rm == FE_TONEAREST and we are at a
+		   midpoint.
+		*/
+
 		POWL_DPRINTF("Boundary!\n");
-		exactify(q_r);
+		exactify(q_r);//Makes an exact rounding boundary on unbounded exponent range
 		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
 			q_r->ex, q_r->sgn);
-		qint_subnormalize(final,extralow, q_r);
-		POWL_DPRINTF("exact_sub = "SAGE_QR"\n",
-			final->hh, final->hl, final->lh, final->ll, final->ex, final->sgn);
-		return qint_told(final,*extralow, rm, invert, &hard);
+
+		qint64_t subexact[1];
+		qint_subnormalize(subexact,extralow, q_r);
+
+		if(rm != FE_TONEAREST && ((cvt_r.e&0x7fff) != 0x7fff)
+		   && !subexact->hl && !subexact->lh)
+			{fesetexceptflag(&inex, FE_INEXACT);}
+		/* If the result overflows, even if it would be exact with an unbounded
+		   exponent range, the inexact flag must not be cleared. The mantissa checks
+		   are there to check if the result is still exact even accounting for
+		   subnormalization.
+		*/
+		return qint_told(subexact,*extralow, rm, invert, &hard);
+	} else if(rm == FE_TONEAREST && exact_if_hard) {
+		POWL_DPRINTF("Checking if easy case is exact\n");
+		// Inefficient, but this code is rarely called. We hope the compiler can
+		// Infer that a lot of internal computations are unused.
+
+		qint_told(subqr, *extralow, FE_UPWARD, invert, &hard);
+		if(hard) {// We are in an exact case assuming unbounded exponent range
+			exactify(q_r);
+			qint64_t subexact[1];
+			qint_subnormalize(subexact, extralow, q_r);
+			if(((cvt_r.e&0x7fff) != 0x7fff) && !subexact->hl && !subexact->lh)
+				{fesetexceptflag(&inex, FE_INEXACT);}
+		}
+
+		return r;
 	} else {return r;}
 }
