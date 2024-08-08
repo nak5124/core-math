@@ -38,6 +38,15 @@ SOFTWARE.
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
+/* clang does not like __builtin_nan("<0") even with -fhonor-nans,
+   https://www.mail-archive.com/llvm-branch-commits@lists.llvm.org/msg14854.html */
+static double
+get_nan (void)
+{
+  b32u32_u v = {.u = 0xffffffff};
+  return v.f;
+}
+
 static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};
   uint32_t ux = t.u;
@@ -51,7 +60,7 @@ static __attribute__((noinline)) float as_special(float x){
   if(ax > 0xff000000u) return x; // nan
   errno = EDOM;
   feraiseexcept(FE_INVALID);
-  return __builtin_nanf("<0"); // x < 0
+  return get_nan (); // x < 0
 }
 
 float cr_log10p1f(float x){
