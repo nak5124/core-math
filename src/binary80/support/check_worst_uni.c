@@ -213,7 +213,10 @@ check_long_double (void)
   if (p != 64)
   {
     printf ("The long-double format is not the double-extended format\n");
-    printf ("It has a precision of %d bits\n", p);
+    if (p == 1075)
+      printf ("It seems to be double-double\n");
+    else
+      printf ("It has a precision of %d bits\n", p);
     exit (1);
   }
 }
