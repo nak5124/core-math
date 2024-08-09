@@ -68,13 +68,15 @@ bool check_rb(long double x, long double y, const qint64_t* z) {
           /* Since |x| = m*2^E with m odd, we have to be able to extract |F|
              times an exact square root from m, and |F| times an exact square
              root from 2^E. The second condition requires 2^|F| divides E. */
-          if(E & (((int64_t)1 << (-F)) - 1)) return false;
-          // 2^|F| does not divide E
-
-          int64_t off = n*(E >> (-F)); // Cannot overflow given the ranges.
-          int64_t G;
-          q_extract65(&G, z); // round65(z) = 2^G*k for some odd k
-          if(G != off) return false;
+		if(E & (((int64_t)1 << (-F)) - 1)) return false;
+		// 2^|F| does not divide E
+		int64_t off = n*(E >> (-F)); // Cannot overflow given the ranges.
+		int64_t G;
+		q_extract65(&G, z);
+		// Finds G such that round65(z) = 2^G*k for some odd k
+		if(G != off) return false;
+		// The test 2^(G - E*y)k in 2Z + 1 in detectRoundingBoundaryCase [2] becomes
+		// G == E*y.
 	}
 
 	return true;
