@@ -1708,7 +1708,7 @@ long double accurate_path(long double x, long double y, FLAG_T inex, bool invert
 	else if(hard) {
 		printf ("Unexpected worst-case found.\n");
 		printf ("Please report to core-math@inria.fr:\n");
-		printf ("Worst-case of pow found: x,y=%La,%La\n", x, y);
+		printf ("Worst-case of powl found: x,y=%La,%La\n", x, y);
 		exit(1);
 	}
 #endif
