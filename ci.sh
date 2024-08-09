@@ -5,7 +5,7 @@
 # FORCE_FUNCTIONS="xxx yyy" ./ci.sh to force checking xxx and yyy
 # CC=clang CFLAGS=-Werror ./ci.sh
 
-set -e
+set -e # We want the above command to potentially fail, only set -e now.
 
 if [ -z "$LAST_COMMIT" ]; then
     LAST_COMMIT="HEAD~"
@@ -30,14 +30,29 @@ check () {
     else
         doit=1
     fi
+		if [ "$doit" == "1" ] && [ "$SKIP128" == "1" ] && $CC -E src/*/*/$FUNCTION.c | grep -zq  __int128; then
+        echo "__int128 support is needed for" $FUNCTION "but is not available"
+        doit=0
+    fi
     if [ "$doit" == "0" ]; then
         echo "Skip $FUNCTION"
     else
-        echo "Checking $FUNCTION..."
+        echo "Checking $FUNCTION..."				
 	# we want to detect compiler warnings
         EXTRA_CFLAGS=-Werror ./check.sh $DRY "$KIND" "$FUNCTION"
     fi
 }
+
+if [ -z "$CC" ]; then
+	CC="cc"
+fi
+
+if $CC -E $CFLAGS ci/int128test.c -o /dev/null &> /dev/null; then
+    echo "Compiler supports __int128"
+else
+    echo "Compiler lacks __int128 support"
+    SKIP128=1
+fi
 
 for FUNCTION in "${FUNCTIONS_EXHAUSTIVE[@]}"; do
     check --exhaustive
