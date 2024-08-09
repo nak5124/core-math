@@ -1082,8 +1082,15 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 
 	uint64_t oldmh = mh; // For overflow detection
 	if(rm==FE_TONEAREST){ // round to nearest
-		mh += (uint64_t)ml>>63;
-		ml <<= 1; eps <<= 1;//ml ^= (1ul << 63);
+		mh += (uint64_t)ml>>63; // add the round bit
+		ml <<= 1; eps <<= 1;
+                /* Multiplying ml by 2 we discard the round bit,
+                   thus the rounding test will fail even if we are
+                   near an exact value. The reason is that when x^y
+                   is exact, we should reset the inexact flag. Since
+                   testing if x^y is exact is expensive, we delegate
+                   this case to the accurate path. Thus we sacrifice x^y exact
+                   to make the average case is faster. */
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
 		mh += 1;
 		// This is as if ml had a trailing 1.
@@ -1094,9 +1101,9 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
   // Else we simply cannot have an overflow
 	if(__builtin_expect(mh < oldmh, 0)) {
 		ml = ml/2; // Signed semantics matter
-	  eps >>= 1;
-		mh = 1ull << 63;
-	  wanted_exponent++;	
+                eps >>= 1;
+		mh = (uint64_t) 1 << 63;
+                wanted_exponent++;
 	}
 
 	// We had a denormal but rounding made it into the smallest normal
