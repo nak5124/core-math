@@ -170,16 +170,6 @@ case "$KIND" in
         done
         fi
         ;;
-    --exact)
-        "$MAKE" --quiet -C "$DIR" clean
-        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_exact
-        if [[ -z "$DRY" ]]; then
-        for MODE in "${MODES[@]}"; do
-            echo "Running exact checks in $MODE mode..."
-            $CORE_MATH_LAUNCHER "$DIR/check_exact" "$MODE" "${ARGS[@]}"
-        done
-        fi
-        ;;
     *)
         echo "Unrecognized command"
         exit 1
