@@ -355,21 +355,33 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 // Assumes extralow is an extra limb of weight ll/2^64,
 // and b->ex >= -16383.
 // invert is true iff x^y < 0
-long double qint_told(const qint64_t* b, uint64_t extralow,
+long double qint_told(qint64_t* a, uint64_t extralow,
                       unsigned rm, bool invert, bool* hard) {
-	qint64_t a[1];
-	cp_qint(a, b); // Avoid trashing b
+	//qint64_t a[1];
+	//cp_qint(a, b); // Avoid trashing b
 
 	bool f = false; // true iff overflow is possible
 	if(rm==FE_TONEAREST) {
-          a->hh += a->hl>>63;
+		a->hh += a->hl>>63;
 		f = a->hl>>63; // round bit
 		a->hl ^= (uint64_t) 1 << 63;
 		if(a->hl == 0 && a->lh == 0 && a->ll == 0 && extralow==0 && (a->hh&1)) {
-		// We were on the rounding boundary and rounded away instead of to zero
+			// We were on the rounding boundary and rounded away instead of to zero
 			a->hh -= 1;
 			f = false;
-		} 
+		}
+		/* We shift by 2 the rounding part, so that for rm==FE_TONEAREST, it
+		   represents the cfrac of the distance to the closest rounding boundary
+		   (midpoint OR exact).
+		   The following arguments assume that we are in a directed rounding mode.
+		   They still hold for rm==FE_TONEAREST because then we shift left a's
+		   rounding part AND epsilon. (So the net effect is only a wraparound at the
+		   midpoint).
+		*/
+		a->hl = (a->hl << 1) | (a->lh >> 63);
+		a->lh = (a->lh << 1) | (a->ll >> 63);
+		a->ll = (a->ll << 1);
+
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
 		// The special handling of extralow described above ensures this is
 		// correct in all cases.
@@ -378,7 +390,7 @@ long double qint_told(const qint64_t* b, uint64_t extralow,
 	}
 
 	// Note that hl || lh || ll holds the distance from the rounding
-        // boundary, with same sign as hh
+	// boundary, with same sign as hh
 
 	if(__builtin_expect(f && (a->hh == 0), 0)) { // overflow
                         a->hh = (uint64_t) 1 << 63;
@@ -400,8 +412,8 @@ long double qint_told(const qint64_t* b, uint64_t extralow,
 	b80u80_t v;
 	v.m = a->hh;         // significand
 	v.e = a->ex + 16383; // biased exponent
-        static const int sign_bit[] = {0, 1<<15};
-        v.e += sign_bit[invert];
+	static const int sign_bit[] = {0, 1<<15};
+	v.e += sign_bit[invert];
 
 	POWL_DPRINTF("m = %016lx\n", v.m);
 	POWL_DPRINTF("e = %x (%ld)\n", v.e, a->ex);
@@ -421,13 +433,13 @@ long double qint_told(const qint64_t* b, uint64_t extralow,
 	*/
 	if(__builtin_expect(d != 0 && d+1 != 0, 1)) {*hard = false;}
 	else {
-          d = (d << 64) + a->ll;
-          uint64_t d_extra = extralow;
+		d = (d << 64) + a->ll;
+		uint64_t d_extra = extralow;
 
 	  /* cfrac(d/2^128)/2^64 is the signed distance to the rounding
              boundary, in terms of ulp(v) */
-          unsigned __int128 eps = (__int128) a->hh << 64;
-          uint64_t eps_extra  = 0;
+		unsigned __int128 eps = (__int128) a->hh << 64;
+		uint64_t eps_extra  = 0;
 
           /* Not counting the lower limbs, the error bound is
              2^-234.861*|v| <= 2^-234.861 * hh * ulp(v),
@@ -439,15 +451,15 @@ long double qint_told(const qint64_t* b, uint64_t extralow,
              In terms of eps which is a 128-bit integer this yields:
              2^-64 * 2^-42.861 * eps < 2^-106 * eps */
 
-          eps_extra = (uint64_t) (eps >> (106 - 64));
+		eps_extra = (uint64_t) (eps >> (106 - 64));
 	  // Grab the highest low bits which would be lost
-          eps >>= 106;
-          eps_extra += 1; // Make sure we over-approximate eps.
+		if(rm==FE_TONEAREST) {eps >>= 105;} else {eps >>= 106;}
+		eps_extra += 1; // Make sure we over-approximate eps.
 
-          /* The scaling introduces an error at most 1 lsb of eps_extra.
-             We know that initially a's MSB is at most at position 65 counting
-             from the highest bit of the mantissa. Therefore 1 lsb of eps_extra
-             has relative weight 2^(-255 - 64 + 65) = 2^-254.
+		/* The scaling introduces an error at most 1 lsb of eps_extra.
+		   We know that initially a's MSB is at most at position 65 counting
+		   from the highest bit of the mantissa. Therefore 1 lsb of eps_extra
+		   has relative weight 2^(-255 - 64 + 65) = 2^-254.
 
 	     Failure of the rounding test therefore implies that
 	       |z - r| <= (2^-234 + 2^-254)|z|

@@ -35,11 +35,43 @@ SOFTWARE.
 #include <stdint.h>
 #include <fenv.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 #ifdef __x86_64__
 #include <x86intrin.h>
+#endif 
+
+#if 0
+#include <x86intrin.h>
+#define FLAG_T uint32_t
+#else
+#define FLAG_T fexcept_t
 #endif
+
+/* FIXME: For now, only the naïve versions are enabled, because
+   the intrinsics do not work. They only handle the SSE status word side of
+   things, but ignore the x87 status word (which we touch, using long doubles).
+*/
+static FLAG_T
+get_flag (void)
+{
+#if 0
+  return _mm_getcsr ();
+#else
+  fexcept_t flag;
+  fegetexceptflag (&flag, FE_INEXACT);
+  return flag;
+#endif
+}
+
+static void
+set_flag (FLAG_T flag)
+{
+#if 0
+  _mm_setcsr (flag);
+#else
+  fesetexceptflag (&flag, FE_INEXACT);
+#endif
+}
 
 #ifdef POWL_DEBUG
 #include <stdio.h>
@@ -104,17 +136,6 @@ void split(double* rh, double* rl, long double x) {
            x - y = l*2^-63 with |l| < 2^31, thus rl fits in 31 bits,
            and the difference is exact. */
 }
-
-#if 0
-static inline
-void add22(double* zh, double* zl, double xh, double xl, double yh, double yl) {
-	double r,s;
-	r = xh+yh;
-	s = ((xh-r)+yh)+yl+xl;
-	*zh = r+s;
-	*zl = (r - (*zh)) + s;
-}
-#endif
 
 // assumes a = 0 or |a| >= |b| (or ulp(a) >= ulp(b))
 // ensures |rl| <= 2^-52*|rh| and a rounding error <= 2^-105*|rh|
@@ -991,8 +1012,7 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 */
 inline static
 long double fastpath_roundtest(double rh, double rl, int extra_exp,
-                               bool invert, long double x, long double y,
-                               bool* fail) {
+                               bool invert, bool* fail) {
 	unsigned rm = get_rounding_mode();
 	fast_two_sum(&rh, &rl, rh, rl); // The fast_two_sum precondition is satisfied
 
@@ -1063,7 +1083,7 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	uint64_t oldmh = mh; // For overflow detection
 	if(rm==FE_TONEAREST){ // round to nearest
 		mh += (uint64_t)ml>>63;
-		ml ^= (1ul << 63);
+		ml <<= 1; eps <<= 1;//ml ^= (1ul << 63);
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
 		mh += 1;
 		// This is as if ml had a trailing 1.
@@ -1098,6 +1118,7 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
            of y has only its 6 upper bits that might be non-zero.
 	   The speed/accuracy of checking whether y lies in S is essential.
 	*/
+	/*
 	if(rm == FE_TONEAREST) { ml += 1ul << 63;
 		b80u80_t cvt_y = {.f = y};
 		b80u80_t cvt_x = {.f = x};
@@ -1107,11 +1128,12 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
                        ((__builtin_popcount(cvt_x.m) == 1) || !(cvt_y.m << 6)), 0))
 			{*fail = true;
 			POWL_DPRINTF("Forcing accurate path for FE_INEXACT\n");}
+	*/
 		/* If x is not a power of 2, then y must necessarily have 6 significant
 			 bits at most for it to be in S, since 41 fits in 6 bits.
 		   We have to do a popcount because x may be denormal.
 		*/
-	}
+	//}
 
 	// Denormals *inside* the computation don't seem to be a problem
 	// given the error analysis (we used absolute bounds mostly)
@@ -1478,7 +1500,7 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 		if(__builtin_expect(xs & 0xfffff, 1)) {
 			extra_exp = -(xs>>20) - 1;
 		} else {
-                        extra_exp = -(xs>>20); // case low(fracpart) = 0
+			extra_exp = -(xs>>20); // case low(fracpart) = 0
 		}
 	} else {
 		extra_exp = xs>>20;
@@ -1591,6 +1613,111 @@ int _issnan(long double x) {
 	return _isnan(x) && ((int64_t)(v.m<<1) > 0);
 }
 
+__attribute__((cold))
+static
+long double accurate_path(long double x, long double y, FLAG_T inex, bool invert) {
+	qint64_t q_r[1]; q_log2pow(q_r, x, y);
+	// q_r = y*log2|x| * (1 + eps_log) with |eps_log| < 2^-249.334
+
+	if(q_r->ex >= 15) {
+			// |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.334) > 32767
+			if(q_r->sgn) { // y*log2|x| < -32768: underflow
+				return (invert ? -0x1p-16445L : 0x1p-16445L)*.25L;
+			} else { // y*log2|x| > 32767: overflow
+				return (invert ? -0x1p16383L : 0x1p16383L) * 2L;
+			}
+	}
+
+	q_exp2(q_r, q_r);
+        /* q_r = 2^(q_r_in) * (1 + eps_exp) with |eps_exp| < 2^-250.085
+           and since q_r_in = y*log2|x| * (1 + eps_log)
+           with |eps_log| < 2^-249.334, and |q_r_in| < 2^15,
+           we have:
+           q_r_in = y*log2|x| + eps with |eps| < 2^15*|eps_log| < 2^-234.334,
+
+           thus q_r = |x|^y * (1 + eps_pow)
+
+           with |eps_pow| = |(1 + eps_exp) * 2^eps - 1| < 2^-234.862
+        */
+	unsigned rm = get_rounding_mode();
+
+	qint64_t subqr[1];
+	if(q_r->ex <= -16448) { 
+		/* If q_r->ex = -16447 we may still really have exponent -16446 because
+		   of errors, then round to 1p-16445.
+		*/
+		return (invert ? -0x1p-16445L : 0x1p-16445L) * .25L;
+	}
+
+	uint64_t extralow[1] = {0};
+	// Extra-low limb to avoid loss of precision
+	// when the final result is denormal. 
+	qint_subnormalize(subqr, extralow, q_r);
+	// In corner cases, qint_subnormalize creates a relative error 2^-255. This
+	// implies that the total relative error is at most
+	// 2^-234.862 + 2^-255 + 2^-255 * 2^-234.862 <= 2^-234.861
+
+	bool exact_if_hard = __builtin_expect(check_rb(x,y,q_r),0);
+	bool hard = false;
+	long double r = qint_told(subqr, *extralow, rm, invert, &hard);
+	b80u80_t cvt_r = {.f = r};
+
+	/* Assume that (x,y) is a hard case in the sense that the accurate path
+	   rounding test fails. Assume further that (x,y) is potentially exact or
+	   midpoint, i.e. is in the set S defined in reference [2] for double
+           precision. For extended double the inputs (x,y) such that x^y is
+           exact or midpoint satisfy necessarily one of the following:
+
+           (a) x=2^k and y integer
+           (b) y integer, 2 <= y <= 41 (2 <= y <= 40 if x^y is exact)
+           (c) x=m*2^E and y=n*2^F with -5 <= F <= -1 and 3 <= n <= 41,
+               n odd (with n <= 40 if x^y is exact)
+
+	   Let us note z the approximation we computed. We know that for some rounding
+	   boundary r, |z - r| <= (2^-234 + 2^-254)|z| because the rounding test
+	   failed. We also know that |z - x^y| <= 2^-234.861|z|. Thus we have
+	   x^y = z * (1 + eps) with |eps| <= 2^-234.861, or |x^y/z - 1| <= 2^-234.861.
+	   This implies that |x^y - r| <= (2^-234.861 + 2^-234 + 2^-254)|z|, or
+	   |x^y - r| <= (2^-234.861+2^-234+2^-254)/(1-2^-234.861) |x^y|
+	             <= 2^-233.367 |x^y|.
+
+	   If we list with BaCSeL all cases where |x^y - r| <= 2^-233.367 |x^y|,
+	   we may be able to certify that in all these cases, x^y is exact. When
+	   run with parameter m, BaCSeL will output all pairs (x,y) in S at distance
+	   less than 2^-m ulp(r') from a rounding boundary r'.
+	   Since |x^y - r| <= 2^-233.367 |x^y| implies |x^y - r| <= 2^-169.367 ulp(r),
+	   taking m=169 ensures we miss no hard case in S.
+	   (It is obvious that r = r' whenever the discussed situation arises.
+	   The argument above applies even when x^y is subnormal. Indeed, subnormal
+	   rounding boundaries are a subset of the boundaries considered by BaCSeL.)
+	*/
+	
+	POWL_DPRINTF("get_hex(R(1 - r/x^y))\n");
+	if(hard && exact_if_hard) {
+	  /* If we are here, then either the rounding mode is not FE_TONEAREST
+		   and we are on an exact number, or rm == FE_TONEAREST and we are near a
+		   rounding boundary. 
+		*/
+
+		POWL_DPRINTF("Boundary!\n");
+		exactify(q_r);//Makes an exact rounding boundary on unbounded exponent range
+		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
+			q_r->ex, q_r->sgn);
+
+		qint_subnormalize(subqr,extralow, q_r);
+
+		if(((cvt_r.e&0x7fff) != 0x7fff) && !subqr->hl && !subqr->lh)
+			{POWL_DPRINTF("RESETTING FLAG\n"); set_flag(inex);}
+		/* If the result overflows, even if it would be exact with an unbounded
+		   exponent range, the inexact flag must not be cleared. The mantissa checks
+		   are there to check if the result is exact even accounting for
+		   subnormalization.
+		*/
+		return qint_told(subqr,*extralow, rm, invert, &hard);
+	} else {return r;}
+
+}
+
 long double cr_powl(long double x, long double y) {
 
 	const b80u80_t cvt_x = {.f = x}, cvt_y = {.f = y};
@@ -1678,11 +1805,12 @@ long double cr_powl(long double x, long double y) {
 		}
 	}
 
+	const FLAG_T inex = get_flag(); //fegetexceptflag(&inex, FE_INEXACT);
+	POWL_DPRINTF("inex&FE_INEXACT=%04x\n", inex);
+
+
 	// now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 #ifndef ACCURATE_ONLY
-
-	fexcept_t inex; fegetexceptflag(&inex, FE_INEXACT);
-
 	POWL_DPRINTF("x="SAGE_RE"\n",x);
 	POWL_DPRINTF("y="SAGE_RE"\n",y);
 	// Automatic giveup if x subnormal
@@ -1729,7 +1857,7 @@ long double cr_powl(long double x, long double y) {
                         */
 
 			bool fail = false;
-			r = fastpath_roundtest(resh, resl, extra_exponent, invert,x,y, &fail);
+			r = fastpath_roundtest(resh, resl, extra_exponent, invert, &fail);
 			if(__builtin_expect(!fail, 1)) {	
 				POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
 				return r;
@@ -1738,120 +1866,5 @@ long double cr_powl(long double x, long double y) {
 	} // Fastpath failed or x was subnormal
 #endif
 
-	qint64_t q_r[1]; q_log2pow(q_r, x, y);
-        // q_r = y*log2|x| * (1 + eps_log) with |eps_log| < 2^-249.334
-
-	if(q_r->ex >= 15) {
-          // |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.334) > 32767
-			if(q_r->sgn) { // y*log2|x| < -32768: underflow
-				return (sign * 0x1p-16445L)*.25L;
-			} else { // y*log2|x| > 32767: overflow
-				return sign * 0x1p16383L + sign * 0x1p16383L;
-			}
-	}
-
-	q_exp2(q_r, q_r);
-        /* q_r = 2^(q_r_in) * (1 + eps_exp) with |eps_exp| < 2^-250.085
-           and since q_r_in = y*log2|x| * (1 + eps_log)
-           with |eps_log| < 2^-249.334, and |q_r_in| < 2^15,
-           we have:
-           q_r_in = y*log2|x| + eps with |eps| < 2^15*|eps_log| < 2^-234.334,
-
-           thus q_r = |x|^y * (1 + eps_pow)
-
-           with |eps_pow| = |(1 + eps_exp) * 2^eps - 1| < 2^-234.862
-        */
-	unsigned rm = get_rounding_mode();
-
-	qint64_t subqr[1];
-	if(q_r->ex <= -16448) { 
-		/* If q_r->ex = -16447 we may still really have exponent -16446 because
-		   of errors, then round to 1p-16445.
-		*/
-		return (sign * 0x1p-16445L) * .25L;
-	}
-
-	uint64_t extralow[1] = {0};
-	// Extra-low limb to avoid loss of precision
-	// when the final result is denormal. 
-	qint_subnormalize(subqr, extralow, q_r);
-	// In corner cases, qint_subnormalize creates a relative error 2^-255. This
-	// implies that the total relative error is at most
-	// 2^-234.862 + 2^-255 + 2^-255 * 2^-234.862 <= 2^-234.861
-
-	bool exact_if_hard = __builtin_expect(check_rb(x,y,q_r),0);
-	bool hard = false;
-	long double r = qint_told(subqr, *extralow, rm, invert, &hard);
-	b80u80_t cvt_r = {.f = r};
-
-	/* Assume that (x,y) is a hard case in the sense that the accurate path
-	   rounding test fails. Assume further that (x,y) is potentially exact or
-	   midpoint, i.e. is in the set S defined in reference [2] for double
-           precision. For extended double the inputs (x,y) such that x^y is
-           exact or midpoint satisfy necessarily one of the following:
-
-           (a) x=2^k and y integer
-           (b) y integer, 2 <= y <= 41 (2 <= y <= 40 if x^y is exact)
-           (c) x=m*2^E and y=n*2^F with -5 <= F <= -1 and 3 <= n <= 41,
-               n odd (with n <= 40 if x^y is exact)
-
-	   Let us note z the approximation we computed. We know that for some rounding
-	   boundary r, |z - r| <= (2^-234 + 2^-254)|z| because the rounding test
-	   failed. We also know that |z - x^y| <= 2^-234.861|z|. Thus we have
-	   x^y = z * (1 + eps) with |eps| <= 2^-234.861, or |x^y/z - 1| <= 2^-234.861.
-	   This implies that |x^y - r| <= (2^-234.861 + 2^-234 + 2^-254)|z|, or
-	   |x^y - r| <= (2^-234.861+2^-234+2^-254)/(1-2^-234.861) |x^y|
-	             <= 2^-233.367 |x^y|.
-
-	   If we list with BaCSeL all cases where |x^y - r| <= 2^-233.367 |x^y|,
-	   we may be able to certify that in all these cases, x^y is exact. When
-	   run with parameter m, BaCSeL will output all pairs (x,y) in S at distance
-	   less than 2^-m ulp(r') from a rounding boundary r'.
-	   Since |x^y - r| <= 2^-233.367 |x^y| implies |x^y - r| <= 2^-169.367 ulp(r),
-	   taking m=169 ensures we miss no hard case in S.
-	   (It is obvious that r = r' whenever the discussed situation arises.
-	   The argument above applies even when x^y is subnormal. Indeed, subnormal
-	   rounding boundaries are a subset of the boundaries considered by BaCSeL.)
-	*/
-	
-	POWL_DPRINTF("get_hex(R(1 - r/x^y))\n");
-	if(hard && exact_if_hard) {
-	  /* If we are here, then either the rounding mode is not FE_TONEAREST
-		   and we are on an exact number, or rm == FE_TONEAREST and we are at a
-		   midpoint.
-		*/
-
-		POWL_DPRINTF("Boundary!\n");
-		exactify(q_r);//Makes an exact rounding boundary on unbounded exponent range
-		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
-			q_r->ex, q_r->sgn);
-
-		qint64_t subexact[1];
-		qint_subnormalize(subexact,extralow, q_r);
-
-		if(rm != FE_TONEAREST && ((cvt_r.e&0x7fff) != 0x7fff)
-		   && !subexact->hl && !subexact->lh)
-			{fesetexceptflag(&inex, FE_INEXACT);}
-		/* If the result overflows, even if it would be exact with an unbounded
-		   exponent range, the inexact flag must not be cleared. The mantissa checks
-		   are there to check if the result is still exact even accounting for
-		   subnormalization.
-		*/
-		return qint_told(subexact,*extralow, rm, invert, &hard);
-	} else if(rm == FE_TONEAREST && exact_if_hard) {
-		POWL_DPRINTF("Checking if easy case is exact\n");
-		// Inefficient, but this code is rarely called. We hope the compiler can
-		// Infer that a lot of internal computations are unused.
-
-		qint_told(subqr, *extralow, FE_UPWARD, invert, &hard);
-		if(hard) {// We are in an exact case assuming unbounded exponent range
-			exactify(q_r);
-			qint64_t subexact[1];
-			qint_subnormalize(subexact, extralow, q_r);
-			if(((cvt_r.e&0x7fff) != 0x7fff) && !subexact->hl && !subexact->lh)
-				{fesetexceptflag(&inex, FE_INEXACT);}
-		}
-
-		return r;
-	} else {return r;}
+	return accurate_path(x, y, inex, invert);
 }
