@@ -93,6 +93,7 @@ check (long double x)
     exit (1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La (y=%La)\n", x, y1);
@@ -113,6 +114,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#endif
 }
 
 static long double

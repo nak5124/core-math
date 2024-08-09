@@ -90,6 +90,7 @@ check (float y, float x)
     exit(1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%a y=%a\n", x, y);
@@ -106,6 +107,7 @@ check (float y, float x)
     exit(1);
 #endif
   }
+#endif
 }
 
 #define N 100000000

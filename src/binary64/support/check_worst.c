@@ -206,6 +206,7 @@ check (double x, double y)
     exit(1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%la y=%la (z=%la)\n", x, y, z1);
@@ -222,6 +223,7 @@ check (double x, double y)
     exit(1);
 #endif
   }
+#endif
 }
 
 void

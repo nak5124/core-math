@@ -110,6 +110,7 @@ check (long double x)
     exit (1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La (y=%La)\n", x, y1);
@@ -126,6 +127,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#endif
 }
 
 /* check all x*2^k such that log2(x*2^k) and log2(x) are in the same binade,

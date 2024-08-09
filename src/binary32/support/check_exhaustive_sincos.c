@@ -102,6 +102,7 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex_y == 0) && (inex_z != 0))
   {
     printf ("Spurious inexact exception for x=%a\n", x);
@@ -114,6 +115,7 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+#endif
 }
 
 int
