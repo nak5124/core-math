@@ -140,7 +140,7 @@ export CFLAGS="$CFLAGS $EXTRA_CFLAGS"
 case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_exhaustive
+        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_exhaustive
         if [[ -z "$DRY" ]]; then
         for MODE in "${MODES[@]}"; do
             echo "Running exhaustive check in $MODE mode..."
@@ -160,7 +160,7 @@ case "$KIND" in
         ;;
     --special)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_special
+        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_special
         if [[ -z "$DRY" ]]; then
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
@@ -172,7 +172,7 @@ case "$KIND" in
         ;;
     --exact)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_exact
+        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_exact
         if [[ -z "$DRY" ]]; then
         for MODE in "${MODES[@]}"; do
             echo "Running exact checks in $MODE mode..."
