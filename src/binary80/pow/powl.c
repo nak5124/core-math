@@ -36,6 +36,11 @@ SOFTWARE.
 #include <fenv.h>
 #include <stdbool.h>
 
+#ifndef CORE_MATH_FAIL_QUIET
+#include <stdio.h>
+#include <stdlib.h>
+#endif
+
 #ifdef __x86_64__
 #include <x86intrin.h>
 #endif 
@@ -1088,9 +1093,9 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
                    thus the rounding test will fail even if we are
                    near an exact value. The reason is that when x^y
                    is exact, we should reset the inexact flag. Since
-                   testing if x^y is exact is expensive, we delegate
-                   this case to the accurate path. Thus we sacrifice x^y exact
-                   to make the average case is faster. */
+                   testing whether x^y is exact is expensive, we delegate
+                   this case to the accurate path. Thus we sacrifice
+                   x^y exact to make the average case is faster. */
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
 		mh += 1;
 		// This is as if ml had a trailing 1.
@@ -1117,30 +1122,6 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	if(__builtin_expect(invert, 0)) {v.e += (1<<15);}
 	bool b1 = (uint64_t)(ml + eps) <= (uint64_t)(2*eps);
 	*fail = b1;
-
-	/* Also fail if we are too near a floating point number when rounding
-	   to nearest and we have an exponent y which may lie in S, such that
-           x^y might be exact. This implies x=2^k or y=n*2^F with -5 <= F <= 0
-           and n <= 40. The condition n <= 40 implies that the significand m
-           of y has only its 6 upper bits that might be non-zero.
-	   The speed/accuracy of checking whether y lies in S is essential.
-	*/
-	/*
-	if(rm == FE_TONEAREST) { ml += 1ul << 63;
-		b80u80_t cvt_y = {.f = y};
-		b80u80_t cvt_x = {.f = x};
-
-		if(__builtin_expect(
-                   __builtin_expect((uint64_t)(ml + eps) <= (uint64_t)(2*eps),0) &&
-                       ((__builtin_popcount(cvt_x.m) == 1) || !(cvt_y.m << 6)), 0))
-			{*fail = true;
-			POWL_DPRINTF("Forcing accurate path for FE_INEXACT\n");}
-	*/
-		/* If x is not a power of 2, then y must necessarily have 6 significant
-			 bits at most for it to be in S, since 41 fits in 6 bits.
-		   We have to do a popcount because x may be denormal.
-		*/
-	//}
 
 	// Denormals *inside* the computation don't seem to be a problem
 	// given the error analysis (we used absolute bounds mostly)
@@ -1721,7 +1702,17 @@ long double accurate_path(long double x, long double y, FLAG_T inex, bool invert
 		   subnormalization.
 		*/
 		return qint_told(subqr,*extralow, rm, invert, &hard);
-	} else {return r;}
+	}
+// Do we have a standard macro switch ?
+#ifndef CORE_MATH_FAIL_QUIET
+	else if(hard) {
+		printf ("Unexpected worst-case found.\n");
+		printf ("Please report to core-math@inria.fr:\n");
+		printf ("Worst-case of pow found: x,y=%La,%La\n", x, y);
+		exit(1);
+	}
+#endif
+	else {return r;}
 
 }
 
