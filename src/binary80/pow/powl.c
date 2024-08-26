@@ -45,7 +45,7 @@ SOFTWARE.
 #include <x86intrin.h>
 #endif 
 
-#if 0
+#if 0 // __x86_64__
 #include <x86intrin.h>
 #define FLAG_T uint32_t
 #else
@@ -55,11 +55,13 @@ SOFTWARE.
 /* FIXME: For now, only the naïve versions are enabled, because
    the intrinsics do not work. They only handle the SSE status word side of
    things, but ignore the x87 status word (which we touch, using long doubles).
+   Using inline assembly may create register allocation and forward
+   compatibility issues
 */
 static FLAG_T
 get_flag (void)
 {
-#if 0
+#if 0 // __x86_64__
   return _mm_getcsr ();
 #else
   fexcept_t flag;
@@ -71,23 +73,12 @@ get_flag (void)
 static void
 set_flag (FLAG_T flag)
 {
-#if 0
+#if 0 // __x86_64__ 
   _mm_setcsr (flag);
 #else
   fesetexceptflag (&flag, FE_INEXACT);
 #endif
 }
-
-#ifdef POWL_DEBUG
-#include <stdio.h>
-#define POWL_DPRINTF(...) printf(__VA_ARGS__)
-#define SAGE_RR "R(\"%a\",16)"
-#define SAGE_RE "R(\"%La\",16)"
-#define SAGE_DD "(R(\"%a\",16)+R(\"%a\",16))"
-#define SAGE_QR "R(\"0x0.%016lx%016lx%016lx%016lxp%ld\", 16)*2*(-1)^%lu"
-#else
-#define POWL_DPRINTF(...)
-#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -122,24 +113,24 @@ void split(double* rh, double* rl, long double x) {
 	static long double C = 0x1.8p+31L; // ulp(C)=2^-32
 	long double y = (x + C) - C;
 	/* Given the relative sizes of C and x, x + C has the same binade as C.
-           Therefore, the difference is exact. Furthermore,
-           ulp(x + C) = ulp(C) = 2^-32.
-           The rounding error in x + C is therefore less than 2^-32.
+	   Therefore, the difference is exact. Furthermore,
+	   ulp(x + C) = ulp(C) = 2^-32.
+	   The rounding error in x + C is therefore less than 2^-32.
 	   Thus, |x - y| < 2^-32. Note that since 2^31 <= x + C < 2^32 and the
 	   difference is exact, y is a multiple of ulp(x + C) = 2^-32.
-           Since |x| < 2, and the roundings are monotonous, x + C is bounded
-           by the values obtained with |x| = 2, namely 0x1.7ffffffcp+31 and
-           0x1.80000004p+31, and likely for y, namely -2 and 2.
-           Since y is a multiple of 2^-32, this ensures y = k*2^-32
-           with |k| <= 2^-33, thus y fits in 33 bits.
-           (If |y| = 2, it trivially fits.) */
+	   Since |x| < 2, and the roundings are monotonous, x + C is bounded
+	   by the values obtained with |x| = 2, namely 0x1.7ffffffcp+31 and
+	   0x1.80000004p+31, and likely for y, namely -2 and 2.
+	   Since y is a multiple of 2^-32, this ensures y = k*2^-32
+	   with |k| <= 2^-33, thus y fits in 33 bits.
+	   (If |y| = 2, it trivially fits.) */
 	*rh = y; // This conversion is exact by the argument above.
 	*rl = x - y;
 	/* 
-           |x - y| < 2^-32. Note that x and y are both multiples of
-           ulp_64(1) = 2^-63; therefore x - y too. This implies that
-           x - y = l*2^-63 with |l| < 2^31, thus rl fits in 31 bits,
-           and the difference is exact. */
+	   |x - y| < 2^-32. Note that x and y are both multiples of
+	   ulp_64(1) = 2^-63; therefore x - y too. This implies that
+	   x - y = l*2^-63 with |l| < 2^31, thus rl fits in 31 bits,
+	   and the difference is exact. */
 }
 
 // assumes a = 0 or |a| >= |b| (or ulp(a) >= ulp(b))
@@ -179,9 +170,9 @@ void a_mul(double* rh, double* rl, double a, double b) {
 /* Computes an approximation of (ah+al)(bh+bl)-al*bl */
 static inline
 void d_mul(double* rh, double* rl, double ah, double al,
-                                   double bh, double bl)
-{ double p;
-        a_mul(rh, &p, ah, bh); // exact
+                                   double bh, double bl) {
+	double p;
+	a_mul(rh, &p, ah, bh); // exact
 	double q = __builtin_fma(al, bh, p);
 	*rl = __builtin_fma(ah, bl, q);
 }
@@ -196,17 +187,17 @@ with |rl| <= 2^-48.946 |rh|.
 static inline
 void polyeval(double* rh, double* rl, double xh, double xl) {
 	/* We approximate log2(1 + x)/x/(ln2invh + ln2invl) by
-           a polynomial c0 + c1*x + ... + c7*x^7 (see powl.sollya).
-	  This polynomial, say p(x), has intrinsic relative error 2^-105.879:
-          log2(1 + x)/x/(ln2invh + ln2invl) = p(x) * (1 + eps1), thus
-          log2(1 + x) = (ln2invh + ln2invl) * x * p(x) * (1 + eps1)
-          with |eps1| < 2^-105.879.
+	   a polynomial c0 + c1*x + ... + c7*x^7 (see powl.sollya).
+	   This polynomial, say p(x), has intrinsic relative error 2^-105.879:
+	   log2(1 + x)/x/(ln2invh + ln2invl) = p(x) * (1 + eps1), thus
+	   log2(1 + x) = (ln2invh + ln2invl) * x * p(x) * (1 + eps1)
+	   with |eps1| < 2^-105.879.
 	*/
 	static const double ln2invh = 0x1.71547652b82fep+0,
-                            ln2invl = 0x1.777d0ffda0d24p-56;
-        // ln2invh + ln2invl = 1/log(2) * (1 + e) with |e| < 2^-110.066
+	                    ln2invl = 0x1.777d0ffda0d24p-56;
+	// ln2invh + ln2invl = 1/log(2) * (1 + e) with |e| < 2^-110.066
 	double scaleh, scalel;
-        d_mul(&scaleh, &scalel, ln2invh, ln2invl, xh, xl);
+	d_mul(&scaleh, &scalel, ln2invh, ln2invl, xh, xl);
 	/* Expanding the d_mul call we get that:
              with ah=ln2invh, al=ln2invl, bh=xh, bl=xl:
 	   - |p| <= 2^-52|ah*bh|
@@ -226,24 +217,24 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
            with |eps2| < 2^-102.324.
 	*/
 
-        // compute c0 + c1*x = 1 - x/2
+	// compute c0 + c1*x = 1 - x/2
 	double ord01h, ord01l;
 	ord01h = -xh/2; ord01l = -xl/2; // Exact since c1=-1/2
 	high_sum(&ord01h, &ord01l, 1.0, ord01h, ord01l);
 	/* Expanding the high_sum call we get that :
 	   - the fast_two_sum incurs an error <= 2^-105(1 + 2^-11.999)
-                                              <= 2^-104.999
+	                                      <= 2^-104.999
 	     and its' low value is at most ulp(1 + 2^-11.999) = 2^-52.
 	   - the final sum has value <= 2^-11.999*2^-52+2^-52 <= 2^-51.999;
              this implies a rounding error <= ulp(2^-51.999) = 2^-104.
-	  Therefore, at output we have |ord01h| <= 1 + 2^-11.998,
-	  |ord01l| <= 2^-51.999 and the total error on c0 + c1*x is
-          at most 2^-104.999 + 2^-104 < 2^-103.414:
-          ord01h + ord01l = c0 + c1*x + eps01 with |eps01| < 2^-103.414.
+	   Therefore, at output we have |ord01h| <= 1 + 2^-11.998,
+	   |ord01l| <= 2^-51.999 and the total error on c0 + c1*x is
+	   at most 2^-104.999 + 2^-104 < 2^-103.414:
+	   ord01h + ord01l = c0 + c1*x + eps01 with |eps01| < 2^-103.414.
 	*/
 
 
-        // compute c2 + c3*x = 0x1.555555555555555555696dc16a8p-2 - x/4
+	// compute c2 + c3*x = 0x1.555555555555555555696dc16a8p-2 - x/4
 	double ord23h, ord23l;
 	ord23h = -xh/4; /*c3 = -1/4*/
 	ord23l = __builtin_fma(-xl, 1./4, 0x1.55555a5b705aap-56); /*c2l*/
@@ -251,37 +242,37 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	/* We compute that
 	    |-xl/4 + c2l| <= 2^-11.999*2^-52/4 + 2^-55.584 <= 2^-55.582.
 	   Therefore after the fma |ord23l| <= 2^-55.581 and the associated
-           rounding error is at most ulp(2^-55.581) = 2^-108.
+	   rounding error is at most ulp(2^-55.581) = 2^-108.
 
 	   Expanding the high_sum call we get that :
 	   - the fast_two_sum incurs an error of 2^-105(2^-1.584 + 2^-13.999)
 	     <= 2^-106.583 and its low value is at most
-             ulp(2^-1.584 + 2^-13.999) = 2^-54.
+	     ulp(2^-1.584 + 2^-13.999) = 2^-54.
 	   - the final sum has value at most 2^-55.581 + 2^-54 <= 2^-53.583;
-             this implies a rounding error of at most ulp(2^-53.583) = 2^-106.
+	     this implies a rounding error of at most ulp(2^-53.583) = 2^-106.
 	   At output we thus have |ord23h| <= 2^-1.583, |ord23l| <= 2^-53.582
 	   and the total error on c2 + c3*x is at most
 	      2^-108 + 2^-106.583 + 2^-106 <= 2^-105.060:
-           ord23h + ord23l = c2 + c3*x + eps23 with |eps23| < 2^-105.060.
+	   ord23h + ord23l = c2 + c3*x + eps23 with |eps23| < 2^-105.060.
 	*/
 
-        // approximate x^2
+	// approximate x^2
 	double xsqh, xsql;
-        d_mul(&xsqh, &xsql, xh, xl, xh, xl);
+	d_mul(&xsqh, &xsql, xh, xl, xh, xl);
 	/* Expanding the d_mul call we get that :
 	   - |p| <= ulp(xh^2) <= 2^-76
 	   - |xl*xh+p| <= 2^-52|xh^2| + 2^-76 <= 2^-74.998
-             so that q's rounding error is at most ulp(2^-74.998) = 2^-127
+	     so that q's rounding error is at most ulp(2^-74.998) = 2^-127
 	   - |xh*xl+q| <= 2^-52|xh^2| + 2^-74.998 <= 2^-74.413
-             so that the rounding error on xsql is at most ulp(2^-74.413) = 2^-127
+	     so that the rounding error on xsql is at most ulp(2^-74.413) = 2^-127
 	   - the error made by neglecting xl^2 is at most 2^-104|xh^2| <= 2^-127.998
 	   The total error is thus at most:
 	     2^-127 + 2^-127 + 2^-127.998 <= 2^-125.677:
-           |xsqh + xsql - x^2| <= 2^-125.677.
+	   |xsqh + xsql - x^2| <= 2^-125.677.
 	   Also, at output we have |xsqh| <= 2^-23.997 and |xsql| <= 2^-74.413.
 	*/
 
-        // multiply c2+c3*x by x^2
+	// multiply c2+c3*x by x^2
 	d_mul(&ord23h, &ord23l, ord23h, ord23l, xsqh, xsql);
 	/* Recall we have |ord23h_old| <= 2^-1.583, |ord23l| <= 2^-53.582,
 	   |xsqh| <= 2^-23.997, |xsql| <= 2^-74.413.
@@ -289,33 +280,33 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	   - |ord23h| <= |ord23h_old * xsqh| <= 2^-1.583 * 2^-23.997 <= 2^-25.579
 	   - |p| <= 2^-52 * (2^-1.583*2^-23.997) <= 2^-77.580.
 	   - |al*bh + p| <= 2^-53.582*2^-23.997 + 2^-77.580 <= 2^-76.579,
-             so that |q| <= 2^-76.578 and the associated rounding error is
-             at most ulp(2^-76.578) = 2^-129.
+	      so that |q| <= 2^-76.578 and the associated rounding error is
+	      at most ulp(2^-76.578) = 2^-129.
 	   - |ah*bl + q| <= 2^-1.583*2^-74.413 + 2^-76.578 <= 2^-75.257.
-             Therefore at output |ord23l| <= 2^-75.256) and the associated
-             rounding error is at most ulp(2^-75.256) = 2^-128.
+	      Therefore at output |ord23l| <= 2^-75.256) and the associated
+	      rounding error is at most ulp(2^-75.256) = 2^-128.
 	   - the error made by neglecting ord23l*xsql is at most
-             2^-53.582*2^-74.413 <= 2^-127.995.
+	      2^-53.582*2^-74.413 <= 2^-127.995.
 	   Propagating the errors on x^2 and c2 + c3*x gives an intrinsic error of
 	   at most :
 	     (c2 + 2^-11.999*|c3|) * 2^-125.677 + eps23 * 2^(-11.999*2)
 	     + eps23 * 2^-125.677 <= 2^-126.896
 	   The total absolute error computing x^2(c2 + c3*x) is thus bounded by
 	     2^-129+2^-128+2^-127.995+2^-126.896 <= 2^-125.781:
-             |ord23h + ord23l - (c2*x^2 + c3*x^3)| < 2^-125.781
+	   |ord23h + ord23l - (c2*x^2 + c3*x^3)| < 2^-125.781
 	*/
 
 	double x4 = xsqh*xsqh;
 	/* Neglecting 2*xsqh*xsql + xsql^2 creates an error of at most
 	   2*2^-23.997*2^-74.413 + 2^(-74.413*2) <= 2^-97.409.
 	   Also, |xsqh*xsqh| <= 2^(-23.997*2) <= 2^-47.994. Therefore,
-           the rounding error of the product is <= ulp(2^-47.994) = 2^-100.
+	   the rounding error of the product is <= ulp(2^-47.994) = 2^-100.
 
 	   We obtain that |x4| <= 2^-47.993
 	   and that |x4 - x^4| <= 2^-97.409 + 2^-100 + |(xsqh+xsql)^2 - x^4|
-                       <= 2^-97.187 + |(xsqh+xsql) + x^2||(xsqh+xsql) - x^2|
-                       <= 2^-97.187 + (2*(2^-11.999)^2 + 2^-125.677)*2^-125.41
-                       <= 2^-97.186
+	                       <= 2^-97.187 + |(xsqh+xsql) + x^2||(xsqh+xsql) - x^2|
+	                       <= 2^-97.187 + (2*(2^-11.999)^2 + 2^-125.677)*2^-125.41
+	                       <= 2^-97.186
 	*/
 
 	double acc = __builtin_fma(xh, -0x1.555555555554dp-3/*c5*/,
@@ -324,38 +315,36 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	                                0x1.24924ad7557bep-3/*c6*/);
 	/* We compute that |xh*c5 + c4| <= 2^-2.3216. This implies that
 	   |acc| <= 2^-2.321 and that its rounding error is at most
-           ulp(2^-2.321) = 2^-55.
-	   Neglecting xl*c5 incurs an error of at most 2^-64*2^-2.584
-           <= 2^-66.584.
+	   ulp(2^-2.321) = 2^-55.
+	   Neglecting xl*c5 incurs an error of at most 2^-64*2^-2.584 <= 2^-66.584.
 	   The total error computing c4 + c5x is thus at most
 	     2^-55+2^-66.584 <= 2^-54.999:
            |acc - (c4+c5*x)| < 2^-54.999.
 
 	   In the same way, we compute that |xh*c7 + c6| <= 2^-2.807, which
-           implies |bcc| <= 2^-2.806 and its rounding error is at most
-           ulp(2^-2.806) = 2^-55.
-	   Neglecting xl*c7 incurs an error of at most 2^-64*2^-2.999
-           <= 2^-66.999.
+	   implies |bcc| <= 2^-2.806 and its rounding error is at most
+	   ulp(2^-2.806) = 2^-55.
+	   Neglecting xl*c7 incurs an error of at most 2^-64*2^-2.999 <= 2^-66.999.
 	   The total error computing c6 + c7x is thus at most
 	     2^-55+2^-66.999 <= 2^-54.999:
-           |bcc - (c6+c7*x)| < 2^-54.999.
+	   |bcc - (c6+c7*x)| < 2^-54.999.
 	*/
 
-        // approximate c4+c5*x+c6*x^2+c7*x^3
+	// approximate c4+c5*x+c6*x^2+c7*x^3
 	acc = __builtin_fma(xsqh, bcc, acc);
 	/* We compute that |xsqh*bcc + acc| <= 2^-23.997*2^-2.806+2^-2.321
-           <= 2^-2.320.
+	   <= 2^-2.320.
 	   This ensures that at output, |acc| <= 2^-2.319. Also, the rounding
-           error is at most ulp(2^-2.319) = 2^-55.
+	   error is at most ulp(2^-2.319) = 2^-55.
 	   Since |xsqh+xsql - x^2| <= 2^-125.677, we have
 	   |xsqh - x^2| <= 2^-125.677+2^-74.413 <= 2^-74.412.
-           We thus get:
-           |acc - (c4+c5*x+c6*x^2+c7*x^3)|
-           <= |acc - (xsqh*bcc+acc_old)| + |xsqh*bcc - (c6*x^2+c7*x^3)|
-              + |acc_old - (c4+c5*x)|
-           <= 2^-55 + |xsqh-x^2|*|bcc| + x^2*|bcc - (c6+c7*x)| + 2^-54.999
-           <= 2^-55 + 2^-74.412*2^-2.806 + 2^-23.998*2^-54.999 + 2^-54.999
-           <= 2^-53.999.
+	   We thus get:
+	   |acc - (c4+c5*x+c6*x^2+c7*x^3)|
+	   <= |acc - (xsqh*bcc+acc_old)| + |xsqh*bcc - (c6*x^2+c7*x^3)|
+	      + |acc_old - (c4+c5*x)|
+	   <= 2^-55 + |xsqh-x^2|*|bcc| + x^2*|bcc - (c6+c7*x)| + 2^-54.999
+	   <= 2^-55 + 2^-74.412*2^-2.806 + 2^-23.998*2^-54.999 + 2^-54.999
+	   <= 2^-53.999.
 	*/
 
 	ord01l = __builtin_fma(x4, acc, ord01l);
@@ -365,28 +354,27 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	   We compute that |x4*acc+ord01l|<=2^-47.993*2^-2.319+2^-51.999
            <= 2^-49.921.
 	   This implies that at output |ord01l| <= 2^-49.920 and that the
-           rounding error is at most ulp(2^-49.921) = 2^-102.
-           We deduce with ord01l_old denoting the previous value of ord01l:
-           |ord01h + ord01l - (c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3))|
-           <= 2^-103.414 [approximation error on ord01h + ord01l_old]
-            + 2^-102     [rounding error on ord01l]
-            + |x4*acc - x^4*(c4+c5*x+c6*x^2+c7*x^3)|
-           <= 2^-103.414 + 2^-102 + |x4-x^4|*|acc|
-              + x^4*|acc-(c4+c5*x+c6*x^2+c7*x^3)|
-           <= 2^-103.414 + 2^-102 + 2^-97.186*2^-2.319 + 2^-47.996*2^-53.999
-           <= 2^-98.997.
+	   rounding error is at most ulp(2^-49.921) = 2^-102.
+	   We deduce with ord01l_old denoting the previous value of ord01l:
+	   |ord01h + ord01l - (c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3))|
+	   <= 2^-103.414 [approximation error on ord01h + ord01l_old]
+	    + 2^-102     [rounding error on ord01l]
+	    + |x4*acc - x^4*(c4+c5*x+c6*x^2+c7*x^3)|
+	   <= 2^-103.414 + 2^-102 + |x4-x^4|*|acc|
+	    + x^4*|acc-(c4+c5*x+c6*x^2+c7*x^3)|
+	   <= 2^-103.414 + 2^-102 + 2^-97.186*2^-2.319 + 2^-47.996*2^-53.999
+	   <= 2^-98.997.
 	*/
 
 	high_sum(&ord23h, &ord23l, ord01h, ord23h, ord23l);
-	ord23l += ord01l; // Rewrite ? 
-	//add22(&ord01h, &ord01l, ord01h, ord01l, ord23h, ord23l);
+	ord23l += ord01l;
 	/* At input, ord01h + ord01l approximates
-           c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3) with error <= 2^-98.997,
-           with |ord01h| <= 1 + 2^-11.998, |ord01l| <= 2^-49.920,
-           and ord23h + ord23l approximates c2*x^2 + c3*x^3 with error
-           <= 2^-125.781 (the error eps01 on ord01h + ord01l_old was already
-           taken into account above), with |ord23h| <= 2^-25.579, |ord23l| <= 2^-75.255,
-           This yields a total intrinsic error of
+	   c0 + c1*x + x^4*(c4+c5*x+c6*x^2+c7*x^3) with error <= 2^-98.997,
+	   with |ord01h| <= 1 + 2^-11.998, |ord01l| <= 2^-49.920,
+	   and ord23h + ord23l approximates c2*x^2 + c3*x^3 with error
+	   <= 2^-125.781 (the error eps01 on ord01h + ord01l_old was already
+	   taken into account above), with |ord23h| <= 2^-25.579, |ord23l| <= 2^-75.255,
+	   This yields a total intrinsic error of
 	   2^-98.997 + 2^-125.781 <= 2^-98.996.
 
 	   Expanding high_sum, we see that the fast_two_sum incurs an error at most
@@ -397,17 +385,18 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	   after the high_sum and that the associated rounding error is at most
 	   ulp(2^-51.998) = 2^-104.
 
-	   Given that |ord01l| <= 2^-49.920 we get that the sum |ord23l + ord01l| is at most
-	   2^-51.998 + 2^-49.920 <= 2^-49.613. This ensures that at output |ord23l| <= 2^-49.613
-           and that the sum's rounding error is at most ulp(2^-49.613) = 2^-102.
+	   Given that |ord01l| <= 2^-49.920 we get that the sum |ord23l + ord01l| is
+	   at most 2^-51.998 + 2^-49.920 <= 2^-49.613.
+	   This ensures that at output |ord23l| <= 2^-49.613
+	   and that the sum's rounding error is at most ulp(2^-49.613) = 2^-102.
 
 	   The total accumulated error is therefore at most
-           2^-98.996 + 2^-104.999 + 2^-104 + 2^-102 <= 2^-98.767:
+	   2^-98.996 + 2^-104.999 + 2^-104 + 2^-102 <= 2^-98.767:
 
-           |ord23h + ord23l - p(x)| <= 2^-98.767
-           where p(x) = c0 + c1*x + c2*x^2 + c3*x^3 + c4*x^4 + c5*x^5 + c6*x^6 + c7*x^7.
+	   |ord23h + ord23l - p(x)| <= 2^-98.767
+	   where p(x) = c0 + c1*x + c2*x^2 + c3*x^3 + c4*x^4 + c5*x^5 + c6*x^6 + c7*x^7.
 
-           The value ord23h + ord23l approximates log2(1 + x)/(ln2inv*x), which
+	   The value ord23h + ord23l approximates log2(1 + x)/(ln2inv*x), which
 	   is positive and decreasing by concavity. We can check that it's value
 	   at x = 2^-11.999 is at least .9998. Therefore, the absolute error above
 	   translates to a relative error <= 2^-98.767/.9998 <= 2^-98.766. Taking into
@@ -417,10 +406,10 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 
 	d_mul(rh, rl, scaleh, scalel, ord23h, ord23l);
 	/* Recall scaleh + scalel approximates ln2inv*x with relative error
-           at most 2^-102.324, with |scalel| <= 2^-50.954|scaleh|,
-           and ord23h + ord23l approximates log2(1 + x)/(ln2inv*x)
-           with relative error <= 2^-98.755, with |ord23h| < 1.001, |ord23l| <= 2^-49.613.
-           Propagating each term's relative errors we get a total intrinsic relative
+	   at most 2^-102.324, with |scalel| <= 2^-50.954|scaleh|,
+	   and ord23h + ord23l approximates log2(1 + x)/(ln2inv*x)
+	   with relative error <= 2^-98.755, with |ord23h| < 1.001, |ord23l| <= 2^-49.613.
+	   Propagating each term's relative errors we get a total intrinsic relative
 	   error of (1 + 2^-102.324)*(1 + 2^-98.755) - 1 <= 2^-98.638.
 	   Expanding the d_mul call we get :
 	     - |p| <= 2^-52*|scaleh|*1.001
@@ -432,32 +421,28 @@ void polyeval(double* rh, double* rl, double xh, double xl) {
 	       at most 2^-100.946|scaleh|.
 	  The total rounding error is thus at most
 	    (2^-102.382+2^-100.946)|scaleh| <= 2^-100.492|scaleh|:
+	    rh + rl = (scaleh + scalel) * (ord23h + ord23l) + eps1 * |scaleh|
+	    with |eps1| <= 2^-100.492.
 
-            rh + rl = (scaleh + scalel) * (ord23h + ord23l) + eps1 * |scaleh|
-            with |eps1| <= 2^-100.492.
+	  Since |scalel| <= 2^-50.954|scaleh|, we deduce with scale := scaleh + scalel:
+	    rh + rl = scale * (ord23h + ord23l) + eps2 * |scale|
+	    with |eps2| <= |eps1|/(1-2^-50.954) <= 2^-100.491.
 
-          Since |scalel| <= 2^-50.954|scaleh|, we deduce with scale := scaleh + scalel:
+	  Since |ord23h + ord23l| >= 0.999, we deduce with ord23 := ord23h + ord23l:
 
-            rh + rl = scale * (ord23h + ord23l) + eps2 * |scale|
-            with |eps2| <= |eps1|/(1-2^-50.954) <= 2^-100.491.
+	    rh + rl = scale * ord23 + eps3 * |scale*ord23|
+	    with |eps3| <= |eps2|/0.999 <= 2^-100.489.
 
-          Since |ord23h + ord23l| >= 0.999, we deduce with ord23 := ord23h + ord23l:
+	  Now scale = (ln2invh + ln2invl) * x * (1 + eps) with |eps| < 2^-102.324,
+	  and ord23 = log2(1 + x)/(ln2inv*x) * (1 + eps) with |eps| < 2^-98.755, thus:
+	  scale * ord23 = log2(1+x) * (1 + eps4) with
+	  |eps4| <= (1 + 2^-102.324) * (1 + 2^-98.755) - 1 <= 2^-98.638.
 
-            rh + rl = scale * ord23 + eps3 * |scale*ord23|
-            with |eps3| <= |eps2|/0.999 <= 2^-100.489.
-
-          Now scale = (ln2invh + ln2invl) * x * (1 + eps) with |eps| < 2^-102.324,
-          and ord23 = log2(1 + x)/(ln2inv*x) * (1 + eps) with |eps| < 2^-98.755, thus:
-          scale * ord23 = log2(1+x) * (1 + eps4) with
-          |eps4| <= (1 + 2^-102.324) * (1 + 2^-98.755) - 1 <= 2^-98.638.
-
-          It follows:
-
-            rh + rl = log2(1+x) * (1 + eps4) + eps3 * log2(1+x) * (1 + eps4)
-                    = log2(1+x) * (1 + eps5)
-            with |eps5| <= |eps4| + |eps3| * (1 + |eps4|)
-                        <= 2^-98.285.
-
+	  It follows:
+	    rh + rl = log2(1+x) * (1 + eps4) + eps3 * log2(1+x) * (1 + eps4)
+	            = log2(1+x) * (1 + eps5)
+	    with |eps5| <= |eps4| + |eps3| * (1 + |eps4|)
+	                <= 2^-98.285.
 	  We also have the postcondition |rl| <= 2^-48.946|rh|.
 	*/
 }
@@ -474,23 +459,21 @@ static inline
 void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	b80u80_t cvt_x = {.f = x};
 	int extra_int = (cvt_x.e&0x7fff) - 16383;
-        // -16382 <= extra_int <= 16383
+	// -16382 <= extra_int <= 16383
 	cvt_x.e = 16383; // New wanted exponent
 	x = cvt_x.f;
-        // original x = 2^extra_int * x
+	// original x = 2^extra_int * x
 
 	double xh, xl; // a (resp b) bits
 	split(&xh, &xl, x);
-        // x = xh + xl with xh on 33 bits and xl on 31 bits, |xl| < 2^-32
+	// x = xh + xl with xh on 33 bits and xl on 31 bits, |xl| < 2^-32
 
-	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
 	lut_t l = coarse[cvt_x.m>>56 & 0x7f];
-	POWL_DPRINTF("key=0x%lx\n", (cvt_x.m>>56 & 0x7f));
 
 	/* We always have |x*r1 - 1| <= 0x1p-7. The term l.z is chosen such that
 	   l.z+mlogr1h + mlogr1 approximates -log2(r1) with
-     relative error < 2^-107.22. Note that |mlogr1h+mlogr1l| < .5
+	   relative error < 2^-107.22. Note that |mlogr1h+mlogr1l| < .5
 	   The tables are constructed in such a way that r fits in 9 bits.
 	*/
 	double r1      = l.r;
@@ -498,153 +481,138 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	double mlogr1l = l.mlogrl;
 	extra_int     += l.z;
 
-	POWL_DPRINTF("r1 = " SAGE_RR "\n", r1);
-
 	xh *= r1; xl *= r1;
-        /* The above multiplications are exact.
-           Since xh, xl did fit in 33 and 31 bits respectively,
-           and r1 fits in 9 bits, now xh fits in 42 bits, and xl in 40.
-           More precisely the initial xh was a multiple of 2^-32.
-           Since r1 is a multiple of 2^-9 then the new value of xh is a
-           multiple of 2^-41.
-           Since we had |rl| < 2^-32 and |r1| <= 1, we still have |rl| < 2^-32.
-        */
+	/* The above multiplications are exact.
+	   Since xh, xl did fit in 33 and 31 bits respectively,
+	   and r1 fits in 9 bits, now xh fits in 42 bits, and xl in 40.
+	   More precisely the initial xh was a multiple of 2^-32.
+	   Since r1 is a multiple of 2^-9 then the new value of xh is a
+	   multiple of 2^-41.
+	   Since we had |rl| < 2^-32 and |r1| <= 1, we still have |rl| < 2^-32.
+	*/
 
-	POWL_DPRINTF("get_hex(R(abs("SAGE_RR" - 1)))\n", xh);
 	/* Note that now |xh - 1| <= 1p-7
 	   Therefore, xh's mantissa (seen as a 53-bit integer) is either
 	   1.00000 00p or 1.11111 1q.
 	   We skip the upper 6 bits of the mantissa and use the next 7 bits
-           to index another lookup table. A quarter of the table is wasted!
+	   to index another lookup table. A quarter of the table is wasted!
 
-           We're looking at 1 + 2^-12*k, 1 + 2^-12*(k+1) for 0 <= k < 32.
+	   We're looking at 1 + 2^-12*k, 1 + 2^-12*(k+1) for 0 <= k < 32.
 	   Else we're looking at 1 - 2^-6 + 2^-13*k', 1 - 2^-6 + 2^-13*(k'+1)
-           for 64 <= k' < 128.
+	   for 64 <= k' < 128.
 	*/
 
 	b64u64_t cvt_xh = {.f = xh};
 	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f]; // k' = (cvt_xh.u>>40) & 0x7f
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
-	POWL_DPRINTF("key2 = 0x%lx\n", (cvt_xh.u>>40 & 0x7f));
 	double r2 = l2.r;
 	double mlogr2h = l2.mlogrh;
 	double mlogr2l = l2.mlogrl;
-	POWL_DPRINTF("r2 = " SAGE_RR "\n", r2);
 	/* The fine table is built in such a way that :
 	   i)  |r2*xh - 1| <= 2^-12
 	   ii) r2 fits in 13 bits
 	   iii) mlogr2h + mlogr2l approximates -log2(r2) with
 	        relative error at most 2^-107.27
 	   iv) |mlogr2h+mlogr2l| < 2^-6.47
-           Since r2 is a multiple of 2^-13, xh*r2 is a multiple of 2^-54,
-           and since |r2*xh - 1| <= 2^-12, then r2*xh - 1 is representable
-           exactly on 42 bits.
+	       Since r2 is a multiple of 2^-13, xh*r2 is a multiple of 2^-54,
+	       and since |r2*xh - 1| <= 2^-12, then r2*xh - 1 is representable
+	       exactly on 42 bits.
 	*/
 
-	POWL_DPRINTF("get_hex(R(-log2(r1)-" SAGE_DD"))\n", mlogr1h, mlogr1l);
-	POWL_DPRINTF("get_hex(R(-log2(r2)-" SAGE_DD"))\n", mlogr2h, mlogr2l);
-	
 	double mlogrh, mlogrl;
 	high_sum(&mlogrh, &mlogrl, extra_int, mlogr1h, mlogr1l);
 	/* Since |mlogr1h + mlogr1l| < .5, we indeed have extra_int = 0 or
 	   |extra_int| > |mlogr1h|. If extra_int=0 everything is exact,
-           and we get mlogrh=mlogr1h, mlogrl=mlogr1l.
+	   and we get mlogrh=mlogr1h, mlogrl=mlogr1l.
 	   Assume |extra_int| >= 1. Expanding the high_sum call, this implies
 	   that the fast_two_sum introduces an error <= 2^-105|mlogrh| and
-           that the low part of its result is at most 2^-52|mlogrh|. Notice
-           that |mlogrh| >= .5 > |mlogr1h| so that
+	   that the low part of its result is at most 2^-52|mlogrh|. Notice
+	   that |mlogrh| >= .5 > |mlogr1h| so that
 	   2^-52|mlogrh| >= 2^-52|mlogr1h| >= |mlogr1l|.
 	   This implies that the "rl" sum of high_sum (i.e., mlogrl)
-           is at most 2^-51|mlogrh| and that its rounding error is
-           at most 2^-103|mlogrh|.
+	   is at most 2^-51|mlogrh| and that its rounding error is
+	   at most 2^-103|mlogrh|.
 
 	   The total rounding error is at most
-	     (2^-103+2^-105)|mlogrh| <= 2^-102.678 |mlogrh|:
-             
-             |mlogrh + mlogrl - (extra_int + mlogr1h + mlogr1l)|
-             <= 2^-102.678 |mlogrh|.
+	   (2^-103+2^-105)|mlogrh| <= 2^-102.678 |mlogrh|:         
+	   |mlogrh + mlogrl - (extra_int + mlogr1h + mlogr1l)|
+	   <= 2^-102.678 |mlogrh|.
 
-           If one performs an exhaustive search on all possible values
-           of extra_int (-16382 to 16383), on all rounding modes, and
-           on all values of mlogr1h/mlogr1l, we obtain that the maximal
-           relative error is bounded by 2^-105.003 |mlogrh|
-           (see function analyse_first_high_sum() in powl.sage).
+	   If one performs an exhaustive search on all possible values
+	   of extra_int (-16382 to 16383), on all rounding modes, and
+	   on all values of mlogr1h/mlogr1l, we obtain that the maximal
+	   relative error is bounded by 2^-105.003 |mlogrh|
+	   (see function analyse_first_high_sum() in powl.sage).
 	*/
 
         double mlogr12h, mlogr12l;
 	high_sum(&mlogr12h, &mlogr12l, mlogrh, mlogr2h, mlogr2l);
 	mlogr12l += mlogrl;
 	/* Let us prove that unless it is zero, |mlogrh| is in the same binade
-           of |mlogr2h| or in a larger binade (so that the fast_two_sum
-           condition is fulfilled).
+	   of |mlogr2h| or in a larger binade (so that the fast_two_sum
+	   condition is fulfilled).
 	   If extra_int != 0, this is obvious because |mlogrh+mlogrl| >= .5,
-           and |mlogr2h| < 2^-6.47.
+	   and |mlogr2h| < 2^-6.47.
 	   Assume extra_int = 0. Then mlogrh = mlogr1h and looking at the
-           tables we see that mlogr1h = 0 or
-           |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h| which allows us to
-           conclude.
+	   tables we see that mlogr1h = 0 or
+	   |mlogr1h| >= 0x1.6fe50b6ef0851p-7 >= |mlogr2h| which allows us to conclude.
 
-           The accompanying program high_sum.c, compiled with -DMODE=0, gives
-           the following upper-bounds (all attained for extra_int=0):
-           
-           |mlogrh/mlogr12h|  < 1.951
-           |mlogr1h/mlogr12h| < 1.951
-           |mlogr2h/mlogr12h| <= 1
+	   The accompanying program high_sum.c, compiled with -DMODE=0, gives
+	   the following upper-bounds (all attained for extra_int=0):
+    
+	   |mlogrh/mlogr12h|  < 1.951
+	   |mlogr1h/mlogr12h| < 1.951
+	   |mlogr2h/mlogr12h| <= 1
 
 	   Expanding high_sum(), let t the low part of the fast_two_sum() call.
-           As above the fast_two_sum yields an error <= 2^-105 |mlogr12h|
-           and |t| <= 2^-52 |mlogr12h|.
+	   As above the fast_two_sum yields an error <= 2^-105 |mlogr12h|
+	   and |t| <= 2^-52 |mlogr12h|.
 	   In the last sum of the fast_two_sum(), notice that
-           |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * |mlogr12h|,
-           where we used the above bound |mlogr2h/mlogr12h| <= 1.
+	   |mlogr2l| <= 2^-53 |mlogr2h| <= 2^-53 * |mlogr12h|,
+	   where we used the above bound |mlogr2h/mlogr12h| <= 1.
 
 	   Therefore, |mlogr2l + t| <= (2^-53 + 2^-52) |mlogr12h|
-                                    <= 2^-51.415 |mlogr12h|.
-           This implies that |mlogr12l| <= 2^-51.415 |mlogr12h| and that the
-           rounding error of the high_sum's final sum is
-           at most 2^-103.415 |mlogr12h|.
+	                            <= 2^-51.415 |mlogr12h|.
+	   This implies that |mlogr12l| <= 2^-51.415 |mlogr12h| and that the
+	   rounding error of the high_sum's final sum is
+	   at most 2^-103.415 |mlogr12h|.
 
 	   Note that the following sum mlogr12l + mlogrl is at most
-	     |mlogr12l| + 2^-51 |mlogrh|
-             <= (2^-51.415 + 1.951 * 2^-51) |mlogr12h|
-           (where |mlogrl| <= 2^-51|mlogrh| was proven in the analysis of
-           the first high_sum, and |mlogrh/mlogr12h| < 1.951 from the above
-           bounds), we thus get:
-           |mlogr12l| <= 2^-49.566 |mlogr12h| and a rounding error
+	     |mlogr12l| + 2^-51 |mlogrh| <= (2^-51.415 + 1.951 * 2^-51) |mlogr12h|
+	   (where |mlogrl| <= 2^-51|mlogrh| was proven in the analysis of
+	   the first high_sum, and |mlogrh/mlogr12h| < 1.951 from the above
+	   bounds), we thus get:
+	     |mlogr12l| <= 2^-49.566 |mlogr12h| and a rounding error
 	   of at most 2^-101.566 |mlogr12h|.
 
 	   These steps of computation created an error at most
-	     (2^-105 + 2^-103.415 + 2^-101.566) |mlogr12h|
-             < 2^-101.111 |mlogr12h|
+	     (2^-105 + 2^-103.415 + 2^-101.566) |mlogr12h| < 2^-101.111 |mlogr12h|
 	   Propagating the previous absolute errors gives:
-           2^-102.678 |mlogrh| + 2^-107.22 |mlogr1h| + 2^-107.27 |mlogr2h|
-           where 2^-102.678 |mlogrh| comes from the first high_sum() call,
-           2^-107.22 |mlogr1h| comes from the accuracy of the coarse[] table,
-           and 2^-107.27 |mlogr2h| comes from the accuracy of the fine[] table.
-           Using the above bounds, this yields a relative error bound of:
-             (1.951 * (2^-102.678 + 2^-107.22) + 1 * 2^-107.27) |mlogr12h|
-             < 2^-101.624 |mlogr12h|
-           We thus get a total relative error of at most:
-           (2^-101.111 + 2^-101.624) < 2^-100.344 |mlogr12h|:
+	   2^-102.678 |mlogrh| + 2^-107.22 |mlogr1h| + 2^-107.27 |mlogr2h|
+	   where 2^-102.678 |mlogrh| comes from the first high_sum() call,
+	   2^-107.22 |mlogr1h| comes from the accuracy of the coarse[] table,
+	   and 2^-107.27 |mlogr2h| comes from the accuracy of the fine[] table.
+	   Using the above bounds, this yields a relative error bound of:
+	     (1.951 * (2^-102.678 + 2^-107.22) + 1 * 2^-107.27) |mlogr12h|
+	     < 2^-101.624 |mlogr12h|
+	   We thus get a total relative error of at most:
+	   (2^-101.111 + 2^-101.624) < 2^-100.344 |mlogr12h|:
 
-           |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
-           < 2^-100.344 |mlogr12h|.
+	   |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
+	   < 2^-100.344 |mlogr12h|.
 
-           However, a better bound is obtained by brute force,
-           by trying all the values of extra_int, r1, r2 and all
-           rounding modes. This is done in the accompanying high_sum.c
-           program, which yields the bound (with -DMODE=1):
+	   However, a better bound is obtained by brute force,
+	   by trying all the values of extra_int, r1, r2 and all
+	   rounding modes. This is done in the accompanying high_sum.c
+	   program, which yields the bound (with -DMODE=1):
+	   |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
+	   < 2^-103.446 |mlogr12h|.
 
-           |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
-           < 2^-103.446 |mlogr12h|.
-
-           Additionally, this program also shows:
-
-           |mlogr12l/mlogr12h| < 2^-47.961.
+	   Additionally, this program also shows:
+	   |mlogr12l/mlogr12h| < 2^-47.961.
 	*/
-	POWL_DPRINTF("get_hex(R(-log2(r1) - log2(r2)+ei- "SAGE_DD"))\n",
-		mlogr12h, mlogr12l);
-        fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
+
+	fast_two_sum(&mlogr12h, &mlogr12l, mlogr12h, mlogr12l);
 	/* This renormalization incurs a relative error at most 2^-105.
            The total relative error becomes at most:
            (1 + 2^-103.446) * (1 + 2^-105) - 1 < 2^-103.023. This ensures
@@ -654,14 +622,14 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	// |xh| <= 1p-12
 	xh = __builtin_fma(r2, xh, -1); xl *= r2;
 	/* The product old_xl * r2 is exact since old_xl fits in 40 bits
-           and r2 in 13 bits.
-           We know that xh is a multiple of 2^-41. Since r2 is a multiple of
-           2^-13, then r2*xh is a multiple of 2^-54, and so is r2*xh - 1.
-           Since |r2*xh - 1| <= 2^-12, r2*xh - 1 fits in 42 bits,
-           and thus the above fma() is exact too.
-           Moreover since old_xl fits in 40 bits, and r2 in 13 bits,
-           then xl fits in 53 bits, thus old_xl * r2 is exact
-           and both operations are exact. */
+	   and r2 in 13 bits.
+	   We know that xh is a multiple of 2^-41. Since r2 is a multiple of
+	   2^-13, then r2*xh is a multiple of 2^-54, and so is r2*xh - 1.
+	   Since |r2*xh - 1| <= 2^-12, r2*xh - 1 fits in 42 bits,
+	   and thus the above fma() is exact too.
+	   Moreover since old_xl fits in 40 bits, and r2 in 13 bits,
+	   then xl fits in 53 bits, thus old_xl * r2 is exact
+	   and both operations are exact. */
 
 	two_sum(&xh, &xl, xh, xl); // We probably cannot use Fast2Sum
 	/* At input, we have |xh| <= 1p-12 and |xl| < 2^-32. Therefore at
@@ -670,46 +638,42 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	   We use two_sum because we have no guarantees on the relative
 	   sizes of xh and xl. However, since we know |xl| < 2^-32 at input,
-           if the Fast2Sum condition is not fulfilled, this would mean
-           |xh| < 2^-33,
-           Theorem 2 from reference [1] than says that if we used Fast2Sum,
-           the rounding error would be less than 3 2^-53 |xh|, thus less than
-           3 * 2^-53 * (2^-33 + 2^-32) < 2^-82.830.
+	   if the Fast2Sum condition is not fulfilled, this would mean
+	   |xh| < 2^-33,
+	   Theorem 2 from reference [1] than says that if we used Fast2Sum,
+	   the rounding error would be less than 3 2^-53 |xh|, thus less than
+	   3 * 2^-53 * (2^-33 + 2^-32) < 2^-82.830.
 	*/
-	POWL_DPRINTF("get_hex(R(r1*r2*sx - 1 - "SAGE_DD"))\n", xh, xl);
-	POWL_DPRINTF("s = r1*r2*sx - 1\n");
-	POWL_DPRINTF("get_hex(s)\n");
 
 	polyeval(rh, rl, xh, xl);
 	/* By polyeval's error analysis, rh + rl gets an estimate of log2(1+x)
 	   with relative error at most 2^-98.285, and |rl| <= 2^-48.946 |rh|.
-           Since |x| < 2^-11.999, it follows |rh| < 2^-11.470.
+	   Since |x| < 2^-11.999, it follows |rh| < 2^-11.470.
 	*/
 
 	high_sum(rh, rl, mlogr12h, *rh, *rl);
 	*rl += mlogr12l;
-	/* Let us call rh', rl' the results of the computation,
-           rh and rl the inputs.
+	/* Let us call rh', rl' the results of the computation, rh and rl the inputs.
 	   Note that if mlogr12h != 0, then the program high_sum.c with MODE=3
-           shows that |mlogr12h| >= 0x1.7148ec2a1bfc8p-12.
-           Since |rh| < 2^-11.470 < 0x1.8p-12, this implies mlogr12h is 0 or
-           lies in the same binade than rh, or in a larger binade.
-           Thus the fast_two_sum() condition in high_sum() is fulfilled.
+	   shows that |mlogr12h| >= 0x1.7148ec2a1bfc8p-12.
+	   Since |rh| < 2^-11.470 < 0x1.8p-12, this implies mlogr12h is 0 or
+	   lies in the same binade than rh, or in a larger binade.
+	   Thus the fast_two_sum() condition in high_sum() is fulfilled.
 
 	   Expanding the high_sum call and calling t the fast_two_sum result's
-           low part, fast_two_sum() yields a rounding error <= 2^-105|rh'|
-           and |t| <= 2^-52|rh'|. In the last sum inside high_sum(), notice
+	   low part, fast_two_sum() yields a rounding error <= 2^-105|rh'|
+	   and |t| <= 2^-52|rh'|. In the last sum inside high_sum(), notice
 	   that |rl + t| <= 2^-48.946 |rh| + 2^-52|rh'|. Now, since
-           |rh| < 1.002 |rh'| (see max_rh_over_rh_prime_all() in powl.sage),
+	   |rh| < 1.002 |rh'| (see max_rh_over_rh_prime_all() in powl.sage),
 	   we have |rl + t| <= (2^-48.946 * 1.002 + 2^-52)|rh'|.
-           This shows that after high_sum(), |rl'| <= 2^-48.779|rh'| and that
-           the associated rounding error is at most
-           2^-105 |rh'| + 2^-52 |rl'| <= (2^-105 + 2^-52*2^-48.779) |rh'|
-           <= 2^-100.703 |rh'|.
+	   This shows that after high_sum(), |rl'| <= 2^-48.779|rh'| and that
+	   the associated rounding error is at most
+	   2^-105 |rh'| + 2^-52 |rl'| <= (2^-105 + 2^-52*2^-48.779) |rh'|
+	   <= 2^-100.703 |rh'|.
 
-           Since |rl'| <= 2^-48.779|rh'|, |mlogr12l| <= 2^-52 |mlogr12h|,
-           and the routine max_mlogr12h_over_rh_prime_all() in powl.sage
-           shows that |mlogr12h| < 2.002 |rh'|,
+	   Since |rl'| <= 2^-48.779|rh'|, |mlogr12l| <= 2^-52 |mlogr12h|,
+	   and the routine max_mlogr12h_over_rh_prime_all() in powl.sage
+	   shows that |mlogr12h| < 2.002 |rh'|,
 	   the sum rl' + mlogr12l is thus at most
 	     2^-48.779|rh'| + 2.002*2^-52|rh'| <= 2^-48.498|rh'|
 	   which implies that in the end |rl'| <= 2^-48.497|rh'| and that the
@@ -717,55 +681,47 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 
 	   These steps of computation created an error at most
 	     (2^-105 + 2^-100.703 + 2^-100.497)|rh'| <= 2^-99.562|rh'|:
+	     |rh' + rl' - (mlogr12h + rh + rl)| <= 2^-99.562 |rh'|.
 
-             |rh' + rl' - (mlogr12h + rh + rl)| <= 2^-99.562 |rh'|.
+	   We had a relative error <= 2^-103.023 on mlogr12h + mlogr12l:
+	   |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
+	   < 2^-103.023 |mlogr12h|
+	   which since |mlogr12h/rh'| <= 2.002 translates to
+	   2.002*2^-103.023. And we had a relative error <= 2^-98.285 on rh + rl:
+	   |rh + rl - log2(1+x)| <= 2^-98.285 |rh|
+	   which since |rh/rh'| <= 1.002 translates to 1.002*2^-98.285.
 
-           We had a relative error <= 2^-103.023 on mlogr12h + mlogr12l:
-
-           |mlogr12h + mlogr12l - (extra_int - log2(r1) - log2(r2))|
-           < 2^-103.023 |mlogr12h|
-
-           which since |mlogr12h/rh'| <= 2.002 translates to
-           2.002*2^-103.023. And we had a relative error <= 2^-98.285 on
-           rh + rl:
-
-           |rh + rl - log2(1+x)| <= 2^-98.285 |rh|
-
-           which since |rh/rh'| <= 1.002 translates to 1.002*2^-98.285.
-           In summary we get:
-           |rh' + rl' - (extra_int - log2(r1) - log2(r2) + log2(1+xr))|
-           <= eps * rh'
-           with |eps| <= (1 + 2^-99.562) * (1 + 2.002*2^-103.023)
-                      * (1 + 1.002*2^-98.285) - 1 <= 2^-97.710.
+	   In summary we get:
+	   |rh' + rl' - (extra_int - log2(r1) - log2(r2) + log2(1+xr))|
+	   <= eps * rh'
+	   with |eps| <= (1 + 2^-99.562) * (1 + 2.002*2^-103.023)
+	              * (1 + 1.002*2^-98.285) - 1 <= 2^-97.710.
 	   The total relative error computing log2(x) is therefore at most
 	   2^-97.710. Also, |rl'| <= 2^-48.497|rh'|.
 	*/
 
 	double yh = y; double yl = y - (long double) yh;
-        // y = yh + yl exactly, with |yl| < 2^-52 |yh|
+	// y = yh + yl exactly, with |yl| < 2^-52 |yh|
 
-	POWL_DPRINTF("get_hex(R(log2(x)) - "SAGE_DD")\n", *rh, *rl);
 	d_mul(rh, rl, yh, yl, *rh, *rl);
 	/* Let us call again rh', rl' the output values for rh and rl,
-           and rh and rl the input values. The relative error on log2(1 + x)
-           propagates, creating an intrinsic relative error of 2^-97.710.
+	   and rh and rl the input values. The relative error on log2(1 + x)
+	   propagates, creating an intrinsic relative error of 2^-97.710.
 	   Expanding the d_mul call, we see that |p| <= 2^-52|yh*rh|; then
 	     - |yl*rh + p| <= 2^-52|yh*rh| + 2^-52|yh*rh| <= 2^-51|yh*rh|.
 	       This ensures |q| <= 2^-51|yh*rh|. Also, the associated
 	       rounding error is at most 2^-103|yh*rh|.
 	     - |yh*rl + q| <= (2^-48.497 + 2^-51)|yh*rh|. This ensures that 
 	       |rl'| <= 2^-48.262|rh'| and that the associated rounding error
-               is at most 2^-100.262|rh'|.
+	       is at most 2^-100.262|rh'|.
 	     - the error produced by neglecting |yl*rl| is at most
 	       2^-52*2^-48.497|yh*rh|.
-           The total error of this d_mul() is thus at most:
-           (2^-103 + 2^-100.262 + 2^-52*2^-48.497) |yh*rh| <= 2^-99.262 |yh*rh|
-           Adding the relative error on rh+rl we get:
-
-           rh' + rl' - y * log2(x) = eps * rh'
-
-           with |eps| <= (1 + 2^-97.710) * (1 + 2^-99.262) - 1 <= 2^-97.286.
-           We also have |rl'| <= 2^-48.262|rh'|.
+	   The total error of this d_mul() is thus at most:
+	   (2^-103 + 2^-100.262 + 2^-52*2^-48.497) |yh*rh| <= 2^-99.262 |yh*rh|
+	   Adding the relative error on rh+rl we get:
+	   rh' + rl' - y * log2(x) = eps * rh'
+	   with |eps| <= (1 + 2^-97.710) * (1 + 2^-99.262) - 1 <= 2^-97.286.
+	   We also have |rl'| <= 2^-48.262|rh'|.
 	*/
 }
 
@@ -785,45 +741,40 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	uint64_t fracpart = y.u;
 	int16_t extra_exponent = y.u>>20;
 
-        // r = y.f - C is the rounding of xh to an integer multiple of 2^-20
-        // extra_exponent is the integer part of r
-        // and the low 20 bits of fracpart are the fractional part of r
+	// r = y.f - C is the rounding of xh to an integer multiple of 2^-20
+	// extra_exponent is the integer part of r
+	// and the low 20 bits of fracpart are the fractional part of r
 
 	if(__builtin_expect(do_red, 1)) {
-                double rem = xh - (y.f - C); // rem = xh - r
+		double rem = xh - (y.f - C); // rem = xh - r
 		fast_two_sum (&xh,&xl,rem,xl);
-	/* Let xh_old/xl_old be the old values to xh and xl, and xh/xl the
-           new values. Note that we can have |rem| < |xl_old| here.
-           We have |rem| < 2^-20 and |xl_old| <= 2^-48.262*16446.1 < 2^-34.256.
-	   Therefore |rem+xl_old| <= 2^-20 + 2^-34.256 which ensures
-	   |xh| <= 2^-19.9994.
-	   If rem = 0 or ulp(rem) >= ulp(xl_old), then the pre-condition of
-           fast_two_sum() is fulfilled, the rounding error is at most
-           2^-105|xh| <= 2^-124.9994 and |xl| < ulp(xh) <= 2^-72.
-	   If this is not the case, since |xl_old| < 2^-34.256 we must have
-	   |rem| < 2^-35 which implies |xh| < 2^-33.580, and the rounding
-           error is at most 3 * 2^-53 * |xh| < 2^-84.995 (see Theorem 2 from
-           reference [1]).
-	   We also have |xl| <= 2^-72 in that case too, since
-           |xh - (rem + xl_old)| < ulp(xh) <= 2^-86, and
-           |xh + xl - (rem + xl_old)| < 2^-84.995, thus by the triangle
-           inequality |xl| < 2^-86 + 2^-84.995 < 2^-84.411.
-	*/
+		/* Let xh_old/xl_old be the old values to xh and xl, and xh/xl the
+		   new values. Note that we can have |rem| < |xl_old| here.
+		   We have |rem| < 2^-20 and |xl_old| <= 2^-48.262*16446.1 < 2^-34.256.
+		   Therefore |rem+xl_old| <= 2^-20 + 2^-34.256 which ensures
+		   |xh| <= 2^-19.9994.
+		   If rem = 0 or ulp(rem) >= ulp(xl_old), then the pre-condition of
+		   fast_two_sum() is fulfilled, the rounding error is at most
+		   2^-105|xh| <= 2^-124.9994 and |xl| < ulp(xh) <= 2^-72.
+		   If this is not the case, since |xl_old| < 2^-34.256 we must have
+		   |rem| < 2^-35 which implies |xh| < 2^-33.580, and the rounding
+		   error is at most 3 * 2^-53 * |xh| < 2^-84.995 (see Theorem 2 from
+		   reference [1]).
+		   We also have |xl| <= 2^-72 in that case too, since
+		   |xh - (rem + xl_old)| < ulp(xh) <= 2^-86, and
+		   |xh + xl - (rem + xl_old)| < 2^-84.995, thus by the triangle
+		   inequality |xl| < 2^-86 + 2^-84.995 < 2^-84.411.
+		*/
 	}
 
-        /* If do_red=0 we had |xh| < 2^-20 thus
-           |xl| < 2^-48.262*2^-20 <= 2^-68.262,
-           and xh = xh_old, xl = xl_old, r = 0. In summary, in all cases
-           we have (with r=0 in case do_red=0):
-
-           |xh + xl - (xh_old + xl_old - frac(r))| < 2^-84.995
-
-           thus:
-
-           2^(frac(r) + xh + xl) = 2^(xh_old + xl_old) * (1 + rho1)
-
-           with |rho1| < 2^(2^-84.995) - 1 < 2^-85.523,
-           and |xh| <= 2^-19.9994, |xl| < 2^-68.262. */
+	/* If do_red=0 we had |xh| < 2^-20 thus
+	   |xl| < 2^-48.262*2^-20 <= 2^-68.262,
+	   and xh = xh_old, xl = xl_old, r = 0. In summary, in all cases
+	   we have (with r=0 in case do_red=0):
+	   |xh + xl - (xh_old + xl_old - frac(r))| < 2^-84.995
+	   thus: 2^(frac(r) + xh + xl) = 2^(xh_old + xl_old) * (1 + rho1)
+	   with |rho1| < 2^(2^-84.995) - 1 < 2^-85.523,
+	   and |xh| <= 2^-19.9994, |xl| < 2^-68.262. */
 
 	int i0 = fracpart & 0x1f;
 	int i1 = (fracpart >> 5) & 0x1f;
@@ -842,14 +793,12 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	d_mul(&xs_pow2_h, &xs_pow2_l, frcp_acc0_h, frcp_acc0_l,
 		frcp_acc2_h, frcp_acc2_l);
 	/* This step introduces a relative error rho2 (see the analysis
-           in fastpath() from expl.c), since the tables t0, t1, t2, t3
-           are the same as for expl:
-
-           xs_pow2_h + xs_pow2_l = 2^frac(r) * (1 + rho2)
-
-           with |rho2| < 2^-99.1. Moreover, |xs_pow2_l| <= 2^-48.2 and
-           1 <= |xs_pow2_h| < 2 (1 <= |xs_pow2_h| comes from the fact
-           that all tables t0, t1, t2, t3 are >= 1). */
+	   in fastpath() from expl.c), since the tables t0, t1, t2, t3
+	   are the same as for expl:
+	   xs_pow2_h + xs_pow2_l = 2^frac(r) * (1 + rho2)
+	   with |rho2| < 2^-99.1. Moreover, |xs_pow2_l| <= 2^-48.2 and
+	   1 <= |xs_pow2_h| < 2 (1 <= |xs_pow2_h| comes from the fact
+	   that all tables t0, t1, t2, t3 are >= 1). */
 
 	/* Evaluating the Taylor polynomial for 2^xr where xr = xh + xl.
 	   If do_red is true, then |xh| <= 2^-19.9994 and |xl| <= 2^-72 so that
@@ -858,15 +807,15 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	   and |xl| <= 2^-68.262.
 
 	   Over the interval [-2^-19.999, 2^-19.999] the polynomial used has
-           absolute error <= 2^-89.218 (same polynomial as in expl.c).
+	   absolute error <= 2^-89.218 (same polynomial as in expl.c).
 	*/
 
 	double xsq = xh * xh;
 	/* Neglecting 2*xl*xh + xl^2 brings an error of at most
-           |2*xl*xh + xl^2| <= 2 * 2^-68.262 * 2^-19.999 + 2^(-68.262*2)
-                            <= 2^-87.260.
+	   |2*xl*xh + xl^2| <= 2 * 2^-68.262 * 2^-19.999 + 2^(-68.262*2)
+	                    <= 2^-87.260.
 	   Since |xh| <= 2^-19.999, we have |xh*xh| <= 2^-39.998. The rounding
-           error on xsq is therefore at most ulp(2^-39.998) = 2^-92, and
+	   error on xsq is therefore at most ulp(2^-39.998) = 2^-92, and
 	     |xsq| <= 2^-39.998 + 2^-92 <= 2^-39.997.
 	   We have thus |xsq - xr^2| <= 2^-87.260 + 2^-92 <= 2^-87.206.
 	*/
@@ -881,34 +830,34 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	   This implies that the fma's result is strictly less than 1/4.
 	   The rounding error of the fma is therefore at most ulp(1/8) = 2^-55.
 	   The total error evaluating Axr+B is thus at most
-           2^-55 + 2^-72.433 <= 2^-54.999.
+	         2^-55 + 2^-72.433 <= 2^-54.999.
 
 	   Given the errors on each factor, the product xsq * fma() carries an
-           intrinsic error
+	   intrinsic error
 	     |xr|^2*2^-54.999 + 2^-84.995*|Axr+B| + 2^-84.995*2^-54.999
 	   Since |xr|<= 2^-19.999 we check that |Axr+B| <= 2^-2.057 and thus
-           the error is at most 2^-87.046.
+	   the error is at most 2^-87.046.
 
 	   Since |xsq| <= 2^-39.997 and |A*xh+B| < 1/4 - 0.008, the product
-           is bounded by 2^-39.997 * (1/4 - 0.008) < 2^-42.04. The rounding
-           error on orders23 is thus at most ulp(2^-42.04) = 2^-95.
-           Therefore |orders23| <= 2^-42.04 + 2^-95 < 2^-42.03.
+	   is bounded by 2^-39.997 * (1/4 - 0.008) < 2^-42.04. The rounding
+	   error on orders23 is thus at most ulp(2^-42.04) = 2^-95.
+	   Therefore |orders23| <= 2^-42.04 + 2^-95 < 2^-42.03.
 	   The total error on orders23 is at most 2^-87.046+2^-95 <= 2^-87.040.
 	*/
 
 	double order1h, order1l;
 	static const double coeff1h = 0x1.62e42fefa39efp-1;
 	static const double coeff1l = 0x1.abc9e3b369936p-56;
-        // 0x1.62e42fefa39ef35793c766d326cp-1 = coeff1h + coeff1l
+	// 0x1.62e42fefa39ef35793c766d326cp-1 = coeff1h + coeff1l
 	d_mul(&order1h, &order1l, coeff1h, coeff1l, xh, xl);
 	/* Let's expand the d_mul call.
 	   Since |coeff1h| < 2^-0.5287 and |xh| <= 2^-19.999 we have
-           |ah*bh| <= 2^-20.527. This implies
+	   |ah*bh| <= 2^-20.527. This implies
 	   |order1h| < 2^-20.5 and |s| < ulp(2^-20.5) = 2^-73.
 	   Since |coeff1l| <= 2^-55.25, we compute that
 	     |coeff1l*xh + s| <= 2^-55.25*2^-19.999 + 2^-73 <= 2^-72.724.
 	   This ensures that the rounding error computing t is at most
-           ulp(2^-72.724) = 2^-125 and that |t| <= 2^-72.7.
+	   ulp(2^-72.724) = 2^-125 and that |t| <= 2^-72.7.
 	   Since |coeff1h| <= 2^-0.528 and |xl| < 2^-68.262, we compute that
 	     |coeff1h*xl + t| <= 2^-0.528 * 2^-68.262 + 2^-72.7 <= 2^-68.697.
 	   The rounding error on order1l is therefore at most ulp(2^-68.697)
@@ -917,39 +866,38 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 
 	   The error due to neglecting xl*coeff1l is at most
 	     |xl*coeff1l| <= 2^-68.262 * 2^-55.25 <= 2^-123.512.
-	   The total error on order1 is at most 2^-120.912 + 2^-123.512
-           <= 2^-120.691:
-           |order1h + order1l - (coeff1h + coeff1l) * (xh + xl)| < 2^-120.691.
+	   The total error on order1 is at most
+	   2^-120.912 + 2^-123.512 <= 2^-120.691:
+	   |order1h + order1l - (coeff1h + coeff1l) * (xh + xl)| < 2^-120.691.
 	*/
-
 	double finalh, finall;
 	fast_two_sum(&finalh, &finall, 1, orders23);
 	/* Since |orders23| < 2^-42.03, clearly |finalh| < 2, so that
-           |finalh| <= 1 + 2^-42.03 + ulp(1) <= 2^0.001.
+	   |finalh| <= 1 + 2^-42.03 + ulp(1) <= 2^0.001.
 	   The arguments are in the right order, so this fast_two_sum
-           introduces an error at most 2^-105*2^0.001 <= 2^-104.999.
+	   introduces an error at most 2^-105*2^0.001 <= 2^-104.999.
 	   Also since |finalh| < 2 we get |finall| < ulp(1) = 2^-52.
 	*/
 
 	double tmp;
 	fast_two_sum(&finalh, &tmp, finalh, order1h);
 	/* At input we have 1/2 < |finalh| < 2^0.001 and |order1h| < 2^-20.5,
-           which ensures that the order is respected.
-           Furthermore |finalh+order1h| <= 2^0.001 + 2^-20.5 < 2^0.002. This
-           ensures that the error is bounded by 2^-105*2^0.002 <= 2^-104.998.
-           Also, we get for the new value of finalh:
-           0.499 < |finalh| <= 1.002 and |tmp| <= ulp(1.002) = 2^-52.
+	   which ensures that the order is respected.
+	   Furthermore |finalh+order1h| <= 2^0.001 + 2^-20.5 < 2^0.002. This
+	   ensures that the error is bounded by 2^-105*2^0.002 <= 2^-104.998.
+	   Also, we get for the new value of finalh:
+	   0.499 < |finalh| <= 1.002 and |tmp| <= ulp(1.002) = 2^-52.
 	*/
 
 	finall = tmp + (finall + order1l);
 	/* At input, we have |finall| < 2^-52 and |order1l| <= 2^-68.6.
-           Therefore the internal sum is strictly bounded by 2^-51.9 and has
-           rounding error at most ulp(2^-51.9) = 2^-104.
+	   Therefore the internal sum is strictly bounded by 2^-51.9 and has
+	   rounding error at most ulp(2^-51.9) = 2^-104.
 	   Calling S the intermediate result, since |tmp| <= 2^-52 we have
-		 |tmp + S| < 2^-52 + 2^-51.9 < 2^-50.9, which ensures a
-                 rounding error of at most ulp(2^-50.9) = 2^-103 and that the
-                 new value of finall satisfies:
-                 |finall| < 2^-50.9 + 2^-103 <= 2^-50.8.
+	   |tmp + S| < 2^-52 + 2^-51.9 < 2^-50.9, which ensures a
+	   rounding error of at most ulp(2^-50.9) = 2^-103 and that the
+	   new value of finall satisfies:
+	   |finall| < 2^-50.9 + 2^-103 <= 2^-50.8.
 	   The total rounding error here is 2^-104 + 2^-103 <= 2^-102.415.
 	*/
 
@@ -960,9 +908,9 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 	   - 2^-104.998 in the second fast_two_sum,
 	   - 2^-102.415 in the last sum.
 	  The polynomial itself was only precise to 2^-89.218. Therefore,
-          we have computed 2^xr with error at most :
+	  we have computed 2^xr with error at most :
 	   2^-87.040 + 2^-120.691 + 2^-104.999 + 2^-104.998 + 2^-102.415
-           + 2^-89.218 <= 2^-86.7519.
+	   + 2^-89.218 <= 2^-86.7519.
 	   Since xr >= -2^-19.999, this gives a relative error rho3 less than
 	   2^-86.7519/2^(-2^-19.999) < 2^-86.7518:
 	   finalh + finall = 2^xr * (1 + rho3) with |rho3| < 2^-86.7518
@@ -978,32 +926,32 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
 
 	     Expanding the d_mul call, we see that:
 	     Since |finalh*xs_pow2_h| < 1.002*2 = 2.004,
-             |s| <= ulp(2.004) = 2^-51. Then, since
+	     |s| <= ulp(2.004) = 2^-51. Then, since
 	     |finall*xs_pow2_h + s| <= 2^-50.8 * 2 + 2^-51 <= 2^-49.278 we get
 	     |t| <= 2^-49.277 and that the rounding error on t is at most
-             ulp(2^-49.278) = 2^-102.
+	     ulp(2^-49.278) = 2^-102.
 	     We compute |finalh*xs_pow2_l + t| <= 1.004*2^-48.2+2^-49.277
 	     <= 2^-47.636. This ensures that the rounding error computing
-             *lo is less than ulp(2^-47.636) = 2^-100.
-             The total rounding error is therefore at most
+	     *lo is less than ulp(2^-47.636) = 2^-100.
+	     The total rounding error is therefore at most
 	     2^-102 + 2^-100 <= 2^-99.678.
 	     The error due to neglecting xs_pow2_l * finall is at most
-	       |xs_pow2_l * finall| <= 2^-48.2 * 2^-50.8 <= 2^-99, thus adding
-             it yields an error < 2^-99.678 + 2^-99 <= 2^-98.299.
+	     |xs_pow2_l * finall| <= 2^-48.2 * 2^-50.8 <= 2^-99, thus adding
+	     it yields an error < 2^-99.678 + 2^-99 <= 2^-98.299.
 
 	     Since the product should be at least exp(-2^-19.999), this
-             translates to an additional relative error
-             rho4 <= 2^-98.299/2^(-2^-19.999), so rho4 <= 2^-98.298.
+	     translates to an additional relative error
+	     rho4 <= 2^-98.299/2^(-2^-19.999), so rho4 <= 2^-98.298.
 	     Taking into account rho1, the total relative error is thus at most
-	      (1 + 2^-86.7515)(1 + rho1)(1 + rho4) - 1 <= 2^-85.010:
-             |finalh + finall - 2^frac(r) * 2^xr| < 2^-85.010.
+	     (1 + 2^-86.7515)(1 + rho1)(1 + rho4) - 1 <= 2^-85.010:
+	     |finalh + finall - 2^frac(r) * 2^xr| < 2^-85.010.
 
-             Moreover since 0.499 < |finalh_old| <= 1.002 and
-             1 <= xs_pow2_h < 2, we deduce 0.499 < |finalh| < 2.004.
+	     Moreover since 0.499 < |finalh_old| <= 1.002 and
+	     1 <= xs_pow2_h < 2, we deduce 0.499 < |finalh| < 2.004.
 	  */
 	} else {
-	  /* The only error made is rho3, the total relative error
-             is at most 2^-86.7518. */
+		/* The only error made is rho3, the total relative error
+		   is at most 2^-86.7518. */
 		extra_exponent = 0;
 	}
 	*resh = finalh;
@@ -1022,7 +970,6 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	fast_two_sum(&rh, &rl, rh, rl); // The fast_two_sum precondition is satisfied
 
 	b64u64_t th = {.f = rh}, tl = {.f = rl};
-	POWL_DPRINTF("rh = %a\nrl = %a\n", rh, rl);
 	long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
 	// the high part is always positive, the low part can be positive or negative
 	// represent the mantissa of the low part in two's complement format
@@ -1032,10 +979,8 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	long sh = de-11;
 	if(__builtin_expect(sh>63,0)){
 		mlt = sgnl;
-		if(__builtin_expect(sh-64>63,0))
-			ml = sgnl;
-    		else
-		ml >>= sh-64;
+		if(__builtin_expect(sh-64>63,0)) ml = sgnl;
+		else ml >>= sh-64;
 	} else {
 		mlt = ml>>sh;
 		ml <<= 64-sh;
@@ -1044,24 +989,18 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	// construct the mantissa of the long double number
 	uint64_t mh = ((th.u<<11)|1l<<63);
 
-	POWL_DPRINTF("tl_u = %016lx\n", tl.u);
-	POWL_DPRINTF("ml = %016lx\n", ml);
-	POWL_DPRINTF("mlt = %016lx\nmh=%016lx\n", mlt, mh);
-	
 	mh += mlt;
 	if(__builtin_expect(!(mh>>63),0)){ // the low part is negative and
-					     // can unset the msb so shift the
-					     // number back
+	                                   // can unset the msb so shift the
+	                                   // number back
 		mh = mh<<1 | (uint64_t)ml>>63;
 		ml <<= 1;
 		extra_exp--;
 	}
 	int64_t eps = (mh >> (83 - 64));
 	// 83 comes from |eps| < 2^-83.287 and the fast_two_sum's error
-	
+
 	int wanted_exponent = extra_exp + 0x3c00 + eh;
-	POWL_DPRINTF("wanted exponent : %x\n", wanted_exponent);
-	POWL_DPRINTF("mh||ml = %016lx %016lx\n", mh, ml);
 
 	if(__builtin_expect(wanted_exponent <= 0, 0)) {
 		int shiftby = 1 - wanted_exponent;
@@ -1080,22 +1019,19 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 			eps += 1;
 		}
 		wanted_exponent = 0;
-
-		POWL_DPRINTF("Shifting by %u\n", shiftby);
-		POWL_DPRINTF("mh||ml = %016lx %016lx\n", mh, ml);
 	}
 
 	uint64_t oldmh = mh; // For overflow detection
 	if(rm==FE_TONEAREST){ // round to nearest
 		mh += (uint64_t)ml>>63; // add the round bit
 		ml <<= 1; eps <<= 1;
-                /* Multiplying ml by 2 we discard the round bit,
-                   thus the rounding test will fail even if we are
-                   near an exact value. The reason is that when x^y
-                   is exact, we should reset the inexact flag. Since
-                   testing whether x^y is exact is expensive, we delegate
-                   this case to the accurate path. Thus we sacrifice
-                   x^y exact to make the average case is faster. */
+		/* Multiplying ml by 2 we discard the round bit,
+		   thus the rounding test will fail even if we are
+		   near an exact value. The reason is that when x^y
+		   is exact, we should reset the inexact flag. Since
+		   testing whether x^y is exact is expensive, we delegate
+		   this case to the accurate path. Thus we sacrifice
+		   x^y exact to make the average case faster. */
 	} else if((rm==FE_UPWARD && !invert) || (rm==FE_DOWNWARD && invert)) {
 		mh += 1;
 		// This is as if ml had a trailing 1.
@@ -1103,20 +1039,20 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	}
 
 	// This branch can only be taken if wanted_exponent != 0
-  // Else we simply cannot have an overflow
+	// Else we simply cannot have an overflow
 	if(__builtin_expect(mh < oldmh, 0)) {
 		ml = ml/2; // Signed semantics matter
-                eps >>= 1;
+		eps >>= 1;
 		mh = (uint64_t) 1 << 63;
-                wanted_exponent++;
+		wanted_exponent++;
 	}
 
 	// We had a denormal but rounding made it into the smallest normal
 	if(__builtin_expect((mh>>63) && !wanted_exponent, 0)) {
-		wanted_exponent = 1;	
+		wanted_exponent = 1;
 	}
 
-	b80u80_t v;	
+	b80u80_t v;
 	v.m = mh; // mantissa
 	v.e = wanted_exponent; // exponent
 	if(__builtin_expect(invert, 0)) {v.e += (1<<15);}
@@ -1142,11 +1078,9 @@ inline static
 void q_logpoly(qint64_t* r, const qint64_t* x) {
 	/* We use a naïve Horner scheme as a placeholder,
 	   can most definitely be improved.
-
 	   Coefficients for log2(1 + x)/x
-
-           Minimax polynomial of degree 18 from accurate_log2.sollya,
-           with maximal relative error < 2^-250.299.
+	   Minimax polynomial of degree 18 from accurate_log2.sollya,
+	   with maximal relative error < 2^-250.299.
 	*/
 	static const qint64_t P[19] = {
 		{.hh = 0x9b81e344cc4acd3f, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -4, .sgn = 0x0}, /* degree 18 */
@@ -1171,9 +1105,9 @@ void q_logpoly(qint64_t* r, const qint64_t* x) {
 	};
 
 	mul_qint_11(r, x, &P[0]); // Relative error ~2^-64 here is fine
-        /* mul_qint_11 is exact when its inputs have only one limb, but here x might have
-           up to 75 bits, thus the relative error is < 2^-63 */
-	
+	/* mul_qint_11 is exact when its inputs have only one limb, but here x might have
+	   up to 75 bits, thus the relative error is < 2^-63 */
+
 	for(int i = 1; i <= 7; i++) {
 		add_qint_22(r, &P[i], r);
 		mul_qint_22(r, r, x);
@@ -1195,29 +1129,22 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	int extra_int = (cvt_x.e&0x7fff) - 16383;
 	int shiftamnt = __builtin_clzl(cvt_x.m); // We know x is not 0 so not UB
 
-	POWL_DPRINTF("x0 = abs(" SAGE_RE ")\n", x);
-	POWL_DPRINTF("shiftamnt = %d\n", shiftamnt);
-	POWL_DPRINTF("y = "SAGE_RE"\n", y);
-
 	extra_int -= shiftamnt ? (shiftamnt - 1) : 0;
 	cvt_x.m <<= shiftamnt; // Handle denormals
 	cvt_x.e = 16383; // new wanted exponent
 	x = cvt_x.f; // original x = 2^extra_int * x
-	POWL_DPRINTF("get_hex(x0 - 2^%d *"SAGE_RE")\n", extra_int, x);
 
 	/* Really, this is the same as in the fastpath. Try to merge to reduce
 	   code cache footprint ?
 	*/
 	double xh, xl; // 33 and 31 bits
 	split(&xh, &xl, x);
-        // x = xh + xl with 1 <= |xh| <= 2 and |xl| < 2^-32
-        // since 1 <= |x| < 2, xl is multiple of 2^-63
+	// x = xh + xl with 1 <= |xh| <= 2 and |xl| < 2^-32
+	// since 1 <= |x| < 2, xl is multiple of 2^-63
 
-	POWL_DPRINTF("sx = " SAGE_RE "\nei = %d\n", x, extra_int);
 	// Uses the high 7 bits of x's mantissa.
 	int i1 = cvt_x.m>>56 & 0x7f; // index in the coarse[] table
 	lut_t l = coarse[i1];
-	POWL_DPRINTF("key=0x%x\n", i1);
 	extra_int += l.z;
 	xh *= l.r; xl *= l.r; // exact (see compute_log2pow)
 
@@ -1225,21 +1152,17 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	int i2 = (cvt_xh.u>>40) & 0x7f; // index in the fine[] table
 	lut_t l2 = fine[i2];
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
-	POWL_DPRINTF("key2 = 0x%x\n", i2);
-	POWL_DPRINTF("r1 = " SAGE_RR "\n", l.r);
-	POWL_DPRINTF("r2 = " SAGE_RR "\n", l2.r);
 	xh = __builtin_fma(l2.r, xh, -1); xl *= l2.r;
-        /* The above operations are exact (see the analysis in
-           compute_log2pow). */
+	/* The above operations are exact (see the analysis in compute_log2pow). */
 
 	qint64_t reducted[1];
 	qint_fromdd(reducted, xh, xl);
 	/* From the fastpath we know that we should have |reducted| <= 2^-11.999.
 
-           Since the original xl was multiple of 2^-63, r1 is multiple of 2^-9
-           and r2 is multiple of 2^13, xl is a multiple of 2^-63*2^-9*2^-13 = 2^-85.
-           Furthermore, since the original xl satisfied |xl| < 2^-32, r1 <= 1 and r2 <= 2,
-           xl is at most 2*2^-32 = 2^-31. On the other hand, xh is a multiple of
+	   Since the original xl was multiple of 2^-63, r1 is multiple of 2^-9
+	   and r2 is multiple of 2^13, xl is a multiple of 2^-63*2^-9*2^-13 = 2^-85.
+	   Furthermore, since the original xl satisfied |xl| < 2^-32, r1 <= 1 and r2 <= 2,
+	   xl is at most 2*2^-32 = 2^-31. On the other hand, xh is a multiple of
 	   2^-32*2^-9*2^-13 = 2^-54, and is at most 2^-12.
 	   This ensures that when xh != 0 and xl != 0, the exponent difference
 	   between xh and xl is at most 85 - 12 = 73, so that qint_fromdd's
@@ -1247,30 +1170,22 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	   Also, reducted must be a multiple of 2^-85
 	   which is less than 2^-11.999 therefore reducted fits in 128 bits.
 	*/
-	POWL_DPRINTF("reducted = "SAGE_QR"\n",
-	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,
-	   reducted->ex, reducted->sgn);
-	POWL_DPRINTF("get_hex(R(reducted-"SAGE_DD"))\n",xh,xl);
 
 	qint64_t eint[1];
 	qint_fromsi(eint, extra_int); // eint = extra_int
-	
+
 	qint64_t mlogr[1];
 	add_qint(mlogr, &acc_coarsetbl[i1], eint);
-        // mlogr approximates extra_int - log2(2^z*r1)
+	// mlogr approximates extra_int - log2(2^z*r1)
 
 	qint64_t mlogr12[1];
 	add_qint(mlogr12, &acc_finetbl[i2], mlogr);
-        // mlogr12 approximates extra_int - log2(2^z*r1) - log2(r2)
-	
+	// mlogr12 approximates extra_int - log2(2^z*r1) - log2(r2)
+
 	/* We have log2(x)= reduction + log2(1 + xr) */
-	/*POWL_DPRINTF("reduction = R("SAGE_QR")\n",
-	   reduction->hh, reduction->hl, reduction->lh, reduction->ll,
-	   reduction->ex, reduction->sgn);
-	POWL_DPRINTF("get_hex(R(reduction + log2(r1) + log2(r2) - ei))\n");
-*/
+
 	/* Since the accurate tables merely extend the precision of the fast
-           tables, the ratios computed by high_sum.c (-DMODE=0) stay valid.
+	   tables, the ratios computed by high_sum.c (-DMODE=0) stay valid.
 	   By analogy to the fastpath, let us call mlogr1 and mlogr2 the values
 	   looked up from the coarse and fine table respectively.
 
@@ -1280,47 +1195,41 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	   Furthermore, since |mlogr1| < .5 it is straightforward to see that
 	     |mlogr| >= |mlogr1| (if eint=0, then mlogr=mlogr1).
 	   The total relative error computing mlogr is 2^-254 due to rounding
-           errors and (at most) 2^-256 relative error due mlogr1's error:
-           this yields a relative error < 2^-254+2^-256 < 2^-253.7.
+	   errors and (at most) 2^-256 relative error due mlogr1's error:
+	   this yields a relative error < 2^-254+2^-256 < 2^-253.7.
 	   The total relative error of mlogr2 is also <= 2^-256.
 	   This gives a relative error bound on mlogr12 as follows :
-             2^-254 + 2^-256*|mlogr2/mlogr12| + 2^-253.7*|mlogr/mlogr12|
-             <= 2^-254 + 2^-256*1 + 2^-253.7*1.951
-	     <= 2^-252.131
+	   2^-254 + 2^-256*|mlogr2/mlogr12| + 2^-253.7*|mlogr/mlogr12|
+	   <= 2^-254 + 2^-256*1 + 2^-253.7*1.951
+	   <= 2^-252.131
 	   We thus have an error on mlogr12 which is <= 2^-252.131 |mlogr12|.
 	*/
 
 	qint64_t q_y[1];
 	qint_fromld(q_y, y); // exact
-	POWL_DPRINTF("get_hex(y - "SAGE_QR")\n",
-	   q_y->hh, q_y->hl, q_y->lh, q_y->ll, q_y->ex, q_y->sgn);
 
 	q_logpoly(r, reducted);
-	POWL_DPRINTF("get_hex(R(log2(1 + reducted) -"SAGE_QR"))\n",
-	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
 	/* As mentioned in q_logpoly(), the relative error on the result is
-           at most 2^-249.997:
-           r = log2(1+reducted) * (1 + eps) with |eps| <= 2^-249.997
-        */
+	   at most 2^-249.997:
+	   r = log2(1+reducted) * (1 + eps) with |eps| <= 2^-249.997
+	*/
 
 	add_qint(r, mlogr12, r);
 	/* Let us call r_in/r_out the values of r as input/output.
-           From max_rh_over_rh_prime_all() in powl.sage, we have here
+	   From max_rh_over_rh_prime_all() in powl.sage, we have here
 	   |mlogr12/r_out| <= 2.002 and |r_in/r_out| <= 1.002.
-           The relative errors 2^-252.131 on mlogr12 and 2^-249.997 on r,
-           together with the sum's rounding error, yield an error bound of
+	   The relative errors 2^-252.131 on mlogr12 and 2^-249.997 on r,
+	   together with the sum's rounding error, yield an error bound of
 	     |r_out|*(2^-254 + 2.002*2^-252.131 + 1.002*2^-249.997)
 	     <= |r_out|*2^-249.392
 	   The total relative error computing log2(x) is therefore at most
-           2^-249.392:
-           r = log2(x) * (1 + eps) with |eps| <= 2^-249.392.
+	   2^-249.392:
+	   r = log2(x) * (1 + eps) with |eps| <= 2^-249.392.
 	*/
 
 	mul_qint_41(r, r, q_y);
-	POWL_DPRINTF("get_hex(R(1-"SAGE_QR"/(y*log2(x0))))\n",
-	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
 	/* The product imparts an additional relative rounding error of 2^-254.
-           The total relative error computing y log2(x) is thus at most
+	   The total relative error computing y log2(x) is thus at most
 	     (1 + 2^-249.392) * (1 + 2^-254) - 1 < 2^-249.334 */
 }
 
@@ -1349,39 +1258,36 @@ void q_exp2xs(qint64_t* r, uint64_t fracpart, qint64_t* corr) {
 	// as an unsigned value, MSB of corr_h has weight 2^-167*2^63 = 2^-104
 	int exponent = -104;
 	int64_t  corr_h = corr0.h + corr1.h + corr2.h + corr3.h;
-        // no overflow in corr_h since each |corri.h| < 2^61
+	// no overflow in corr_h since each |corri.h| < 2^61
 	unsigned __int128 corr_l = corr0.l + corr1.l + corr2.l + corr3.l;
-        // no overflow in corr_l since each |corri.l| < 2^126
+	// no overflow in corr_l since each |corri.l| < 2^126
 
 	corr_h += (unsigned) (corr_l >> 126); // add carry
-        // by inspecting the corri.h values, we see
-        // |corri.h| <= 1652397245814591285 thus no overflow is possible
-        // above
+	// by inspecting the corri.h values, we see
+	// |corri.h| <= 1652397245814591285 thus no overflow is possible above
 	corr_l <<= 2; // shift out overlap
 
-        // the correction term is 2^exponent/2^63*(corr_h + corr_l/2^128)
+	// the correction term is 2^exponent/2^63*(corr_h + corr_l/2^128)
 
 	int sgn = corr_h < 0;
 	if(sgn) {
-	   // Convert to sign and magnitude. Can be seen as a 196 2s complement
-	   // mantissa being inverted
+	// Convert to sign and magnitude. Can be seen as a 196 2s complement
+	// mantissa being inverted
 		 corr_h = -corr_h - 1;
 		 corr_l = -corr_l;
-                 /* The routine check_trivialzeroes() in powl.sage checks
-                    that corr_l=0 can only happen for i0=i1=i2=i3=0,
-                    thus here corr_l <> 0 and subtracting 1 to corr_h is right.
-                 */
+		/* The routine check_trivialzeroes() in powl.sage checks
+		   that corr_l=0 can only happen for i0=i1=i2=i3=0,
+		   thus here corr_l <> 0 and subtracting 1 to corr_h is right.
+		*/
 	}
 
 	/* We use the fact that if corr_h == 0, then the whole reduction was
-           trivial. This is proven by check_trivialzeroes() in powl.sage */
+	   trivial. This is proven by check_trivialzeroes() in powl.sage */
 	if(__builtin_expect(corr_h == 0, 0)) {
 		cp_qint(corr, &ZERO_Q);
 	} else {
 		// Convert corr_h and corr_l to a qint
-		POWL_DPRINTF("corr_h = %016lx\n", corr_h);
 		int shift = __builtin_clzl(corr_h);
-		POWL_DPRINTF("shift = %d\n", shift);
 		corr_h <<= shift;
 		corr_h |= shift ? (corr_l >> (128 - shift)) : 0;
 		corr_l <<= shift;
@@ -1414,11 +1320,11 @@ Relative error bounded by 2^-253.896 (see accurate_analysis.sage)
 */
 inline static
 void q_exp2poly(qint64_t* r, const qint64_t* x) {
-  /* This is a polynomial of degree 10 approximating 2^x on
-     [-2^-20-2^-103,2^-20+2^-103] with relative error bounded by 2^-261.066.
-     It was generated by Sollya (cf accurate_exp2.sollya).
-     Polynomial output with output_exppoly() from powl.sage.
-  */
+	/* This is a polynomial of degree 10 approximating 2^x on
+	   [-2^-20-2^-103,2^-20+2^-103] with relative error bounded by 2^-261.066.
+	   It was generated by Sollya (cf accurate_exp2.sollya).
+	   Polynomial output with output_exppoly() from powl.sage.
+	*/
 	static const qint64_t Q[11] = {
     {.hh = 0xf267a8ac5c749bda, .hl = 0x0, .lh = 0x0, .ll = 0x0, .ex = -28, .sgn = 0x0},
     {.hh = 0xda929e9caf40bee9, .hl = 0x28ba755cfbeb15af, .lh = 0x0, .ll = 0x0, .ex = -24, .sgn = 0x0},
@@ -1454,32 +1360,29 @@ void q_exp2poly(qint64_t* r, const qint64_t* x) {
    r = 2^x * (1 + eps) with |eps| < 2^-250.085 */
 inline static
 void q_exp2(qint64_t* r, const qint64_t* x) {
-	POWL_DPRINTF("l = "SAGE_QR"\n",
-	   x->hh, x->hl, x->lh, x->ll, x->ex, x->sgn);
-	
 	uint64_t xs = x->ex >= -20 ? (x->hh >> (43 - x->ex)) : 0;
 	// xs = trunc(2^20*x), with low bit of xs having weight 2^-20,
-        // and xs having the same (implicit) sign as x
+	// and xs having the same (implicit) sign as x
 
 	qint64_t reducted[1];
 	reducted->hh = x->ex >= -20 ? (xs << (43 - x->ex)) : 0;
 	reducted->hl = reducted->lh = reducted->ll = 0;
 	reducted->sgn = x->sgn ^ 1;
 	reducted->ex = x->ex;
-        // reducted = -xs/2^20
+	// reducted = -xs/2^20
         
 	add_qint(reducted, x, reducted);
-        // now x = xs/2^20 + reducted
-	// With inlining, probably almost as fast as doing it by hand	
+	// now x = xs/2^20 + reducted
+	// With inlining, probably almost as fast as doing it by hand
 	// Note that this is exact and that at output, we have
 	// |reducted| < 2^-20
-	
+
 	/* Split xs * (-1)^x->sgn into entire part and fractional part.
-           If x >= 0 this is straightforward.
-           If x < 0, then we need to split -xs.
-           Calling e0 = xs>>20 and f0 = xs&0xfffff we have
+	   If x >= 0 this is straightforward.
+	   If x < 0, then we need to split -xs.
+	   Calling e0 = xs>>20 and f0 = xs&0xfffff we have
 	   xs = 2^20*e0 + f0 so -xs = 2^20*(-e0-1) + (2^20 - f0),
-           unless f0 == 0 in which case we need to split like 2^20*(-e0) + 0.
+	   unless f0 == 0 in which case we need to split like 2^20*(-e0) + 0.
 	*/
 	int extra_exp;
 	uint64_t fracpart;
@@ -1494,62 +1397,42 @@ void q_exp2(qint64_t* r, const qint64_t* x) {
 		extra_exp = xs>>20;
 		fracpart  = xs;
 	}
-        // now xs/2^20 * (-1)^x->sgn = extra_exp + low(fracpart)/2^20
-        // with 0 <= low(fracpart) < 2^20
-
-	POWL_DPRINTF("extra_exp = %d\nfracpart = 0x%05lx\n",
-	   extra_exp, fracpart&0xfffff);
+	// now xs/2^20 * (-1)^x->sgn = extra_exp + low(fracpart)/2^20
+	// with 0 <= low(fracpart) < 2^20
 
 	qint64_t corr[1], exp2frac[1];
 	q_exp2xs(exp2frac, fracpart, corr);
-        // 2^(low(fracpart)/2^20) * 2^corr = exp2frac * (1 + e)
-        // with |e| < 2^-251.192
-	POWL_DPRINTF("exp2frac = "SAGE_QR"\n",
-	   exp2frac->hh, exp2frac->hl, exp2frac->lh, exp2frac->ll,
-	   exp2frac->ex, exp2frac->sgn);
-	POWL_DPRINTF("corr = "SAGE_QR"\n",
-	   corr->hh, corr->hl, corr->lh, corr->ll, corr->ex, corr->sgn);
+	// 2^(low(fracpart)/2^20) * 2^corr = exp2frac * (1 + e)
+	// with |e| < 2^-251.192
 
-        /* Now we have to multiply exp2frac by 2^reducted and divide
-           by 2^corr, thus multiply by 2^(reducted-corr) */
+	/* Now we have to multiply exp2frac by 2^reducted and divide
+	   by 2^corr, thus multiply by 2^(reducted-corr) */
 	corr->sgn ^= 1;
 	add_qint(reducted, corr, reducted);
 	/* Remark that the result is at most 2^-20 + 2^-103 < 2^-19.999.
 	   Therefore the addition's rounding error is at most
-           2*ulp_256(2^-19.999) = 2^-274.
+	   2*ulp_256(2^-19.999) = 2^-274.
 	*/
-	POWL_DPRINTF("red = "SAGE_QR"\n",
-	   reducted->hh, reducted->hl, reducted->lh, reducted->ll,
-	   reducted->ex, reducted->sgn);
-	POWL_DPRINTF("get_hex(R(exp2frac*2^(-corr) - 2^(fracpart/2^20)))\n");
-	POWL_DPRINTF("get_hex(R(2^l - exp2frac*2^red*2^extra_exp))\n");
-	
+
 	qint64_t exp2red[1];
 	q_exp2poly(exp2red, reducted);
 	/* The polynomial evaluation incurs a relative error <= 2^-253.896:
-
-           exp2red = 2^reducted * (1 + eps) with |eps| <= 2^-253.896.
+	   exp2red = 2^reducted * (1 + eps) with |eps| <= 2^-253.896.
 	*/
-	POWL_DPRINTF("exp2red = "SAGE_QR"\n",
-	   exp2red->hh, exp2red->hl, exp2red->lh, exp2red->ll,
-	   exp2red->ex, exp2red->sgn);
-	POWL_DPRINTF("get_hex(R(2^red - exp2red))\n");
+
 	mul_qint(r, exp2red, exp2frac);
 	r->ex += extra_exp;
 	/* We have the following errors:
-         * relative error < 14*2^-255 < 2^-251.192 for the product
-           exp2red*exp2frac
-         * relative error < 2^-253.896 for the approximation of 2^reducted
-         * absolute error < 2^-274 on the computation of reducted, which
-           translates into a relative error 2^(2^-274)-1 < 2^-274.528
-         * a relative error < 2^-251.192 for the approximation exp2frac
-         This yields a total relative error bounded by:
-	     (1 + 2^-251.192)^2 * (1 + 2^-253.896) * (1 + 2^-274.528) - 1
-	     <= 2^-250.085.
+	       * relative error < 14*2^-255 < 2^-251.192 for the product
+	         exp2red*exp2frac
+	       * relative error < 2^-253.896 for the approximation of 2^reducted
+	       * absolute error < 2^-274 on the computation of reducted, which
+	         translates into a relative error 2^(2^-274)-1 < 2^-274.528
+	       * a relative error < 2^-251.192 for the approximation exp2frac
+	   This yields a total relative error bounded by:
+	   (1 + 2^-251.192)^2 * (1 + 2^-253.896) * (1 + 2^-274.528) - 1
+	   <= 2^-250.085.
 	*/
-	POWL_DPRINTF("r = "SAGE_QR"\n",
-	   r->hh, r->hl, r->lh, r->ll, r->ex, r->sgn);
-	POWL_DPRINTF("get_hex(R(2^l - r))\n");
 }
 
 #include "powl_exact.h"
@@ -1559,39 +1442,43 @@ bool is_integer(long double x) {
 	const b80u80_t cvt = {.f = x};
 	int e = (cvt.e & 0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
 	if (e >= 63) return true; // ulp(x) >= ulp(2^63) = 1 thus x is integer
-        else if (e <= -1) return cvt.m == 0; // |x| < 1
-        // bit 0 of cvt.m has weight 2^(e-63)
-        // thus bit 62-e corresponds to weight 1/2
-        // we need the low 63-e bits to equal 000...000
-        // now 0 <= e <= 62
-        else {
-          uint64_t u = cvt.m << (e + 1);
-          return u == 0;
-        }
+	else {
+		if (e <= -1) return cvt.m == 0; // |x| < 1
+		// bit 0 of cvt.m has weight 2^(e-63)
+		// thus bit 62-e corresponds to weight 1/2
+		// we need the low 63-e bits to equal 000...000
+		// now 0 <= e <= 62
+		else {
+			uint64_t u = cvt.m << (e + 1);
+			return u == 0;
+		}
+	}
 }
 
 // return non-zero iff x is an odd integer
 inline static
 bool is_odd_integer(long double x) {
 	const b80u80_t cvt = {.f = x};
-        int e = (cvt.e&0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
+	int e = (cvt.e&0x7fff) - 16383; // 2^e <= |x| < 2^(e+1)
 	if (e >= 64) return false; // ulp(x) >= ulp(2^64) = 2 thus x is even
-        else if (e <= -1) return false; // |x| < 1
-        // bit 0 of cvt.m has weight 2^(e-63)
-        // thus bit 63-e corresponds to weight 1
-        // we need the low 64-e bits to equal 1000...000
-        // now 0 <= e <= 63
-        else {
-          uint64_t u = cvt.m << e;
-          return u == (uint64_t) 1 << 63;
-        }
+	else {
+		if (e <= -1) return false; // |x| < 1
+		// bit 0 of cvt.m has weight 2^(e-63)
+		// thus bit 63-e corresponds to weight 1
+		// we need the low 64-e bits to equal 1000...000
+		// now 0 <= e <= 63
+		else {
+			uint64_t u = cvt.m << e;
+			return u == (uint64_t) 1 << 63;
+		}
+	}
 }
 
 // return non-zero iff x is a NaN
 inline static
 int _isnan(long double x) {
-  const b80u80_t v = {.f = x};
-  return ((v.e&0x7fff) == 0x7fff && (v.m<<1));
+	const b80u80_t v = {.f = x};
+	return ((v.e&0x7fff) == 0x7fff && (v.m<<1));
 }
 
 // return non-zero iff x is a signaling NaN
@@ -1608,25 +1495,26 @@ long double accurate_path(long double x, long double y, FLAG_T inex, bool invert
 	// q_r = y*log2|x| * (1 + eps_log) with |eps_log| < 2^-249.334
 
 	if(q_r->ex >= 15) {
-			// |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.334) > 32767
-			if(q_r->sgn) { // y*log2|x| < -32768: underflow
-				return (invert ? -0x1p-16445L : 0x1p-16445L)*.25L;
-			} else { // y*log2|x| > 32767: overflow
-				return (invert ? -0x1p16383L : 0x1p16383L) * 2L;
-			}
+		// |q_r| >= 2^15 thus |y*log2|x|| >= 2^15/(1 + 2^-249.334) > 32767
+		if(q_r->sgn) { // y*log2|x| < -32768: underflow
+			return (invert ? -0x1p-16445L : 0x1p-16445L)*.25L;
+		} else { // y*log2|x| > 32767: overflow
+			return (invert ? -0x1p16383L : 0x1p16383L) * 2L;
+		}
 	}
 
 	q_exp2(q_r, q_r);
-        /* q_r = 2^(q_r_in) * (1 + eps_exp) with |eps_exp| < 2^-250.085
-           and since q_r_in = y*log2|x| * (1 + eps_log)
-           with |eps_log| < 2^-249.334, and |q_r_in| < 2^15,
-           we have:
-           q_r_in = y*log2|x| + eps with |eps| < 2^15*|eps_log| < 2^-234.334,
+	/* q_r = 2^(q_r_in) * (1 + eps_exp) with |eps_exp| < 2^-250.085
+	   and since q_r_in = y*log2|x| * (1 + eps_log)
+	   with |eps_log| < 2^-249.334, and |q_r_in| < 2^15,
+	   we have:
+	   q_r_in = y*log2|x| + eps with |eps| < 2^15*|eps_log| < 2^-234.334,
 
-           thus q_r = |x|^y * (1 + eps_pow)
+	   thus q_r = |x|^y * (1 + eps_pow)
 
-           with |eps_pow| = |(1 + eps_exp) * 2^eps - 1| < 2^-234.862
-        */
+	   with |eps_pow| = |(1 + eps_exp) * 2^eps - 1| < 2^-234.862
+	*/
+
 	unsigned rm = get_rounding_mode();
 
 	qint64_t subqr[1];
@@ -1653,13 +1541,13 @@ long double accurate_path(long double x, long double y, FLAG_T inex, bool invert
 	/* Assume that (x,y) is a hard case in the sense that the accurate path
 	   rounding test fails. Assume further that (x,y) is potentially exact or
 	   midpoint, i.e. is in the set S defined in reference [2] for double
-           precision. For extended double the inputs (x,y) such that x^y is
-           exact or midpoint satisfy necessarily one of the following:
+	   precision. For extended double the inputs (x,y) such that x^y is
+	   exact or midpoint satisfy necessarily one of the following:
 
-           (a) x=2^k and y integer
-           (b) y integer, 2 <= y <= 41 (2 <= y <= 40 if x^y is exact)
-           (c) x=m*2^E and y=n*2^F with -5 <= F <= -1 and 3 <= n <= 41,
-               n odd (with n <= 40 if x^y is exact)
+	   (a) x=2^k and y integer
+	   (b) y integer, 2 <= y <= 41 (2 <= y <= 40 if x^y is exact)
+	   (c) x=m*2^E and y=n*2^F with -5 <= F <= -1 and 3 <= n <= 41,
+	       n odd (with n <= 40 if x^y is exact)
 
 	   Let us note z the approximation we computed. We know that for some rounding
 	   boundary r, |z - r| <= (2^-234 + 2^-254)|z| because the rounding test
@@ -1679,23 +1567,21 @@ long double accurate_path(long double x, long double y, FLAG_T inex, bool invert
 	   The argument above applies even when x^y is subnormal. Indeed, subnormal
 	   rounding boundaries are a subset of the boundaries considered by BaCSeL.)
 	*/
-	
-	POWL_DPRINTF("get_hex(R(1 - r/x^y))\n");
+
 	if(hard && exact_if_hard) {
-	  /* If we are here, then either the rounding mode is not FE_TONEAREST
+		/* If we are here, then either the rounding mode is not FE_TONEAREST
 		   and we are on an exact number, or rm == FE_TONEAREST and we are near a
 		   rounding boundary. 
 		*/
 
-		POWL_DPRINTF("Boundary!\n");
-		exactify(q_r);//Makes an exact rounding boundary on unbounded exponent range
-		POWL_DPRINTF("exact = "SAGE_QR"\n", q_r->hh, q_r->hl, q_r->lh, q_r->ll,
-			q_r->ex, q_r->sgn);
+		exactify(q_r);
+		// Makes an exact rounding boundary out of q_r on unbounded exponent range
 
 		qint_subnormalize(subqr,extralow, q_r);
 
 		if(((cvt_r.e&0x7fff) != 0x7fff) && !subqr->hl && !subqr->lh)
-			{POWL_DPRINTF("RESETTING FLAG\n"); set_flag(inex);}
+			{set_flag(inex);}
+
 		/* If the result overflows, even if it would be exact with an unbounded
 		   exponent range, the inexact flag must not be cleared. The mantissa checks
 		   are there to check if the result is exact even accounting for
@@ -1703,7 +1589,8 @@ long double accurate_path(long double x, long double y, FLAG_T inex, bool invert
 		*/
 		return qint_told(subqr,*extralow, rm, invert, &hard);
 	}
-// Do we have a standard macro switch ?
+
+//FIXME Do we have a standard macro switch ?
 #ifndef CORE_MATH_FAIL_QUIET
 	else if(hard) {
 		printf ("Unexpected worst-case found.\n");
@@ -1737,7 +1624,7 @@ long double cr_powl(long double x, long double y) {
 	/* x is negative */
 	if(__builtin_expect(cvt_x.e>>15, 0)) {
 		if(__builtin_expect(_isnan(y)
-	                      || (!is_integer(y) && cvt_x.m && x_exp != 0x7fff-16383)
+		                    || (!is_integer(y) && cvt_x.m && x_exp != 0x7fff-16383)
 		                    ,0)) {
 			feraiseexcept(FE_INVALID);
 			return __builtin_nanl("");
@@ -1748,8 +1635,6 @@ long double cr_powl(long double x, long double y) {
 			sign = -1.0L;
 		}
 	}
-
-	POWL_DPRINTF("sign = %La\n", sign);
 
 	// x is either (s)NaN or +-infty
 	if(__builtin_expect(x_exp == 0x7fff - 16383, 0)) {
@@ -1803,14 +1688,10 @@ long double cr_powl(long double x, long double y) {
 		}
 	}
 
-	const FLAG_T inex = get_flag(); //fegetexceptflag(&inex, FE_INEXACT);
-	POWL_DPRINTF("inex&FE_INEXACT=%04x\n", inex);
-
+	const FLAG_T inex = get_flag();
 
 	// now -80 <= y_exp <= 77 thus 2^-80 <= |y| < 2^78
 #ifndef ACCURATE_ONLY
-	POWL_DPRINTF("x="SAGE_RE"\n",x);
-	POWL_DPRINTF("y="SAGE_RE"\n",y);
 	// Automatic giveup if x subnormal
 	if(__builtin_expect(cvt_x.m >> 63, 1)) {
 		long double r;
@@ -1835,29 +1716,27 @@ long double cr_powl(long double x, long double y) {
 			else {return (sign*0x1p-16445L)*.25L;}
 		} else {
 			// rh + rl approximates y*log2(x)
-			POWL_DPRINTF("get_hex(R(log2(x^y)-"SAGE_DD"))\n",rh,rl);
 			double resh, resl;
 			int extra_exponent = exp2d(&resh, &resl, rh, rl);
-                        /* 2^extra_exponent * (resh + resl)
-                           = 2^(rh + rl) * (1 + eps2) with |eps2| <= 2^-85.010,
-                           0.499 < |resh| < 2.004, |resl| <= 2^-47.638.
-                           Since rh + rl = y * log2(x) * (1 + eps1) with
-                           |eps1| <= 2^-97.286,
-                           and |rh+rl| < 16446.1 * (1 + 2^-48.262),
-                           we deduce |y * log2(x)| < 16446.2, thus
-                           rh + rl = y * log2(x) + eps1_abs
-                           with |eps1_abs| < 16446.2 * 2^-97.286 < 2^-83.280.
-                           It follows:
-                           2^extra_exponent * (resh + resl)
-                           = x^y * 2^eps1_abs * (1 + eps2)
-                           = x^y * (1 + eps)
-                           with |eps| < 2^eps1_abs * (1 + eps2) - 1 < 2^-83.287
-                        */
+			/* 2^extra_exponent * (resh + resl)
+			   = 2^(rh + rl) * (1 + eps2) with |eps2| <= 2^-85.010,
+			   0.499 < |resh| < 2.004, |resl| <= 2^-47.638.
+			   Since rh + rl = y * log2(x) * (1 + eps1) with
+			   |eps1| <= 2^-97.286,
+			   and |rh+rl| < 16446.1 * (1 + 2^-48.262),
+			   we deduce |y * log2(x)| < 16446.2, thus
+			   rh + rl = y * log2(x) + eps1_abs
+			   with |eps1_abs| < 16446.2 * 2^-97.286 < 2^-83.280.
+			   It follows:
+			   2^extra_exponent * (resh + resl)
+			   = x^y * 2^eps1_abs * (1 + eps2)
+			   = x^y * (1 + eps)
+			   with |eps| < 2^eps1_abs * (1 + eps2) - 1 < 2^-83.287
+*/
 
 			bool fail = false;
 			r = fastpath_roundtest(resh, resl, extra_exponent, invert, &fail);
 			if(__builtin_expect(!fail, 1)) {	
-				POWL_DPRINTF("get_hex(R(x^y-"SAGE_RE"))\n",r);
 				return r;
 			}
 		}

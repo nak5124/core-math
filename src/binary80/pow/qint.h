@@ -316,10 +316,9 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 
 	if(__builtin_expect(x->ex <= -16383, 0)) { // subnormal number
 		int shiftby = -x->ex - 16383 + 1; // 1 <= shiftby <= 65
-		POWL_DPRINTF("shiftby = %d\n", shiftby);
-                /* Put in a->ex the real exponent shifted by one
-                   (it should be -16382), so that qint_told() does not have to
-                   distinguish between normal and subnormal numbers. */
+		/* Put in a->ex the real exponent shifted by one
+		   (it should be -16382), so that qint_told() does not have to
+		   distinguish between normal and subnormal numbers. */
 		a->ex = -16383;
 		if(__builtin_expect(shiftby >= 64, 0)) { // shiftby = 64 or 65
 			shiftby -= 64; // now shiftby = 0 or 1
@@ -328,8 +327,8 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 			a->lh = (x->hh << (64 - shiftby)) | (x->hl >> shiftby);
 			a->ll = (x->hl << (64 - shiftby)) | (x->lh >> shiftby);
 			*extralow = (x->lh << (64 - shiftby)) | (x->ll >> shiftby) | (x->ll&1);
-		  // If shiftby = 0, the last part does nothing. If shiftby = 1 it ensures
-		  // that we can correctly compute directed roundings. In any case, since
+			// If shiftby = 0, the last part does nothing. If shiftby = 1 it ensures
+			// that we can correctly compute directed roundings. In any case, since
 			// we lose a bit, this introduces error 2^-255|x|.
 			a->sgn = x->sgn;
 
@@ -357,8 +356,6 @@ void qint_subnormalize(qint64_t* a, uint64_t* extralow, const qint64_t* x) {
 // invert is true iff x^y < 0
 long double qint_told(qint64_t* a, uint64_t extralow,
                       unsigned rm, bool invert, bool* hard) {
-	//qint64_t a[1];
-	//cp_qint(a, b); // Avoid trashing b
 
 	bool f = false; // true iff overflow is possible
 	if(rm==FE_TONEAREST) {
@@ -415,16 +412,13 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 	static const int sign_bit[] = {0, 1<<15};
 	v.e += sign_bit[invert];
 
-	POWL_DPRINTF("m = %016lx\n", v.m);
-	POWL_DPRINTF("e = %x (%ld)\n", v.e, a->ex);
-
 	/* cfrac(d/2^128) is the signed distance to the rounding boundary,
-           in terms of ulp(v), with error less than 1/2^-128, where cfrac()
-           is the centered fractional part. */
+	   in terms of ulp(v), with error less than 1/2^-128, where cfrac()
+	   is the centered fractional part. */
 	unsigned __int128 d = ((__int128) a->hl << 64) + a->lh;
 
 	/* The relative error is bounded by 2^-234.861 (see analysis of
-           cr_powl in powl.c) thus by 2^(64-234.861) = 2^-170.861 ulp(v).
+	   cr_powl in powl.c) thus by 2^(64-234.861) = 2^-170.861 ulp(v).
 	   Therefore, if d != 0 and d != -1, then the rounding test must pass
 	   because this implies that the distance to the rounding boundary is
 	   at least (1-2^-128)/2^128 ulp > 2^-170.861 ulp for a normal result.
@@ -437,22 +431,22 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 		uint64_t d_extra = extralow;
 
 	  /* cfrac(d/2^128)/2^64 is the signed distance to the rounding
-             boundary, in terms of ulp(v) */
+	     boundary, in terms of ulp(v) */
 		unsigned __int128 eps = (__int128) a->hh << 64;
 		uint64_t eps_extra  = 0;
 
-          /* Not counting the lower limbs, the error bound is
-             2^-234.861*|v| <= 2^-234.861 * hh * ulp(v),
-             where hh is interpreted as a 64-bit integer.
-             To align with d, which is the signed distance in terms of
-             2^-192 ulp(v), we have multiply by 2^192 and divide by ulp(v):
-             2^192 * 2^-234.861 * hh = 2^-42.861 * hh,
-             where hh is interpreted as a 64-bit integer.
-             In terms of eps which is a 128-bit integer this yields:
-             2^-64 * 2^-42.861 * eps < 2^-106 * eps */
+		/* Not counting the lower limbs, the error bound is
+		   2^-234.861*|v| <= 2^-234.861 * hh * ulp(v),
+		   where hh is interpreted as a 64-bit integer.
+		   To align with d, which is the signed distance in terms of
+		   2^-192 ulp(v), we have multiply by 2^192 and divide by ulp(v):
+		   2^192 * 2^-234.861 * hh = 2^-42.861 * hh,
+		   where hh is interpreted as a 64-bit integer.
+		   In terms of eps which is a 128-bit integer this yields:
+		   2^-64 * 2^-42.861 * eps < 2^-106 * eps */
 
 		eps_extra = (uint64_t) (eps >> (106 - 64));
-	  // Grab the highest low bits which would be lost
+		// Grab the highest low bits which would be lost
 		if(rm==FE_TONEAREST) {eps >>= 105;} else {eps >>= 106;}
 		eps_extra += 1; // Make sure we over-approximate eps.
 
@@ -461,22 +455,22 @@ long double qint_told(qint64_t* a, uint64_t extralow,
 		   from the highest bit of the mantissa. Therefore 1 lsb of eps_extra
 		   has relative weight 2^(-255 - 64 + 65) = 2^-254.
 
-	     Failure of the rounding test therefore implies that
-	       |z - r| <= (2^-234 + 2^-254)|z|
-          */
+		   Failure of the rounding test therefore implies that
+		   |z - r| <= (2^-234 + 2^-254)|z|
+		*/
 
-          /* Implements the usual rounding test d + eps <= 2*eps on 192 bits */
+		/* Implements the usual rounding test d + eps <= 2*eps on 192 bits */
 		uint64_t d_plus_eps_extra = eps_extra + d_extra; 
 		unsigned __int128 d_plus_eps = d + eps;
 		if (d_plus_eps_extra < eps_extra)
-                  d_plus_eps++; // carry in eps_extra + d_extra
+			d_plus_eps++; // carry in eps_extra + d_extra
 
 		uint64_t eps2_extra = eps_extra << 1;
 		unsigned __int128 eps2 = (eps << 1) | (eps_extra >> 63);
-                // eps2 + eps2_extra/2^64 = 2*(eps + eps_extra/2^64)
+		// eps2 + eps2_extra/2^64 = 2*(eps + eps_extra/2^64)
 
 		*hard = (d_plus_eps < eps2) ||
-	          (d_plus_eps == eps2 && d_plus_eps_extra < eps2_extra);
+		        (d_plus_eps == eps2 && d_plus_eps_extra < eps2_extra);
 	}
 
 	if(__builtin_expect(a->ex >= 16384, 0)) {// overflow case
