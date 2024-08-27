@@ -110,7 +110,7 @@ check (float y, float x)
 #endif
 }
 
-#define N 100000000
+#define N 100000000 // number of tests per thread
 
 static void
 check_random (int i)
