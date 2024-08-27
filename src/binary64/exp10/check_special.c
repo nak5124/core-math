@@ -103,7 +103,7 @@ check_inexact (void)
       fegetexceptflag (&flagp, FE_INEXACT);
       if (flagp)
       {
-        printf ("Inexact flag set for x=%la\n", x);
+        printf ("Inexact flag set for x=%la (y=%la)\n", x, y);
         fflush (stdout);
         exit (1);
       }

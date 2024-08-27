@@ -190,7 +190,6 @@ int main (int argc, char *argv[]){
   int thread = 0, seed = getpid (), darts = 0, conseq = 0;
   double x = __builtin_nan(""), a = -1, b = 1;
   long n = 10*1000;
-  const char *fname = NULL;
   while (1) {
     int ind = 0, c = getopt_long(argc, argv, "nudzhvts:D:C:r:i:x:a:b:", opts, &ind);
     if (c == -1) break;
@@ -213,12 +212,12 @@ int main (int argc, char *argv[]){
       }
       break;
     case 'i':
-      fname = optarg;
       break;
     case 'h': /* print a help message (to be written) */  break;
     case 'x': x = strtod(optarg, NULL);
       break;
     default:
+      break;
     }
   }
 

@@ -137,10 +137,10 @@ static void
 check_scaled_worst_cases (void)
 {
   double *items;
-  int count, tests, failures;
+  int count;
   readstdin (&items, &count);
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for reduction(+: failures,tests)
+#pragma omp parallel for
 #endif
   for (int i = 0; i < count; i++) {
     ref_init();
@@ -156,14 +156,11 @@ check_scaled_worst_cases (void)
             double x = ldexp (x0, e);
             double z1 = ref_log2 (x);
             double z2 = cr_log2 (x);
-            tests ++;
             /* Note: the test z1 != z2 would not distinguish +0 and -0. */
             if (z1 != z2) {
               printf("FAIL x1=%la x=%la ref=%la z=%la\n", x1, x, z1, z2);
               fflush(stdout);
-#ifdef DO_NOT_ABORT
-              failures ++;
-#else
+#ifndef DO_NOT_ABORT
               exit(1);
 #endif
             }
