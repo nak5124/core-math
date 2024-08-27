@@ -48,7 +48,7 @@ int verbose = 0;
 
 /* reference code using MPFR */
 static float
-ref_atan2pi (float y, float x, int rnd)
+ref_atan2pi (float y, float x)
 {
   mpfr_t xi, yi;
   mpfr_inits2 (24, xi, yi, NULL);
@@ -76,7 +76,7 @@ check (float y, float x)
 {
   float z, t;
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
-  t = ref_atan2pi (y, x, rnd);
+  t = ref_atan2pi (y, x);
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   feclearexcept (FE_INEXACT);
   z = cr_atan2pif (y, x);
