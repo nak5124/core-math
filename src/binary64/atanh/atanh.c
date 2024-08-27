@@ -121,7 +121,7 @@ static double __attribute__((noinline)) as_atanh_zero(double x){
 }
 
 double cr_atanh(double x){
-  double ax = __builtin_fabs(x), x2 = x*x;
+  double ax = __builtin_fabs(x);
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
   if(__builtin_expect(aix>=0x3ff0000000000000ul,0)){
@@ -133,7 +133,8 @@ double cr_atanh(double x){
     errno = EDOM;
     return __builtin_sqrt(-1.0);
   }
-  
+
+  double x2 = x*x;
   if(__builtin_expect(aix<0x3fd0000000000000ul,0)){
     if(__builtin_expect(aix<0x3e4d12ed0af1a27ful,0)) return __builtin_fma(x,0x1p-55,x);
     static const double c[] = 
