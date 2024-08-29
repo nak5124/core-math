@@ -131,6 +131,11 @@ if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
       OPENMP=-fopenmp
    fi
 else
+   if [ "$CC" == "icx" ]; then
+      OPENMP=-qno-openmp # icx prefers -qno-openmp
+   else
+      OPENMP=-fno-openmp
+   fi
    export CFLAGS="$CFLAGS -DCORE_MATH_NO_OPENMP"
 fi
 

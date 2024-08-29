@@ -3,12 +3,6 @@
 
 include ../../generic/support/Makefile.checkstd
 
-ifndef OPENMP
-ifdef CORE_MATH_NO_OPENMP
-OPENMP=-fno-openmp -DCORE_MATH_NO_OPENMP=$(CORE_MATH_NO_OPENMP)
-endif
-endif
-
 CFLAGS += -W -Wall $(ROUNDING_MATH)
 
 TYPE_UNDER_TEST := float
