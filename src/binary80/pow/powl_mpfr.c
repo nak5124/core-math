@@ -4,8 +4,9 @@
 
 
 typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
+
 inline
-static int isnan(long double x) {
+static int is_nan(long double x) {
   b80u80_t v = {.f = x};
   return ((v.e&0x7fff) == 0x7fff && (v.m != (1ul << 63)));
 }
@@ -13,7 +14,7 @@ static int isnan(long double x) {
 inline
 static int issnan(long double x) {
 	b80u80_t v = {.f = x};
-	return isnan(x) && (!((v.m>>62)&1));
+	return is_nan(x) && (!((v.m>>62)&1));
 }
 
 /* reference code using MPFR */
