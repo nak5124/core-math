@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # internal routine
 def get_qint(hh,hl,lh,ll,ex):
    return 2^ex*(hh/2^63+hl/2^127+lh/2^191+ll/2^255)
@@ -225,6 +226,7 @@ def analyze_p3(neg=false):
    r0 = P_3[0]*z
    # add_qint_22 (r, &P_3[1], r)
    r = P_3[1] + R128(r0)
+   assert r.prec()==128, "r.prec()==128"
    erra = 2*r.ulp()
    err = dict()
    err[1] = erra*abs(z)^16
@@ -235,6 +237,7 @@ def analyze_p3(neg=false):
       erra = R64(r).ulp()*abs(z) # ignored part low(r)*z
       # add_qint_22 (r, &P_3[k], r)
       r = P_3[k] + R128(r0)
+      assert r.prec()==128, "r.prec()==128"
       errb = 2*r.ulp()
       err[k] = (erra + errb)*abs(z)^(17-k)
       print ("err"+str(k)+"=", log(err[k])/log(2.))
@@ -246,6 +249,7 @@ def analyze_p3(neg=false):
       erra = r0.ulp() # ignored part of r in add_qint_22() below
       # add_qint_22 (r, &P_3[k], r)
       r = P_3[k] + r0
+      assert r.prec()==128, "r.prec()==128"
       errb = 2*r.ulp()
       err[k] = (erra + errb)*abs(z)^(17-k)
       print ("err"+str(k)+"=", log(err[k])/log(2.))
@@ -293,6 +297,42 @@ def analyze_p3(neg=false):
    rel_err = (1 + eps0) * (1 + eps1) * (1 + eps2) - 1
    print ("rel_err=", log(rel_err)/log(2.))
 
+# sage: analyze_q3()
+# err0= -242.181000000000
+# err1= -275.216701351610
+# err2= -305.344703716495
+# err3= -289.815958802105
+# err4= -273.287242478882
+# err5= -257.758504343014
+# err6= -242.229763119186
+# err7= -306.110482663898
+# err8= -290.581753797034
+# err9= -275.153789783471
+# err10= -259.820343908711
+# err11= -245.142727953527
+# err12= -280.057145913549
+# err13= -266.528110782589
+# err14= -253.998767754756
+# abs_err= -241.113755308768
+# r= 1.000169244320204241329102406399139374133119302940200092684913359794867195847
+# sage: analyze_q3(neg=true)
+# err0= -242.181000000000
+# err1= -275.216701351610
+# err2= -305.344703716678
+# err3= -289.815958802426
+# err4= -273.287242479143
+# err5= -257.758504343405
+# err6= -242.229763119725
+# err7= -306.110511944696
+# err8= -290.581786737930
+# err9= -275.153825107356
+# err10= -259.820379297200
+# err11= -245.142775831431
+# err12= -281.056837819362
+# err13= -267.527494791529
+# err14= -254.997536561107
+# abs_err= -241.113853540651
+# r= 0.9998307843185887270192692250567026160687280948980569625374695582795594508997
 def analyze_q3(neg=false):
    R64 = RealField(64)
    R128 = RealField(128)
@@ -312,6 +352,7 @@ def analyze_q3(neg=false):
    erra = y.ulp()*Q_3[0] # ignored low part of y
    # add_qint_22 (r, &Q_3[1], r)
    r = Q_3[1] + R128(r0)
+   assert r.prec()==128, "r.prec()==128"
    errb = 2*r.ulp()
    errc = R128(r0).ulp()
    err[1] = (erra + errb + errc)*abs(y)^13
@@ -325,7 +366,9 @@ def analyze_q3(neg=false):
       errb = y.ulp()*r      # ignored part of y multiplied by r
       # add_qint_22 (r, &Q_3[k], r)
       r = Q_3[k]+r0
-      errc = R256(r).ulp()*2 # rounding error in add_qint_22
+      assert r.prec()==128, "r.prec()==128"
+      # warning: since we used add_qint_22, the error is in ulp_128 here
+      errc = r.ulp()*2       # rounding error in add_qint_22
       errd = r0.ulp()        # ignored low 128 bits from r_in
       err[k] = (erra + errb + errc + errd)*abs(y)^(14-k)
       print ("err"+str(k)+"=", log(err[k])/log(2.))

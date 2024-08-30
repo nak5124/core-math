@@ -54611,6 +54611,16 @@
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
 # values contributed by Erik E. <evonatarius@gmail.com>
 # 0x1p+1024 # not representable
 # -0x1p+1024 # not representable
@@ -55190,3 +55200,14 @@
 -0x1.ffffffffffffdp+1023
 0x1.ffffffffffffep+1023
 -0x1.ffffffffffffep+1023
+# arguments which produce results closest to +-pi()/2 represantable in the double precision format
+0x1.d02967c31cdb7p+53
+0x1.d02967c31cdb6p+53
+0x1.d02967c31cdb5p+53
+0x1.d02967c31cdb4p+53
+0x1.d02967c31cdb3p+53
+-0x1.d02967c31cdb7p+53
+-0x1.d02967c31cdb6p+53
+-0x1.d02967c31cdb5p+53
+-0x1.d02967c31cdb4p+53
+-0x1.d02967c31cdb3p+53

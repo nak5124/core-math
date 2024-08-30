@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def gen_tabi():
    print ("static const double tab_i[128][2] = {")
    for i in range(-127,128):

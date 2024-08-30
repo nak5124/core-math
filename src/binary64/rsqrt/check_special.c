@@ -150,7 +150,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

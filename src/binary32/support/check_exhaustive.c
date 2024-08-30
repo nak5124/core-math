@@ -30,9 +30,8 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
-#include <math.h>
 #include <mpfr.h>
-#ifndef NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
 
@@ -71,13 +70,22 @@ asuint (float f)
   return u.i;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
 static int
 is_equal (float y1, float y2)
 {
-  if (isnan (y1))
-    return isnan (y2);
-  if (isnan (y2))
-    return isnan (y1);
+  if (is_nan (y1))
+    return is_nan (y2);
+  if (is_nan (y2))
+    return is_nan (y1);
   return asuint (y1) == asuint (y2);
 }
 
@@ -90,7 +98,9 @@ doit (uint32_t n)
   ref_fesetround (rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   y = ref_function_under_test (x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   z = cr_function_under_test (x);
@@ -104,6 +114,7 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex_y == 0) && (inex_z != 0))
   {
     printf ("Spurious inexact exception for x=%a\n", x);
@@ -116,6 +127,7 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+#endif
 }
 
 int

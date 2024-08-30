@@ -33,7 +33,9 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 #include "function_under_test.h"
 
@@ -116,13 +118,17 @@ int tests = 0, failures = 0;
 static void
 check (float x, float y)
 {
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tests ++;
   ref_init();
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   float z1 = ref_function_under_test(x, y);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   float z2 = cr_function_under_test(x, y);
@@ -131,12 +137,15 @@ check (float x, float y)
   if (! is_equal (z1, z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
     failures ++;
 #ifndef DO_NOT_ABORT
     exit(1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%a y=%a\n", x, y);
@@ -155,6 +164,7 @@ check (float x, float y)
     exit(1);
 #endif
   }
+#endif
 }
 
 void
@@ -165,7 +175,9 @@ doloop(void)
 
   readstdin(&items, &count);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < count; i++) {
     float x = items[i][0], y = items[i][1];
     check (x, y);
@@ -193,7 +205,7 @@ doloop(void)
   }
 
   free(items);
-  printf("%d tests, %d failures\n", tests, failures);
+  printf("%d tests, %d failure(s)\n", tests, failures);
 }
 
 int

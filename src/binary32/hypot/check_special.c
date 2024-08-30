@@ -28,10 +28,16 @@ SOFTWARE.
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <fenv.h>
 #include <math.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <assert.h>
+
+int ref_fesetround (int);
+void ref_init (void);
 
 // triples.c
 extern void doloop (int, int);
@@ -114,6 +120,53 @@ check_triples_subnormal_above (void)
   doit_subnormal_above (8388608);
 }
 
+typedef union {float f; uint32_t u;} b32u32_u;
+
+static float
+get_random (struct drand48_data *buffer)
+{
+  b32u32_u v;
+  long l;
+  lrand48_r (buffer, &l);
+  v.u = l;
+  // lrand48_r generates only 31 bits
+  lrand48_r (buffer, &l);
+  v.u |= (uint32_t) l << 31;
+  return v.f;
+}
+
+#define N 10000000ul
+
+static void
+check_random (int i)
+{
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buffer[1];
+  float x, y;
+  srand48_r (i, buffer);
+  for (unsigned long n = 0; n < N; n++)
+  {
+    x = get_random (buffer);
+    y = get_random (buffer);
+    check (x, y);
+  }
+}
+
+static void
+check_random_all (void)
+{
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#endif
+#pragma omp parallel for
+  for (int i = 0; i < nthreads; i++)
+    check_random (getpid () + i);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -155,6 +208,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking random values\n");
+  check_random_all ();
 
   /* we check triples with exponent difference 0 <= k <= 12 */
   printf ("Checking near-exact subnormal values\n");

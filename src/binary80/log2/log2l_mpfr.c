@@ -1,4 +1,4 @@
-/* Correctly-rounded log2l of binary64 value.
+/* Correctly-rounded log2l of binary80 value.
 
 Copyright (c) 2024 Paul Zimmermann (Inria)
 

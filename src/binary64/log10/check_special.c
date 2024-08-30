@@ -148,12 +148,16 @@ main (int argc, char *argv[])
 #define N 0x100000
   /* check 2^20 values below 1 */
   printf ("Checking values just below 1\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = n1 - N; n < n1; n++)
     check (ldexp ((double) n, -53));
   /* check 2^20 values above 1 */
   printf ("Checking values just above 1\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = n1; n < n1 + 2 * N; n+=2)
     check (ldexp ((double) n, -53));
 
@@ -164,7 +168,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

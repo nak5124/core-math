@@ -33,7 +33,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
-#ifndef CORE_MATH_NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
 
@@ -147,6 +147,7 @@ check (double x)
     exit(1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%la (y=%la)\n", x, z1);
@@ -167,6 +168,7 @@ check (double x)
     exit(1);
 #endif
   }
+#endif
   return 0;
 }
 
@@ -178,7 +180,7 @@ doloop(void)
 
   readstdin(&items, &count);
 
-#ifndef CORE_MATH_NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for reduction(+: failures,tests)
 #endif
   for (int i = 0; i < count; i++) {

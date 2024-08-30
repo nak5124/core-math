@@ -1,4 +1,4 @@
-/* Correctly-rounded cbrtl of binary64 value.
+/* Correctly-rounded cbrtl of binary80 value.
 
 Copyright (c) 2024 Paul Zimmermann (Inria)
 

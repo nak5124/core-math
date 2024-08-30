@@ -32,7 +32,9 @@ SOFTWARE.
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -104,7 +106,7 @@ check_inexact (void)
     fegetexceptflag (&flagp, FE_INEXACT);
     if (flagp)
     {
-      printf ("Inexact flag set for x=%la\n", x);
+      printf ("Inexact flag set for x=%la (y=%la)\n", x, y);
       fflush (stdout);
       exit (1);
     }
@@ -165,7 +167,9 @@ main (int argc, char *argv[])
   srand (seed);
 
   printf ("Checking random values\n");
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

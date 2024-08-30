@@ -93,6 +93,7 @@ check (long double x)
     exit (1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La (y=%La)\n", x, y1);
@@ -113,6 +114,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#endif
 }
 
 static long double
@@ -121,10 +123,13 @@ get_random ()
   b80u80_t v;
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) rand () << 62;
+  v.m |= (uint64_t) (rand () & 1) << 62;
+  // the low 63 bits of m are random
   v.e = rand () & 0xffff;
-  // if e is not 0 nor 0x7fff nor 0xffff, m should have its msb set
-  uint64_t t = v.e != 0 && v.e != 0x7fff && v.e != 0xffff;
+  // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
+  // significant bit set, otherwise it should be cleared
+  // cf https://en.wikipedia.org/wiki/Extended_precision
+  uint64_t t = (v.e & 0x7fff) != 0;
   v.m |= t << 63;
   return v.f;
 }
@@ -136,7 +141,9 @@ check_exact (void)
   // the smallest exact cube is 2^-16443, it is generated with m=2097152 and e=-5502;
   // the largest exact cube is 0x1.ffffdbd247267c7ap+16383, it is generated with
   // m=2642245 and e=5440
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int e = -5502; e <= 5440; e++)
   {
     uint64_t m;
@@ -206,7 +213,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

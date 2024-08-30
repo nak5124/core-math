@@ -30,7 +30,9 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <unistd.h>
 #include <math.h>
 
@@ -152,10 +154,14 @@ check_random (int i, int nthreads)
 static void
 check_random_all (void)
 {
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_random (getpid () + i, nthreads);
 }
@@ -272,10 +278,14 @@ check_worst_i (int m, int i, int nthreads)
 static void
 check_worst (int m)
 {
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_worst_i (m, i, nthreads);
 }
@@ -314,7 +324,9 @@ check_triples_subnormal (void)
     s0 ++; // ensures s0 is even and >= 2
 
   // type I: r is odd
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t r = r0; r <= 0x4000000; r += 2 * STEP)
     for (uint64_t s = s0; s < r; s += 2 * STEP)
     {
@@ -338,7 +350,9 @@ check_triples_subnormal (void)
     }
 
   // type II: r is even
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t r = r0+1; r <= 0x4000000; r += 2 * STEP)
     for (uint64_t s = s0-1; s < r; s += 2 * STEP)
     {
@@ -360,6 +374,36 @@ check_triples_subnormal (void)
         }
       }
     }
+}
+
+// check k values below/above each power of 2
+static void
+check_near_power_two (int k)
+{
+  double min, max;
+  min = max = 1.0;
+  for (int i = 0; i < k; i++)
+  {
+    min = nextafter (min, 0.5);
+    max = nextafter (max, 2.0);
+  }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (int ex = -1074; ex <= 1024; ex++)
+  {
+    // since emin,emax are thread-local, we need to initialize them here
+    ref_init ();
+    // since "check" also checks y,x, we only test for ey <= ex
+    for (int ey = -1074; ey <= ex; ey++)
+    {
+      double x, y;
+      for (x = min; x <= max; x = nextafter (x, 2.0))
+        for (y = min; y <= max; y = nextafter (y, 2.0))
+          // "check" also checks various signs
+          check (ldexp (x, ex), ldexp (y, ey));
+    }
+  }
 }
 
 int
@@ -403,6 +447,13 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+
+  printf ("Checking values near 2^e\n");
+  check_near_power_two (10);
 
   printf ("Checking exact subnormal values\n");
   check_triples_subnormal ();

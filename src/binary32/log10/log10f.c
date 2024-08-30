@@ -116,7 +116,7 @@ float cr_log10f(float x){
   je = (je*0x4d104d4)>>28;
   if(__builtin_expect(ux == st[je].u, 0)) return je;
 
-  b64u64_u tz = {.u = ((long)m|(1023l<<23))<<(52-23)};
+  b64u64_u tz = {.u = ((int64_t)m|((int64_t)1023<<23))<<(52-23)};
   double z = tz.f*ix - 1, z2 = z*z;
   double r = ((e*0x1.34413509f79ffp-2 + l) + z*b[0]) + z2*(b[1] + z*b[2]);
   float ub = r, lb = r + 0x1.b008p-34;
@@ -124,7 +124,8 @@ float cr_log10f(float x){
     double f = z*((c[0] + z*c[1]) + z2*((c[2] + z*c[3]) + z2*(c[4] + z*c[5] + z2*c[6])));
     f -= 0x1.0cee0ed4ca7e9p-54*e;
     f += l-tl[0];
-    double el = e*0x1.34413509f7ap-2, r = el + f;
+    double el = e*0x1.34413509f7ap-2;
+    r = el + f;
     ub = r;
     tz.f = r;
     if(__builtin_expect(!((tz.u)&((1<<28)-1)), 0) ){

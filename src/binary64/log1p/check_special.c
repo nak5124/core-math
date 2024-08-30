@@ -32,7 +32,9 @@ SOFTWARE.
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -138,7 +140,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def print_tint(x):
    s,m,e = x.sign_mantissa_exponent()
    assert m.nbits()==192, "m.nbits()==192"
@@ -437,6 +438,7 @@ def sollya_approx(x0,h,d,i):
    return p, ret
 
 # cut (0,1) into k subintervals, excluding first interval near 0
+# and adding an extra interval (1,1+1/k)
 # Sollya_approx(64,5,5)
 # 46.9760000000000
 # Sollya_approx(64,6,6)
@@ -448,7 +450,7 @@ def sollya_approx(x0,h,d,i):
 def Sollya_approx(k,d,i0,verbose=false):
    h = 1.0/k
    minerr = infinity
-   for i in range(1,k):
+   for i in range(1,k+1):
       x0 = (i+1/2)*h
       p, err = sollya_approx(x0,h/2,d,i0)
       # check_poly(p,h/2)
@@ -499,7 +501,7 @@ def RIFulp(x):
 def table_err_poly():
    s = "0x1.adp-65" # bound for i=0 (special case)
    R = RealField(9,rnd='RNDU')
-   for i in range(1,64):
+   for i in range(1,65):
       p, err = sollya_approx((i+0.5)/64,1/128.,7,1)
       err = err_poly(p,i,-1./128,1./128,err)
       err = err + 2^-101.604

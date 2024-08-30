@@ -31,7 +31,9 @@ SOFTWARE.
 #include <unistd.h>
 #include <fenv.h>
 #include <math.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <mpfr.h>
 
 float cr_atan2f (float, float);
@@ -46,7 +48,7 @@ int verbose = 0;
 
 /* reference code using MPFR */
 static float
-ref_atan2 (float y, float x, int rnd)
+ref_atan2 (float y, float x)
 {
   mpfr_t xi, yi;
   mpfr_inits2 (24, xi, yi, NULL);
@@ -74,7 +76,7 @@ check (float y, float x)
 {
   float z, t;
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
-  t = ref_atan2 (y, x, rnd);
+  t = ref_atan2 (y, x);
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   feclearexcept (FE_INEXACT);
   z = cr_atan2f (y, x);
@@ -88,6 +90,7 @@ check (float y, float x)
     exit(1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%a y=%a\n", x, y);
@@ -104,6 +107,7 @@ check (float y, float x)
     exit(1);
 #endif
   }
+#endif
 }
 
 #define N 100000000
@@ -172,11 +176,15 @@ main (int argc, char *argv[])
         }
     }
 
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
+#endif
   /* check random values */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_random (getpid () + i);
   return 0;

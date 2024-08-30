@@ -365,7 +365,7 @@ static inline double as_ldexp(double x, int64_t i){
     r = (__m128d)_mm_add_epi64(sb, (__m128i)r);
     return r[0];
 #else
-    b64u64_u ix = {.f = x};
+    d64u64 ix = {.f = x};
     ix.u += i<<52;
     return ix.f;
 #endif
@@ -378,7 +378,6 @@ static inline double as_ldexp(double x, int64_t i){
 static inline double
 tint_tod (const tint_t *a, uint64_t err, double y, double x)
 {
-  int bug = a->h == 0x80f5b274315ba7ff && a->m == 0xffffffffffffffff && a->l == 0xffffffffffffffff && a->ex == -1028;
   if (a->ex >= 1025) // overflow: |a| >= 2^1024
     return a->sgn ? -0x1p1023 - 0x1p1023 : 0x1p1023 + 0x1p1023;
   if (a->ex <= -1074) // underflow: |a| < 2^-1074
@@ -409,13 +408,11 @@ tint_tod (const tint_t *a, uint64_t err, double y, double x)
   if (ex <= -1022) // subnormal case
   {
     int sh = -1021 - ex; // 1 <= sh <= 52
-    if (bug) printf ("sh=%d\n", sh);
     ll = (mm << (64 - sh)) | (ll >> sh) | (ll > 0);
     mm = (hh << (64 - sh)) | (mm >> sh);
     hh = hh >> sh;
     low = hh & 0x7ff;
     ex += sh;
-    if (bug) printf ("hh=%lx mm=%lx ll=%lx low=%lx ex=%d\n", hh, mm, ll, low, ex);
   }
   double h = hh >> 11, l; // significant bits from a->h
   /* If err=0, we are converting a double value, thus low=0, and the

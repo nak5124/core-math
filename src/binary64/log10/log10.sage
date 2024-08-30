@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # for 2^e <= x < 2^(e+1) (-1074 <= e <= -1023)
 def doit_subnormal(e):
    n = 1075 + e

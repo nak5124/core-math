@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 def doit_bacsel_subnormal():
    for e in [-1073..-1022]:
       nn = 1074 + e # number of bits of output

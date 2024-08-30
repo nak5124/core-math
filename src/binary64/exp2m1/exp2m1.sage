@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 exp2m1 = lambda x: 2^x-1
 
 def doit_bacsel_subnormal():

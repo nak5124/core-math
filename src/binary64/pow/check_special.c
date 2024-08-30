@@ -29,8 +29,11 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <math.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <unistd.h>
 
 void doloop (int, int);
@@ -115,7 +118,7 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
-#define N 1000000000ul
+#define N 1000000ul
 
 static void
 check_random (int i)
@@ -137,12 +140,74 @@ check_random (int i)
 static void
 check_random_all (void)
 {
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads ();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_random (getpid () + i);
+}
+
+// check exact and midpoint values
+static void
+check_exact_or_midpoint (void)
+{
+  double zmin = 0x1p-1074;
+  double zmax = 0x1.fffffffffffffp+1023;
+  // max_pow[n] is the largest x such that x^n fits in 54 bits
+  double max_pow[] = {0, 0, 134217727, 262143, 11585, 1782, 511, 210, 107, 63, 42, 30, 22, 17, 14, 12, 10, 9, 7, 7, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3};
+  // max_m[ey] is the largest m such that m^(2^ey) fits in 53 bits
+  double max_m[] = {0x1.fffffffffffffp+52, 0x1.6a09e64p+26,
+                         0x1.3068p+13, 0x1.88p+6, 0x1.2p+3, 0x1.8p+1};
+  for (int ey = 5; ey >= 0; ey--)
+  {
+    int dn = (ey == 0) ? 1 : 2; // for ey > 0, we can restrict to odd n
+    int d = 1 << ey; // denominator of y
+    for (int n = 34; n >= 2; n -= dn)
+    {
+      double y = (double) n / (double) d;
+      double xmin = pow (zmin, 1.0 / y);
+      double xmax = pow (zmax, 1.0 / y);
+      double m0 = 3.0; // should be odd
+      double dm = 2.0; // should be even
+      /* For n=2, we only sample some of the values of m, otherwise it would
+         take of the order of 2 days on a 64-core machine. Just disable the
+         test below to perform the full check. The value of STEP below ensures
+         the test for n=2 takes about the same time as for all other values. */
+      if (n == 2 && ey <= 1)
+      {
+#define STEP 512 // about max_pow[2] / max_pow[3]
+        m0 += 2.0 * (lrand48 () % STEP);
+        dm *= STEP;
+      }
+      for (double m = m0; m <= max_pow[n] && m <= max_m[ey]; m += dm)
+      {
+        // x = m^d*2^e with m odd and e divisible by d
+        double md = pow (m, d);
+        double tmin = xmin / md;
+        double tmax = xmax / md;
+        // we want tmin <= 2^e <= tmax
+        int emin, emax;
+        frexp (tmin, &emin); // 2^(emin-1) <= tmin < 2^emin
+        frexp (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
+        // we want emin divisible by d
+        while (emin % d) emin++;
+#pragma omp parallel for
+        for (int e = emin; e <= emax; e += d)
+        {
+          ref_init();
+          ref_fesetround(rnd);
+          fesetround(rnd1[rnd]);
+          double x = ldexp (md, e);
+          check (x, y);
+        }
+      }
+    }
+  }
 }
 
 int
@@ -186,6 +251,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking exact/midpoint values\n");
+  check_exact_or_midpoint ();
 
   printf ("Checking random values\n");
   check_random_all ();

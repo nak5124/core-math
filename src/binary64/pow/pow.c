@@ -236,8 +236,7 @@ static inline void q_2 (dint64_t *r, dint64_t *y) {
 }
 
 /* Given |y| < 0.00016923 < 2^-12.52, put in r an approximation of exp(y),
-   with 0.999830 < r < 1.000170, relative error bounded by 2^-242.00, and
-   absolute error bounded by 2^-242.00.
+   with 0.999830 < r < 1.000170, absolute/relative error bounded by 2^-241.11.
    The error analysis is from the analyze_q3() function in the accompanying
    file qint.sage. */
 static inline void q_3 (qint64_t *r, qint64_t *y) {
@@ -297,9 +296,9 @@ static inline void q_3 (qint64_t *r, qint64_t *y) {
   }
 
   /* The function analyze_q3() from the accompanying qint.sage file gives
-     a total absolute error bounded by 2^-242.006. Since r > exp(-0.00016923),
-     this corresponds to a relative error < 2^-242.006/exp(-0.00016923)
-     < 2^-242.00. */
+     a total absolute error bounded by 2^-241.113. Since r > exp(-0.00016923),
+     this corresponds to a relative error < 2^-241.113/exp(-0.00016923)
+     < 2^-241.11. */
 }
 
 /**************** polynomial approximations of log(1+x) **********************/
@@ -1112,7 +1111,7 @@ static void exp_2 (dint64_t *r, dint64_t *x) {
 }
 
 /* put in r an approximation of exp(x), for |x| < 744.45,
-   with relative error < 2^-241.99 */
+   with relative error < 2^-241.10 */
 static void exp_3 (qint64_t *r, qint64_t *x) {
   qint64_t K, y;
 
@@ -1154,7 +1153,7 @@ static void exp_3 (qint64_t *r, qint64_t *x) {
   int64_t i2 = (k >> 6) & 0x3f;
   int64_t i1 = k & 0x3f;
 
-  q_3 (r, &y); /* relative error bounded by 2^-242.00, with |r| < 1.0002 */
+  q_3 (r, &y); /* relative error bounded by 2^-241.11, with |r| < 1.0002 */
 
   mul_qint (r, &T1_3[i2], r);
   /* the rounding error of mul_qint() is bounded by 14 ulps, which translates
@@ -1167,11 +1166,11 @@ static void exp_3 (qint64_t *r, qint64_t *x) {
      the approximation error for T2_3[i2] is bounded by 2^-128 relatively. */
 
   /* Total relative errors:
-     2^-242.00 from q_3()
+     2^-241.11 from q_3()
      14*2^-255 and 2^-256 from the multiplication by T1_3[i2]
      14*2^-255 and 2^-256 from the multiplication by T2_3[i1].
-     With e1=2^-242.00, e2=14*2^-255 and e3=2^-256, this gives:
-     (1+e1)*(1+e2)^2*(1+e3)^2 - 1 < 2^-241.99. */
+     With e1=2^-241.11, e2=14*2^-255 and e3=2^-256, this gives:
+     (1+e1)*(1+e2)^2*(1+e3)^2 - 1 < 2^-241.10. */
 
   r->ex = r->ex + M; /* exact */
 }
@@ -1332,8 +1331,12 @@ is_exact (double x, double y)
                         (w.u << 22) != 0, 1))
     return 0;
 
-  // xmax[y-2] for 2<=y<=33 is the largest m such that m^y fits in 53 bits
-  static const uint64_t xmax[] = { 94906265, 208063, 9741, 1552, 456, 190, 98,
+  if (__builtin_expect ((v.u << 1) == 0x7fe0000000000000ul, 0)) // |x| = 1
+    return 1;
+
+  // xmax[y] for 1<=y<=33 is the largest m such that m^y fits in 53 bits
+  static const uint64_t xmax[] = { 0, 0xffffffffffffffff,
+                                   94906265, 208063, 9741, 1552, 456, 190, 98,
                                    59, 39, 28, 21, 16, 13, 11, 9, 8, 7, 6, 6,
                                    5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3 };
   if (y >= 0 && is_int (y)) {
@@ -1362,12 +1365,13 @@ is_exact (double x, double y)
       return 0;
     // now 2 <= y <= 33
     int y_int = (int) y;
-    if (m > xmax[y_int - 2])
+    if (m > xmax[y_int])
       return 0;
     // |x^y| = m^y * 2^(e*y)
     uint64_t my = m * m;
-    while (y_int-- > 2)
+    for (int i = 2; i < y_int; i++)
       my = my * m;
+    // my = m^y
     t = 64 - __builtin_clzl (m);
     // 2^(t-1) <= m^y < 2^t thus 2^(e*y + t - 1) <= |x^y| < 2^(e*y + t)
     int64_t ez = e * y_int + t;
@@ -1405,7 +1409,6 @@ is_exact (double x, double y)
   {
     if (m != 1) return 0;
     // y = -2^f thus k = -f
-    if (x == 1) return 1;
     // now e <> 0
     t = __builtin_ctzl (e);
     if (-f > t) return 0; // 2^k does not divide e
@@ -1432,19 +1435,24 @@ is_exact (double x, double y)
   }
 
   // Now |x^y| = (m*2^e)^n with n an odd integer
-  // now for 33 < n it cannot be exact
-  if (33 < n)
-    return 0;
-  // now 2 <= n <= 33
-  if (m > xmax[n - 2])
-    return 0;
+  // now for 33 < n it cannot be exact, unless m=1
+  if (m > 1)
+  {
+    if (33 < n)
+      return 0;
+    // now n <= 33
+    if (m > xmax[n])
+      return 0;
+  }
   // |x^y| = m^n * 2^(e*n)
-  uint64_t my = m * m;
-  while (n-- > 2)
+  uint64_t my = m;
+  int64_t ez = e * n;
+  while (n-- > 1)
     my = my * m;
+  // |x^y| = my * 2^(e*n)
   t = 64 - __builtin_clzl (my);
   // 2^(t-1) <= m^n < 2^t thus 2^(e*n + t - 1) <= |x^n| < 2^(e*n + t)
-  int64_t ez = e * n + t;
+  ez += t;
   if (ez <= -1074 || 1024 < ez)
     return 0;
   // since m is odd, x^y is an odd multiple of 2^(e*y)
@@ -1743,6 +1751,8 @@ double cr_pow (double x, double y) {
 
   // Rounding test
 
+  // 2^R.ex <= R < 2^(R.ex+1)
+
   /* case R < 2^-1075: underflow case */
   if (R.ex < -1075) {
     return 0.5 * (s * 0x1p-1074);
@@ -1751,6 +1761,7 @@ double cr_pow (double x, double y) {
   if (R.ex < -1022) { /* subnormal case */
     /* -1075 <= R.ex <= -1023 thus 2^-1075 <= R < 2^-1022 */
     uint64_t ex = -(1022 + R.ex); /* 1 <= ex <= 53 */
+    // the significand has to be shifted right by ex bits
     uint64_t m = R.lo >> (10 + ex) | R.hi << (54 - ex);
 
     /* In principle, the bound 28 which holds for the normal case below
@@ -1809,17 +1820,17 @@ double cr_pow (double x, double y) {
      qR = y*log|x| * (1+eps1) with |eps1| < 2^-250.59 */
 
   qint64_t qZ;
-  exp_3 (&qZ, &qR); /* relative error < 2^-241.99:
-                       qZ = exp(qR) * (1+eps2) with |eps2| < 2^-241.99 */
+  exp_3 (&qZ, &qR); /* relative error < 2^-241.10:
+                       qZ = exp(qR) * (1+eps2) with |eps2| < 2^-241.10 */
 
   /* We thus have qZ = |x|^y * exp(y*log|x|*eps1) * (1+eps2).
      Since y*log|x| < 744.45, we have |y*log|x|*eps1| < 744.45*2^-250.59
      < eps3 = 2^-241.049 thus the relative error is bounded by
-     exp(eps3)*(1+eps2)-1 < 2^-240.44.
-     This corresponds to an error of at most 2^-240.44*2^256 < 48309 ulps. */
+     exp(eps3)*(1+eps2)-1 < 2^-240.07.
+     This corresponds to an error of at most 2^-240.07*2^256 < 62433 ulps. */
 
   /* extra rounding test */
-#define ERR_BND_3 47 /* floor(48309/2^10) */
+#define ERR_BND_3 60 /* floor(62433/2^10) */
   uint64_t r1 = qZ.hh << 54 | qZ.hl >> 10;
   uint64_t r2 = qZ.hl << 54 | qZ.lh >> 10;
   uint64_t r3 = qZ.lh << 54 | qZ.ll >> 10;

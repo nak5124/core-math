@@ -135,7 +135,7 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   uint64_t m = v.m;
   if (e == 0) // subnormal
   {
-    int k = __builtin_clzl (m);
+    int k = __builtin_clzll (m);
     v.m = m << k;
     e -= k - 1;
   }
@@ -145,8 +145,8 @@ fast_path (long double *h, long double *l, int *exp, long double x)
   *exp = ((e + 63) / 3) - 5482;
   // cbrt(x) = (-1)^s * cbrt(m/2^63) * 2^e * 2^(i/3)
   // split x into xh + xl (rounding towards zero)
-  b64u64_u xhu = {.u = (v.m>>11)+(0x3fel<<52)},
-           xlu = {.u = (v.m<<53)>>12|(0x3ffl-52)<<52};
+  b64u64_u xhu = {.u = (v.m>>11)+((int64_t)0x3fe<<52)},
+           xlu = {.u = (v.m<<53)>>12|((int64_t)0x3ff-52)<<52};
   static const double off = 0x1p-52;
   double xh = xhu.f, xl = xlu.f - off;
 
@@ -267,7 +267,7 @@ round22 (long double h)
   m = (m + 0x20000000000ul) & 0xfffffc0000000000ul;
   if (m == 0)
   {
-    m = 1ul << 63;
+    m = (uint64_t)1 << 63;
     v.e ++;
   }
   v.m = m;
@@ -367,10 +367,10 @@ cr_cbrtl (long double x)
     b96u96_u r = {.f = left};
     r.e += e;
     if(__builtin_expect((r.m<<22)==0,0)){
-      int k = __builtin_ctzl(r.m);
+      int k = __builtin_ctzll(r.m);
       uint64_t p = r.m>>k, p3 = p*p*p;
-      k = __builtin_clzl(p3);
-      if ( (v.m>>63) == 0) v.m <<= __builtin_clzl(v.m);
+      k = __builtin_clzll(p3);
+      if ( (v.m>>63) == 0) v.m <<= __builtin_clzll(v.m);
       if ( (p3<<k) == v.m) {
 	// restore inexact flag
 	fesetexceptflag (&flagp, FE_INEXACT);

@@ -1,3 +1,4 @@
+#load("../../generic/support/common.sage")
 # generate exact cases with y < 0
 def check_exact(file=None):
    emin = -149

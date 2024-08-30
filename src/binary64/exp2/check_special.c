@@ -31,6 +31,7 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h>
 #include <unistd.h>
+#include <mpfr.h>
 
 int ref_fesetround (int);
 void ref_init (void);
@@ -76,15 +77,41 @@ is_equal (double x, double y)
 static void
 check (double x)
 {
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   double y1 = ref_exp2 (x);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround (rnd1[rnd]);
   double y2 = cr_exp2 (x);
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
   if (! is_equal (y1, y2))
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
     exit (1);
   }
+#ifdef CORE_MATH_CHECK_INEXACT
+  if ((inex1 == 0) && (inex2 != 0))
+  {
+    printf ("Spurious inexact exception for x=%la (y=%la)\n", x, y1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x=%la (y=%la)\n", x, y1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+#endif
 }
 
 typedef union {double f; uint64_t u;} b64u64_u;
@@ -97,6 +124,14 @@ get_random ()
   v.u |= (uint64_t) rand () << 31;
   v.u |= (uint64_t) rand () << 62;
   return v.f;
+}
+
+// check exact values
+static void
+check_exact (void)
+{
+  for (int i = -1074; i <= 1023; i++)
+    check ((double) i);
 }
 
 int
@@ -144,6 +179,9 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
+  printf ("Checking exact results\n");
+  check_exact ();
+
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp2(x)) */
@@ -156,7 +194,9 @@ main (int argc, char *argv[])
   int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
 #define SKIP 20000
   n0 += getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n0; n < n1; n += SKIP)
     check (ldexp ((double) n, -42));
   /* x2 is the smallest x such that 2^-1022 <= RN(exp2(x)) */
@@ -165,7 +205,9 @@ main (int argc, char *argv[])
      of 10 bits, thus we multiply by 2^43 to get integers */
   n1 = ldexp (x1, 43); /* n1 = -9007199254740992, twice as large as above */
   int64_t n2 = ldexp (x2, 43); /* n2 = -8989607068696576 */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n1; n < n2; n += SKIP)
     check (ldexp ((double) n, -43));
 
@@ -175,7 +217,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

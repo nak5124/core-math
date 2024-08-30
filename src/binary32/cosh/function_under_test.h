@@ -8,7 +8,9 @@ static inline int doloop (void)
 {
   /* cosh is defined everywhere */
   uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep127f);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint32_t n = nmin; n <= nmax; n++)
   {
     doit (n);

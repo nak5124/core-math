@@ -157,11 +157,46 @@ float cr_powf(float x0, float y0){
     {0x1.7ep-4, -0x1.3f6d2636c101ep-13}, {0x1.1cp-4, -0x1.33567f1b193a4p-14},
     {0x1.78p-5, -0x1.8d66c5313a71dp-14}, {0x1.74p-6, 0x1.f7430ee200ep-17}, {0x0p+0, 0x0p+0}
   };
-
-  if(__builtin_expect(x0 < 0.0f, 0))
-    if(!isint(y0)) return __builtin_nanf("");
-  if(x0 == 0.0f){
-    if(y0<0.0f){
+  double x = x0, y = y0;
+  b64u64_u tx = {.f = x}, ty = {.f = y};
+  if(__builtin_expect (tx.u == (uint64_t)0x3ff<<52, 0)) return x0;
+  if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;
+  if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){
+    if((tx.u<<1) == (uint64_t)0x3ff<<53) return 1.0f;
+    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0;
+    if((ty.u<<1) == (uint64_t)0x7ff<<53){
+      if(((tx.u<<1) < ((uint64_t)0x3ff<<53)) ^ (ty.u>>63)){
+	return 0;
+      } else {
+	return __builtin_inf();
+      }
+    }
+    return y0;
+  }
+  if(__builtin_expect (tx.u >= (uint64_t)0x7ff<<52, 0)){ // x is Inf, NaN or less than 0
+    if((tx.u<<1) == (uint64_t)0x7ff<<53){
+      if(!isodd(y0)) x0 = __builtin_fabsf(x0);
+      if(ty.u>>63)return 1/x0; else return x0;
+    }
+    if((tx.u<<1) > (uint64_t)0x7ff<<53){return x0;}
+    if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0))
+      if(!isint(y0)) return __builtin_nanf("");
+  }
+  if(__builtin_expect (isint(y0), 0)){
+    if(y0== 1.0f) return x0;
+    if(y0==-1.0f) return 1.0f/x0;
+    if(y0== 2.0f) return x0*x0;
+    if(y0>=1.0f && y0<128.0f){
+      int np = y0, nz = __builtin_ctzll(tx.u);
+      if((52-nz)*np<53) {
+	double p = x;
+	for(int i=1;i<np;i++) p *= x;
+	return p;
+      }
+    }
+  }
+  if(__builtin_expect (!(tx.u<<1), 0)){
+    if(ty.u>>63){
       if(isodd(y0))
 	return 1.0f/__builtin_copysignf(0.0f,x0);
       else
@@ -173,13 +208,11 @@ float cr_powf(float x0, float y0){
 	return 0.0f;
     }
   }
-  double x = x0, y = y0;
-  b64u64_u tx = {.f = x}, ty = {.f = y};
-  uint64_t m = tx.u & ~0ul>>12;
+  uint64_t m = tx.u & ~(uint64_t)0>>12;
   int e = ((tx.u>>52)&0x7ff) - 0x3ff;
-  int j = (m + (1l<<(52-6)))>>(52-5), k = j>13;
+  int j = (m + ((int64_t)1<<(52-6)))>>(52-5), k = j>13;
   e += k;
-  b64u64_u xd = {.u = m | 0x3fful<<52};
+  b64u64_u xd = {.u = m | (uint64_t)0x3ff<<52};
   double z = __builtin_fma(xd.f, ix[j], -1.0);
   static const double c[] =
     {0x1.71547652b82fep+0, -0x1.71547652b82fep-1, 0x1.ec709dc3a2d0bp-2, -0x1.71547652bc4a9p-2,
@@ -208,6 +241,7 @@ float cr_powf(float x0, float y0){
     else
       return 0x1p-126f*0x1p-126f;
   }
+  if(__builtin_fabs(z)<0x1p-26) return 1.0 + z;
   double ia = __builtin_floor(z), h = __builtin_fma(l, y, zt - ia);
   static const double ce[] =
     {0x1.62e42fefa398bp-5, 0x1.ebfbdff84555ap-11, 0x1.c6b08d4ad86d3p-17,
@@ -217,10 +251,10 @@ float cr_powf(float x0, float y0){
      0x1.306fe0a31b715p+0, 0x1.3dea64c123422p+0, 0x1.4bfdad5362a27p+0, 0x1.5ab07dd485429p+0,
      0x1.6a09e667f3bcdp+0, 0x1.7a11473eb0187p+0, 0x1.8ace5422aa0dbp+0, 0x1.9c49182a3f09p+0,
      0x1.ae89f995ad3adp+0, 0x1.c199bdd85529cp+0, 0x1.d5818dcfba487p+0, 0x1.ea4afa2a490dap+0};
-  long il = ia, jl = il&0xf, el = il - jl;
+  int64_t il = ia, jl = il&0xf, el = il - jl;
   el >>= 4;
   double s = tb[jl];
-  b64u64_u su = {.u = (el + 0x3fful)<<52};
+  b64u64_u su = {.u = (el + (uint64_t)0x3ff)<<52};
   s *= su.f;
   double h2 = h*h;
   c0 = ce[0] + h*ce[1];
@@ -229,12 +263,12 @@ float cr_powf(float x0, float y0){
   c0 += h2*(c2 + h2*c4);
   double w = s*h;
   b64u64_u rr = {.f = s + w*c0};
-  float res = rr.f;
   uint64_t off = 44;
   if(((rr.u+off)&0xfffffff) <= 2*off) return as_powf_accurate2(x0,y0);
   int et = ((ty.u>>52)&0x7ff) - 0x3ff;
   uint64_t kk = ty.u<<(11+et);
-  if(!(kk<<1)&&kk) return __builtin_copysignf(res,x0);
+  if(!(kk<<1)&&kk) rr.f = __builtin_copysign(rr.f,x);
+  float res = rr.f;
   return res;
 }
 
@@ -262,10 +296,10 @@ float as_powf_accurate2(float x0, float y0){
   double x = x0, y = y0;
   b64u64_u t = {.f = x};
   int e = ((t.u>>52)&0x7ff) - 0x3ff;
-  t.u &= ~0ul>>12;
+  t.u &= ~(uint64_t)0>>12;
   int k = t.u > 0x6a09e667f3bcdul;
   e += k;
-  t.u |= 0x3ffl<<52;
+  t.u |= (int64_t)0x3ff<<52;
   x = t.f;
   double xm = x-o[k], xp = x+o[k], zh = xm/xp, zl = __builtin_fma(zh,-xp,xm)/xp;
   double z2l, z2h = muldd(zh, zl, zh, zl, &z2l);
@@ -275,7 +309,7 @@ float as_powf_accurate2(float x0, float y0){
   double ey = e*y, eh = ey + zh, el = ((ey - eh) + zh) + zl, ee = __builtin_roundeven(eh);
   eh -= ee;
   eh = polydd(eh, el, 18, ce, &el);
-  b64u64_u r = {.u = (0x3fful+(long)ee)<<52};
+  b64u64_u r = {.u = ((uint64_t)0x3ff+(int64_t)ee)<<52};
   b32u32_u ty = {.f = y0};
   int et = ((ty.u>>23)&0xff) - 0x7f;
   unsigned kk = ty.u<<(8+et), isint = !(kk<<1|et>>31) || et>=23;

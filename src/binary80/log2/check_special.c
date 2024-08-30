@@ -63,16 +63,14 @@ get_random ()
   b80u80_t v;
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) rand () << 62;
-  v.e = rand () & 65535;
-  // if e != 0x7fff or 0xffff, check m is normalized
-  if (v.e != 0x7fff && v.e != 0xffff)
-    v.m |= 1ul << 63;
-  /* if e = 0, m should has its most significand bit cleared,
-     otherwise this is a "pseudo-denormal",
-     see https://en.wikipedia.org/wiki/Extended_precision */
-  if (v.e == 0)
-    v.m &= ~(1ul << 63);
+  v.m |= (uint64_t) (rand () & 1) << 62;
+  // the low 63 bits of m are random
+  v.e = rand () & 0xffff;
+  // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
+  // significant bit set, otherwise it should be cleared
+  // cf https://en.wikipedia.org/wiki/Extended_precision
+  uint64_t t = (v.e & 0x7fff) != 0;
+  v.m |= t << 63;
   return v.f;
 }
 
@@ -112,6 +110,7 @@ check (long double x)
     exit (1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La (y=%La)\n", x, y1);
@@ -128,6 +127,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#endif
 }
 
 /* check all x*2^k such that log2(x*2^k) and log2(x) are in the same binade,
@@ -240,7 +240,7 @@ check_scaled_worst_cases (void)
   long double *items;
   int count;
   readstdin (&items, &count);
-#ifndef CORE_MATH_NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
   for (int i = 0; i < count; i++) {
@@ -307,7 +307,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

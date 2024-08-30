@@ -31280,8 +31280,16 @@
 -inf
 +0
 -0
-0x1p-1074
-0x1.fffffffffffffp+1023
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023
 # the following is the largest value such that tanh(x) does not round to 1
 # for rounding to nearest
 0x1.30fc1931f09c9p+4

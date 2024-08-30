@@ -36,6 +36,46 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
+/* __builtin_roundeven was introduced in gcc 10:
+   https://gcc.gnu.org/gcc-10/changes.html,
+   and in clang 17 */
+#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__))
+inline double __builtin_roundeven(double x){
+   double ix;
+#if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#endif
+   return ix;
+}
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#ifndef HAS_BUILTIN_ROUNDEVEN
+#include <math.h>
+/* round x to nearest integer, breaking ties to even */
+static double
+__builtin_roundeven (double x)
+{
+  double y = round (x); /* nearest, away from 0 */
+  if (fabs (y - x) == 0.5)
+  {
+    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    union { double f; uint64_t n; } u, v;
+    u.f = y;
+    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
+      y = v.f;
+  }
+  return y;
+}
+#endif
+
 typedef int64_t i64;
 typedef uint64_t u64;
 typedef union {double f; u64 u;} b64u64_u;
@@ -96,7 +136,7 @@ static inline double as_ldexp(double x, i64 i){
 
 static inline double as_todenormal(double x){
 #ifdef __x86_64__
-  __m128i sb = {~0ul>>12, 0};
+  __m128i sb = {~(u64)0>>12, 0};
 #if defined(__clang__)
   __m128d r = _mm_set_sd(x);
 #else
@@ -106,7 +146,7 @@ static inline double as_todenormal(double x){
   return r[0];
 #else
   b64u64_u ix = {.f = x};
-  ix.u &= ~0ul>>12;
+  ix.u &= ~(u64)0>>12;
   return ix.f;
 #endif
 }
@@ -134,10 +174,10 @@ static __attribute__((noinline)) double as_exp2_database(double x, double f){
       a = m + 1;
     else if (t == ix.u) {
       static const u64 s2[2] = {0x3b216fbd5fd7665f, 0x34c797};
-      const long k = 8677191773140ul;
+      const int64_t k = 8677191773140ul;
       u64 p = (s2[m>>5]>>((m*2)&63))&3;
       b64u64_u jf = {.f = f}, dy = {.u = (0x3c90|((k>>m)<<15))<<48};
-      for(long i=-1;i<=1;i++){
+      for(int64_t i=-1;i<=1;i++){
 	b64u64_u y = {.u = jf.u + i};
 	if( (y.u&3) == p) return y.f + dy.f;
       }
@@ -222,7 +262,7 @@ static const double t1[][2] = {
 static double __attribute__((noinline)) as_exp2_accurate(double x){
   b64u64_u ix = {.f = x};
   double sx = 4096.0*x, fx = __builtin_roundeven(sx), z = sx - fx;
-  long k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
+  int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
   double tl, th = muldd(t0h,t0l, t1h,t1l, &tl);
@@ -232,14 +272,18 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
     {0x1.5d87fe7a66459p-70, -0x1.dc47e47beb9ddp-124}, {0x1.430912f9fb79dp-85, -0x1.4fcd51fcb764p-139}};
   double fl, fh = polydd(z, 6, cd, &fl);
   fh = mulddd(z, fh,fl, &fl);
-  if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){
-    if(!(k&0xfff)){
+  if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){ // x >= -1022
+    // for -0x1.71547652b82fep-54 <= x <= 0x1.71547652b82fdp-53,
+    // exp2(x) round to x to nearest
+    if (-0x1.71547652b82fep-54 <= x && x <= 0x1.71547652b82fdp-53)
+      return __builtin_fma (x, 0.5, 1.0);
+    else if(!(k&0xfff)){ // 4096*x rounds to 4096*integer
       double e;
       fh = fasttwosum(th,fh, &e);
       fl = fasttwosum(e, fl, &e);
       ix.f = fl;
-      if((ix.u&(~0ul>>12))==0) {
-	if((ix.u>>52)&0x7ff){
+      if((ix.u&(~(u64)0>>12))==0) { // fl is a power of 2
+	if((ix.u>>52)&0x7ff){    // |fl| is Inf
 	  b64u64_u v = {.f = e};
 	  i64 d = ((((i64)ix.u>>63)^((i64)v.u>>63))<<1) + 1;
 	  ix.u += d;
@@ -252,11 +296,11 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
     }
     fh = fasttwosum(fh,fl, &fl);
     ix.f = fl;
-    u64 d = (ix.u + 2)&(~0ul>>12);
+    u64 d = (ix.u + 2)&(~(u64)0>>12);
     if(__builtin_expect(d<=2, 0)) fh = as_exp2_database(x, fh);
     fh = as_ldexp(fh, ie);
   } else {
-    ix.u = (1-ie)<<52;
+    ix.u = ((u64)1-ie)<<52;
     fh = muldd(fh,fl, th,tl, &fl);
     fh = fastsum(th,tl, fh,fl, &fl);
     double e;
@@ -288,7 +332,7 @@ double cr_exp2(double x){
   }
   u64 m = ix.u<<12, ex = (ax>>53) - 0x3ff, frac = ex>>63 | m<<ex;
   double sx = 4096.0*x, fx = __builtin_roundeven(sx), z = sx - fx, z2 = z*z;
-  long k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
+  int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
   double tl, th = muldd(t0h,t0l, t1h,t1l, &tl);
@@ -297,17 +341,19 @@ double cr_exp2(double x){
   double tz = th*z, fh = th, fl = tz*((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + tl;
   double eps = 1.64e-19;
   if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){
-    if( __builtin_expect(frac, 1)){
+    // warning: on 32-bit machines, __builtin_expect(frac,1) does not work
+    // since only the low 32 bits of frac are taken into account
+    if( __builtin_expect(frac != 0, 1)){
       double ub = fh + (fl + eps); fh += fl - eps;
       if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
     }
     fh = as_ldexp(fh, ie);
   } else {
-    ix.u = (1-ie)<<52;
+    ix.u = ((u64)1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
-    if(__builtin_expect(frac, 1)){
+    if(__builtin_expect(frac != 0, 1)){
       double ub = fh + (fl + eps); fh += fl - eps;
       if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
     }

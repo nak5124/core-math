@@ -51,7 +51,7 @@ FILE *instream;
 
 int transform(double, double*);
 int nextarg(double*);
-void test();
+void test(int);
 
 long parselong(const char *str){
   char *endptr;
@@ -178,7 +178,7 @@ void test(int maxfailures){
 int transform(double x, double *out){
   static int first = 1;
   static b64u64_u px = {.f = __builtin_nan("")};
-  static long k;
+  static int64_t k;
   b64u64_u s = {.f = x};
   if (first || px.u != s.u) {
     first = 0;

@@ -103,7 +103,7 @@ check_inexact (void)
       fegetexceptflag (&flagp, FE_INEXACT);
       if (flagp)
       {
-        printf ("Inexact flag set for x=%la\n", x);
+        printf ("Inexact flag set for x=%la (y=%la)\n", x, y);
         fflush (stdout);
         exit (1);
       }
@@ -169,7 +169,9 @@ main (int argc, char *argv[])
   int64_t n1 = ldexp (x1, 44); /* n1 = -5412282753821249 */
 #define SKIP 20000
   n0 += getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int64_t n = n0; n < n1; n += SKIP)
     check (ldexp ((double) n, -44));
 
@@ -179,7 +181,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

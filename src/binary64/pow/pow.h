@@ -224,40 +224,64 @@ static inline int64_t dint_toi(const dint64_t *a) {
   return a->sgn ? -r : r;
 }
 
-static inline void subnormalize_dint(dint64_t *a) {
-  if (a->ex > -1023)
-    return;
+// round a, assuming a is in the subnormal range
+static inline double dint_tod_subnormal(dint64_t *a) {
 
-  uint64_t ex = -(1011 + a->ex);
+  uint64_t ex = -(1011 + a->ex); // ex >= 12
+  // we have to shift right hi,lo by ex bits so that the least significant
+  // bit of hi corresponds to 2^-1074 (the number of extra bits is
+  // -1022 - a->ex, and we add 11 = 64 - 53 since hi has 64 bits)
 
-  uint64_t hi = a->hi >> ex;
-  uint64_t md = (a->hi >> (ex - 1)) & 0x1;
-  uint64_t lo = (a->hi & (~0ul >> ex)) || a->lo;
+  uint64_t rb, sb;
+
+  if (ex >= 64) // all bits disappear: |a| < 2^-1074
+    switch (fegetround()) {
+      double ret;
+    case FE_TONEAREST:
+      rb = (a->hi >> 63);        // only used when e=64
+      sb = (a->hi << 1) | a->lo; // idem
+      ret = (ex > 64 || rb == 0 || sb == 0) ? +0.0 : 0x1p-1074;
+      return (a->sgn) ? -ret : ret;
+      break;
+    case FE_DOWNWARD:
+      return (a->sgn) ? -0x1p-1074 : +0.0;
+    case FE_UPWARD:
+      return (!a->sgn) ? 0x1p-1074 : -0.0;
+    case FE_TOWARDZERO:
+      return (a->sgn) ? -0.0 : +0.0;
+    }
+
+  // now ex < 64
+  uint64_t hi;
+  hi = a->hi >> ex;
+  rb = (a->hi >> (ex - 1)) & 0x1; // round bit
+  sb = (a->hi << (65 - ex)) || a->lo; // sticky bit
 
   switch (fegetround()) {
   case FE_TONEAREST:
-    hi += lo ? md : hi & md;
+    hi += sb ? rb : hi & rb;
     break;
   case FE_DOWNWARD:
-    hi += a->sgn & (md | lo);
+    hi += a->sgn & (sb | rb);
     break;
   case FE_UPWARD:
-    hi += (!a->sgn) & (md | lo);
+    hi += (!a->sgn) & (sb | rb);
     break;
+  // for rounding towards zero, don't do anything
   }
 
-  a->hi = hi << ex;
-  a->lo = 0;
+  // now hi <= 2^52 stores the low bits of the result (up to sign)
+  // (if hi has overflowed in 2^52 this is exactly what we want)
 
-  if (!a->hi) {
-    a->ex++;
-    a->hi = (1l << 63);
-  }
+  f64_u v = {.u = hi};
+  v.u |= a->sgn << 63;
+  return v.f;
 }
 
 // Convert a dint64_t value to a double
 static inline double dint_tod(dint64_t *a) {
-  subnormalize_dint (a);
+  if (__builtin_expect (a->ex < -1022, 0))
+    return dint_tod_subnormal (a);
 
   f64_u r = {.u = (a->hi >> 11) | (0x3ffl << 52)};
 

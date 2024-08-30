@@ -29,8 +29,6 @@ SOFTWARE. */
 typedef union {double f; uint64_t u;} b64u64_u;
 
 double ref_atanh(double x){
-  b64u64_u t = {.f = x};
-  if( (t.u<<1) > (0x7fful<<53) ) return x;
   mpfr_t y;
   mpfr_init2(y, 53);
   mpfr_set_d(y, x, MPFR_RNDN);

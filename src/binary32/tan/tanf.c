@@ -83,7 +83,7 @@ typedef uint64_t u64;
 static inline double rltl(float z, int *q){
   double x = z;
   double idl = -0x1.b1bbead603d8bp-32*x, idh = 0x1.45f306ep-1*x, id = __builtin_roundeven(idh);
-  *q = (long)id;
+  *q = (int64_t)id;
   return (idh - id) + idl;
 }
 
@@ -96,7 +96,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   u128 p2 = (u128)m*ipi[2]; p2 += p1>>64;
   u128 p3 = (u128)m*ipi[3]; p3 += p2>>64;
   u64 p3h = p3>>64, p3l = p3, p2l = p2, p1l = p1;
-  long a;
+  int64_t a;
   int k = e-127, s = k-23;
   /* in cr_tanf(), rbig() is called in the case 127+28 <= e < 0xff
      thus 155 <= e <= 254, which yields 28 <= k <= 127 and 5 <= s <= 104 */
@@ -111,7 +111,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
     a = p2l<<(s-64)|p1l>>(128-s);
   }
   int sgn = u; sgn >>= 31;
-  long sm = a>>63;
+  int64_t sm = a>>63;
   i -= sm;
   double z = (a^sgn)*0x1p-64;
   i = (i^sgn) - sgn;
@@ -149,7 +149,7 @@ float cr_tanf(float x){
   double s0 = s[i&1], s1 = s[1-(i&1)];
   double r1 = (n*s1 - d*s0)/(n*s0 + d*s1);
   b64u64_u tr = {.f = r1};
-  u64 tail = (tr.u + 7)&(~0ul>>35);
+  u64 tail = (tr.u + 7)&(~(uint64_t)0>>35);
   if(__builtin_expect(tail<=14, 0)){
     static const struct {union{float arg; uint32_t uarg;}; float rh, rl;} st[] = {
       {{0x1.143ec4p+0f}, 0x1.ddf9f6p+0f, -0x1.891d24p-52f},
@@ -162,12 +162,12 @@ float cr_tanf(float x){
       {{0x1.6a0b76p+102f}, -0x1.e42a1ep+0f, -0x1.1dc906p-52f},
     };
     uint32_t ax = t.u&(~0u>>1), sgn = t.u>>31;
-    for(int i=0;i<8;i++) {
-      if(__builtin_expect(st[i].uarg == ax, 0)){
+    for(int j=0;j<8;j++) {
+      if(__builtin_expect(st[j].uarg == ax, 0)){
 	if(sgn)
-	  return -st[i].rh - st[i].rl;
+	  return -st[j].rh - st[j].rl;
 	else
-	  return  st[i].rh + st[i].rl;
+	  return  st[j].rh + st[j].rl;
       }
     }
   }

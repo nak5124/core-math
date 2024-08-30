@@ -114,7 +114,8 @@ float cr_atanhf(float x){
   int nz = __builtin_clz(mn) + 1;
   mn <<= nz;
   unsigned jn = mn>>26, jd = md>>26;
-  b64u64_u tn = {.u = ((long)mn<<20) | (1023l<<52)}, td = {.u = ((long)md<<20) | (1023l<<52)};
+  b64u64_u tn = {.u = ((int64_t)mn<<20) | ((int64_t)1023<<52)},
+           td = {.u = ((int64_t)md<<20) | ((int64_t)1023<<52)};
   double zn = tn.f*tr[jn] - 1, zd = td.f*tr[jd] - 1, zn2 = zn*zn, zd2 = zd*zd;
   double rn = ((tl[jn] - ln2n[nz-1]) + zn*b[0]) + zn2*(b[1] + zn*b[2]);
   double rd = (tl[jd] + zd*b[0]) + zd2*(b[1] + zd*b[2]);

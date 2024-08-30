@@ -7,3 +7,27 @@ check:
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
     - ./ci.sh
+
+check_dry:
+  stage: test
+  image: debian:12
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - FORCE=true DRY=--dry ./ci.sh
+
+check_dry_clang:
+  stage: test
+  image: silkeh/clang:latest
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - CORE_MATH_NO_OPENMP=1 FORCE=true DRY=--dry CC=clang ./ci.sh
+
+check_dry_icx:
+  stage: test
+  image: intel/oneapi-hpckit:latest
+  before_script:
+    - ci/00-prepare-docker.sh
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    # MPFR 4.2.1 is installed in /usr/local
+    - FORCE=true DRY=--dry CC=icx LDFLAGS="-L /usr/local/lib" EXTRA_CFLAGS="-I /usr/local/include" ./ci.sh

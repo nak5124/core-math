@@ -214,8 +214,8 @@ static double asinpi_acc(double x){
     fi.a *= (u64)(64u - indx);
     if(__builtin_expect(indx==0, 0)){
       shr(&Cm, -ce-7);
-      u128 c2 = sqrU(Cm.a);
-      u128_u z = {.a = pasin(c2)};
+      u128 c_2 = sqrU(Cm.a);
+      u128_u z = {.a = pasin(c_2)};
       Cm.a += mUU(Cm.a, z.a);
       fi.a -= Cm.a>>7;
     } else {

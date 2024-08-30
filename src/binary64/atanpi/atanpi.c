@@ -311,7 +311,7 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
   static const double cl[] = {
     0x1.c71c71c71c71cp-4, -0x1.745d1745d1265p-4, 0x1.3b13b115bcbc4p-4, -0x1.1107c41ad3253p-4};
   b64u64_u phi = {.f = __builtin_fabs(a)*0x1.45f306dc9c883p6 + 256.5};
-  long i = (phi.u>>(52-8))&0xff;
+  int64_t i = (phi.u>>(52-8))&0xff;
   double h,hl;
   if(i==128) {
     h = -1.0/x;
@@ -387,17 +387,17 @@ atanpi_subnormal (double x)
 double cr_atanpi (double x){
   static const double ch[] = {0x1p+0, -0x1.555555555552bp-2, 0x1.9999999069c2p-3, -0x1.248d2c8444ac6p-3};
   b64u64_u t = {.f = x};
-  u64 at = t.u&(~0ul>>1);
-  long i = (at>>51) - 2030l;
+  u64 at = t.u&(~(u64)0>>1);
+  int64_t i = (at>>51) - 2030l;
   if (__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
     // |x| < 0x1.b21c475e6362ap-8
     if (at < 0x3c90000000000000) // |x| < 2^-54
       return atanpi_subnormal (x);
     if (__builtin_expect (x == 0, 0)) return x;
-    static const double ch[] = {
+    static const double ch2[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
     double x2 = x*x, x3 = x*x2, x4 = x2*x2;
-    double f = x3*((ch[0] + x2*ch[1]) + x4*(ch[2] + x2*ch[3]));
+    double f = x3*((ch2[0] + x2*ch2[1]) + x4*(ch2[2] + x2*ch2[3]));
     // begin_atanpi
     /* Here x+f approximates atan(x), with absolute error bounded by
        0x4.8p-52*f (see atan.c). After multiplying by 1/pi this error
@@ -419,13 +419,17 @@ double cr_atanpi (double x){
   }
   // now |x| >= 0x1.b21c475e6362ap-8
   double h, ah, al;
-  if(__builtin_expect(at>0x4062ded8e34a9035, 0)) {
+  if(__builtin_expect(at>0x4062ded8e34a9035ul, 0)) {
     // |x| > 0x1.2ded8e34a9035p+7, atanpi|x| > 0.49789
-    if(__builtin_expect(at >= (0x7fful<<52), 0)){
-      // case Inf or NaN
-      if(at == (0x7fful<<52)) // Inf
-	return __builtin_copysign(0.5, x); // atanpi_specific
-      return x; // NaN
+    if(__builtin_expect(at >= 0x43445f306dc9c883ul, 0)){
+      // |x| >= 0x1.45f306dc9c883p+53, atanpi|x| > 0.5 - 0x1p-55
+      if(__builtin_expect(at >= ((u64)0x7ff<<52), 0)){
+	// case Inf or NaN
+	if(at == ((u64)0x7ff<<52)) // Inf
+	  return __builtin_copysign(0.5, x); // atanpi_specific
+	return x; // NaN
+      }
+      return __builtin_copysign(0.5, x) - __builtin_copysign(0x1p-56, x);
     }
     h = -1.0/x;
     ah = __builtin_copysign(0x1.921fb54442d18p+0, x);
@@ -436,7 +440,7 @@ double cr_atanpi (double x){
        h=0 below, and the error is measured in terms of multiple of h */
     if (__builtin_expect (at == 0x3ff0000000000000, 0)) // |x| = 1
       return __builtin_copysign (0x1p-2, x);
-    u64 u = t.u & (~0ul>>13);
+    u64 u = t.u & (~(u64)0>>13);
     u64 ut = u>>(51-16), ut2 = ut*ut>>16;
     i = (((u64)c[i][0]<<16) + ut*c[i][1] - ut2*c[i][2])>>(16+9);
     double ta = __builtin_copysign(1.0, x)*A[i][0], id = __builtin_copysign(1.0, x)*(double)i;

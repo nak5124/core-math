@@ -88,7 +88,9 @@ float cr_asinf(float x){
   } else {
     if(__builtin_expect(ax == 0x7e55688au, 0)) return __builtin_copysignf(0x1.75b8a2p-1f, x) + __builtin_copysignf(0x1p-26f, x);
     if(__builtin_expect(ax == 0x7e107434u, 0)) return __builtin_copysignf(0x1.1f4b64p-1f, x) + __builtin_copysignf(0x1p-26f, x);
-    double ax = __builtin_fabs(xs), z = 1.0 - ax, s = __builtin_sqrt(z);
+    double bx = __builtin_fabs(xs);
+    double z = 1.0 - bx;
+    double s = __builtin_sqrt(z);
     static const double c[] =
       {0x1.6a09e667f3bcbp+0, 0x1.e2b7dddff2db9p-4, 0x1.b27247ab42dbcp-6, 0x1.02995cc4e0744p-7,
        0x1.5ffb0276ec8eap-9, 0x1.033885a928decp-10, 0x1.911f2be23f8c7p-12, 0x1.4c3c55d2437fdp-13,

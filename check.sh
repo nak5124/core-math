@@ -9,6 +9,9 @@
 # (3) to check the GNU libc 2.27, installed in say /tmp/install:
 #     CORE_MATH_CHECK_STD=true CORE_MATH_LAUNCHER="/tmp/lib/ld-2.27.so --library-path /tmp/lib" LDFLAGS="-L /tmp/lib" ./check.sh --worst --rndn exp
 
+# ensures CI fails in case of an error
+set -e
+
 if [ "`which gmake`" != "" ]; then
    MAKE=gmake
 else
@@ -25,8 +28,13 @@ for i in "${!ARGS[@]}"; do
             MODES+=("${ARGS[i]}")
             unset 'ARGS[i]'
             ;;
+        --dry)
+            DRY="true"
+						unset 'ARGS[i]'
+            ;;
     esac
 done
+
 if [[ "${#MODES[@]}" -eq 0 ]]; then
     MODES=("--rndn" "--rndz" "--rndu" "--rndd")
 fi
@@ -57,8 +65,18 @@ else
     SIZE=${SIZE%%/*}
     case "$SIZE" in
         32)
-            KIND=--exhaustive
-            ;;
+	    case "$FUN" in
+		atan2f)
+		     KIND=--worst;;
+		atan2pif)
+		     KIND=--worst;;
+		hypotf)
+		     KIND=--worst;;
+		powf)
+		     KIND=--worst;;
+		*)
+		    KIND=--exhaustive;;
+	    esac;;
         *)
             KIND=--worst
     esac
@@ -70,12 +88,6 @@ else
     QUIET=
 fi
 
-# define CORE_MATH_NO_OPENMP if you don't want OpenMP
-if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
-   OPENMP=-fopenmp
-else
-   export CFLAGS="$CFLAGS -DCORE_MATH_NO_OPENMP"
-fi
 
 has_symbol () {
     [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$FUN" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
@@ -87,13 +99,23 @@ if [[ -n "$LIBM" ]] && ! has_symbol; then
 fi
 
 if [ "$CFLAGS" == "" ]; then
+   MACHINE=`uname -m`
    if [ "$CC" == "clang" ]; then
       # clang does not provide -fsignaling-nans
       # (https://gitlab.inria.fr/core-math/core-math/-/issues/8)
-      export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math"
+      # -fhonor-nans is needed to disable warnings about __builtin_nan()
+      # (https://clang.llvm.org/docs/DiagnosticsReference.html#wnan-infinity-disabled)
+      export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -DCORE_MATH_CHECK_INEXACT -fhonor-nans"
+   elif [ "$CC" == "icx" ]; then
+      # icx needs -fp-model=precise and doesn't like -fsignaling-nans
+      export CFLAGS="-fp-model=precise -O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -DCORE_MATH_CHECK_INEXACT"
+   elif [ "$MACHINE" == "ppc64le" ]; then
+      # -march=native is not supported by gcc 14 on ppc64le
+      export CFLAGS="-O3 -mcpu=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans -DCORE_MATH_CHECK_INEXACT"
    else
-      export CFLAGS="-O3 -march=native -fno-finite-math-only -frounding-math -fsignaling-nans"
+      export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans -DCORE_MATH_CHECK_INEXACT"
    fi
+   unset MACHINE
 else
    # the core-math code assumes -frounding-math
    # see also https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
@@ -101,40 +123,57 @@ else
    export ROUNDING_MATH="-frounding-math"
 fi
 
+# define CORE_MATH_NO_OPENMP if you don't want OpenMP
+if [[ -z "$CORE_MATH_NO_OPENMP" ]]; then
+   if [ "$CC" == "icx" ]; then
+      OPENMP=-qopenmp # icx prefers -qopenmp
+   else
+      OPENMP=-fopenmp
+   fi
+else
+   if [ "$CC" == "icx" ]; then
+      OPENMP=-qno-openmp # icx prefers -qno-openmp
+   else
+      OPENMP=-fno-openmp
+   fi
+   export CFLAGS="$CFLAGS -DCORE_MATH_NO_OPENMP"
+fi
+
+# add EXTRA_CFLAGS if given
+export CFLAGS="$CFLAGS $EXTRA_CFLAGS"
+
 case "$KIND" in
     --exhaustive)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_exhaustive
+        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_exhaustive
+        if [[ -z "$DRY" ]]; then
         for MODE in "${MODES[@]}"; do
             echo "Running exhaustive check in $MODE mode..."
             $CORE_MATH_LAUNCHER "$DIR/check_exhaustive" "$MODE" "${ARGS[@]}"
         done
+        fi
         ;;
     --worst)
         "$MAKE" --quiet -C "$DIR" clean
         OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_worst
+        if [[ -z "$DRY" ]]; then
         for MODE in "${MODES[@]}"; do
             echo "Running worst cases check in $MODE mode..."
             $CORE_MATH_LAUNCHER "$DIR/check_worst" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
         done
+        fi
         ;;
     --special)
         "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_special
+        OPENMP=$OPENMP "$MAKE" $QUIET -C "$DIR" check_special
+        if [[ -z "$DRY" ]]; then
         for MODE in "${MODES[@]}"; do
             echo "Running special checks in $MODE mode..."
             # we also give xxx.wc in input to check --special since some
 	    # functions use it (for example log2)
             $CORE_MATH_LAUNCHER "$DIR/check_special" "$MODE" "${ARGS[@]}" < "${FILE%.c}.wc"
         done
-        ;;
-    --exact)
-        "$MAKE" --quiet -C "$DIR" clean
-        "$MAKE" $QUIET -C "$DIR" check_exact
-        for MODE in "${MODES[@]}"; do
-            echo "Running exact checks in $MODE mode..."
-            $CORE_MATH_LAUNCHER "$DIR/check_exact" "$MODE" "${ARGS[@]}"
-        done
+        fi
         ;;
     *)
         echo "Unrecognized command"

@@ -156,7 +156,11 @@ void test(){
     r = ref_function_under_test(x);
     t = cr_function_under_test(x);
     if (!is_equal (r, t)) {
-      if(++failures<10) printf("FAIL x=%a ref=%a z=%a\n", x, r, t);
+      ++failures;
+      printf("FAIL x=%a ref=%a z=%a\n", x, r, t);
+#ifndef DO_NOT_ABORT
+      exit (1);
+#endif
     }
     ++count;
   }
@@ -166,7 +170,7 @@ void test(){
 int transform(double x, double *out){
   static int first = 1;
   static b64u64_u px = {.u = 0x7ff8000000054312ul};
-  static long k, kmax;
+  static int64_t k, kmax;
   b64u64_u s = {.f = x};
   if (first || px.u != s.u) {
     first = 0;
@@ -174,7 +178,7 @@ int transform(double x, double *out){
     k = -1;
     kmax = 2;
     if(isnormal(x)){
-      long j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
+      int64_t j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
       if(j > 0) kmax <<= j+1;
       if(kmax>(1l<<15)) kmax = 1l<<15;
     }
@@ -190,7 +194,7 @@ int transform(double x, double *out){
     }
   } else {
     if(++k<kmax){
-      long i = (k>>1)+1;
+      int64_t i = (k>>1)+1;
       s.u |= ~i<<63;
       s.f = (i>>1) + s.f;
       s.u ^= k<<63;

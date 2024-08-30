@@ -141,9 +141,11 @@ void test(){
     zr.f = ref_function_under_test(x);
     zt.f = cr_function_under_test(x);
     if (!is_equal (zr, zt)) {
-      b64u64_u xx = {.f = x};
-      if(++failures<10) printf("FAIL x=%la[%lx] ref=%la[%lx] z=%la[%lx]\n",
-                               x, xx.u, zr.f, zr.u, zt.f, zt.u);
+      ++failures;
+      printf("FAIL x=%la ref=%la z=%la\n", x, zr.f, zt.f);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
     }
     ++count;
   }
@@ -153,7 +155,7 @@ void test(){
 int transform(double x, double *out){
   static int first = 1;
   static b64u64_u px = {.u = 0x7ff8000000054312ul};
-  static long k, kmax;
+  static int64_t k, kmax;
   b64u64_u s = {.f = x};
   if (first || px.u != s.u) {
     first = 0;
@@ -161,14 +163,14 @@ int transform(double x, double *out){
     k = -1;
     kmax = 2;
     if(isnormal(x)){
-      long j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
+      int64_t j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
       if(j > 0) kmax <<= j+1;
       if(kmax>(1l<<15)) kmax = 1l<<15;
     }
   }
   if(0x1p-1022<=x && x<0x1p-1021){
     if(++k<969*2){
-      long e = k>>1, sgn = k&1;
+      int64_t e = k>>1, sgn = k&1;
       s.u += e<<52;
       s.u |= sgn<<63;
       *out = s.f;
@@ -178,7 +180,7 @@ int transform(double x, double *out){
     }
   } else {
     if(++k<kmax){
-      long i = (k>>1)+1;
+      int64_t i = (k>>1)+1;
       s.u |= ~i<<63;
       s.f = (i>>1) + s.f;
       s.u ^= k<<63;

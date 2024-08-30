@@ -31,7 +31,9 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h>
 #include <unistd.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
@@ -167,7 +169,9 @@ main (int argc, char *argv[])
       if (i & 1)
         buf[i] = -buf[i];
     }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
     for (int i = 0; i < BUF_SIZE; i++)
       check (buf[i]);
   }

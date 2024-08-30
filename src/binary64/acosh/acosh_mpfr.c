@@ -38,7 +38,7 @@ double ref_acosh(double x){
   }
   if(__builtin_expect(ix.u>=0x7ff0000000000000ul, 0)){
     u64 aix = ix.u<<1;
-    if(ix.u==0x7ff0000000000000ul || aix>(0x7fful<<53)) return x; // +inf or nan
+    if(ix.u==0x7ff0000000000000ul || aix>((u64)0x7ff<<53)) return x; // +inf or nan
     return __builtin_nan("x<1");
   }
 

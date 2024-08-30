@@ -25,11 +25,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#include <stdint.h>
 #include <mpfr.h>
 #include "fenv_mpfr.h"
+#include <math.h>
+
+typedef union { double f; uint64_t u; } f64_u;
+
+// return non-zero iff x is a signaling NaN
+inline int is_snan(double x) {
+  f64_u v = {.f = x};
+  return isnan (x) && !(v.u & (1ul << 51));
+}
 
 /* reference code using MPFR */
 double ref_pow(double x, double y) {
+  // since MPFR does not distinguish between qNaN and sNaN, we have to
+  // deal with signaling NaNs separately
+  if (is_snan (x) || is_snan (y))
+    return x + y;
+
   mpfr_t z, _x, _y;
   mpfr_inits2(53, z, _x, _y, NULL);
   mpfr_set_d(_x, x, MPFR_RNDN);

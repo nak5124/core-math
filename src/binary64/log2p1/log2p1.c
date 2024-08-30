@@ -1748,9 +1748,9 @@ static const int8_t exceptions_rnd[EXCEPTIONS] = {
   }
   if (x == exceptions[a][0])
   {
-    double h = exceptions[a][1];
-    int8_t l = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
-    return h + h * 0x1p-54 * (double) l;
+    h = exceptions[a][1];
+    int8_t del = (h > 0) ? exceptions_rnd[a] : -exceptions_rnd[a];
+    return h + h * 0x1p-54 * (double) del;
   }
 #undef EXCEPTIONS
 

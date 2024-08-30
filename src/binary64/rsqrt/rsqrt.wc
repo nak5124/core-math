@@ -23,7 +23,8 @@
 0x0.c811494a7085fp-1022
 0x0.ecf13fe2cdf55p-1022
 0x0.74292903db37bp-1022
-# random search for the directional modes -- not really worst cases just for testing
+# random search for the directional modes
+# not really worst cases just for testing
 0x1.9359f45245138p+0
 0x1.57fb1f0ae1678p+0
 0x1.0de743f257053p+0
@@ -9914,9 +9915,21 @@
 0x1.ff836606e86b5p+0
 0x1.fcbd5f9640a0fp+0
 # special values
++snan
+-snan
 +nan
 -nan
 +inf
 -inf
 +0
 -0
++0x1p-1074
+-0x1p-1074
++0x.fffffffffffffp-1022
+-0x.fffffffffffffp-1022
++0x1p-1022
+-0x1p-1022
++1
+-1
++0x1.fffffffffffffp+1023
+-0x1.fffffffffffffp+1023

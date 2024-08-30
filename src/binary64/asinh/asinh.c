@@ -99,7 +99,7 @@ static double __attribute__((noinline)) as_asinh_zero(double x, double x2h, doub
   y1 = fasttwosum(y1,y2,&y2);
   
   b64u64_u t = {.f = y1};
-  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+  if(__builtin_expect(!(t.u&(~(u64)0>>12)), 0)){
     b64u64_u w = {.f = y2};
     if((w.u^t.u)>>63)
       t.u--;
@@ -187,24 +187,24 @@ double cr_asinh(double x){
 	    if(__builtin_expect(!u, 0)) return x;
 	    return __builtin_fma(-0x1p-60,x,x);
 	  }
-	  static const double c[] = {-0x1.5555555555555p-3};
-	  sl = x3h*c[0];
+	  static const double cl[] = {-0x1.5555555555555p-3};
+	  sl = x3h*cl[0];
 	} else {
-	  static const double c[] = {-0x1.5555555555555p-3, 0x1.3333327c57c6p-4};
-	  sl = x3h*(c[0] + x2h*c[1]);
+	  static const double cl[] = {-0x1.5555555555555p-3, 0x1.3333327c57c6p-4};
+	  sl = x3h*(cl[0] + x2h*cl[1]);
 	}
       } else {
-	static const double c[] = {-0x1.5555555555555p-3, 0x1.333333332f2ffp-4, -0x1.6db6d9a665159p-5, 0x1.f186866d775fp-6};
-	sl = x3h*(c[0] + x2h*(c[1] + x2h*(c[2] + x2h*c[3])));
+	static const double cl[] = {-0x1.5555555555555p-3, 0x1.333333332f2ffp-4, -0x1.6db6d9a665159p-5, 0x1.f186866d775fp-6};
+	sl = x3h*(cl[0] + x2h*(cl[1] + x2h*(cl[2] + x2h*cl[3])));
       }
     } else {
-      static const double c[] = {-0x1.5555555555555p-3, 0x1.333333333331p-4, -0x1.6db6db6da466cp-5, 0x1.f1c71c2ea7be4p-6,
+      static const double cl[] = {-0x1.5555555555555p-3, 0x1.333333333331p-4, -0x1.6db6db6da466cp-5, 0x1.f1c71c2ea7be4p-6,
 				 -0x1.6e8b651b09d72p-6, 0x1.1c309fc0e69c2p-6, -0x1.bab7833c1ep-7};
-      double c1 = c[1] + x2h*c[2];
-      double c3 = c[3] + x2h*c[4];
-      double c5 = c[5] + x2h*c[6];
+      double c1 = cl[1] + x2h*cl[2];
+      double c3 = cl[3] + x2h*cl[4];
+      double c5 = cl[5] + x2h*cl[6];
       double x4 = x2h*x2h;
-      sl = x3h*(c[0] + x2h*(c1 + x4*(c3 + x4*c5)));
+      sl = x3h*(cl[0] + x2h*(c1 + x4*(c3 + x4*c5)));
     }
     double eps = 0x1.6p-53*x3h;
     double lb = x + (sl - eps), ub = x + (sl + eps);
@@ -229,20 +229,20 @@ double cr_asinh(double x){
     ah = 2*ax;
     al = 0.5/ax;
   } else {
-    if(__builtin_expect(u>=0x7ff0000000000000ul, 0)) return x; // +-inf or nan
+    if(__builtin_expect(u>=(u64)0x7ff0000000000000ul, 0)) return x; // +-inf or nan
     off = 0x3fe;
     ah = ax;
     al = 0;
   }
-  
+
   b64u64_u t = {.f = ah};
   int ex = t.u>>52, e = ex - off;
-  t.u &= ~0ul>>12;
+  t.u &= ~(u64)0>>12;
   double ed = e;
   u64 i = t.u>>(52-5);
-  long d = t.u & (~0ul>>17);
-  u64 j = (t.u + ((u64)B[i].c0<<33) + ((long)B[i].c1*(d>>16)))>>(52-10);
-  t.u |= 0x3ffl<<52;
+  int64_t d = t.u & (~(u64)0>>17);
+  u64 j = (t.u + ((u64)B[i].c0<<33) + ((int64_t)B[i].c1*(d>>16)))>>(52-10);
+  t.u |= (u64)0x3ff<<52;
   int i1 = j>>5, i2 = j&0x1f;
   double r = r1[i1]*r2[i2], dx = __builtin_fma(r, t.f, -1), dx2 = dx*dx;
   double f = dx2*((c[0] + dx*c[1]) + dx2*((c[2] + dx*c[3]) + dx2*c[4]));
@@ -411,11 +411,11 @@ double as_asinh_refine(double x, double zh, double zl, double a){
   b64u64_u t = {.f = zh};
   
   int ex = t.u>>52, e = ex - 0x3ff + (zl==0.0);
-  t.u &= ~0ul>>12;
-  t.u |= 0x3fful<<52;
+  t.u &= ~(u64)0>>12;
+  t.u |= (u64)0x3ff<<52;
   double ed = e;
   b64u64_u v = {.f = a - ed + 0x1.00008p+0};
-  u64 i = (v.u - (0x3fful<<52))>>(52-16);  
+  u64 i = (v.u - ((u64)0x3ff<<52))>>(52-16);
   int i1 = (i>>12)&0x1f, i2 = (i>>8)&0xf, i3 = (i>>4)&0xf, i4 = i&0xf;
   const double l20 = 0x1.62e42fefa38p-2, l21 = 0x1.ef35793c768p-46, l22 = -0x1.9ff0342542fc3p-91;
   double el2 = l22*ed, el1 = l21*ed, el0 = l20*ed;
@@ -431,7 +431,7 @@ double as_asinh_refine(double x, double zh, double zl, double a){
   double xl, xh = fasttwosum(dh-1, dl, &xl);
   if(zl != 0.0){
     t.f = zl;
-    t.u -= (long)e<<52;
+    t.u -= (int64_t)e<<52;
     xl += th*t.f;
   }
   xh = adddd(xh, xl, sh, sl, &xl);
@@ -446,7 +446,7 @@ double as_asinh_refine(double x, double zh, double zl, double a){
   v1 *= __builtin_copysign(2,x);
   v2 *= __builtin_copysign(2,x);
   t.f = v1;
-  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+  if(__builtin_expect(!(t.u&(~(u64)0>>12)), 0)){
     b64u64_u w = {.f = v2};
     if((w.u^t.u)>>63)
       t.u--;
@@ -455,7 +455,7 @@ double as_asinh_refine(double x, double zh, double zl, double a){
     v1 = t.f;
   }
   b64u64_u t0 = {.f = v0};
-  uint64_t er = ((t.u + 33) & (~0ul>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
+  uint64_t er = ((t.u + 33) & (~(u64)0>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
   double res = v0 + v1;
   if(__builtin_expect(de>99 || er<66, 0)) return as_asinh_database(x,res);
   return res;

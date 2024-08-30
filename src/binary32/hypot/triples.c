@@ -30,7 +30,9 @@ SOFTWARE.
 #include <math.h>
 #include <fenv.h>
 #include <assert.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <mpfr.h>
 
 float cr_hypotf (float, float);
@@ -53,6 +55,25 @@ asuint (float f)
   return u.i;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+static inline int
+is_equal (float x, float y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint (x) == asuint (y);
+}
+
 static void
 check_aux (float x, float y)
 {
@@ -67,11 +88,12 @@ check_aux (float x, float y)
   z2 = cr_hypotf(x, y);
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);
-  if (asuint (z1) != asuint (z2)) {
+  if (!is_equal (z1, z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
     exit(1);
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%a y=%a\n", x, y);
@@ -88,6 +110,7 @@ check_aux (float x, float y)
     exit(1);
 #endif
   }
+#endif
 }
 
 void
@@ -216,7 +239,9 @@ check_pythagorean_triples (int k)
 
   /* Type 1: x = p^2-q^2, y = 2pq, z = p^2+q^2 */
   /* since y = 2pq < 2^24 and q < p, this gives q <= 2895 */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (q = 1; q <= 2895; q++)
     for (p = q + 1; 2 * p * q < 0x1000000ul; p+=2)
       count1 += generate1 (p, q, k);
@@ -226,7 +251,9 @@ check_pythagorean_triples (int k)
 
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^24, this gives p <= 2^23 */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (p = 2; p <= 0x800000; p++)
   {
     /* we want y < 2^24, thus p^2-q^2 < 2^24 thus p^2 - 2^24 < q^2 */
@@ -257,7 +284,9 @@ doloop (int k0, int k1)
 {
   ref_init ();
   ref_fesetround (rnd);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int k = k0; k <= k1; k++)
     check_pythagorean_triples (k);
 }

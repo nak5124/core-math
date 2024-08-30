@@ -29,7 +29,9 @@ SOFTWARE.
 #include <stdint.h>
 #include <math.h>
 #include <fenv.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -141,10 +143,14 @@ static void check_val(double x){
 }
 
 static void check_random_all(double a, double b){
-  int nthreads;
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
   nthreads = omp_get_num_threads();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < nthreads; i++)
     check_random(getpid () + i, a, b);
 }
@@ -184,7 +190,6 @@ int main (int argc, char *argv[]){
   int thread = 0, seed = getpid (), darts = 0, conseq = 0;
   double x = __builtin_nan(""), a = -1, b = 1;
   long n = 10*1000;
-  const char *fname = NULL;
   while (1) {
     int ind = 0, c = getopt_long(argc, argv, "nudzhvts:D:C:r:i:x:a:b:", opts, &ind);
     if (c == -1) break;
@@ -207,12 +212,12 @@ int main (int argc, char *argv[]){
       }
       break;
     case 'i':
-      fname = optarg;
       break;
     case 'h': /* print a help message (to be written) */  break;
     case 'x': x = strtod(optarg, NULL);
       break;
     default:
+      break;
     }
   }
 

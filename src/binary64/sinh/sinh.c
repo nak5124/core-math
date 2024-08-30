@@ -288,9 +288,9 @@ double cr_sinh(double x){
     if(lb == ub) return lb;
     return as_sinh_zero(x);
   }
-  long il = ((long)jt.u<<14)>>40, jl = -il;
-  long i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
-  long j1 = jl&0x3f, j0 = (jl>>6)&0x3f, je = jl>>12;
+  int64_t il = ((int64_t)jt.u<<14)>>40, jl = -il;
+  int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
+  int64_t j1 = jl&0x3f, j0 = (jl>>6)&0x3f, je = jl>>12;
   b64u64_u sp = {.u = (1022 + ie)<<52}, sm = {.u = (1022 + je)<<52};
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
@@ -307,7 +307,8 @@ double cr_sinh(double x){
 	return __builtin_copysign(0x1p1023, x)*2.0;
       }
       sp.u = (1021 + ie)<<52;
-      double rh = th, rl = tl + th*pp;
+      rh = th;
+      rl = tl + th*pp;
       rh *= __builtin_copysign(1, x);
       rl *= __builtin_copysign(1, x);
       double e = 0.11e-18*th, lb = rh + (rl - e), ub = rh + (rl + e);
@@ -318,7 +319,7 @@ double cr_sinh(double x){
       th *= __builtin_copysign(1, x);
       tl *= __builtin_copysign(1, x);
       b64u64_u uh = {.f = th}, ul = {.f = tl};
-      long eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
+      int64_t eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
       th += tl;
       th *= 2;
       th *= sp.f;
@@ -376,7 +377,7 @@ double cr_sinh(double x){
   }
   rh = fasttwosum(rh, rl, &rl);
   b64u64_u uh = {.f = rh}, ul = {.f = rl};
-  long eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
+  int64_t eh = (uh.u>>52)&0x7ff, el = (ul.u>>52)&0x7ff, ml = (ul.u + 8)&(~0ul>>12);
   rh *= __builtin_copysign(1, x);
   rl *= __builtin_copysign(1, x);
   rh += rl;

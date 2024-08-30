@@ -139,20 +139,21 @@ static __attribute__((noinline)) double as_tanpi_database(double x, double f){
     {0x1.ee846d3680301p-2, 0x1.2a04fa64d35ffp+4,  0x1p-50},
   };
   b64u64_u ix = {.f = x};
-  uint64_t aix = ix.u&(~0ul>>1);
+  uint64_t aix = ix.u&(~(uint64_t)0>>1);
   uint64_t p = 0;
   double ax = __builtin_fabs(x);
   int32_t e = (aix>>52)-1022;
   if(e>=0){ // take into account periodic structure of tan
-    b64u64_u t = {.u = aix&~(~0ul>>(12+e))};
+    b64u64_u t = {.u = aix&~(~(uint64_t)0>>(12+e))};
     ax -= t.f;
-    p = ((aix|1ul<<52)>>(52-e))&1;
+    p = ((aix|(uint64_t)1<<52)>>(52-e))&1;
     if(p) ax = 0.5 - ax;
   }
   double sgn = 1;
   if(p^(ix.u>>63)) sgn = -1; // select proper sign
   if(e<-54) { // arguments near zero have worst cases scaled by 2^n
-    b64u64_u a = {.f = (1023l - (54 + e))<<52}, ia = {.f = (1023l + (54 + e))<<52};
+    b64u64_u a = {.f = ((int64_t)1023 - (54 + e))<<52},
+            ia = {.f = ((int64_t)1023 + (54 + e))<<52};
     ax *= a.f;
     sgn *= ia.f;
   }
@@ -194,11 +195,11 @@ double cr_tanpi(double x){
   double th, tl, res;
 
   b64u64_u ix = {.f = x};
-  uint64_t ax = ix.u&(~0ul>>1);
-  if(__builtin_expect(ax >= (0x3f3ul<<52), 1)) {
-    if(__builtin_expect(ax >= (0x42dul<<52), 0)) {
-      if(__builtin_expect(ax >= (0x7fful<<52), 0)) {
-	if(__builtin_expect(ax > (0x7fful<<52), 0)) return x;
+  uint64_t ax = ix.u&(~(uint64_t)0>>1);
+  if(__builtin_expect(ax >= ((uint64_t)0x3f3<<52), 1)) { // |x| >= 0x1p-12
+    if(__builtin_expect(ax >= ((uint64_t)0x42d<<52), 0)) {
+      if(__builtin_expect(ax >= ((uint64_t)0x7ff<<52), 0)) {
+	if(__builtin_expect(ax > ((uint64_t)0x7ff<<52), 0)) return x;
 	errno = EDOM;
 	return 0.0/0.0;
       }
@@ -230,7 +231,7 @@ double cr_tanpi(double x){
       }
     }
     int32_t e = ax>>52, s = 1068 - e, s1 = e - 1011;
-    int64_t m = (ax&(~0ul>>12))|(1ul<<52), ms = (m<<s1)>>63, sgn = (int64_t)ix.u>>63;
+    int64_t m = (ax&(~(uint64_t)0>>12))|((uint64_t)1<<52), ms = (m<<s1)>>63, sgn = (int64_t)ix.u>>63;
     uint64_t iq = ((m^ms)>>s)&63;
     iq = (iq + 1)>>1;
     ms ^= sgn;
@@ -266,9 +267,9 @@ double cr_tanpi(double x){
       th = ith;
     } else {
       double nl = T[iq][0], nh = T[iq][1];
-      static const double s[2] = {-1, 1};
-      nh *= s[ms+1];
-      nl *= s[ms+1];
+      static const double s2[2] = {-1, 1};
+      nh *= s2[ms+1];
+      nl *= s2[ms+1];
       double ml, mh = muldd(th,tl,nh,nl, &ml), dm, dn;
       mh = fasttwosub(1.0, mh, &dm);
       ml = dm - ml;
@@ -298,9 +299,9 @@ double cr_tanpi(double x){
       th = ith;
     } else {
       double nl = T[iq][0], nh = T[iq][1];
-      static const double s[2] = {-1, 1};
-      nh *= s[ms+1];
-      nl *= s[ms+1];
+      static const double s2[2] = {-1, 1};
+      nh *= s2[ms+1];
+      nl *= s2[ms+1];
       double ml, mh = muldd(th,tl,nh,nl, &ml), dm, dn;
       mh = fasttwosub(1.0, mh, &dm);
       ml = dm - ml;
@@ -312,13 +313,14 @@ double cr_tanpi(double x){
     }
     th = fasttwosum(th,tl,&tl);
     res = th;
-  } else {
+  } else { // |x| < 0x1p-12
     if(__builtin_expect(ax==0, 0)) return x;
     const double pi0 = 0x1.921fb54442d18p+1, pi1 = 0x1.1a62633145c07p-53;
-    if(__builtin_expect(ax<(0x3caul<<52), 0)) {
-      if(__builtin_expect(ax<(0x36ul<<52), 0)) {
+    if(__builtin_expect(ax<((uint64_t)0x3ca<<52), 0)) { // |x| < 0x1p-53
+      if(__builtin_expect(ax<((uint64_t)0x36<<52), 0)) { // |x| < 0x1p-969
 	int32_t e = ax>>52;
-	b64u64_u sc = {.u = (2045l-e)<<52}, isc = {.u = (1l+e)<<52};
+	b64u64_u sc = {.u = ((int64_t)2045-e)<<52},
+                isc = {.u = ((int64_t)1+e)<<52};
 	double z = x * sc.f;
 	th = mulddd(pi0, pi1, z, &tl);
 	res = th * isc.f;
@@ -329,14 +331,14 @@ double cr_tanpi(double x){
 	  v0b += tl;
 	  return v0b*isc.f - o;
 	}
-      } else {
+      } else { // 0x1p-969 <= |x| < 0x1p-53
 	th = mulddd(pi0, pi1, x, &tl);
 	res = th;
       }
     } else {
-      static const double c[] = {0x1.4abbce625be53p+3, 0x1.466bc6775aa2ap+5, 0x1.46000158496c2p+7};
+      static const double c2[] = {0x1.4abbce625be53p+3, 0x1.466bc6775aa2ap+5, 0x1.46000158496c2p+7};
       double x2 = x*x, x3 = x*x2;
-      double f = x3*(c[0] + x2*(c[1] + x2*(c[2])));
+      double f = x3*(c2[0] + x2*(c2[1] + x2*(c2[2])));
       double px1, px0 = mulddd(pi0,pi1,x,&px1);
       th = fastsumddd(px0,px1,f,&tl);
       double eps = x*(x2*0x1.1p-47 + 0x1p-101);
@@ -358,7 +360,8 @@ double cr_tanpi(double x){
     }
   }
   b64u64_u ul = {.f = tl}, uh = {.f = th};
-  uint64_t er = ((ul.u + 6) & (~0ul>>12)), de = ((uh.u-ul.u)>>52)&0x7ff;
+  uint64_t er = ((ul.u + 6) & (~(uint64_t)0>>12)),
+           de = ((uh.u-ul.u)>>52)&(uint64_t)0x7ff;
   if(__builtin_expect(er<=12||de>102, 0)) return as_tanpi_database(x, res);
   return res;
 }

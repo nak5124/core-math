@@ -1,6 +1,6 @@
 /* Correctly-rounded atan2pi function for two binary64 values.
 
-Copyright (c) 2023 Paul Zimmermann
+Copyright (c) 2023, 2024 Paul Zimmermann
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -208,7 +208,12 @@ static const tint_t Q[30] = {
 static double __attribute__((noinline))
 atan2pi_accurate (double y, double x)
 {
-  int inv = __builtin_fabs (y) > __builtin_fabs (x);
+  double absy = __builtin_fabs (y), absx = __builtin_fabs (x);
+  int inv = absy > absx;
+  if (absy == absx)
+    return (y > 0) ?
+      ((x > 0) ? 0.25 : 0.75)      // 1st and 2nd quadrant
+      : ((x < 0) ? -0.75 : -0.25); // 3rd and 4th quadrant
   tint_t z[1], p[1], q[1];
   if (inv) // case |y| > |x|
   {
@@ -345,7 +350,7 @@ atan2pi_accurate (double y, double x)
   return tint_tod (z, err, y, x);
 }
 
-/* The following are degree-7 polynomials approximating atan(x) on (0,1).
+/* The following are degree-7 polynomials approximating atan(x) on (0,1+1/64).
    The polynomial p[i] is for the range [i/64,(i+1)/64], with origin Xfast[i]
    at the middle of that range (except for i=0).
    The coefficients of degree 0 and 1 are double-doubles
@@ -360,7 +365,7 @@ atan2pi_accurate (double y, double x)
    p[i][j] is greater in absolute value than the sum p[i][j+1]*x +
    p[i][j+2]*x^2 + ... for |x| <= 1/128, i.e., when evaluating them using
    Horner's scheme, the condition |a| >= |b| in fast_two_sum is fulfilled. */
-static const double Pfast[64][10] = {
+static const double Pfast[65][10] = {
   {0, 0, 1.0, 0, 0, -0x1.5555555555555p-2, 0, 0x1.9999999992c29p-3, 0, -0x1.249247c670632p-3 /* , 0, 0x1.c6e5d41706f0dp-4 */ }, /* i=0 71.798 */
   {0x1.7fee0184a5c36p-6, -0x1.43d22cd70f533p-60, 0x1.ffb80a1e93b34p-1, -0x1.46d03098af947p-55, -0x1.7f9416c3bb28ap-6, -0x1.5435ba7ac7b4bp-2, 0x1.7ef26a1277a3dp-6, 0x1.963bcfff26a3bp-3, -0x1.7dfd6148d6a5bp-6, -0x1.201e9fb0fd027p-3}, /* i=1 62.976 */
   {0x1.3fd65f169c9d9p-5, 0x1.6fc5a390a776cp-61, 0x1.ff384e0187672p-1, -0x1.0ba36e06dfbcap-55, -0x1.3f06922fd9dbep-5, -0x1.5238605d11307p-2, 0x1.3d91a94508185p-5, 0x1.904a9cf742939p-3, -0x1.3b6f8b816234cp-5, -0x1.183e25c225415p-3}, /* i=2 63.019 */
@@ -425,25 +430,26 @@ static const double Pfast[64][10] = {
   {0x1.87ed0eadc5a2ap-1, 0x1.0af644a40cdf6p-56, 0x1.0a31f5d8701b3p-1, -0x1.69be1c6d2f945p-55, -0x1.09fbe60757b84p-2, 0x1.53aa87a589b39p-4, 0x1.6077cad635afep-8, -0x1.ee45047defbd8p-6, 0x1.7d0507433a359p-6, -0x1.1d87365b117c3p-7}, /* i=61 71.921 */
   {0x1.8c0d9145cf49dp-1, 0x1.bea3f44a38f5p-55, 0x1.0611feb45139ap-1, 0x1.e4854f5cf6588p-56, -0x1.05ff21953a316p-2, 0x1.54bf9c08c1d9dp-4, 0x1.9706e47ec6983p-9, -0x1.cb4905caf6008p-6, 0x1.6d445cd02559ap-6, -0x1.2222e5ddeb73p-7}, /* i=62 72.227 */
   {0x1.901db3eeef187p-1, 0x1.686643d96bf0fp-55, 0x1.0201fffbf7f8p-1, 0x1.0002f3990d4cp-61, -0x1.01fff7ebe8004p-2, 0x1.55451fb001307p-4, 0x1.0509ffc9bc308p-10, -0x1.a9c997dbab5a8p-6, 0x1.5d54a31b98f7dp-6, -0x1.244be978edbbcp-7}, /* i=63 73.347 */
+  {0x1.941db699968ffp-1, -0x1.de4c371fb2ddap-55, 0x1.fc03fff80ffp-2, 0x1.f8e5851a6dep-62, -0x1.fc000fd82fff8p-3, 0x1.55458a5aabd48p-4, -0x1.f613ff970b10ap-11, -0x1.89c997e69f2ap-6, 0x1.4d5602132646dp-6, -0x1.244fb6e93a605p-7}, /* i=64 73.751 */
 };
 
-/* For 0 <= i < 64, Xfast[i] is the evaluation point of the polynomial
+/* For 0 <= i <= 64, Xfast[i] is the evaluation point of the polynomial
    Pfast[i]. Except for i=0 where Xfast[i]=0, Xfast[i] is the middle of
    range [i/64,(i+1)/64]. */
-static const double Xfast[64] = {0, 0x1.8p-6, 0x1.4p-5, 0x1.cp-5, 0x1.2p-4, 0x1.6p-4, 0x1.ap-4, 0x1.ep-4, 0x1.1p-3, 0x1.3p-3, 0x1.5p-3, 0x1.7p-3, 0x1.9p-3, 0x1.bp-3, 0x1.dp-3, 0x1.fp-3, 0x1.08p-2, 0x1.18p-2, 0x1.28p-2, 0x1.38p-2, 0x1.48p-2, 0x1.58p-2, 0x1.68p-2, 0x1.78p-2, 0x1.88p-2, 0x1.98p-2, 0x1.a8p-2, 0x1.b8p-2, 0x1.c8p-2, 0x1.d8p-2, 0x1.e8p-2, 0x1.f8p-2, 0x1.04p-1, 0x1.0cp-1, 0x1.14p-1, 0x1.1cp-1, 0x1.24p-1, 0x1.2cp-1, 0x1.34p-1, 0x1.3cp-1, 0x1.44p-1, 0x1.4cp-1, 0x1.54p-1, 0x1.5cp-1, 0x1.64p-1, 0x1.6cp-1, 0x1.74p-1, 0x1.7cp-1, 0x1.84p-1, 0x1.8cp-1, 0x1.94p-1, 0x1.9cp-1, 0x1.a4p-1, 0x1.acp-1, 0x1.b4p-1, 0x1.bcp-1, 0x1.c4p-1, 0x1.ccp-1, 0x1.d4p-1, 0x1.dcp-1, 0x1.e4p-1, 0x1.ecp-1, 0x1.f4p-1, 0x1.fcp-1};
+static const double Xfast[65] = {0, 0x1.8p-6, 0x1.4p-5, 0x1.cp-5, 0x1.2p-4, 0x1.6p-4, 0x1.ap-4, 0x1.ep-4, 0x1.1p-3, 0x1.3p-3, 0x1.5p-3, 0x1.7p-3, 0x1.9p-3, 0x1.bp-3, 0x1.dp-3, 0x1.fp-3, 0x1.08p-2, 0x1.18p-2, 0x1.28p-2, 0x1.38p-2, 0x1.48p-2, 0x1.58p-2, 0x1.68p-2, 0x1.78p-2, 0x1.88p-2, 0x1.98p-2, 0x1.a8p-2, 0x1.b8p-2, 0x1.c8p-2, 0x1.d8p-2, 0x1.e8p-2, 0x1.f8p-2, 0x1.04p-1, 0x1.0cp-1, 0x1.14p-1, 0x1.1cp-1, 0x1.24p-1, 0x1.2cp-1, 0x1.34p-1, 0x1.3cp-1, 0x1.44p-1, 0x1.4cp-1, 0x1.54p-1, 0x1.5cp-1, 0x1.64p-1, 0x1.6cp-1, 0x1.74p-1, 0x1.7cp-1, 0x1.84p-1, 0x1.8cp-1, 0x1.94p-1, 0x1.9cp-1, 0x1.a4p-1, 0x1.acp-1, 0x1.b4p-1, 0x1.bcp-1, 0x1.c4p-1, 0x1.ccp-1, 0x1.d4p-1, 0x1.dcp-1, 0x1.e4p-1, 0x1.ecp-1, 0x1.f4p-1, 0x1.fcp-1, 0x1.02p+0};
 
-/* For 0 <= i < 64, err_fast[i] is a bound on the total relative error
+/* For 0 <= i <= 64, err_fast[i] is a bound on the total relative error
    on the range [i/64,(i+1)/64], including the approximation error from
    Pfast[i] and all rounding errors.
    For i=0 the analysis is done in comment in the code below, while for
-   1 <= i < 64 the table was generated by table_err_poly() in atan2pi.sage. */
-static const double err_fast[64] = {0x1.aep-65, 0x1.19p-62, 0x1.ap-63, 0x1.61p-63, 0x1.4dp-63, 0x1.3p-63, 0x1.18p-63, 0x1.03p-63, 0x1.ffp-64, 0x1.d5p-64, 0x1.adp-64, 0x1.87p-64, 0x1.63p-64, 0x1.4p-64, 0x1.1dp-64, 0x1.f8p-65, 0x1.bap-65, 0x1.8p-65, 0x1.4bp-65, 0x1.53p-65, 0x1.21p-65, 0x1.e8p-66, 0x1.95p-66, 0x1.5p-66, 0x1.11p-66, 0x1.b4p-67, 0x1.5bp-67, 0x1.89p-67, 0x1.bcp-67, 0x1.e4p-67, 0x1.02p-66, 0x1.07p-66, 0x1.0fp-66, 0x1.1p-66, 0x1.11p-66, 0x1.0dp-66, 0x1.0bp-66, 0x1.06p-66, 0x1.f5p-67, 0x1.e5p-67, 0x1.d9p-67, 0x1.c2p-67, 0x1.adp-67, 0x1.9ap-67, 0x1.8bp-67, 0x1.76p-67, 0x1.5fp-67, 0x1.5p-67, 0x1.3cp-67, 0x1.2dp-67, 0x1.1fp-67, 0x1.0fp-67, 0x1.04p-67, 0x1.edp-68, 0x1.dbp-68, 0x1.c9p-68, 0x1.b7p-68, 0x1.9ap-68, 0x1.8ap-68, 0x1.8p-68, 0x1.74p-68, 0x1.63p-68, 0x1.5dp-68, 0x1.52p-68};
+   1 <= i <= 64 the table was generated by table_err_poly() in atan2pi.sage. */
+static const double err_fast[65] = {0x1.aep-65, 0x1.19p-62, 0x1.ap-63, 0x1.61p-63, 0x1.4dp-63, 0x1.3p-63, 0x1.18p-63, 0x1.03p-63, 0x1.ffp-64, 0x1.d5p-64, 0x1.adp-64, 0x1.87p-64, 0x1.63p-64, 0x1.4p-64, 0x1.1dp-64, 0x1.f8p-65, 0x1.bap-65, 0x1.8p-65, 0x1.4bp-65, 0x1.53p-65, 0x1.21p-65, 0x1.e8p-66, 0x1.95p-66, 0x1.5p-66, 0x1.11p-66, 0x1.b4p-67, 0x1.5bp-67, 0x1.89p-67, 0x1.bcp-67, 0x1.e4p-67, 0x1.02p-66, 0x1.07p-66, 0x1.0fp-66, 0x1.1p-66, 0x1.11p-66, 0x1.0dp-66, 0x1.0bp-66, 0x1.06p-66, 0x1.f5p-67, 0x1.e5p-67, 0x1.d9p-67, 0x1.c2p-67, 0x1.adp-67, 0x1.9ap-67, 0x1.8bp-67, 0x1.76p-67, 0x1.5fp-67, 0x1.5p-67, 0x1.3cp-67, 0x1.2dp-67, 0x1.1fp-67, 0x1.0fp-67, 0x1.04p-67, 0x1.edp-68, 0x1.dbp-68, 0x1.c9p-68, 0x1.b7p-68, 0x1.9ap-68, 0x1.8ap-68, 0x1.8p-68, 0x1.74p-68, 0x1.63p-68, 0x1.5dp-68, 0x1.52p-68, 0x1.53p-69};
 
 /* h + l <- bh / ah with relative error bounded by 2^-98.41
    (copied and simplified from tan.c).
-   Here is it called with 0 < bh/ah < 1.
-   Ensure |l| < 2^-48.999 for 1 <= ah, bh < 2,
-   thus |l| < 2^(e-48.999) when bh/ah < 2^e.
+   Here is it called with 0 < |bh/ah| <= 1.
+   Ensure |l| < 2^-48.999 for 1 <= |ah|, |bh| < 2,
+   thus |l| < 2^(e-48.999) when |bh/ah| < 2^e.
    Assumes 2^-1024 < |ah| <= 2^1022, 2^-969 <= |bh|,
    and 2^-969 <= |bh/ah| <= 2^1023.
 */
@@ -555,8 +561,19 @@ static double atan2pi_fast (double *h, double *l, double y, double x)
   if (inv) { double t = y; y = x; x = t; }
   // now |y| <= |x|
   double zh, zl;
+  if (__builtin_expect (ax == ay, 0)) { // avoid spurious inexact
+    if (y == x)
+      *h = (x > 0) ? 0.25 : -0.75;
+    else
+      *h = (x > 0) ? -0.25 : 0.75;
+    *l = 0;
+    return 0; // exact
+  }
   fast_div (&zh, &zl, y, x);
   // for |zh| < 2^e, we have |zl| < 2^(e-48.999)
+  /* since |y| <= |x| and fast_div ensures |zl| < 2^-47.999 with relative
+     error < 2^-98.41, we have |zh+zl| < 1 + 2^-98.41, thus
+     |zh| < 1 + 2^-98.41 - 2^-47.999 < 1 + 1/64, thus i <= 64 below */
 
   // zh + zl = y/x * (1 + eps1) with |eps1| < 2^-98.41
   // the rational approximation is only for z > 0, it is not antisymmetric
@@ -564,7 +581,7 @@ static double atan2pi_fast (double *h, double *l, double y, double x)
   if (zh < 0) { zh = -zh; zl = -zl; sz = -1.0; }
 
   // now approximate atan(zh+zl) for 0 <= zh+zl < 1
-  int i = __builtin_trunc (64.0 * zh); // 0 <= i < 64
+  int i = __builtin_trunc (64.0 * zh); // 0 <= i <= 64
   const double *p = Pfast[i];
   zh -= Xfast[i];
 #define P9 0x1.c6e5d41706f0dp-4 // degree-9 coefficient for i=0

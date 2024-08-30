@@ -33,7 +33,9 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 #include "function_under_test.h"
 
@@ -138,7 +140,9 @@ int tests = 0;
 static void
 check (long double x, long double y)
 {
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
+#endif
   tests ++;
   ref_init();
   ref_fesetround(rnd);
@@ -186,7 +190,9 @@ doloop(void)
 
   readstdin(&items, &count);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (int i = 0; i < count; i++) {
     long double x = items[i][0], y = items[i][1];
     check (x, y);

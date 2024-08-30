@@ -33,7 +33,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
-#ifndef CORE_MATH_NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
 
@@ -107,7 +107,7 @@ static int
 is_nan (long double x)
 {
   b80u80_t v = {.f = x};
-  return ((v.e & 0x7ffful) == 0x7fff && (v.m != (1ul << 63)));
+  return ((v.e & (uint64_t)0x7fff) == 0x7fff && (v.m != ((uint64_t)1 << 63)));
 }
 
 static inline int
@@ -129,14 +129,16 @@ check (long double x)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   long double z1 = ref_function_under_test(x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   long double z2 = cr_function_under_test(x);
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-  if (is_equal (z1, z2) == 0) {
+	if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%La ref=%La z=%La\n", x, z1, z2);
     fflush(stdout);
 #ifdef DO_NOT_ABORT
@@ -145,6 +147,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La (y=%La)\n", x, z1);
@@ -165,6 +168,7 @@ check (long double x)
     exit(1);
 #endif
   }
+#endif
   return 0;
 }
 
@@ -176,18 +180,20 @@ doloop(void)
 
   readstdin(&items, &count);
 
-#ifndef CORE_MATH_NO_OPENMP
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for reduction(+: failures,tests)
 #endif
   for (int i = 0; i < count; i++) {
     long double x = items[i];
     tests ++;
-    if (check (x))
-      failures ++;
+    int c = check(x);
+    if (c)
+      {failures ++;}
 #ifdef WORST_SYMMETRIC
     tests ++;
-    if (check (-x))
-      failures ++;
+    c = check(-x);
+    if (c)
+      {failures ++;}
 #endif
   }
 
@@ -207,7 +213,10 @@ check_long_double (void)
   if (p != 64)
   {
     printf ("The long-double format is not the double-extended format\n");
-    printf ("It has a precision of %d bits\n", p);
+    if (p == 1075)
+      printf ("It seems to be double-double\n");
+    else
+      printf ("It has a precision of %d bits\n", p);
     exit (1);
   }
 }

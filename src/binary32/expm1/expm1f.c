@@ -122,7 +122,7 @@ float cr_expm1f(float x){
   double a = iln2*z, ia = __builtin_roundeven(a), h = a - ia, h2 = h*h;
   b64u64_u u = {.f = ia + big};
   double c2 = c[2] + h*c[3], c0 = c[0] + h*c[1];
-  const unsigned long *tdl = (const unsigned long *)td;
+  const uint64_t *tdl = (uint64_t *)((void*)td);
   b64u64_u sv = {.u = tdl[u.u&0x1f] + ((u.u>>5)<<52)};
   double r = (c0 + h2*c2)*sv.f - 1.0;
   float ub = r, lb = r - sv.f*0x1.3b3p-33;
@@ -130,8 +130,11 @@ float cr_expm1f(float x){
     if(__builtin_expect(ux>0xc18aa123u, 0)) // x < -17.32
       return -1.0f + 0x1p-26f;
     const double iln2h = 0x1.7154765p+5, iln2l = 0x1.5c17f0bbbe88p-26;
-    double h = (iln2h*z - ia) + iln2l*z, s = sv.f, h2 = h*h, w = s*h;
-    double r = (s-1) + w*((ch[0] + h*ch[1]) + h2*((ch[2] + h*ch[3]) + h2*(ch[4] + h*ch[5])));
+    double s = sv.f;
+    h = (iln2h*z - ia) + iln2l*z;
+    h2 = h*h;
+    double w = s*h;
+    r = (s-1) + w*((ch[0] + h*ch[1]) + h2*((ch[2] + h*ch[3]) + h2*(ch[4] + h*ch[5])));
     ub = r;
   }
   return ub;

@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 
 #define N 256 // length of the table
 
@@ -13,7 +15,9 @@ doit (int k)
 {
   double SC[N][3];
   int remains = N;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(dynamic,1)
+#endif
   for (int i = 0; i < N; i++)
     {
       mpfr_t x, y, s, c, ss, cc;
@@ -56,7 +60,9 @@ doit (int k)
       SC[i][0] = mpfr_get_d (x, MPFR_RNDN) - xi;
       SC[i][1] = mpfr_get_d (ss, MPFR_RNDN);
       SC[i][2] = mpfr_get_d (cc, MPFR_RNDN);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp critical
+#endif
       {
         remains --;
         printf ("i=%d done, remains %d values\n", i, remains);

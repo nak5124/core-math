@@ -97,7 +97,7 @@ double as_sinpi_zero(double x){
   double y0 = pi0*x;
   b64u64_u b = {.f = y0};
   b.u &= ~0ul>>12;
-  b.u += 85l<<51;
+  b.u += (int64_t)85<<51;
   y0 = (y0 + b.f) - b.f;
   double y0l = __builtin_fma(pi0,x,-y0);
   double y1 = pi1*x, y2 = __builtin_fma(pi1,x,-y1) + pi2*x;
@@ -136,7 +136,7 @@ double as_sinpi_refine(int iq, double z){
   double tsl, tsh = fasttwosum(sch, csh, &tsl); tsl += csl + scl;
   double tsl2; tsh = fasttwosum(sbh, tsh, &tsl2); tsl = sbl + tsl + tsl2;
   b64u64_u t = {.f = tsl};
-  if((t.u|(0xffful<<52)) == ~0ul || (t.u<<12) == 0){
+  if((t.u|((uint64_t)0xfff<<52)) == ~(uint64_t)0 || (t.u<<12) == 0){
     static const struct {int iq; double x, r, d;} db[] = {
       { 76, -0x1.276b3fef466p-2, 0x1.db8a79a80c3a0p-4,  0x1p-110},
       {108, -0x1.33caea0f24cp-2, 0x1.5146c0bc45bcep-3,  0x1p-109},
@@ -155,10 +155,10 @@ double cr_sinpi(double x){
   static const double sn[] = { 0x1.921fb54442d18p-74, -0x1.4abbce625be51p-223, 0x1.466bc6044ba16p-374};
   static const double cn[] = {-0x1.3bd3cc9be45dbp-148, 0x1.03c1f00186416p-298};
   b64u64_u ix = {.f = x};
-  uint64_t ax = ix.u&(~0ul>>1);
+  uint64_t ax = ix.u&(~(uint64_t)0>>1);
   if(__builtin_expect(ax==0, 0)) return x;
   int32_t e = ax>>52;
-  int64_t m = (ix.u&(~0ul>>12))|(1ul<<52), sgn = ix.u; sgn >>= 63;
+  int64_t m = (ix.u&(~(uint64_t)0>>12))|((uint64_t)1<<52), sgn = ix.u; sgn >>= 63;
   m = (m^sgn) - sgn;
   int32_t s = 1063 - e;
   if(__builtin_expect(s<0, 0)){

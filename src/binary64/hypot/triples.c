@@ -30,7 +30,9 @@ SOFTWARE.
 #include <math.h>
 #include <fenv.h>
 #include <assert.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <mpfr.h>
 
 double cr_hypot (double, double);
@@ -219,10 +221,12 @@ check_pythagorean_triples (int k)
 
   /* Type 1: x = p^2-q^2, y = 2pq, z = p^2+q^2 */
   /* since y = 2pq < 2^53 and q < p, this gives q <= 67108863 */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(static,1)
-  for (u128 q = 1; q <= 67108863; q++)
+#endif
+  for (uint64_t u = 1; u <= 67108863; u++)
   {
-    u128 p;
+    u128 p, q = u;
     for (p = q + 1; 2 * p * q < 0x20000000000000ul; p += 2 * REDUCE)
       count1 += generate1 (p, q, k, 0xfffffffffffffffful / REDUCE);
   }
@@ -232,11 +236,13 @@ check_pythagorean_triples (int k)
 
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^53, this gives p <= 2^52 */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
-  for (u128 p = 2; p <= 0x10000000000000 / REDUCE; p++)
+#endif
+  for (uint64_t u = 2; u <= 0x10000000000000 / REDUCE; u++)
   {
     /* we want y < 2^53, thus p^2-q^2 < 2^53 thus p^2 - 2^53 < q^2 */
-    u128 q, qmin = 1;
+    u128 p = u, q, qmin = 1;
     if (p * p < 0x20000000000000ul)
       q = 0;
     else

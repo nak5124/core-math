@@ -92,14 +92,14 @@ get_random ()
   b80u80_t v;
   v.m = rand ();
   v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) rand () << 62;
+  v.m |= (uint64_t) (rand () & 1) << 62;
+  // the low 63 bits of m are random
   v.e = rand () & 0xffff;
-  // if e is not 0 nor 0x7fff nor 0xffff, m should have its msb set
-  uint64_t t = v.e != 0 && v.e != 0x7fff && v.e != 0xffff;
+  // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
+  // significant bit set, otherwise it should be cleared
+  // cf https://en.wikipedia.org/wiki/Extended_precision
+  uint64_t t = (v.e & 0x7fff) != 0;
   v.m |= t << 63;
-  // if e is 0, m should have its msb cleared
-  if (v.e == 0)
-    v.m = (v.m << 1) >> 1;
   return v.f;
 }
 
@@ -170,7 +170,9 @@ main (int argc, char *argv[])
   uint64_t n1 = ldexpl (x1, 49);
 #define SKIP 32000000
   n0 -= getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = n0; n > n1; n -= SKIP)
     check (-ldexpl ((long double) n, -49));
   /* x2 is the smallest x such that 2^-16382 <= RN(2^-x) */
@@ -180,7 +182,9 @@ main (int argc, char *argv[])
   n1 = ldexpl (x1, 50);
   uint64_t n2 = ldexpl (x2, 50);
   n1 -= getpid () % SKIP;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = n1; n > n2; n -= SKIP)
     check (-ldexpl ((long double) n, -50));
 
@@ -190,7 +194,9 @@ main (int argc, char *argv[])
   unsigned int seed = getpid ();
   srand (seed);
 
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
   for (uint64_t n = 0; n < N; n++)
   {
     ref_init ();

@@ -33,6 +33,46 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
+/* __builtin_roundeven was introduced in gcc 10:
+   https://gcc.gnu.org/gcc-10/changes.html,
+   and in clang 17 */
+#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__))
+inline double __builtin_roundeven(double x){
+   double ix;
+#if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#endif
+   return ix;
+}
+#define HAS_BUILTIN_ROUNDEVEN
+#endif
+
+#ifndef HAS_BUILTIN_ROUNDEVEN
+#include <math.h>
+/* round x to nearest integer, breaking ties to even */
+static double
+__builtin_roundeven (double x)
+{
+  double y = round (x); /* nearest, away from 0 */
+  if (fabs (y - x) == 0.5)
+  {
+    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    union { double f; uint64_t n; } u, v;
+    u.f = y;
+    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
+      y = v.f;
+  }
+  return y;
+}
+#endif
+
 typedef uint64_t u64;
 typedef int64_t i64;
 typedef unsigned short ushort;
@@ -313,7 +353,7 @@ double cr_log1p(double x){
     if(__builtin_expect(je<1022, 1)){
       rs.u -= eoff;
     } else {
-      rs.u -= 1021l<<52;
+      rs.u -= (i64)1021<<52;
       static const double sc[] = {0x1p-1, 0x1p-2, 0x1p-3};
       rs.f *= sc[je-1022];
     }
@@ -385,7 +425,7 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
 	t.f = 1 + x;
       dt.u = 0;
     }
-    t.u -= (long)je<<52;
+    t.u -= (int64_t)je<<52;
 
     double t12 = rt[0][j1]*rt[1][j2], t34 = rt[2][j3]*rt[3][j4];
     double th = t12*t34, tl = __builtin_fma(t12,t34,-th);
@@ -394,7 +434,7 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
     double xl, xh = fasttwosum(dh-1, dl, &xl);
     xh = fastsum(xh, xl, sh, sl, &xl);
     if(dt.u){
-      dt.u -= (long)je<<52;
+      dt.u -= (int64_t)je<<52;
       double ddh = th*dt.f, ddl = __builtin_fma(th,dt.f,-ddh) + tl*dt.f;
       xh = fastsum(xh, xl, ddh, ddl, &xl);
     }

@@ -118,13 +118,13 @@ float cr_log2f(float x) {
     // subnormal
     int nz = __builtin_clzll(m);
     m <<= nz-11;
-    m &= ~0ul>>12;
+    m &= ~(uint64_t)0>>12;
     e -= nz-12;
   }
   if(__builtin_expect(!m, 0)) return e;
-  int j = (m + (1l<<(52-8)))>>(52-7), k = j>53;
+  int j = (m + ((int64_t)1<<(52-8)))>>(52-7), k = j>53;
   e += k;
-  b64u64_u xd = {.u = m | 0x3fful<<52};
+  b64u64_u xd = {.u = m | (uint64_t)0x3ff<<52};
   double z = __builtin_fma(xd.f, ix[j], -1.0); // z is exact
   static const double c[] =
     {0x1p+0, -0x1p-1, 0x1.55555555030bcp-2, -0x1.ffffffff2b4e5p-3, 0x1.999b5076a42f2p-3, -0x1.55570c45a647dp-3};

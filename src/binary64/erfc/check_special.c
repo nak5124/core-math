@@ -113,7 +113,9 @@ check_subnormal (void)
   uint64_t urange = (umax - umin) / (uint64_t) N;
   printf ("Check subnormal output range\n");
   umin += getpid () % urange;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
+#endif
   for (uint64_t u = umin; u <= umax; u += urange)
   {
     ref_init ();
