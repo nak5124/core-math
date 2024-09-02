@@ -4,7 +4,9 @@
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
@@ -238,7 +240,9 @@ check_exact_or_midpoint (void)
         frexpl (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
         // we want emin divisible by d
         while (emin % d) emin++;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
+#endif
         for (int e = emin; e <= emax; e += d)
         {
           ref_init();
@@ -324,7 +328,9 @@ main (int argc, char *argv[])
 
   unsigned int seed = getpid ();
   srand (seed);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for reduction (+: total,fails)
+#endif
 	for(uint64_t n = 0; n < N; n++) {
 		ref_init();
 		ref_fesetround(rnd);

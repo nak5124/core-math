@@ -4,7 +4,9 @@
 #include <fenv.h>
 #include <math.h>
 #include <float.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include <stdbool.h>
 #include <assert.h>
 
@@ -156,7 +158,9 @@ analyze_second_sum (void)
   {
     fesetround (R[r]);
 #if MODE==1
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(static,1)
+#endif
 #endif
     for (int extra_int = -16382; extra_int < 16384; extra_int ++)
       for (int i1 = 0; i1 < 128; i1++)
@@ -193,7 +197,9 @@ analyze_second_sum (void)
           fflush (stdout);
 #elif MODE==1
           double err = compute_error (extra_int, i1, i2, mlogr12h, mlogr12l);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp critical
+#endif
           if (err > maxerr)
           {
             printf ("r=%d extra_int=%d i1=%d i2=%d err=%e\n",
