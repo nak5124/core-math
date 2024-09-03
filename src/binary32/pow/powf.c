@@ -161,11 +161,13 @@ float cr_powf(float x0, float y0){
   };
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
-  if(__builtin_expect (tx.u == (uint64_t)0x3ff<<52, 0)) return x0;
-  if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;
-  if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){
-    if((tx.u<<1) == (uint64_t)0x3ff<<53) return 1.0f;
-    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0;
+  if(__builtin_expect (tx.u == (uint64_t)0x3ff<<52, 0)) return x0; // x=1
+  if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;              // y=0
+  if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){ // y=Inf/NaN
+    if((tx.u<<1) == (uint64_t)0x3ff<<53) // |x|=1
+      return (x0 == 1.0f || (ty.u<<1) == (uint64_t)0x7ff<<53)
+        ? 1.0f : y0;
+    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0;    // x=NaN
     if((ty.u<<1) == (uint64_t)0x7ff<<53){
       if(((tx.u<<1) < ((uint64_t)0x3ff<<53)) ^ (ty.u>>63)){
 	return 0;
@@ -176,34 +178,39 @@ float cr_powf(float x0, float y0){
     return y0;
   }
   if(__builtin_expect (tx.u >= (uint64_t)0x7ff<<52, 0)){ // x is Inf, NaN or less than 0
-    if((tx.u<<1) == (uint64_t)0x7ff<<53){
+    if((tx.u<<1) == (uint64_t)0x7ff<<53){ // x is +Inf or -Inf
       if(!isodd(y0)) x0 = __builtin_fabsf(x0);
       if(ty.u>>63)return 1/x0; else return x0;
     }
-    if((tx.u<<1) > (uint64_t)0x7ff<<53){return x0;}
-    if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0))
-      if(!isint(y0)) return __builtin_nanf("");
+    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0; // x is NaN
+    if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0)) // x <= 0
+      if(!isint(y0) && x != 0) return __builtin_nanf("");
   }
   if(__builtin_expect (isint(y0), 0)){
+    if(x0==-1.0f) return (isodd(y0)) ? x0 : -x0;
     if(y0== 1.0f) return x0;
     if(y0==-1.0f) return 1.0f/x0;
     if(y0== 2.0f) return x0*x0;
     if(y0>=1.0f && y0<128.0f){
-      int np = y0, nz = __builtin_ctzll(tx.u);
-      if((52-nz)*np<53) {
+      int np = y0, nz = __builtin_ctzll(tx.u | ((uint64_t) 1 << 52));
+      if((53-nz)*np<=53) {
 	double p = x;
+        /* The final value p is wrong if p underflows to 0,
+           for example with x0=-0x1p-126 and y0=0x1.8p+5, at i=7 we have
+           p=0x1p-1008, and at i=8 with RNDU we have p=-0, then p=+0 at the
+           end instead of 0x1p-149. */
 	for(int i=1;i<np;i++) p *= x;
-	return p;
+	if (p != 0) return p;
       }
     }
   }
-  if(__builtin_expect (!(tx.u<<1), 0)){
-    if(ty.u>>63){
+  if(__builtin_expect (!(tx.u<<1), 0)){ // x=+0 or -0
+    if(ty.u>>63){ // y < 0
       if(isodd(y0))
 	return 1.0f/__builtin_copysignf(0.0f,x0);
       else
 	return 1.0f/0.0f;
-    } else {
+    } else { // y > 0
       if(isodd(y0))
 	return __builtin_copysignf(1.0f,x0)*0.0f;
       else
