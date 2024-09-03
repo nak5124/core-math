@@ -1322,7 +1322,7 @@ is_exact (double x, double y)
      (a) |x| = 1
      (b) y integer, 0 <= y <= 33
      (c) y<0: x=1 or (x=2^e and |y|=n*2^-k with 2^k dividing e)
-     (d) y>0: y=n*2^f with 5 <= f <= -1 and 1 <= n <= 33
+     (d) y>0: y=n*2^f with -5 <= f <= -1 and 1 <= n <= 33
      In cases (b)-(d), the low 42 bits of the encoding of y are zero,
      thus we use that for an early exit test. */
 

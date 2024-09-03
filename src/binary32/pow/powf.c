@@ -1,6 +1,6 @@
 /* Correctly-rounded power function for binary32 values.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2022-2024 Alexei Sibidanov and Paul Zimmermann
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -25,6 +25,13 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef __x86_64__
+#include <x86intrin.h>
+#define FLAG_T uint32_t
+#else
+#include <fenv.h>
+#define FLAG_T fexcept_t
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -107,7 +114,7 @@ static __attribute__((noinline)) double polydd(double xh, double xl, int n, cons
   return ch;
 }
 
-static float as_powf_accurate2(float, float);
+static float as_powf_accurate2(float, float, int, FLAG_T);
 
 static inline int isint(float y0){
   b32u32_u wy = {.f = y0};
@@ -129,7 +136,173 @@ static inline int isodd(float y0){
   return odd;
 }
 
+static FLAG_T
+get_flag (void)
+{
+#ifdef __x86_64__
+  return _mm_getcsr ();
+#else
+  fexcept_t flag;
+  fegetexceptflag (&flag, FE_INEXACT);
+  return flag;
+#endif
+}
+
+static void
+set_flag (FLAG_T flag)
+{
+#ifdef __x86_64__
+  _mm_setcsr (flag);
+#else
+  fesetexceptflag (&flag, FE_INEXACT);
+#endif
+}
+
+// return non-zero if x^y is exact
+static int
+is_exact (float x, float y)
+{
+  /* All cases such that x^y might be exact are:
+     (a) |x| = 1
+     (b) y integer, 0 <= y <= 15
+     (c) y<0: x=1 or (x=2^e and |y|=n*2^-k with 2^k dividing e)
+     (d) y>0: y=n*2^f with -4 <= f <= -1 and 1 <= n <= 15
+     In cases (b)-(d), the low 20 bits of the encoding of y are zero,
+     thus we use that for an early exit test. */
+
+  b32u32_u v = {.f = x}, w = {.f = y};
+  if (__builtin_expect ((v.u << 1) != 0x7f000000 && // |x| <> 1
+                        (w.u << 12) != 0, 1))
+    return 0;
+
+  if (__builtin_expect ((v.u << 1) == 0x7f000000, 0)) // |x| = 1
+    return 1;
+
+  // xmax[y] for 1<=y<=15 is the largest m such that m^y fits in 53 bits
+  static const uint32_t xmax[] = { 0, 0xffffff, 4095, 255, 63, 27, 15, 10,
+                                   7, 6, 5, 4, 3, 3, 3, 3};
+  if (y >= 0 && isint (y)) {
+    /* let x = m*2^e with m an odd integer, x^y is exact when
+       - y = 0 or y = 1
+       - m = 1 or -1 and -149 <= e*y < 128
+       - if |x| is not a power of 2, 2 <= y <= 15 and
+         m^y should fit in 24 bits
+    */
+    uint32_t m = v.u & 0x7fffff; // low 23 bits of significand
+    int32_t e = ((v.u << 1) >> 24) - 0x96;
+    if (e >= -149)
+      m |= 0x800000;
+    else // subnormal numbers
+      e++;
+    int t = __builtin_ctz (m);
+    m = m >> t;
+    e += t;
+    /* For normal numbers, we have x = m*2^e. */
+    if (y == 0 || y == 1)
+      return 1;
+    if (m == 1)
+      return -149 <= y * e && y * e < 128;
+    // now for y < 0 or 15 < y it cannot be exact
+    if (y < 0 || 15 < y)
+      return 0;
+    // now 2 <= y <= 15
+    int y_int = (int) y;
+    if (m > xmax[y_int])
+      return 0;
+    // |x^y| = m^y * 2^(e*y)
+    uint64_t my = m * m;
+    for (int i = 2; i < y_int; i++)
+      my = my * m;
+    // my = m^y
+    t = 32 - __builtin_clz (m);
+    // 2^(t-1) <= m^y < 2^t thus 2^(e*y + t - 1) <= |x^y| < 2^(e*y + t)
+    int32_t ez = e * y_int + t;
+    if (ez <= -149 || 128 < ez)
+      return 0;
+    // since m is odd, x^y is an odd multiple of 2^(e*y)
+    return e * y_int >= -149;
+  }
+
+  uint32_t n = w.u & 0x7fffff;
+  int32_t f = ((w.u << 1) >> 24) - 0x96;
+  if (f >= -149)
+    n |= 0x800000;
+  else // subnormal numbers
+    f++;
+  int t = __builtin_ctz (n);
+  n = n >> t;
+  f += t;
+  // |y| = n*2^f with n odd
+
+  uint32_t m = v.u & 0x7fffff;
+  int32_t e = ((v.u << 1) >> 24) - 0x96;
+  if (e >= -149)
+    m |= 0x800000;
+  else // subnormal numbers
+    e++;
+  t = __builtin_ctz (m);
+  m = m >> t;
+  e += t;
+  // |x| = m*2^e with m odd
+
+  /* if y < 0 and y is not an integer, the only case where x^y might be
+     exact is when y = -n/2^k and x = 2^e with 2^k dividing e */
+  if (y < 0)
+  {
+    if (m != 1) return 0;
+    // y = -2^f thus k = -f
+    // now e <> 0
+    t = __builtin_ctz (e);
+    if (-f > t) return 0; // 2^k does not divide e
+    int32_t ez = (-e >> (-f)) * n;
+    return -149 <= ez && ez < 128;
+  }
+
+  /* now y > 0, y is not a integer, y = n*2^f with n odd and f < 0.
+     Since x^(n*2^f) = (x^(2^f))^n, and n is odd, necessarily
+     x is an exact (2^k)th power with k=-f.
+     This implies x is a square. Since x = m*2^e with m odd,
+     necessarily m is a square, and e is even. */
+  while (f++) {
+    // try to extract a square from m*2^e
+    if (e&1) return 0;
+    e = e / 2;
+    float dm = (float) m;
+    float s = __builtin_roundf (__builtin_sqrtf (dm));
+    if (s * s != dm)
+      return 0;
+    /* The above call of sqrtf() might set the inexact flag, but in case
+       it happens, m is not a square, thus x^y cannot be exact. */
+    m = (uint32_t) s;
+  }
+
+  // Now |x^y| = (m*2^e)^n with n an odd integer
+  // now for 15 < n it cannot be exact, unless m=1
+  if (m > 1)
+  {
+    if (15 < n)
+      return 0;
+    // now n <= 15
+    if (m > xmax[n])
+      return 0;
+  }
+  // |x^y| = m^n * 2^(e*n)
+  uint32_t my = m;
+  int32_t ez = e * n;
+  while (n-- > 1)
+    my = my * m;
+  // |x^y| = my * 2^(e*n)
+  t = 32 - __builtin_clz (my);
+  // 2^(t-1) <= m^n < 2^t thus 2^(e*n + t - 1) <= |x^n| < 2^(e*n + t)
+  ez += t;
+  if (ez <= -149 || 128 < ez)
+    return 0;
+  // since m is odd, x^y is an odd multiple of 2^(e*y)
+  return e * (int) n >= -149;
+}
+
 float cr_powf(float x0, float y0){
+  volatile FLAG_T flag = get_flag ();
   static const double ix[] = {
     0x1p+0, 0x1.f07c1f07cp-1, 0x1.e1e1e1e1ep-1, 0x1.d41d41d42p-1,
     0x1.c71c71c72p-1, 0x1.bacf914c2p-1, 0x1.af286bca2p-1, 0x1.a41a41a42p-1,
@@ -266,7 +439,8 @@ float cr_powf(float x0, float y0){
   double w = s*h;
   b64u64_u rr = {.f = s + w*c0};
   uint64_t off = 44;
-  if(((rr.u+off)&0xfffffff) <= 2*off) return as_powf_accurate2(x0,y0);
+  if(((rr.u+off)&0xfffffff) <= 2*off)
+    return as_powf_accurate2 (x0, y0, is_exact (x0, y0), flag);
   int et = ((ty.u>>52)&0x7ff) - 0x3ff;
   uint64_t kk = ty.u<<(11+et);
   if(!(kk<<1)&&kk) rr.f = __builtin_copysign(rr.f,x);
@@ -274,7 +448,8 @@ float cr_powf(float x0, float y0){
   return res;
 }
 
-float as_powf_accurate2(float x0, float y0){
+// when is_exact is non-zero, flag is the original inexact flag
+float as_powf_accurate2(float x0, float y0, int is_exact, FLAG_T flag){
   static const double o[] = {1, 2};
   static const double ch[][2] =
     {{0x1.71547652b82fep+1, 0x1.777d0ffda2b89p-55}, {0x1.ec709dc3a03fdp-1, 0x1.d27f04ff73b3ap-55},
@@ -381,5 +556,7 @@ float as_powf_accurate2(float x0, float y0){
     eh = __builtin_copysign(eh, x0);
   }
   float res = eh;
+  if (is_exact)
+    set_flag (flag);
   return res;
 }
