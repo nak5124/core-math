@@ -334,10 +334,13 @@ float cr_powf(float x0, float y0){
   };
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
-  if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;
-  if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){
-    if((tx.u<<1) == (uint64_t)0x3ff<<53) return 1.0f;
-    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0;
+  if(__builtin_expect (tx.u == (uint64_t)0x3ff<<52, 0)) return x0; // x=1
+  if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;              // y=0
+  if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){ // y=Inf/NaN
+    if((tx.u<<1) == (uint64_t)0x3ff<<53) // |x|=1
+      return (x0 == 1.0f || (ty.u<<1) == (uint64_t)0x7ff<<53)
+        ? 1.0f : y0;
+    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0;    // x=NaN
     if((ty.u<<1) == (uint64_t)0x7ff<<53){
       if(((tx.u<<1) < ((uint64_t)0x3ff<<53)) ^ (ty.u>>63)){
 	return 0;
@@ -348,21 +351,21 @@ float cr_powf(float x0, float y0){
     return y0;
   }
   if(__builtin_expect (tx.u >= (uint64_t)0x7ff<<52, 0)){ // x is Inf, NaN or less than 0
-    if((tx.u<<1) == (uint64_t)0x7ff<<53){
+    if((tx.u<<1) == (uint64_t)0x7ff<<53){ // x is +Inf or -Inf
       if(!isodd(y0)) x0 = __builtin_fabsf(x0);
       if(ty.u>>63)return 1/x0; else return x0;
     }
-    if((tx.u<<1) > (uint64_t)0x7ff<<53){return x0;}
-    if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0))
-      if(!isint(y0)) return __builtin_nanf("");
+    if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0; // x is NaN
+    if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0)) // x <= 0
+      if(!isint(y0) && x != 0) return __builtin_nanf("");
   }
-  if(__builtin_expect (!(tx.u<<1), 0)){
-    if(ty.u>>63){
+  if(__builtin_expect (!(tx.u<<1), 0)){ // x=+0 or -0
+    if(ty.u>>63){ // y < 0
       if(isodd(y0))
 	return 1.0f/__builtin_copysignf(0.0f,x0);
       else
 	return 1.0f/0.0f;
-    } else {
+    } else { // y > 0
       if(isodd(y0))
 	return __builtin_copysignf(1.0f,x0)*0.0f;
       else
