@@ -334,7 +334,6 @@ float cr_powf(float x0, float y0){
   };
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
-  if(__builtin_expect (tx.u == (uint64_t)0x3ff<<52, 0)) return x0;
   if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;
   if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){
     if((tx.u<<1) == (uint64_t)0x3ff<<53) return 1.0f;
@@ -356,19 +355,6 @@ float cr_powf(float x0, float y0){
     if((tx.u<<1) > (uint64_t)0x7ff<<53){return x0;}
     if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0))
       if(!isint(y0)) return __builtin_nanf("");
-  }
-  if(__builtin_expect (isint(y0), 0)){
-    if(y0== 1.0f) return x0;
-    if(y0==-1.0f) return 1.0f/x0;
-    if(y0== 2.0f) return x0*x0;
-    if(y0>=1.0f && y0<128.0f){
-      int np = y0, nz = __builtin_ctzll(tx.u);
-      if((52-nz)*np<53) {
-	double p = x;
-	for(int i=1;i<np;i++) p *= x;
-	return p;
-      }
-    }
   }
   if(__builtin_expect (!(tx.u<<1), 0)){
     if(ty.u>>63){
