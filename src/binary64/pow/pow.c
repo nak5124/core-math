@@ -1314,7 +1314,7 @@ exact_pow (double *r, double x, double y, const dint64_t *z)
   return 1;
 }
 
-// return non-zero if x^y is exact
+// return non-zero if x^y is exact (and exactly representable as a double)
 static int
 is_exact (double x, double y)
 {
@@ -1431,10 +1431,10 @@ is_exact (double x, double y)
       return 0;
     /* The above call of sqrt() might set the inexact flag, but in case
        it happens, m is not a square, thus x^y cannot be exact. */
-    m = (uint64_t) s;
+    m = (uint64_t) s; // m remains odd (square root of an odd number)
   }
 
-  // Now |x^y| = (m*2^e)^n with n an odd integer
+  // Now |x^y| = (m*2^e)^n with m, n odd integers
   // now for 33 < n it cannot be exact, unless m=1
   if (m > 1)
   {
@@ -1444,19 +1444,16 @@ is_exact (double x, double y)
     if (m > xmax[n])
       return 0;
   }
-  // |x^y| = m^n * 2^(e*n)
-  uint64_t my = m;
-  int64_t ez = e * n;
-  while (n-- > 1)
+  // |x^y| = m^n * 2^(e*n) with m odd
+  uint64_t my = m, n0 = n;
+  while (n0-- > 1)
     my = my * m;
   // |x^y| = my * 2^(e*n)
-  t = 64 - __builtin_clzl (my);
-  // 2^(t-1) <= m^n < 2^t thus 2^(e*n + t - 1) <= |x^n| < 2^(e*n + t)
-  ez += t;
-  if (ez <= -1074 || 1024 < ez)
-    return 0;
-  // since m is odd, x^y is an odd multiple of 2^(e*y)
-  return e * (int) n >= -1074;
+  t = 64 - __builtin_clzl (my); // number of significant bits of m^n
+  /* x^y is an odd multiple of 2^(e*n) thus we should have e*n >= -1074,
+     we also have 2^(t-1) <= m^n thus 2^(e*n+t-1) <= |x^y| < 2^(e*n+t)
+     and we need e*n+t <= 1024 */
+  return -1074 <= e * (int) n && e * (int) n + t <= 1024;
 }
 
 // Correctly rounded power function
