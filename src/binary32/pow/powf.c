@@ -123,6 +123,7 @@ static inline int isint(float y0){
     if(s>=32) return 1;
     return !(wy.u<<s);
   }
+  if(!(wy.u<<1)) return 1;
   return 0;
 }
 
@@ -334,7 +335,13 @@ float cr_powf(float x0, float y0){
   };
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
-  if(__builtin_expect (tx.u == (uint64_t)0x3ff<<52, 0)) return x0; // x=1
+  if(__builtin_expect (tx.u<<1 == (uint64_t)0x3ff<<53, 0)){
+    if(tx.u>>63){ // x=-1
+      if((ty.u<<1) > (uint64_t)0x7ff<<53) return y0; // y=nan
+      if(isint(y0)) return (isodd(y0)) ? x0 : -x0;
+    }
+    return x0; // x=1
+  }
   if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;              // y=0
   if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){ // y=Inf/NaN
     if((tx.u<<1) == (uint64_t)0x3ff<<53) // |x|=1
