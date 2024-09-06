@@ -64,14 +64,22 @@ check_aux (long double x, long double y)
 {
   long double z, t;
   mpfr_t X, Y, Z;
+  ref_init();
+  ref_fesetround(rnd);
   mpfr_init2 (X, 64);
   mpfr_init2 (Y, 64);
   mpfr_init2 (Z, 64);
   mpfr_set_ld (X, x, MPFR_RNDN);
   mpfr_set_ld (Y, y, MPFR_RNDN);
-  z = cr_powl (x, y);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   t = ref_powl (x, y);
-	mpfr_clear (X);
+  mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+  fesetround(rnd1[rnd]);
+  feclearexcept (FE_INEXACT);
+  z = cr_powl (x, y);
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
+  mpfr_clear (X);
   mpfr_clear (Y);
   mpfr_clear (Z);
   if (!is_equal (z, t))
@@ -80,6 +88,22 @@ check_aux (long double x, long double y)
 #ifdef DO_NOT_ABORT
     return 1;
 #else
+    exit(1);
+#endif
+  }
+  if ((inex1 == 0) && (inex2 != 0))
+  {
+    printf ("Spurious inexact exception for x,y=%La,%La (z=%La)\n", x, y, z);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if ((inex1 != 0) && (inex2 == 0))
+  {
+    printf ("Missing inexact exception for x,y=%La,%La (z=%La)\n", x, y, z);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
     exit(1);
 #endif
   }
