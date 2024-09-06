@@ -1528,6 +1528,13 @@ int _issnan(long double x) {
 __attribute__((cold))
 static
 long double accurate_path(long double x, long double y, FLAG_T inex, bool invert) {
+	/* accurate_path might be called without any prior computations. If the
+	   result ends up inexact we need to make sure the inexact flag is set.
+	   Given the save/restore schema around the inexact flag, the easiest way to
+	   do this is the following.
+	*/
+	feraiseexcept(FE_INEXACT);
+
 	qint64_t q_r[1]; q_log2pow(q_r, x, y);
 	// q_r = y*log2|x| * (1 + eps_log) with |eps_log| < 2^-249.334
 
