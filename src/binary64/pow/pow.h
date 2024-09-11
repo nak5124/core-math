@@ -105,7 +105,7 @@ __builtin_roundeven (double x)
 */
 
 // When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
-inline int issignaling(double x) {
+static inline int issignaling(double x) {
   f64_u _x = {.f = x};
 
   return !(_x.u & (1ull << 51));
@@ -394,7 +394,7 @@ static inline void subnormalize_qint(qint64_t *a) {
 static inline double qint_tod(qint64_t *a) {
   subnormalize_qint(a);
 
-  f64_u r = {.u = (a->hh >> 11) | (0x3ffl << 52)};
+  f64_u r = {.u = (a->hh >> 11) | (0x3ffll << 52)};
 
   double rd = 0.0;
   if (a->hh & 0x400)
