@@ -249,10 +249,10 @@ add_qint (qint64_t *r, const qint64_t *a, const qint64_t *b) {
     /* we cannot have C=0 since |A| > |B| */
     uint64_t chh = ch >> 64, clh = cl >> 64;
     ex =
-      chh ? __builtin_clzl(chh)
-      : 64 + (ch ? __builtin_clzl(ch)
-              : 64 + (clh ? __builtin_clzl(clh)
-                      : 64 + __builtin_clzl(cl)));
+      chh ? __builtin_clzll(chh)
+      : 64 + (ch ? __builtin_clzll(ch)
+              : 64 + (clh ? __builtin_clzll(clh)
+                      : 64 + __builtin_clzll(cl)));
     /* ex < 256 since |A| > |B| */
 
     /* If ex=0 or ex=1, the rounding error is bounded by 2 ulps. */
@@ -302,10 +302,10 @@ add_qint (qint64_t *r, const qint64_t *a, const qint64_t *b) {
         chh = ch >> 64;
         clh = cl >> 64;
         ex =
-          chh ? __builtin_clzl(chh)
-          : 64 + (ch ? __builtin_clzl(ch)
-                  : 64 + (clh ? __builtin_clzl(clh)
-                          : 64 + __builtin_clzl(cl)));
+          chh ? __builtin_clzll(chh)
+          : 64 + (ch ? __builtin_clzll(ch)
+                  : 64 + (clh ? __builtin_clzll(clh)
+                          : 64 + __builtin_clzll(cl)));
       }
     if (ex) {
       ch = (ch << ex) | (cl >> (128 - ex));
@@ -396,7 +396,7 @@ add_qint_22 (qint64_t *r, const qint64_t *a, const qint64_t *b) {
 
     /* we cannot have ch=0 since |A| > |B| */
     uint64_t chh = ch >> 64;
-    ex = chh ? __builtin_clzl(chh) : 64 + __builtin_clzl(ch);
+    ex = chh ? __builtin_clzll(chh) : 64 + __builtin_clzll(ch);
 
     /* ex < 128 since |A| > |B| */
 
@@ -416,7 +416,7 @@ add_qint_22 (qint64_t *r, const qint64_t *a, const qint64_t *b) {
 
         /* we cannot have C=0 since |A| > |B| */
         chh = ch >> 64;
-        ex = chh ? __builtin_clzl(chh) : 64 + __builtin_clzl(ch);
+        ex = chh ? __builtin_clzll(chh) : 64 + __builtin_clzll(ch);
         /* rounding error is bounded by 1 ulp(128) */
       }
     ch = ch << ex;
@@ -797,7 +797,7 @@ static inline void mul_qint_2 (qint64_t *r, int64_t b, const qint64_t *a) {
   r->ex = a->ex + 64;
 
   /* scale c so that 2^63 <= c < 2^64 */
-  int k = __builtin_clzl (c);
+  int k = __builtin_clzll (c);
   c = c << k;
   r->ex -= k;
 
@@ -821,7 +821,7 @@ static inline void mul_qint_2 (qint64_t *r, int64_t b, const qint64_t *a) {
   t3 += (((u128) cy << 64) | (t2 >> 64));
   /* (t3,low(t2):64,low(t1):64) is the sum of the terms of degree 0 to 3 */
 
-  uint32_t ex = __builtin_clzl (t3 >> 64);
+  uint32_t ex = __builtin_clzll (t3 >> 64);
 
   t2 = (t2 << 64) | (t1 & (u128) 0xffffffffffffffff);
 

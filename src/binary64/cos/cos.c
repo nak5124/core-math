@@ -74,7 +74,7 @@ static inline void fast_extract (int64_t *e, uint64_t *m, double x) {
   f64_u _x = {.f = x};
 
   *e = (_x.u >> 52) & 0x7ff;
-  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
+  *m = (_x.u & (~0ull >> 12)) + (*e ? (1ull << 52) : 0);
   *e = *e - 0x3fe;
 }
 
@@ -173,8 +173,8 @@ add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
     C = A - B;
     uint64_t ch = C >> 64;
     /* We can't have C=0 here since we excluded the case |A| = |B|,
-       thus __builtin_clzl(C) is well-defined below. */
-    uint64_t ex = ch ? __builtin_clzl(ch) : 64 + __builtin_clzl(C);
+       thus __builtin_clzll(C) is well-defined below. */
+    uint64_t ex = ch ? __builtin_clzll(ch) : 64 + __builtin_clzll(C);
     /* The error from the truncated part of B (1 ulp) is multiplied by 2^ex,
        thus by 2 ulps when ex <= 1. */
     if (ex > 0)
@@ -193,7 +193,7 @@ add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
          one (as if no truncation); moreover in some rare cases we need to
          shift by 1 bit to the left. */
       r->ex -= ex;
-      ex = __builtin_clzl (C >> 64);
+      ex = __builtin_clzll (C >> 64);
       /* Fall through with the code for ex = 0. */
     }
     C = C << ex;
@@ -287,7 +287,7 @@ static inline void dint_fromd (dint64_t *a, double b) {
 
   /* |b| = 2^(ex-52)*hi */
 
-  uint32_t t = __builtin_clzl (a->hi);
+  uint32_t t = __builtin_clzll (a->hi);
 
   a->sgn = b < 0.0;
   a->hi = a->hi << t;
@@ -304,7 +304,7 @@ static inline void subnormalize_dint(dint64_t *a) {
 
   uint64_t hi = a->hi >> ex;
   uint64_t md = (a->hi >> (ex - 1)) & 0x1;
-  uint64_t lo = (a->hi & (~0ul >> ex)) || a->lo;
+  uint64_t lo = (a->hi & (~0ull >> ex)) || a->lo;
 
   switch (fegetround()) {
   case FE_TONEAREST:
@@ -323,7 +323,7 @@ static inline void subnormalize_dint(dint64_t *a) {
 
   if (!a->hi) {
     a->ex++;
-    a->hi = (1l << 63);
+    a->hi = (1ll << 63);
   }
 }
 
@@ -331,7 +331,7 @@ static inline void subnormalize_dint(dint64_t *a) {
 static inline double dint_tod(dint64_t *a) {
   subnormalize_dint (a);
 
-  f64_u r = {.u = (a->hi >> 11) | (0x3ffl << 52)};
+  f64_u r = {.u = (a->hi >> 11) | (0x3ffll << 52)};
 
   double rd = 0.0;
   if ((a->hi >> 10) & 0x1)
@@ -1362,7 +1362,7 @@ normalize (dint64_t *X)
   int cnt;
   if (X->hi != 0)
   {
-    cnt = __builtin_clzl (X->hi);
+    cnt = __builtin_clzll (X->hi);
     if (cnt)
     {
       X->hi = (X->hi << cnt) | (X->lo >> (64 - cnt));
@@ -1372,7 +1372,7 @@ normalize (dint64_t *X)
   }
   else if (X->lo != 0)
   {
-    cnt = __builtin_clzl (X->lo);
+    cnt = __builtin_clzll (X->lo);
     X->hi = X->lo << cnt;
     X->lo = 0;
     X->ex -= 64 + cnt;
@@ -1519,7 +1519,7 @@ reduce2 (dint64_t *X)
     return 0;
   int sh = 64 - 11 - X->ex;
   int i = X->hi >> sh;
-  X->hi = X->hi & ((1ul << sh) - 1);
+  X->hi = X->hi & ((1ull << sh) - 1);
   normalize (X);
   return i;
 }
@@ -1532,7 +1532,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
   b64u64_u t;
   if (c1)
     {
-      e = __builtin_clzl (c1);
+      e = __builtin_clzll (c1);
       if (e)
         {
           c1 = (c1 << e) | (c0 >> (64 - e));
@@ -1544,7 +1544,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
       c0 = (c1 << 53) | (c0 >> 11);
       if (c0)
         {
-          g = __builtin_clzl (c0);
+          g = __builtin_clzll (c0);
           if (g)
             c0 = c0 << g;
           t.u = ((f - 53 - g) << 52) | ((c0 << 1) >> 12);
@@ -1555,7 +1555,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
     }
   else if (c0)
     {
-      e = __builtin_clzl (c0);
+      e = __builtin_clzll (c0);
       f = 0x3fe - 64 - e;
       c0 = c0 << (e+1); // most significant bit shifted out
       /* put the upper 52 bits of c0 into h */
@@ -1565,7 +1565,7 @@ set_dd (double *h, double *l, uint64_t c1, uint64_t c0)
       c0 = c0 << 52;
       if (c0)
         {
-          g = __builtin_clzl (c0);
+          g = __builtin_clzll (c0);
           c0 = c0 << (g+1);
           t.u = ((f - 64 - g) << 52) | (c0 >> 12);
           *l = t.f;
@@ -1643,7 +1643,7 @@ reduce_fast (double *h, double *l, double x, double *err1)
          Let i be the smallest integer such that 2^(e-1075)/2^(64*(i+1))
          is not an integer, i.e., e - 1139 - 64i < 0, i.e.,
          i >= (e-1138)/64. */
-      uint64_t m = (1ul << 52) | (t.u & 0xffffffffffffful);
+      uint64_t m = (1ull << 52) | (t.u & 0xfffffffffffffull);
       uint64_t c[3];
       u128 u;
       // x = m/2^53 * 2^(e-1022)
@@ -1999,7 +1999,7 @@ cr_cos (double x)
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
-      t.u = ~0ul;
+      t.u = ~0ull;
       return t.f;
     }
 

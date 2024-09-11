@@ -93,7 +93,7 @@ typedef __int128 i128;
 typedef uint64_t u64;
 typedef int64_t i64;
 typedef union {u128 a; u64 b[2];} u128_u;
-typedef union {double f; unsigned long u;} b64u64_u;
+typedef union {double f; uint64_t u;} b64u64_u;
 
 inline static void shl(u128_u *a, int n){(*a).a <<= n;}
 inline static void shr(u128_u *a, int n){(*a).a >>= n;}
@@ -198,7 +198,7 @@ static double asin_acc(double x){
     double c2 = ch[2] + ax*ch[3];
     c0 += x2*c2;
     b64u64_u ic = {.f = c0*c.f + 64.0};
-    int indx = ((ic.u&(~0ul>>12)) + ((i64)1<<(52-7)))>>(52-6);
+    int indx = ((ic.u&(~0ull>>12)) + ((i64)1<<(52-7)))>>(52-6);
     u64 cm = (c.u<<11)|(i64)1<<63; int ce = ((i64)c.u>>52) - 0x3ff;
     u128_u cm2 = {.a = (u128)cm * cm};
     const int off = 36 - 22 + 14;
@@ -208,7 +208,7 @@ static double asin_acc(double x){
     shl(&cm2, sc);
     sm2.a += cm2.a;
     i64 h = sm2.b[1];
-    u64 ixm = (ixx.u&(~0ul>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
+    u64 ixm = (ixx.u&(~0ull>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
     i64 dc = mh(h, ixm);
     u128_u dsm2 = {.a = (u128)imul(dc,cm>>1)};
     dsm2.a <<= 13;
@@ -288,7 +288,7 @@ double cr_asin(double x){
     0x7641af3cca3518a2, 0x776c4edb3308f183, 0x78848413da1b92fe, 0x798a23b1238447ba, 
     0x7a7d055b18b76976, 0x7b5d039da1258cf4, 0x7c29fbee48c35ca9, 0x7ce3ceb193962314, 
     0x7d8a5f3fdd72c0ab, 0x7e1d93e9c52ea4d5, 0x7e9d55fc22945a85, 0x7f0991c3867f4d1e, 
-    0x7f62368f44949678, 0x7fa736b40620e854, 0x7fd8878de5b5f78e, 0x7ff62182133432ec, ~0ul>>1 };
+    0x7f62368f44949678, 0x7fa736b40620e854, 0x7fd8878de5b5f78e, 0x7ff62182133432ec, ~0ull>>1 };
   /* For 0 <= i <= 64, sh[i] = round(sin(i*pi/2/64)*2^69) mod 2^64,
      with maximal error < 0.496 (for i=17). */
   static const u64 sh[] = {
@@ -401,7 +401,7 @@ double cr_asin(double x){
     /* the number of leading zeros in fi.b[1] is usually 1, but it can also
        be 0, for example for x=0x1.fffffffffffffp-7, thus nz is 0, 1 or 2 */
     u128_u u = fi;
-    u.a += 12l<<ss;
+    u.a += 12ll<<ss;
     /* Here fi is the 'left' approximation, and u is the 'right' approximation,
        with error bounded by 9 ulp(d). We check the last bit (or the round bit
        for FE_TONEAREST) does not change between fi and u. */
@@ -441,7 +441,7 @@ double cr_asin(double x){
     c0 += 64;
     /* now c0 approximates 64+64*acos(x)/(pi/2), which lies in [64,128] */
     b64u64_u ic = {.f = c0};
-    int indx = ((ic.u&(~0ul>>12)) + ((i64)1<<(52-7))) >> (52-6);
+    int indx = ((ic.u&(~0ull>>12)) + ((i64)1<<(52-7))) >> (52-6);
     /* indx = round(c0)-64. We have indx < 64 since c0 is decreasing with
        |x|, thus the largest value is obtained for |x| = 2^-6, and for this
        value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
@@ -487,7 +487,7 @@ double cr_asin(double x){
     i64 h = sm2.b[1];
     /* h/2^64 approximates 2^50*(x^2+c^2) mod 1, with error bounded by
        1/2^64 for the truncated part sm2.b[0]/2^128. */
-    u64 ixm = (ixx.u&(~0ul>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
+    u64 ixm = (ixx.u&(~0ull>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
     /* ixx = ixm*2^(ixe-52) */
     /* x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is computed as
        (x-sin(y[i]))*cos(y[i]) - (sqrt(1-x^2)-cos(y[i]))*sin(y[i]) */

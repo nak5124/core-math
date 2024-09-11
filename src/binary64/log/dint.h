@@ -185,7 +185,7 @@ static inline void add_dint(dint64_t *r, const dint64_t *a, const dint64_t *b) {
   }
 
   uint64_t ex =
-      C.h ? __builtin_clzl(C.h) : 64 + (C.l ? __builtin_clzl(C.l) : a->ex);
+      C.h ? __builtin_clzll(C.h) : 64 + (C.l ? __builtin_clzll(C.l) : a->ex);
   C.r = C.r << ex;
 
   r->sgn = sgn;
@@ -236,7 +236,7 @@ static inline void mul_dint_2(dint64_t *r, int64_t b, const dint64_t *a) {
 
   t.r = (u128)(a->hi) * (u128)c;
 
-  int m = t.h ? __builtin_clzl(t.h) : 64;
+  int m = t.h ? __builtin_clzll(t.h) : 64;
   t.r = (t.r << m);
 
   // Will pose issues if b is too large but for now we assume it never happens

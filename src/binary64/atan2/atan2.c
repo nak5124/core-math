@@ -209,7 +209,7 @@ atan2_accurate (double y, double x)
       /* If |y| >= 2^-969, then since t*x has at most 106 significant bits,
          and t*x ~ y, the lower bit of t*x is >= 2^-1074, thus there is no
          underflow in __builtin_fma (t, x, -y). */
-      if (ay >= 0x6c0000000000000ul)
+      if (ay >= 0x6c0000000000000ull)
         return __builtin_fma (t, -0x1p-54, t);
       /* Now |y| < 2^-969, since x >= 2^-1074, then t <= 2^105, thus we can
          scale y and t by 2^105, which will ensure t*x-y does not underflow. */
@@ -352,18 +352,18 @@ double __attribute__((noinline)) as_atan2_special(double y0, double x0){
   d64u64 iy = {.f = y0}, ix = {.f = x0};
   u64 aiy = iy.u<<1, aix = ix.u<<1;
 
-  if (__builtin_expect (aiy >= 0x7fflu<<53 || aix >= 0x7fflu<<53, 0)){ // NaN or Inf
-    if (aiy > 0x7fflu<<53 || aix > 0x7fflu<<53)
+  if (__builtin_expect (aiy >= 0x7ffull<<53 || aix >= 0x7ffull<<53, 0)){ // NaN or Inf
+    if (aiy > 0x7ffull<<53 || aix > 0x7ffull<<53)
       return y0 + x0; // if y or x is sNaN, returns qNaN are raises invalid
     // Now neither y nor x is NaN, but at least one is +Inf or -Inf
-    if (aiy == 0x7fflu<<53 && aix == 0x7fflu<<53){ // both y and x are +/-Inf
+    if (aiy == 0x7ffull<<53 && aix == 0x7ffull<<53){ // both y and x are +/-Inf
       static const double finf[][2] = {{0x1p-55, 0x1.921fb54442d18p-1}, {0x1p-54, 0x1.2d97c7f3321d2p+1}};
       // atan2 (+/-Inf,-Inf) = +/-3pi/4
       // atan2 (+/-Inf,+Inf) = +/-pi/4
       return __builtin_copysign(finf[ix.u>>63][1], y0) + __builtin_copysign(finf[ix.u>>63][0], y0);
     }
     // now only one of y and x is +/-Inf
-    if (aix == 0x7fflu<<53) {
+    if (aix == 0x7ffull<<53) {
       if (x0 < 0)
         return __builtin_copysign (PI_H,y0) + __builtin_copysign (PI_L,y0);
       // atan2(+/-0,x) = +/-0 for x > 0
@@ -450,15 +450,15 @@ double cr_atan2 (double y0, double x0){
 
   d64u64 iy = {.f = y0}, ix = {.f = x0};
   u64 aiy = iy.u & MASK;
-  if(__builtin_expect( aiy==0 || aiy>=0x7fful<<52, 0)) return as_atan2_special(y0,x0);
+  if(__builtin_expect( aiy==0 || aiy>=0x7ffull<<52, 0)) return as_atan2_special(y0,x0);
   u64 aix = ix.u & MASK;
-  if(__builtin_expect( aix==0 || aix>=0x7fful<<52, 0)) return as_atan2_special(y0,x0);
+  if(__builtin_expect( aix==0 || aix>=0x7ffull<<52, 0)) return as_atan2_special(y0,x0);
   double ax = __builtin_fabs(x0), ay = __builtin_fabs(y0);
   double x = __builtin_fmax(ax, ay), y = __builtin_fmin(ax, ay);
   u64 sy = iy.u>>63, sx = ix.u>>63;
   u64 GT = aix<aiy;
   u64 dxy = (aix-aiy)^-GT;
-  if(__builtin_expect( dxy>=53ul<<52, 0)) return atan2_accurate(y0,x0);
+  if(__builtin_expect( dxy>=53ull<<52, 0)) return atan2_accurate(y0,x0);
   d64u64 sgn = {.f = asgn[GT^sx^sy]};
   u64 kw = sx<<2|sy<<1|GT;
   d64u64 jj = {.f = y/x + (2 + 1/128.)};

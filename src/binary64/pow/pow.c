@@ -616,21 +616,21 @@ p_3 (qint64_t *r, qint64_t *z) {
 */
 static inline int log_1 (double *h, double *l, double x) {
   f64_u _x = {.f = x};
-  uint64_t _m = _x.u & (~0ul >> 12);
+  uint64_t _m = _x.u & (~0ull >> 12);
   int64_t _e = (_x.u >> 52) & 0x7ff;
 
   f64_u _t;
 
   if (__builtin_expect(_e,1)) {
-    _t.u = _m | (0x3ffl << 52);
-    _m += 1ul << 52;
+    _t.u = _m | (0x3ffll << 52);
+    _m += 1ull << 52;
     _e -= 0x3ff;
   } else { /* x is a subnormal double  */
-    uint32_t k = __builtin_clzl (_m) - 11;
+    uint32_t k = __builtin_clzll (_m) - 11;
 
-    _e = -0x3fel - k;
+    _e = -0x3fell - k;
     _m <<= k;
-    _t.u = _m | (0x3ffl << 52);
+    _t.u = _m | (0x3ffll << 52);
   }
 
   /* now |x| = 2^_e*_t = 2^(_e-52)*m with 1 <= _t < 2,
@@ -1285,7 +1285,7 @@ exact_pow (double *r, double x, double y, const dint64_t *z)
 
   if (F < 0) { /* case (b) */
     /* check that E is divisible by 2^-F */
-    if ((E & (~0ul >> (64 + F))))
+    if ((E & (~0ull >> (64 + F))))
       return 0;
 
     int64_t G, g = (E >> -F) * n;
@@ -1299,7 +1299,7 @@ exact_pow (double *r, double x, double y, const dint64_t *z)
        the 2nd phase is less than 2^-116, since if |2^G*k-z| >= 2^-116*z
        the rounding test from the 2nd phase did succeed.
     */
-    int cnt = __builtin_clzl (k);
+    int cnt = __builtin_clzll (k);
     dint64_t d = { .hi = k << cnt, .lo = 0, .ex = G + 63 - cnt, .sgn = 1 - z->sgn };
     add_dint (&d, z, &d); /* exact by Sterbenz theorem */
     /* multiply d by 2^116 */
@@ -1314,7 +1314,7 @@ exact_pow (double *r, double x, double y, const dint64_t *z)
     /* The following code is used when k is a multiple of a power of 2,
        to reduce to 2^X*r with odd r. It checks whether k is an odd number
        multiplied by 2^(g-G). */
-    if (((k & ~(~1ul << (g - G))) == (1ul << (g - G)))) {
+    if (((k & ~(~1ull << (g - G))) == (1ull << (g - G)))) {
       *r = (double)((k >> (g - G)) * _s);
       pow2(r, g);
 
@@ -1367,11 +1367,11 @@ is_exact (double x, double y)
      thus we use that for an early exit test. */
 
   f64_u v = {.f = x}, w = {.f = y};
-  if (__builtin_expect ((v.u << 1) != 0x7fe0000000000000ul &&
+  if (__builtin_expect ((v.u << 1) != 0x7fe0000000000000ull &&
                         (w.u << 22) != 0, 1))
     return 0;
 
-  if (__builtin_expect ((v.u << 1) == 0x7fe0000000000000ul, 0)) // |x| = 1
+  if (__builtin_expect ((v.u << 1) == 0x7fe0000000000000ull, 0)) // |x| = 1
     return 1;
 
   // xmax[y] for 1<=y<=33 is the largest m such that m^y fits in 53 bits
@@ -1386,13 +1386,13 @@ is_exact (double x, double y)
        - if |x| is not a power of 2, 2 <= y <= 33 and
          m^y should fit in 53 bits
     */
-    uint64_t m = v.u & 0xffffffffffffful;
+    uint64_t m = v.u & 0xfffffffffffffull;
     int64_t e = ((v.u << 1) >> 53) - 0x433;
     if (e >= -1074)
-      m |= 0x10000000000000ul;
+      m |= 0x10000000000000ull;
     else // subnormal numbers
       e++;
-    int t = __builtin_ctzl (m);
+    int t = __builtin_ctzll (m);
     m = m >> t;
     e += t;
     /* For normal numbers, we have x = m*2^e. */
@@ -1412,7 +1412,7 @@ is_exact (double x, double y)
     for (int i = 2; i < y_int; i++)
       my = my * m;
     // my = m^y
-    t = 64 - __builtin_clzl (m);
+    t = 64 - __builtin_clzll (m);
     // 2^(t-1) <= m^y < 2^t thus 2^(e*y + t - 1) <= |x^y| < 2^(e*y + t)
     int64_t ez = e * y_int + t;
     if (ez <= -1074 || 1024 < ez)
@@ -1421,24 +1421,24 @@ is_exact (double x, double y)
     return e * y_int >= -1074;
   } 
 
-  uint64_t n = w.u & 0xffffffffffffful;
+  uint64_t n = w.u & 0xfffffffffffffull;
   int64_t f = ((w.u << 1) >> 53) - 0x433;
   if (f >= -1074)
-    n |= 0x10000000000000ul;
+    n |= 0x10000000000000ull;
   else // subnormal numbers
     f++;
-  int t = __builtin_ctzl (n);
+  int t = __builtin_ctzll (n);
   n = n >> t;
   f += t;
   // |y| = n*2^f with n odd
 
-  uint64_t m = v.u & 0xffffffffffffful;
+  uint64_t m = v.u & 0xfffffffffffffull;
   int64_t e = ((v.u << 1) >> 53) - 0x433;
   if (e >= -1074)
-    m |= 0x10000000000000ul;
+    m |= 0x10000000000000ull;
   else // subnormal numbers
     e++;
-  t = __builtin_ctzl (m);
+  t = __builtin_ctzll (m);
   m = m >> t;
   e += t;
   // |x| = m*2^e with m odd
@@ -1450,7 +1450,7 @@ is_exact (double x, double y)
     if (m != 1) return 0;
     // y = -2^f thus k = -f
     // now e <> 0
-    t = __builtin_ctzl (e);
+    t = __builtin_ctzll (e);
     if (-f > t) return 0; // 2^k does not divide e
     int64_t ez = (-e >> (-f)) * n;
     return -1074 <= ez && ez < 1024;
@@ -1489,7 +1489,7 @@ is_exact (double x, double y)
   while (n0-- > 1)
     my = my * m;
   // |x^y| = my * 2^(e*n)
-  t = 64 - __builtin_clzl (my); // number of significant bits of m^n
+  t = 64 - __builtin_clzll (my); // number of significant bits of m^n
   /* x^y is an odd multiple of 2^(e*n) thus we should have e*n >= -1074,
      we also have 2^(t-1) <= m^n thus 2^(e*n+t-1) <= |x^y| < 2^(e*n+t)
      and we need e*n+t <= 1024 */
@@ -1877,7 +1877,7 @@ double cr_pow (double x, double y) {
   if (rd)
   {
     qZ.sgn = s == -1.0;
-    qZ.ll = qZ.ll & (~0ul << 10);
+    qZ.ll = qZ.ll & (~0ull << 10);
 
     return qint_tod (&qZ);
   }

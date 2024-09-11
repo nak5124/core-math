@@ -216,8 +216,8 @@ add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
     C = A - B;
     uint64_t ch = C >> 64;
     /* We can't have C=0 here since we excluded the case |A| = |B|,
-       thus __builtin_clzl(C) is well-defined below. */
-    uint64_t ex = ch ? __builtin_clzl(ch) : 64 + __builtin_clzl(C);
+       thus __builtin_clzll(C) is well-defined below. */
+    uint64_t ex = ch ? __builtin_clzll(ch) : 64 + __builtin_clzll(C);
     /* The error from the truncated part of B (1 ulp) is multiplied by 2^ex,
        thus by 2 ulps when ex <= 1. */
     if (ex > 0)
@@ -236,7 +236,7 @@ add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
          one (as if no truncation); moreover in some rare cases we need to
          shift by 1 bit to the left. */
       r->ex -= ex;
-      ex = __builtin_clzl (C >> 64);
+      ex = __builtin_clzll (C >> 64);
       /* Fall through with the code for ex = 0. */
     }
     C = C << ex;
@@ -318,8 +318,8 @@ add_dint_11 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
     // a and b have different signs C = A + (-B)
     C = A - B;
     /* we can't have C=0 here since we excluded the case |A| = |B|,
-       thus __builtin_clzl(C) is well-defined below */
-    uint64_t ex = __builtin_clzl (C);
+       thus __builtin_clzll(C) is well-defined below */
+    uint64_t ex = __builtin_clzll (C);
     /* The error from the truncated part of B (1 ulp) is multiplied by 2^ex.
        Thus for ex <= 2, we get an error bounded by 4 ulps in the final result.
        For ex >= 3, we pre-shift the operands. */
@@ -336,7 +336,7 @@ add_dint_11 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
          one (as if no truncation); moreover in some rare cases we need to
          shift by 1 bit to the left. */
       r->ex -= ex;
-      ex = __builtin_clzl (C);
+      ex = __builtin_clzll (C);
       /* Fall through with the code for ex = 0. */
     }
     C = C << ex;
@@ -436,7 +436,7 @@ static inline void mul_dint_2(dint64_t *r, int64_t b, const dint64_t *a) {
 
   t.r = (u128)(a->hi) * (u128)c;
 
-  int m = t.h ? __builtin_clzl(t.h) : 64;
+  int m = t.h ? __builtin_clzll(t.h) : 64;
   t.r = (t.r << m);
 
   // Will pose issues if b is too large but for now we assume it never happens
@@ -487,7 +487,7 @@ mul_dint_int64 (dint64_t *r, const dint64_t *a, int64_t b) {
   r->r = (u128) (a->hi) * (u128) c;
 
   // Warning: if c=1, we might have r->hi=0
-  int m = r->hi ? __builtin_clzl (r->hi) : 64;
+  int m = r->hi ? __builtin_clzll (r->hi) : 64;
   r->r = r->r << m;
   r->ex -= m;
 
@@ -519,7 +519,7 @@ static inline void dint_fromd (dint64_t *a, double b) {
 
   /* |b| = 2^(ex-52)*hi */
 
-  uint32_t t = __builtin_clzl (a->hi);
+  uint32_t t = __builtin_clzll (a->hi);
 
   a->sgn = b < 0.0;
   a->hi = a->hi << t;

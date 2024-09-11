@@ -48,7 +48,7 @@ static inline void fast_extract (int64_t *e, uint64_t *m, double x) {
   f64_u _x = {.f = x};
 
   *e = (_x.u >> 52) & 0x7ff;
-  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
+  *m = (_x.u & (~0ull >> 12)) + (*e ? (1ull << 52) : 0);
   *e = *e - 0x3ff;
 }
 
@@ -108,7 +108,7 @@ __builtin_roundeven (double x)
 inline int issignaling(double x) {
   f64_u _x = {.f = x};
 
-  return !(_x.u & (1ul << 51));
+  return !(_x.u & (1ull << 51));
 }
 
 /* Add a + b, such that *hi + *lo approximates a + b.
@@ -194,8 +194,8 @@ static inline void extract(int64_t *e, uint64_t *m, double x) {
   f64_u _x = {.f = x};
 
   *e = (_x.u >> 52) & 0x7ff;
-  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
-  int32_t t = __builtin_ctzl(*m);
+  *m = (_x.u & (~0ull >> 12)) + (*e ? (1ull << 52) : 0);
+  int32_t t = __builtin_ctzll(*m);
   *m = *m >> t;
   *e = *e + t - (0x433 - !*e);
 }
@@ -219,7 +219,7 @@ static inline void pow2(double *x, int64_t e) {
 // Convert a dint64_t value to an integer, rounding towards zero
 static inline int64_t dint_toi(const dint64_t *a) {
   if (a->ex < 0)
-    return 0l;
+    return 0ll;
 
   int64_t r = a->hi >> (63 - a->ex);
 
@@ -285,7 +285,7 @@ static inline double dint_tod(dint64_t *a) {
   if (__builtin_expect (a->ex < -1022, 0))
     return dint_tod_subnormal (a);
 
-  f64_u r = {.u = (a->hi >> 11) | (0x3ffl << 52)};
+  f64_u r = {.u = (a->hi >> 11) | (0x3ffll << 52)};
 
   double rd = 0.0;
   if ((a->hi >> 10) & 0x1)
@@ -323,7 +323,7 @@ static inline double dint_tod(dint64_t *a) {
         e.f = 0x0.0000000000001p-1022;
       }
     } else {
-      e.u = 1l << (a->ex + 1074);
+      e.u = 1ll << (a->ex + 1074);
     }
   }
 
@@ -336,7 +336,7 @@ static inline void qint_fromd (qint64_t *a, double b) {
 
   /* |b| = 2^(ex-52)*hi */
 
-  uint32_t t = __builtin_clzl (a->hh);
+  uint32_t t = __builtin_clzll (a->hh);
 
   a->sgn = b < 0.0;
   a->ex = a->ex - (t > 11 ? t - 12 : 0);
@@ -350,7 +350,7 @@ static inline void qint_fromd (qint64_t *a, double b) {
 // Convert a qint64_t value to an integer
 static inline int64_t qint_toi(const qint64_t *a) {
   if (a->ex < 0)
-    return 0l;
+    return 0ll;
 
   int64_t r = a->hh >> (63 - a->ex);
 
@@ -365,7 +365,7 @@ static inline void subnormalize_qint(qint64_t *a) {
 
   uint64_t hi = a->hh >> ex;
   uint64_t md = (a->hh >> (ex - 1)) & 0x1;
-  uint64_t lo = (a->hh & (~0ul >> ex)) || a->hl || a->lh || a->ll;
+  uint64_t lo = (a->hh & (~0ull >> ex)) || a->hl || a->lh || a->ll;
 
   switch (fegetround()) {
   case FE_TONEAREST:
@@ -386,7 +386,7 @@ static inline void subnormalize_qint(qint64_t *a) {
 
   if (!a->hh) {
     a->ex++;
-    a->hh = (1l << 63);
+    a->hh = (1ll << 63);
   }
 }
 
@@ -432,7 +432,7 @@ static inline double qint_tod(qint64_t *a) {
         e.f = 0x0.0000000000001p-1022;
       }
     } else {
-      e.u = 1l << (a->ex + 1074);
+      e.u = 1ll << (a->ex + 1074);
     }
   }
 
