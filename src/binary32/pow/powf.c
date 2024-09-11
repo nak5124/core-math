@@ -370,10 +370,11 @@ float cr_powf(float x0, float y0){
   };
   double x = x0, y = y0;
   b64u64_u tx = {.f = x}, ty = {.f = y};
-  if(__builtin_expect (tx.u<<1 == (uint64_t)0x3ff<<53, 0)){
+  if(__builtin_expect (tx.u<<1 == (uint64_t)0x3ff<<53, 0)){ // |x|=1
     if(tx.u>>63){ // x=-1
       if((ty.u<<1) > (uint64_t)0x7ff<<53) return y0; // y=nan
       if(isint(y0)) return (isodd(y0)) ? x0 : -x0;
+      return __builtin_nanf(""); // (-1)^y for non-integer y
     }
     return x0; // x=1
   }
