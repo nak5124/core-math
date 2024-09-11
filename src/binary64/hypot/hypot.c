@@ -99,7 +99,13 @@ static inline void set_flags (fexcept_t flag)
 
 typedef uint64_t u64;
 typedef int64_t i64;
+#ifdef __SIZEOF_INT128__
 typedef unsigned __int128 u128;
+#elif (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+typedef unsigned _BitInt(128) u128;
+#else
+#error "128-bit integers are not supported on this platform!"
+#endif
 typedef union {double f; u64 u;} b64u64_u;
 
 static inline double fasttwosum(double x, double y, double *e){

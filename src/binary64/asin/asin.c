@@ -88,8 +88,16 @@ static inline int get_rounding_mode (void)
 #endif
 }
 
+#ifdef __SIZEOF_INT128__
 typedef unsigned __int128 u128;
 typedef __int128 i128;
+#elif (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+typedef unsigned _BitInt(128) u128;
+typedef _BitInt(128) i128;
+#else
+#error "128-bit integers are not supported on this platform!"
+#endif
+
 typedef uint64_t u64;
 typedef int64_t i64;
 typedef union {u128 a; u64 b[2];} u128_u;
