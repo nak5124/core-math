@@ -30,7 +30,7 @@ check () {
     else
         doit=1
     fi
-		if [ "$doit" == "1" ] && [ "$SKIP128" == "1" ] && $CC -E src/*/*/$FUNCTION.c | grep -zq  __int128; then
+		if [ "$doit" == "1" ] && [ "$SKIP128" == "1" ] && $CC -E src/*/*/$FUNCTION.c | grep -q  __int128; then
         echo "__int128 support is needed for" $FUNCTION "but is not available"
         doit=0
     fi
