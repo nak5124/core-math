@@ -241,7 +241,7 @@ double cr_acos (double x){
   // where t = xh^2 - j/128 and j = round(128*xh^2)
   int64_t j = jd;
   const double *c = cc[j];
-  double t2 = t*t, d = t*((c[2] + t*c[3]) + t2*((c[4] + t*c[5]) + t2*(c[6] + t*c[7])));
+  volatile double t2 = t*t, d = t*((c[2] + t*c[3]) + t2*((c[4] + t*c[5]) + t2*(c[6] + t*c[7])));
   double fh = c[0], fl = c[1] + d;
   fh = muldd(z,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l, fh,fl, &fl);

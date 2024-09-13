@@ -513,3 +513,30 @@ def splithc(l):
 # the exception tables
 def gen_excepts(s):
 	splithc(read_file(s, "hexa", 16, 64))
+
+# binade [2^(e-1),2^e) for -16444 <= e <= -16382
+def doit_bacsel_subnormal(e):
+   nn = e-1 + 16382 + 64
+   assert 1 <= nn <= 63, "1 <= nn <= 63"
+   y0 = R64(2^(e-1))
+   y0 = log(y0)
+   while exp(y0.exact_rational())>=2^(e-1):
+      y0 = y0.nextbelow()
+   while exp(y0.exact_rational())<2^(e-1):
+      y0 = y0.nextabove()
+   y1 = R64(2^e)
+   y1 = log(y1)
+   while exp(y1.exact_rational())>=2^e:
+      y1 = y1.nextbelow()
+   while exp(y1.exact_rational())<2^e:
+      y1 = y1.nextabove()
+   t0 = y0.exact_rational()/2^14*2^64
+   t1 = y1.exact_rational()/2^14*2^64
+   assert t0 in ZZ, "t0 in ZZ"
+   t0 = ZZ(t0)
+   assert t1 in ZZ, "t1 in ZZ"
+   t1 = ZZ(t1)
+   assert t0.nbits() == 64, "t0.nbits() == 64"
+   assert t1.nbits() == 64, "t1.nbits() == 64"
+   assert t0 < t1, "t0 < t1"
+   print ("sbatch ./doit_subnormal.sh " + str(t0) + " " + str(t1) + " 64 " + str(14) + " 64 22 " + str(nn))
