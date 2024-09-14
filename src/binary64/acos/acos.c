@@ -241,11 +241,11 @@ double cr_acos (double x){
   // where t = xh^2 - j/128 and j = round(128*xh^2)
   int64_t j = jd;
   const double *c = cc[j];
-  volatile double t2 = t*t, d = t*((c[2] + t*c[3]) + t2*((c[4] + t*c[5]) + t2*(c[6] + t*c[7])));
+  double t2 = t*t, d = t*((c[2] + t*c[3]) + t2*((c[4] + t*c[5]) + t2*(c[6] + t*c[7])));
   double fh = c[0], fl = c[1] + d;
   fh = muldd(z,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l, fh,fl, &fl);
-  double eps = __builtin_fabs(z*t)*0x1.38p-52 + 0x1p-105;
+  double eps = __builtin_fabs(z*t)*0x1.3bp-52 + 0x1p-105;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
   return lb;
