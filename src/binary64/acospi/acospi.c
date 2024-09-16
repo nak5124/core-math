@@ -111,6 +111,18 @@ fast_two_sum (double *s, double *t, double a, double b)
   *t = b - e;
 }
 
+/* s + t <- a + b * c, assuming |a| >= |b*c|
+   This should be used instead of fast_two_sum (s, t, a, b * c),
+   since with this form the compiler might use a FMA for *s = a + b,
+   but not for *t = b - e, which will change the fast two sum semantics. */
+static void
+fast_two_sum_fma (double *s, double *t, double a, double b, double c)
+{
+  *s = __builtin_fma (b, c, a);
+  double e = *s - a;
+  *t = __builtin_fma (b, c, -e);
+}
+
 /* h_out + l_out = (h_in + l_in) * y */
 static void
 mul2_1 (double *h_out, double *l_out, double h_in, double l_in, double y)
@@ -938,9 +950,9 @@ cr_acospi (double x)
     double p34 = p[3] + p[4] * y;
     zh = p34 + yy * p56;
     zh = p[2] + y * zh;
-    fast_two_sum (&zh, &zl, p[1], y * zh);
+    fast_two_sum_fma (&zh, &zl, p[1], y, zh);
     double du, dv;
-    fast_two_sum (&du, &dv, p[0], zh * y);
+    fast_two_sum_fma (&du, &dv, p[0], zh, y);
     dv += zl * y;
     /* Special case for i=0, since we are obliged to use xmid=0 (so that
        x-xmid is exact) thus we can't use Gal's trick.  This costs about
