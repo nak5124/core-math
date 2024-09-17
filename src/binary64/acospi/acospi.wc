@@ -25,6 +25,7 @@
 0x1.d5267dc3dff8p-1
 0x1.7daf2719422ap-1
 -0x1.7e4fc2a7cf34p-1
+0x1.83f439d115aap-1
 # worst-cases computed by BaCSeL (commit b92c856) with at least 43 identical
 # bits after the round bit (-m 44) in the following ranges:
 # -1 < x < -0x1.921fb54442d18p-53
