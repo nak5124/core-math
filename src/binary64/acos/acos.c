@@ -245,7 +245,7 @@ double cr_acos (double x){
   double fh = c[0], fl = c[1] + d;
   fh = muldd(z,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l, fh,fl, &fl);
-  double eps = __builtin_fabs(z*t)*0x1.3bp-52 + 0x1p-105;
+  double eps = __builtin_fabs(z*t)*0x1.7cp-52 + 0x1p-105;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
   return lb;
