@@ -31385,3 +31385,5 @@
 -1
 +0x1.fffffffffffffp+1023
 -0x1.fffffffffffffp+1023
+# non-regression tests
+-0x0.0000000000001p-1022

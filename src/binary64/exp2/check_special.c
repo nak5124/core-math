@@ -81,6 +81,7 @@ check (double x)
   double y1 = ref_exp2 (x);
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround (rnd1[rnd]);
+  feclearexcept (FE_INEXACT);
   double y2 = cr_exp2 (x);
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);

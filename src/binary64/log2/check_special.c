@@ -67,19 +67,38 @@ asfloat64 (uint64_t i)
   return u.f;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  int e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
+static inline int
+is_equal (double x, double y)
+{
+  if (is_nan (x))
+    return is_nan (y);
+  if (is_nan (y))
+    return is_nan (x);
+  return asuint64 (x) == asuint64 (y);
+}
+
 static void
 check (double x)
 {
   double y1 = ref_log2 (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_log2 (x);
-  if (isnan (y1) && isnan (y2))
-    return;
-  if (asuint64 (y1) != asuint64 (y2))
+  if (!is_equal (y1,y2))
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 }
 
@@ -147,25 +166,13 @@ check_scaled_worst_cases (void)
     ref_fesetround(rnd);
     fesetround(rnd1[rnd]);
     double x1 = items[i];
-    if (!isnan (x1) && 2 * x1 != x1) // is is not NaN nor +/Inf nor +/-0
+    if (!is_nan (x1) && 2 * x1 != x1) // is is not NaN nor +/Inf nor +/-0
       {
         int e;
         double x0 = frexp (x1, &e);
         for (e = -1074; e <= 1024; e++)
-          {
-            double x = ldexp (x0, e);
-            double z1 = ref_log2 (x);
-            double z2 = cr_log2 (x);
-            /* Note: the test z1 != z2 would not distinguish +0 and -0. */
-            if (z1 != z2) {
-              printf("FAIL x1=%la x=%la ref=%la z=%la\n", x1, x, z1, z2);
-              fflush(stdout);
-#ifndef DO_NOT_ABORT
-              exit(1);
-#endif
-            }
-        }
-    }
+          check (ldexp (x0, e));
+      }
   }
   free (items);
 }
