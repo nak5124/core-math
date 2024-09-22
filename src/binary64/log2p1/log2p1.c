@@ -1915,7 +1915,7 @@ cr_log2p1_fast (double *h, double *l, double x, int e, d64u64 v)
 
   v.f = xh;
   e = (v.u >> 52) - 0x3ff;
-  v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
+  v.u = (0x3ffull << 52) | (v.u & 0xfffffffffffff);
   cr_log_fast (h, l, e, v);
 
   /* log(xh+xl) = log(xh) + log(1+xl/xh) */
@@ -1979,7 +1979,7 @@ cr_log2p1 (double x)
   }
   /* now x > -1 */
   /* normalize v in [1,2) */
-  v.u = (0x3fful << 52) | (v.u & 0xfffffffffffff);
+  v.u = (0x3ffull << 52) | (v.u & 0xfffffffffffff);
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
   double h, l, err;
   err = cr_log2p1_fast (&h, &l, x, e, v);
@@ -2071,7 +2071,7 @@ static void log_2(dint64_t *r, dint64_t *x) {
 // assuming the input is not in the subnormal range
 static inline double dint_tod(dint64_t *a) {
 
-  d64u64 r = {.u = (a->hi >> 11) | (0x3ffl << 52)};
+  d64u64 r = {.u = (a->hi >> 11) | (0x3ffll << 52)};
   /* r contains the upper 53 bits of a->hi, 1 <= r < 2 */
 
   double rd = 0.0;

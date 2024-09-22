@@ -27,6 +27,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <math.h>
 #include <fenv.h>
 #include <assert.h>
@@ -84,7 +85,7 @@ valid (u128 z)
      than 64 trailing zeros, it remains some trailing zeros in z */
   e = __builtin_ctzll (z);
   z = z >> e;
-  int ret = z < (u128) 0x40000000000000ul;
+  int ret = z < (u128) 0x40000000000000ull;
   return ret;
 }
 
@@ -105,13 +106,13 @@ gcd (u128 a, u128 b)
    Return the number of generated inputs.
    Performs at most max_loop loops on j.
 */
-static unsigned long
-generate1 (u128 p, u128 q, int k, unsigned long max_loop)
+static uint64_t
+generate1 (u128 p, u128 q, int k, uint64_t max_loop)
 {
   /* ensure p and q are coprime, otherwise we will get duplicates */
   if (gcd (p, q) != 1)
     return 0;
-  unsigned long count = 0;
+  uint64_t count = 0;
   assert (p > q);
   u128 x = p * p - q * q;
   u128 y = 2 * p * q;
@@ -155,13 +156,13 @@ generate1 (u128 p, u128 q, int k, unsigned long max_loop)
 /* generate all inputs x=j*(2pq), y=j*(p^2-q^2) that satisfy
    2^(52+k) <= x < 2^(53+k), 2^52 <= y < 2^53
    Return the number of generated inputs. */
-static unsigned long
-generate2 (u128 p, u128 q, int k, unsigned long max_loop)
+static uint64_t
+generate2 (u128 p, u128 q, int k, uint64_t max_loop)
 {
   /* ensure p and q are coprime, otherwise we will get duplicates */
   if (gcd (p, q) != 1)
     return 0;
-  unsigned long count = 0;
+  uint64_t count = 0;
   assert (p > q);
   u128 x = 2 * p * q;
   u128 y = p * p - q * q;
@@ -214,7 +215,7 @@ generate2 (u128 p, u128 q, int k, unsigned long max_loop)
 static void
 check_pythagorean_triples (int k)
 {
-  unsigned long count1 = 0, count2 = 0;
+  uint64_t count1 = 0, count2 = 0;
 
   if (verbose)
     fprintf (stderr, "# k=%d\n", k);
@@ -227,12 +228,12 @@ check_pythagorean_triples (int k)
   for (uint64_t u = 1; u <= 67108863; u++)
   {
     u128 p, q = u;
-    for (p = q + 1; 2 * p * q < 0x20000000000000ul; p += 2 * REDUCE)
-      count1 += generate1 (p, q, k, 0xfffffffffffffffful / REDUCE);
+    for (p = q + 1; 2 * p * q < 0x20000000000000ull; p += 2 * REDUCE)
+      count1 += generate1 (p, q, k, 0xffffffffffffffffull / REDUCE);
   }
 
   if (verbose)
-    fprintf (stderr, "# Type 1: %lu\n", count1);
+    fprintf (stderr, "# Type 1: %"PRIu64"\n", count1);
 
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^53, this gives p <= 2^52 */
@@ -243,12 +244,12 @@ check_pythagorean_triples (int k)
   {
     /* we want y < 2^53, thus p^2-q^2 < 2^53 thus p^2 - 2^53 < q^2 */
     u128 p = u, q, qmin = 1;
-    if (p * p < 0x20000000000000ul)
+    if (p * p < 0x20000000000000ull)
       q = 0;
     else
     {
-      q = sqrt (p * p - 0x20000000000000ul);
-      while (q * q <= p * p - 0x20000000000000ul)
+      q = sqrt (p * p - 0x20000000000000ull);
+      while (q * q <= p * p - 0x20000000000000ull)
         q ++;
     }
     if (qmin < q)
@@ -256,11 +257,11 @@ check_pythagorean_triples (int k)
     if ((p + qmin) % 2 == 0)
       qmin ++; /* ensure p and q have different parities */
     for (q = qmin; q < p; q += 2)
-      count2 += generate2 (p, q, k, 0xfffffffffffffffful / REDUCE);
+      count2 += generate2 (p, q, k, 0xffffffffffffffffull / REDUCE);
   }
   if (verbose) {
-    fprintf (stderr, "# Type 2: %lu\n", count2);
-    fprintf (stderr, "# Total: %lu\n", count1 + count2);
+    fprintf (stderr, "# Type 2: %"PRIu64"\n", count2);
+    fprintf (stderr, "# Total: %"PRIu64"\n", count1 + count2);
   }
 }
 

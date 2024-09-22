@@ -128,7 +128,7 @@ is_prime (uint64_t n)
 static uint64_t
 mod_exp (uint64_t a, uint64_t n, uint64_t p)
 {
-  assert (p < 0x100000000ul);
+  assert (p < 0x100000000ull);
   int nbits = 0;
   for (uint64_t t = n; t > 0; t = t >> 1, nbits++);
   int i = nbits - 2;
@@ -151,7 +151,7 @@ static uint64_t
 TonelliShanks (uint64_t n, uint64_t p)
 {
   assert (p & 1);
-  assert (p < 0x100000000ul);
+  assert (p < 0x100000000ull);
   // step 1: write p-1 = Q*2^S with Q odd
   uint64_t Q = p - 1;
   int S = 0;
@@ -193,7 +193,7 @@ TonelliShanks (uint64_t n, uint64_t p)
 static void
 find_ab (int64_t *A, int64_t *B, uint64_t p)
 {
-  assert (p <= 0xfffffffful);
+  assert (p <= 0xffffffffull);
   uint64_t a;
   uint64_t a2max = p / 2;
   for (a = 1; a * a <= a2max; a++)

@@ -51,7 +51,7 @@ SOFTWARE.
 
 int print = 0; /* by default, we only count exact and midpoint cases */
 int mid = 1;   /* by default, we count or print midpoint cases */
-unsigned long count = 0; /* number of solutions */
+uint64_t count = 0; /* number of solutions */
 int check = 0; /* check solutions */
 
 static void
@@ -94,7 +94,7 @@ count_uint_y (int y)
   float xmin, xmax;
   int emin, emax;
   mpfr_t z;
-  unsigned long local_count = 0;
+  uint64_t local_count = 0;
   mpfr_init2 (z, 25);
   mpfr_set_ui_2exp (z, 1, -150, MPFR_RNDN);
   mpfr_rootn_ui (z, z, y, MPFR_RNDU);
@@ -144,7 +144,7 @@ count_uint_2exp_y (int n, int f)
   float xmin, xmax;
   int emin, emax;
   mpfr_t z;
-  unsigned long local_count = 0;
+  uint64_t local_count = 0;
   float y = ldexpf (n, -f);
   mpfr_init2 (z, 25);
   mpfr_set_ui_2exp (z, 1, -150, MPFR_RNDN);
@@ -191,7 +191,7 @@ count_uint_2exp_y (int n, int f)
   {
     for (int k = 3; k <= maxk; k += 2)
     {
-      unsigned long m = k;
+      uint64_t m = k;
       for (int j = 0; j < f; j++)
         m = m * m;
       /* m (odd) should be less than 2^24 */
@@ -214,7 +214,7 @@ count_uint_2exp_y (int n, int f)
 static void
 count_pow2_x (int e)
 {
-  unsigned long local_count = 0;
+  uint64_t local_count = 0;
   if (e == 0) /* trivial solutions */
     return;
 

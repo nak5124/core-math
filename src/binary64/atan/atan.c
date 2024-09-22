@@ -228,12 +228,12 @@ double cr_atan(double x){
   b64u64_u t = {.f = x};
   u64 at = t.u&(~(u64)0>>1); // at encodes |x|
   int64_t i = (at>>51) - 2030l; // -2030 <= i <= 2065
-  if (__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
+  if (__builtin_expect(at < 0x3f7b21c475e6362aull, 0)) {
     // |x| < 0x1.b21c475e6362ap-8
     if(__builtin_expect(at == 0, 0)) return x; // atan(+/-0) = +/-0
     static const double ch2[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
-    if (at<(u64)0x3e40000000000000ul) // |x| < 0x1p-27
+    if (at<(u64)0x3e40000000000000ull) // |x| < 0x1p-27
       return __builtin_fma (-0x1p-54, x, x);
     double x2 = x*x, x3 = x*x2, x4 = x2*x2;
     double f = x3*((ch2[0] + x2*ch2[1]) + x4*(ch2[2] + x2*ch2[3]));
@@ -242,11 +242,11 @@ double cr_atan(double x){
     return as_atan_refine2(x, ub);
   }
   double h, ah, al;
-  if(__builtin_expect(at>0x4062ded8e34a9035ul, 0)) {
+  if(__builtin_expect(at>0x4062ded8e34a9035ull, 0)) {
     // |x| > 0x1.2ded8e34a9035p+7
     ah = __builtin_copysign(0x1.921fb54442d18p+0, x);
     al = __builtin_copysign(0x1.1a62633145c07p-54, x);
-    if (__builtin_expect(at >= 0x434d02967c31cdb5ul, 0)) {
+    if (__builtin_expect(at >= 0x434d02967c31cdb5ull, 0)) {
       // |x| >= 0x1.d02967c31cdb5p+53
       if (__builtin_expect(at > ((u64)0x7ff<<52), 0)) return x; // NaN
       return ah + al;

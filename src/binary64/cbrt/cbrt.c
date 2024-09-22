@@ -220,9 +220,9 @@ cr_cbrt (double x)
   int64_t m0 = cvt3.u<<30, m1 = m0>>63;
   if(__builtin_expect((uint64_t)(m0^m1)<=(1ul<<30),0)){
     b64u64_u cvt4 = {.f = y1};
-    cvt4.u = (cvt4.u + (1ul<<15))&0xffffffffffff0000ul;
+    cvt4.u = (cvt4.u + (1ul<<15))&0xffffffffffff0000ull;
     if( __builtin_fabs((cvt4.f - y1) - dy) < 0x1p-60 || __builtin_fabs(zz) == 1.0 ){
-      cvt3.u = (cvt3.u + (1ul<<15))&0xffffffffffff0000ul;
+      cvt3.u = (cvt3.u + (1ul<<15))&0xffffffffffff0000ull;
       set_flags (&flag);
     }
   }

@@ -29,6 +29,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <fenv.h>
 
 // Warning: clang also defines __GNUC__
@@ -296,7 +297,7 @@ static uint64_t Tinv[256] = { 0xff00ff00ff00ff02, 0xfe03f80fe03f80ff, 0xfd08e550
 
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
-  printf("{.hi=0x%lx, .lo=0x%lx, .ex=%ld, .sgn=0x%lx}\n", a->hi, a->lo, a->ex,
+  printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
          a->sgn);
 }
 

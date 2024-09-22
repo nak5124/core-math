@@ -73,10 +73,10 @@ cputime ()
 #define PREC_INV 100
 
 int target_m; /* number of identical bits after round bit */
-unsigned long nsols = 0, nexact = 0;
-unsigned long calls_mpfr_pow = 0; /* number of calls to mpfr_pow */
-unsigned long calls_print_sol = 0; /* number of calls to print_sol[2] */
-unsigned long tot_checks = 0;
+uint64_t nsols = 0, nexact = 0;
+uint64_t calls_mpfr_pow = 0; /* number of calls to mpfr_pow */
+uint64_t calls_print_sol = 0; /* number of calls to print_sol[2] */
+uint64_t tot_checks = 0;
 int d = -1; /* degree of approximating polynomial (default 1) */
 float Xmin = 0x1p-149f;
 float Xmax = 0x1.fffffep127f;
@@ -215,7 +215,7 @@ static uint32_t
 get_zmin (float y, int *e)
 {
   mpfr_t t, u;
-  unsigned long z;
+  uint64_t z;
   mpfr_init2 (t, 25);
   mpfr_init2 (u, 24);
   mpfr_set_flt (t, (y > 0) ? Xmin : Xmax, MPFR_RNDN);        /* exact */
@@ -509,12 +509,12 @@ print_sol2 (uint32_t x, int e, float y)
 }
 
 /* exhaustive search using MPFR from x0 = m0*2^e to x1 = m1*2^e */
-static unsigned long
+static uint64_t
 search_binade_mpfr (uint32_t m0, uint32_t m1, int e, float y)
 {
   //  if (y == TRACEY && ldexpf (m0, e) <= TRACEX && TRACEX <= ldexpf (m1, e)) printf ("search_binade_mpfr: m0=%u m1=%u e=%d\n", m0, m1, e);
   mpfr_t xx, yy, zz, tt;
-  unsigned long calls = 0;
+  uint64_t calls = 0;
   mpfr_init2 (xx, 24);
   mpfr_init2 (yy, 24);
   mpfr_init2 (zz, 24 + target_m);
@@ -561,12 +561,12 @@ check_sol_z (uint32_t n, int e, float y, mpfr_t yy, mpfr_t iy, int target_m)
 
 /* exhaustive search using MPFR from z0 = n0^2^e to z1 = n1*2^e
    for the inverse function */
-static unsigned long
+static uint64_t
 search_binade_mpfr_z (uint32_t n0, uint32_t n1, int e, float y)
 {
   // printf ("search_binade_mpfr_z n0=%u n1=%u e=%d\n", n0, n1, e);
   mpfr_t xx, yy, iy, z2, tt;
-  unsigned long calls = 0;
+  uint64_t calls = 0;
   mpfr_init2 (xx, 24);
   mpfr_init2 (yy, 24);
   mpfr_init2 (iy, PREC_INV);
@@ -601,7 +601,7 @@ search_binade_mpfr_z (uint32_t n0, uint32_t n1, int e, float y)
 /* assuming |x| < 2^64:
    if x > 0, return mpfr_get_ui (x)
    otherwise return 2^64 - mpfr_get_ui (x) */
-unsigned long
+uint64_t
 my_mpfr_get_ui (mpfr_t x, mpfr_rnd_t rnd)
 {
   if (mpfr_cmp_ui (x, 0) >= 0)
@@ -611,7 +611,7 @@ my_mpfr_get_ui (mpfr_t x, mpfr_rnd_t rnd)
     mpfr_t t;
     mpfr_init2 (t, mpfr_get_prec (x));
     mpfr_neg (t, x, MPFR_RNDN);
-    unsigned long u = mpfr_get_ui (t, rnd);
+    uint64_t u = mpfr_get_ui (t, rnd);
     mpfr_clear (t);
     return -u;
   }
@@ -909,7 +909,7 @@ init_quadratic_z (uint32_t m0, uint32_t m1, int e, float y,
    with error bounded by ea + eb*i + ec*i^2 + ed*i^3.
    Return 0 in case of failure, otherwise return the number m1-m0+1 of values
    checked. */
-static unsigned long
+static uint64_t
 search_binade_quadratic (uint32_t m0, uint32_t m1, int e, float y)
 {
   // int bug = y == TRACEY && ldexpf (m0, e) <= TRACEX && TRACEX <= ldexpf (m1, e);
@@ -942,7 +942,7 @@ search_binade_quadratic (uint32_t m0, uint32_t m1, int e, float y)
     }
     assert (ea + eb >= ea);
     ea += eb;
-    if (ea > 0x8000000000000000ul)
+    if (ea > 0x8000000000000000ull)
       goto recompute;
     assert (eb + ec >= eb);
     eb += ec;
@@ -956,7 +956,7 @@ search_binade_quadratic (uint32_t m0, uint32_t m1, int e, float y)
    with error bounded by ea + eb*i + ec*i^2 + ed*i^3.
    Return 0 in case of failure, otherwise return the number m1-m0+1 of values
    checked. */
-static unsigned long
+static uint64_t
 search_binade_quadratic_z (uint32_t m0, uint32_t m1, int e, float y)
 {
   // int bug = y == TRACEY && e == TRACEE && m0 <= TRACEZ && TRACEZ <= m1;
@@ -996,7 +996,7 @@ search_binade_quadratic_z (uint32_t m0, uint32_t m1, int e, float y)
     if (ea + eb < ea)
       goto recompute;
     ea += eb;
-    if (ea >= 0x8000000000000000ul) /* ensure ea + ea does not overflow */
+    if (ea >= 0x8000000000000000ull) /* ensure ea + ea does not overflow */
       goto recompute;
     if (eb + ec < eb)
       goto recompute;
@@ -1019,7 +1019,7 @@ static void
 search_binade_x (uint32_t m0, uint32_t m1, int e, float y)
 {
   // if (y == TRACEY && asfloat (n0) <= TRACEX && TRACEX <= asfloat (n1)) printf ("search_binade: x0=%a x1=%a y=%a\n", asfloat (n0), asfloat (n1), y);
-  unsigned long checks;
+  uint64_t checks;
 #ifdef USE_MPFR
   checks = search_binade_mpfr (m0, m1, e, y);
 #else
@@ -1043,7 +1043,7 @@ search_binade_z (uint32_t n0, uint32_t n1, int e, float y)
 {
   // if (y == TRACEY && e == TRACEE && n0 <= TRACEZ && TRACEZ <= n1) printf ("search_binade_z n0=%u n1=%u e=%d\n", n0, n1, e);
   assert (n0 <= n1);
-  unsigned long checks;
+  uint64_t checks;
   assert (d == 0 || d == 2);
   if (d == 0 || n1 - n0 <= 7)
     checks = search_binade_mpfr_z (n0, n1, e, y);
@@ -1143,7 +1143,7 @@ doit_x (float y)
             ldexpf (mmax, emax));
   assert (emin < emax || (emin == emax && mmin <= mmax));
 #ifdef COUNT
-  unsigned long count = 0;
+  uint64_t count = 0;
   while (emin < emax)
   {
     count += 0x1000000 - mmin;
@@ -1182,7 +1182,7 @@ doit_z (float y)
   // if (y == TRACEY) printf ("doit_z y=%a emin=%d emax=%d\n", y, emin, emax);
   assert (emin < emax || (emin == emax && zmin <= zmax));
 #ifdef COUNT
-  unsigned long count = 0;
+  uint64_t count = 0;
   while (emin < emax)
   {
     count += 0x2000000 - zmin;

@@ -88,7 +88,7 @@ static double as_cospi_zero(double x){
   double y2, y1, y0 = fasttwosum(1, fh, &y1);
   y1 = fasttwosum(y1, fl, &y2);
   b64u64_u t = {.f = y1};
-  if(__builtin_expect(!(t.u&(~0ul>>12)), 0)){
+  if(__builtin_expect(!(t.u&(~0ull>>12)), 0)){
     b64u64_u w = {.f = y2};
     if((w.u^t.u)>>63)
       t.u--;
@@ -141,11 +141,11 @@ double cr_cospi(double x){
   static const double sn[] = { 0x1.921fb54442d18p-74, -0x1.4abbce625be51p-223, 0x1.466bc6044ba16p-374};
   static const double cn[] = {-0x1.3bd3cc9be45dbp-148, 0x1.03c1f00186416p-298};
   b64u64_u ix = {.f = x};
-  uint64_t ax = ix.u&(~0ul>>1);
+  uint64_t ax = ix.u&(~0ull>>1);
   if(__builtin_expect(ax==0, 0)) return 1.0;
   int32_t e = ax>>52;
   // e is the unbiased exponent, we have 2^(e-1023) <= |x| < 2^(e-1022)
-  int64_t m = (ix.u&(~0ul>>12))|((uint64_t)1<<52);
+  int64_t m = (ix.u&(~0ull>>12))|((uint64_t)1<<52);
   int32_t s = 1063 - e; // 2^(40-s) <= |x| < 2^(41-s)
   if(__builtin_expect(s<0, 0)){ // |x| >= 2^41
     if(__builtin_expect(e == 0x7ff, 0)){
@@ -163,8 +163,8 @@ double cr_cospi(double x){
     double sh, sl, ch, cl; sincosn(iq, &sh, &sl, &ch, &cl);
     return sh + sl;
   }
-  if(__builtin_expect(ax<=0x3f30000000000000ul, 0)){
-    if(__builtin_expect(ax<=0x3e2ccf6429be6621ul, 0)) return 1.0 - 0x1p-55;
+  if(__builtin_expect(ax<=0x3f30000000000000ull, 0)){
+    if(__builtin_expect(ax<=0x3e2ccf6429be6621ull, 0)) return 1.0 - 0x1p-55;
     double x2 = x*x, x4 = x2*x2, eps = x2*0x1.ap-48;
     static const double c[] = {-0x1.3bd3cc9be45dcp+2, 0x1.03c1f081b0833p+2, -0x1.55d3c6fc9af15p+0, 0x1.e1d3ff2ae3f9ap-3};
     double p = x2*((c[0] + x2*c[1]) + x4*(c[2] + x2*c[3]));
@@ -174,7 +174,7 @@ double cr_cospi(double x){
   }
   
   int32_t si = e-1011;
-  if(__builtin_expect(si>=0 && ((m<<si)^0x8000000000000000l)==0, 0)) return 0.0;
+  if(__builtin_expect(si>=0 && ((m<<si)^0x8000000000000000ll)==0, 0)) return 0.0;
 
   uint64_t iq = ((m>>s) + 2048)&8191;
   iq = (iq + 1)>>1;

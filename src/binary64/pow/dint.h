@@ -36,6 +36,7 @@ SOFTWARE.
 #define DINT_H
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 
 /*
@@ -161,7 +162,7 @@ static inline signed char cmp_dint_11(const dint64_t *a, const dint64_t *b) {
 
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
-  printf("{.hi=0x%lx, .lo=0x%lx, .ex=%ld, .sgn=0x%lx}\n", a->hi, a->lo, a->ex,
+  printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
          a->sgn);
 }
 

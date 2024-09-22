@@ -32,12 +32,12 @@ typedef union {double f; u64 u;} b64u64_u;
 
 double ref_hypot (double x, double y){
   b64u64_u xi = {.f = x}, yi = {.f = y};
-  if((xi.u<<1)<(0xffful<<52) && (xi.u<<1)>(0x7fful<<53)){ // x = sNAN
-    xi.u |= 1l<<51; // make it quiet NAN
+  if((xi.u<<1)<(0xfffull<<52) && (xi.u<<1)>(0x7ffull<<53)){ // x = sNAN
+    xi.u |= 1ll<<51; // make it quiet NAN
     return xi.f; // return qNAN
   }
-  if((yi.u<<1)<(0xffful<<52) && (yi.u<<1)>(0x7fful<<53)){ // y = sNAN
-    yi.u |= 1l<<51; // make it quiet NAN
+  if((yi.u<<1)<(0xfffull<<52) && (yi.u<<1)>(0x7ffull<<53)){ // y = sNAN
+    yi.u |= 1ll<<51; // make it quiet NAN
     return yi.f; // return qNAN
   }
   mpfr_t xm, ym, zm;

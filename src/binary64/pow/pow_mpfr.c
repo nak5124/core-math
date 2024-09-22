@@ -35,7 +35,7 @@ typedef union { double f; uint64_t u; } f64_u;
 // return non-zero iff x is a signaling NaN
 inline int is_snan(double x) {
   f64_u v = {.f = x};
-  return isnan (x) && !(v.u & (1ul << 51));
+  return isnan (x) && !(v.u & (1ull << 51));
 }
 
 /* reference code using MPFR */

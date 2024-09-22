@@ -98,7 +98,7 @@ static inline int get_rounding_mode (void)
 typedef unsigned __int128 u128;
 typedef __int128 i128;
 typedef uint64_t u64;
-typedef long i64;
+typedef int64_t i64;
 typedef union {u128 a; u64 b[2];} u128_u;
 typedef union {double f; u64 u;} b64u64_u;
 
@@ -193,10 +193,10 @@ static double asinpi_acc(double x){
   const unsigned rm = get_rounding_mode ();
   b64u64_u t = {.f = x};
   int se = ((t.u>>52)&0x7ff)-0x3ff;
-  i64 xsign = t.u&(1l<<63);
+  i64 xsign = t.u&(1ll<<63);
   double ax = __builtin_fabs(x);
   u128_u fi;
-  u64 sm = (t.u<<11)|1l<<63;
+  u64 sm = (t.u<<11)|1ll<<63;
   u128_u sm2 = {.a = (u128)sm * sm};
   if(__builtin_expect(ax<0.0131875,0)) {
     int ss = 2*se;
@@ -214,8 +214,8 @@ static double asinpi_acc(double x){
     double c2 = ch[2] + ax*ch[3];
     c0 += x2*c2;
     b64u64_u ic = {.f = c0*c.f + 64.0};
-    int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7)))>>(52-6);
-    u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
+    int indx = ((ic.u&(~0ull>>12)) + (1ll<<(52-7)))>>(52-6);
+    u64 cm = (c.u<<11)|1ll<<63; int ce = (c.u>>52) - 0x3ff;
     u128_u cm2 = {.a = (u128)cm * cm};
     const int off = 36 - 22 + 14;
     int ss = 128 - 104 + 2*se + off;
@@ -224,7 +224,7 @@ static double asinpi_acc(double x){
     shl(&cm2, sc);
     sm2.a += cm2.a;
     i64 h = sm2.b[1];
-    u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
+    u64 ixm = (ixx.u&(~0ull>>12))|1ll<<52; int ixe = (ixx.u>>52) - 0x3ff;
     i64 dc = mh(h, ixm);
     u128_u dsm2 = {.a = (u128)imul(dc,cm>>1)};
     dsm2.a <<= 13;
@@ -295,13 +295,13 @@ static double asinpi_tiny (double x)
 {
   double h, l;
   b64u64_u t = {.f = x};
-  uint64_t au = t.u & 0x7ffffffffffffffflu;
+  uint64_t au = t.u & 0x7fffffffffffffffllu;
 
   if (x == 0)
     return x;
 
   /* deal with generic exceptional case +/-0x1.59af9a1194efep-xxx */
-  if ((au << 12) == 0x59af9a1194efe000lu)
+  if ((au << 12) == 0x59af9a1194efe000llu)
   {
     int e = (t.u >> 52) & 0x7ff;
     h = 0x1.b824198b94a89p-56;
@@ -312,25 +312,25 @@ static double asinpi_tiny (double x)
   }
 
   /* exceptional case +/-0x1.5cba89af1f855p-1020 */
-  if (au == 0x35cba89af1f855lu)
+  if (au == 0x35cba89af1f855llu)
     return (x > 0)
       ? __builtin_fma (0x1p-600, -0x1p-600, 0x1.bc03df34e902cp-1022)
       : __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1022);
 
   /* exceptional case +/-0x1.5cba89af1f855p-1022 */
-  if (au == 0x15cba89af1f855lu)
+  if (au == 0x15cba89af1f855llu)
     return (x > 0)
       ? __builtin_fma (-0x1p-600, 0x1p-600, 0x1.bc03df34e902cp-1024)
       : __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1024);
 
   /* exceptional case +/-0x1.68e6482549db1p-1022 */
-  if (au == 0x168e6482549db1lu)
+  if (au == 0x168e6482549db1llu)
     return (x > 0)
       ? __builtin_fma (0x1p-600, 0x1p-600, 0x1.cb82f5da3a6b4p-1024)
       : __builtin_fma (-0x1p-600, 0x1p-600, -0x1.cb82f5da3a6b4p-1024);
 
   /* exceptional case 0x1.5cba89af1f855p-1021 */
-  if (au == 0x25cba89af1f855lu)
+  if (au == 0x25cba89af1f855llu)
     return (x > 0)
       ? __builtin_fma (-0x1p-600, 0x1p-600, 0x1.bc03df34e902cp-1023)
       : __builtin_fma (0x1p-600, 0x1p-600, -0x1.bc03df34e902cp-1023);
@@ -380,9 +380,9 @@ static double asinpi_small (double x)
   /* We use the Sollya polynomial 0x1.45f306dc9c882a53f84eafa3ea4p-2 * x
      + 0x1.b2995e7b7b606p-5 * x^3, with relative error bounded by 2^-106.965
      on [2^-53, 2^-26] */
-  static double c1h = 0x1.45f306dc9c883p-2, c1l = -0x1.6b01ec5417057p-56;
+  static double c1h = 0x1.45f306dc9c883p-2, c1ll = -0x1.6b01ec5417057p-56;
   static double c3 = 0x1.b2995e7b7b606p-5;
-  double h = c1h, l = __builtin_fma (c3, x * x, c1l);
+  double h = c1h, l = __builtin_fma (c3, x * x, c1ll);
   /* multiply h+l by x */
   double hh, ll;
   hh = h * x;
@@ -415,7 +415,7 @@ double cr_asinpi(double x){
     0x7641af3cca3518a2, 0x776c4edb3308f183, 0x78848413da1b92fe, 0x798a23b1238447ba, 
     0x7a7d055b18b76976, 0x7b5d039da1258cf4, 0x7c29fbee48c35ca9, 0x7ce3ceb193962314, 
     0x7d8a5f3fdd72c0ab, 0x7e1d93e9c52ea4d5, 0x7e9d55fc22945a85, 0x7f0991c3867f4d1e, 
-    0x7f62368f44949678, 0x7fa736b40620e854, 0x7fd8878de5b5f78e, 0x7ff62182133432ec, ~0ul>>1 };
+    0x7f62368f44949678, 0x7fa736b40620e854, 0x7fd8878de5b5f78e, 0x7ff62182133432ec, ~0ull>>1 };
   /* For 0 <= i <= 64, sh[i] = round(sin(i*pi/2/64)*2^69) mod 2^64,
      with maximal error < 0.496 (for i=17). */
   static const u64 sh[] = {
@@ -453,9 +453,9 @@ double cr_asinpi(double x){
   b64u64_u t = {.f = x};
   int e = ((t.u>>52)&0x7ff)-0x3ff;
   /* x = 2^e*y with 1 <= |y| < 2 */
-  i64 xsign = t.u&(1l<<63);
+  i64 xsign = t.u&(1ll<<63);
   /* xsign=0 for x > 0, xsign=1 for x < 0 */
-  u64 sm = (t.u<<11)|1l<<63;
+  u64 sm = (t.u<<11)|1ll<<63;
   /* sm contains in its high 53 bits: the implicit leading bit, and the
      the 52 explicit bits from the significand, thus |x| = 2^(e+1)*sm/2^64
      where 2^63 <= sm < 2^64 */
@@ -538,7 +538,7 @@ double cr_asinpi(double x){
     /* the number of leading zeros in fi.b[1] is usually 1, but it can also
        be 0, for example for x=0x1.fffffffffffffp-7, thus nz is 0, 1 or 2 */
     u128_u u = fi;
-    u.a += 15l<<ss; // asinpi_specific
+    u.a += 15ll<<ss; // asinpi_specific
     /* Here fi is the 'left' approximation, and u is the 'right' approximation.
        We check the last bit (or the round bit for FE_TONEAREST) does not
        change between fi and u. */
@@ -578,7 +578,7 @@ double cr_asinpi(double x){
     c0 += 64;
     /* now c0 approximates 64+64*acos(x)/(pi/2), which lies in [64,128] */
     b64u64_u ic = {.f = c0};
-    int indx = ((ic.u&(~0ul>>12)) + (1l<<(52-7))) >> (52-6);
+    int indx = ((ic.u&(~0ull>>12)) + (1ll<<(52-7))) >> (52-6);
     /* indx = round(c0)-64. We have indx < 64 since c0 is decreasing with
        |x|, thus the largest value is obtained for |x| = 2^-6, and for this
        value we get c0 = 0x1.fd637111d9943p+6 = 127.347111014276
@@ -590,7 +590,7 @@ double cr_asinpi(double x){
        thus:
        y = y[i] + asin(x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]))
        where x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is small. */
-    u64 cm = (c.u<<11)|1l<<63; int ce = (c.u>>52) - 0x3ff;
+    u64 cm = (c.u<<11)|1ll<<63; int ce = (c.u>>52) - 0x3ff;
     /* cm contains in its high bits the 53 significant bits from c,
        which approximates sqrt(1-x^2), including the implicit bit,
        ce is the corresponding exponent, such that c = 2^ce*cm/2^63.
@@ -624,7 +624,7 @@ double cr_asinpi(double x){
     i64 h = sm2.b[1];
     /* h/2^64 approximates 2^50*(x^2+c^2) mod 1, with error bounded by
        1/2^64 for the truncated part sm2.b[0]/2^128. */
-    u64 ixm = (ixx.u&(~0ul>>12))|1l<<52; int ixe = (ixx.u>>52) - 0x3ff;
+    u64 ixm = (ixx.u&(~0ull>>12))|1ll<<52; int ixe = (ixx.u>>52) - 0x3ff;
     /* ixx = ixm*2^(ixe-52) */
     /* x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is computed as
        (x-sin(y[i]))*cos(y[i]) - (sqrt(1-x^2)-cos(y[i]))*sin(y[i]) */
@@ -715,8 +715,8 @@ double cr_asinpi(double x){
 
     int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
     u128_u u = fi, d = fi;
-    u.a += 124l<<55; // asinpi_specific
-    d.a -= 124l<<55; // asinpi_specific
+    u.a += 124ll<<55; // asinpi_specific
+    d.a -= 124ll<<55; // asinpi_specific
     if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
       return asinpi_acc(x);
     }

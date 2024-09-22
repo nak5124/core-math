@@ -115,7 +115,7 @@ check (float y, float x)
 static void
 check_random (int i)
 {
-  long l;
+  int64_t l;
   float x, y;
   struct drand48_data buffer[1];
   ref_init ();

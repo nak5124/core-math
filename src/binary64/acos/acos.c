@@ -206,14 +206,14 @@ double cr_acos (double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   double t,z,zl,jd,f0h,f0l;
-  if(ax>0x7fc0000000000000ul){ // |x|>0.5
+  if(ax>0x7fc0000000000000ull){ // |x|>0.5
     static const double off[][2] = {{0,0}, {0x1.921fb54442d18p+1, 0x1.1a62633145c07p-53}};
     i64 k = ix.u>>63;
     f0h = off[k][0];
     f0l = off[k][1];
-    if(__builtin_expect(ax>=0x7fe0000000000000ul, 0)){ // |x| >= 1
-      if(ax==0x7fe0000000000000ul) return f0h + f0l; // |x| = 1
-      if(ax>0xffe0000000000000ul) return x; // nan
+    if(__builtin_expect(ax>=0x7fe0000000000000ull, 0)){ // |x| >= 1
+      if(ax==0x7fe0000000000000ull) return f0h + f0l; // |x| = 1
+      if(ax>0xffe0000000000000ull) return x; // nan
       errno = EDOM;
       return 0./0.; // |x|>1
     }

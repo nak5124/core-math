@@ -182,15 +182,15 @@ static const double c[] = {-0x1p-1, 0x1.555555555553p-2, -0x1.fffffffffffap-3, 0
       
 double cr_acosh(double x){
   b64u64_u ix = {.f = x};
-  if(__builtin_expect((int64_t)ix.u<=0x3ff0000000000000l, 0)){
-    if(ix.u==0x3ff0000000000000ul) return 0;
+  if(__builtin_expect((int64_t)ix.u<=0x3ff0000000000000ll, 0)){
+    if(ix.u==0x3ff0000000000000ull) return 0;
     errno = EDOM;
     return __builtin_nan("x<1");
   }
   double x2h = x*x, z = 1/x2h, g = 0;
   int off = 0x3fe;
   b64u64_u t = ix;
-  if(ix.u<0x3ff1e83e425aee63ul){
+  if(ix.u<0x3ff1e83e425aee63ull){
     z = x-1;
     double iz = (-0.25)/z, zt = 2*z;
     double sh = __builtin_sqrt(zt), sl = __builtin_fma(sh,sh,-zt)*(sh*iz);
@@ -221,9 +221,9 @@ double cr_acosh(double x){
     static const double cl[] = {0x1.7a0ed2effdd1p-67, -0x1.000000017d048p-2};
     g = cl[0] + z*cl[1];
   } else {
-    if(__builtin_expect(ix.u>=0x7ff0000000000000ul, 0)){
+    if(__builtin_expect(ix.u>=0x7ff0000000000000ull, 0)){
       u64 aix = ix.u<<1;
-      if(ix.u==0x7ff0000000000000ul || aix>((u64)0x7ff<<53)) return x; // +inf or nan
+      if(ix.u==0x7ff0000000000000ull || aix>((u64)0x7ff<<53)) return x; // +inf or nan
       errno = EDOM;
       return __builtin_nan("x<1");
     }

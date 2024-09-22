@@ -37,6 +37,7 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 /*
   Type and structure definitions
@@ -268,7 +269,7 @@ static inline void mul_dint_2(dint64_t *r, int64_t b, const dint64_t *a) {
 
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
-  printf("{.hi=0x%lx, .lo=0x%lx, .ex=%ld, .sgn=0x%lx}\n", a->hi, a->lo, a->ex,
+  printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
          a->sgn);
 }
 

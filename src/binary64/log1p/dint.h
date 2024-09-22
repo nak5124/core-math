@@ -37,6 +37,7 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 /*
   Type and structure definitions
@@ -185,7 +186,7 @@ static inline void add_dint(dint64_t *r, const dint64_t *a, const dint64_t *b) {
   }
 
   uint64_t ex =
-      C.h ? __builtin_clzl(C.h) : 64 + (C.l ? __builtin_clzl(C.l) : a->ex);
+      C.h ? __builtin_clzll(C.h) : 64 + (C.l ? __builtin_clzll(C.l) : a->ex);
   C.r = C.r << ex;
 
   r->sgn = sgn;
@@ -236,7 +237,7 @@ static inline void mul_dint_2(dint64_t *r, int64_t b, const dint64_t *a) {
 
   t.r = (u128)(a->hi) * (u128)c;
 
-  int m = t.h ? __builtin_clzl(t.h) : 64;
+  int m = t.h ? __builtin_clzll(t.h) : 64;
   t.r = (t.r << m);
 
   // Will pose issues if b is too large but for now we assume it never happens
@@ -265,7 +266,7 @@ static inline void fast_extract(int64_t *e, uint64_t *m, double x) {
   f64_u _x = {.f = x};
 
   *e = (_x.u >> 52) & 0x7ff;
-  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
+  *m = (_x.u & (~0ull >> 12)) + (*e ? (1ull << 52) : 0);
   *e = *e - 0x3ff;
 }
 
@@ -273,7 +274,7 @@ static inline void fast_extract(int64_t *e, uint64_t *m, double x) {
 static inline void dint_fromd(dint64_t *a, double b) {
   fast_extract(&a->ex, &a->hi, b);
 
-  uint32_t t = __builtin_clzl(a->hi);
+  uint32_t t = __builtin_clzll(a->hi);
 
   a->sgn = b < 0.0;
   a->hi = a->hi << t;
@@ -283,7 +284,7 @@ static inline void dint_fromd(dint64_t *a, double b) {
 
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
-  printf("{.hi=0x%lx, .lo=0x%lx, .ex=%ld, .sgn=0x%lx}\n", a->hi, a->lo, a->ex,
+  printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
          a->sgn);
 }
 

@@ -710,9 +710,9 @@ exp2m1_accurate_tiny (double x)
 static double exp2m1_accurate (double x)
 {
   b64u64_u t = {.f = x};
-  uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
+  uint64_t ux = t.u, ax = ux & 0x7fffffffffffffffllu;
 
-  if (ax <= 0x3fc0000000000000lu) // |x| <= 0.125
+  if (ax <= 0x3fc0000000000000llu) // |x| <= 0.125
     return exp2m1_accurate_tiny (x);
 
   /* now -54 < x < -0.125 or 0.125 < x < 1024: we approximate exp(x*log(2))
@@ -848,17 +848,17 @@ double
 cr_exp2m1 (double x)
 {
   b64u64_u t = {.f = x};
-  uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
+  uint64_t ux = t.u, ax = ux & 0x7fffffffffffffffllu;
 
-  if (__builtin_expect (ux >= 0xc04b000000000000lu, 0))
+  if (__builtin_expect (ux >= 0xc04b000000000000llu, 0))
   {
     // x = -NaN or x <= -54
     if ((ux >> 52) == 0xfff) // -NaN or -Inf
-      return (ux > 0xfff0000000000000lu) ? x : -1.0;
+      return (ux > 0xfff0000000000000llu) ? x : -1.0;
     // for x <= -54, exp2m1(x) rounds to -1 to nearest
     return -1.0 + 0x1p-54;
   }
-  else if (__builtin_expect (ax >= 0x4090000000000000lu, 0))
+  else if (__builtin_expect (ax >= 0x4090000000000000llu, 0))
   {
     // x = +NaN or x >= 1024
     if ((ux >> 52) == 0x7ff) // +NaN
@@ -866,7 +866,7 @@ cr_exp2m1 (double x)
     // for x >= 1024, exp2m1(x) rounds to +Inf to nearest
     return 0x1.fffffffffffffp+1023 * x;
   }
-  else if (ax <= 0x3cc0527dbd87e24dlu) // |x| <= 0x1.0527dbd87e24dp-51
+  else if (ax <= 0x3cc0527dbd87e24dllu) // |x| <= 0x1.0527dbd87e24dp-51
     /* then the second term of the Taylor expansion of 2^x-1 at x=0 is
        smaller in absolute value than 1/2 ulp(first term):
        log(2)*x + log(2)^2*x^2/2 + ... */
@@ -875,7 +875,7 @@ cr_exp2m1 (double x)
     /* we use special code when log(2)*|x| is very small, in which case
        the double-double approximation h+l has its lower part l
        "truncated" */
-    if (ax <= 0x3970000000000000lu) // |x| <= 2^-104
+    if (ax <= 0x3970000000000000llu) // |x| <= 2^-104
     {
       // special case for 0
       if (x == 0)
@@ -990,7 +990,7 @@ cr_exp2m1 (double x)
      or 0x1.0527dbd87e24dp-51 < x < 1024 */
 
   double err, h, l;
-  err = exp2m1_fast (&h, &l, x, ax <= 0x3fc0000000000000lu);
+  err = exp2m1_fast (&h, &l, x, ax <= 0x3fc0000000000000llu);
   double left = h + (l - err);
   double right = h + (l + err);
   if (__builtin_expect (left == right, 1))

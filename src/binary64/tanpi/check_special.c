@@ -35,6 +35,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <math.h>
 #include <fenv.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
@@ -68,22 +69,22 @@ static inline double rfun(double x){
 typedef union {double f; uint64_t u;} b64u64_u;
 
 double rand_arg(struct drand48_data *buf, double s){
-  long r0,r1;
+  int64_t r0,r1;
   mrand48_r(buf, &r0);
   mrand48_r(buf, &r1);
-  b64u64_u o = {.u = (((r0^(r1<<32))&(~(0x7fful<<52)))|(0x3fful<<52))};
+  b64u64_u o = {.u = (((r0^(r1<<32))&(~(0x7ffull<<52)))|(0x3ffull<<52))};
   double r = o.f-copysign(1,o.f);
   return r*s;
 }
 
 double rand_arg2(struct drand48_data *buf){
-  long r0,r1;
+  int64_t r0,r1;
   b64u64_u o;
   do {
     mrand48_r(buf, &r0);
     mrand48_r(buf, &r1);
     o.u = r0^(r1<<32);
-  } while((o.u<<1)>=(0x7fful<<53));
+  } while((o.u<<1)>=(0x7ffull<<53));
   return o.f;
 }
 
@@ -108,9 +109,9 @@ static void check_random(int seed, double a, double b){
   srand48_r(seed, buf);
   int fail = 0, maxfail = 10;
   double s = (b - a)*0.5, m = (a+b)*0.5;
-  long count = 0;
+  int64_t count = 0;
   while(1){
-    long i = 0, n = 10*1000*1000;
+    int64_t i = 0, n = 10*1000*1000;
     for(;i<n;i++){
       double x = m + rand_arg(buf, s);
       if(check(x)) fail++;
@@ -118,27 +119,27 @@ static void check_random(int seed, double a, double b){
     }
     count += i;
     if (verbose)
-      printf("failure(s) %d, total %ld\n",fail,count);
+      printf("failure(s) %d, total %"PRIx64"\n",fail,count);
     if(count>=1000l*1000l*1000l) break;
     if(fail>=maxfail) break;
   }
   if (verbose)
-    printf("%d fails per %ld calls or %.1e %%\n",
+    printf("%d fails per %"PRIx64" calls or %.1e %%\n",
            fail, count, (double)fail/count*100);
 }
 
-static void call_random(int seed, long n, double a, double b){
+static void call_random(int seed, int64_t n, double a, double b){
   fesetround(rnd1[rnd]);
   struct drand48_data buf[1];
   srand48_r(seed, buf);
   double s = (b - a)*0.5, m = (a+b)*0.5;
-  for(long j=0;j<n;j++){
+  for(int64_t j=0;j<n;j++){
     double x = m + rand_arg(buf, s);
     tfun(x);
   }
 }
 
-static void scan_consecutive(long n, double x){
+static void scan_consecutive(int64_t n, double x){
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
@@ -147,8 +148,8 @@ static void scan_consecutive(long n, double x){
     dir = -dir;
     n = -n;
   }
-  long fail = 0;
-  for(long j=0;j<n;j++){
+  int64_t fail = 0;
+  for(int64_t j=0;j<n;j++){
     if((fail += check(x)<0)>10) break;
     x = nextafter(x, dir);
   }
@@ -183,9 +184,9 @@ static void check_random_p(int seed){
     printf("seed = %d\n",seed);
   srand48_r(seed, buf);
   int fail = 0, maxfail = 10;
-  long count = 0;
+  int64_t count = 0;
   while(1){
-    long i = 0, n = 10*1000*1000;
+    int64_t i = 0, n = 10*1000*1000;
     for(;i<n;i++){
       double x = rand_arg2(buf);
       if(check(x)) fail++;
@@ -193,12 +194,12 @@ static void check_random_p(int seed){
     }
     count += i;
     if (verbose)
-      printf("failure(s) %d, total %ld\n",fail,count);
+      printf("failure(s) %d, total %"PRIx64"\n",fail,count);
     if(count>=1000l*1000l*1000l) break;
     if(fail>=maxfail) break;
   }
   if (verbose)
-    printf("%d fails per %ld calls or %.1e %%\n",
+    printf("%d fails per %"PRIx64" calls or %.1e %%\n",
            fail, count, (double)fail/count*100);
 }
 
@@ -215,10 +216,10 @@ static void check_random_all_p(){
     check_random_p(getpid() + i);
 }
 
-long parselong(const char *str){
+int64_t parselong(const char *str){
   char *endptr;
   errno = 0;    /* To distinguish success/failure after call */
-  long val = strtol(str, &endptr, 0);
+  int64_t val = strtoll(str, &endptr, 0);
   /* Check for various possible errors. */
   if(errno != 0) {
     perror("strtol");
@@ -248,9 +249,9 @@ int main(int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 0, seed = getpid (), darts = 0, conseq = 0, p = 0;
+  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 0;
   double x = __builtin_nan(""), a = -1, b = 1;
-  long n = 10*1000;
+  int64_t n = 10*1000;
   while(1) {
     int ind = 0, c = getopt_long(argc, argv, "nudzhvtps:D:C:r:i:x:a:b:", opts, &ind);
     if(c == -1) break;

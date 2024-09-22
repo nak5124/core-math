@@ -130,7 +130,7 @@ float cr_exp10m1f(float x){
     int64_t i = ia, j = i&0xf, e = i - j;
     e >>= 4;
     double s = tb[j];
-    b64u64_u su = {.u = (e + 0x3fful)<<52};
+    b64u64_u su = {.u = (e + 0x3ffull)<<52};
     s *= su.f;
     double h2 = h*h;
     double c0 = c[0] + h*c[1];

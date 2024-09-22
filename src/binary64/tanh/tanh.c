@@ -257,10 +257,10 @@ double cr_tanh(double x){
   const b64u64_u sp = {.u = (1023 + ie)<<52};
   static const double ch[] = {0x1p+1, 0x1p+1, 0x1.55555557e54ffp+0, 0x1.55555553a12f4p-1};
   double t0h = t0[i0][1], t1h = t1[i1][1], th = t0h*t1h, tl;
-  if(aix<0x400d76c8b4395810ul){ // |x| ~< 3.683
-    if(__builtin_expect(aix<0x3fd0000000000000ul, 0)){
-      if(__builtin_expect(aix<0x3e10000000000000ul, 0)){
-	if(__builtin_expect(aix<0x3df0000000000000ul, 0)){
+  if(aix<0x400d76c8b4395810ull){ // |x| ~< 3.683
+    if(__builtin_expect(aix<0x3fd0000000000000ull, 0)){
+      if(__builtin_expect(aix<0x3e10000000000000ull, 0)){
+	if(__builtin_expect(aix<0x3df0000000000000ull, 0)){
 	  if(__builtin_expect(!aix, 0)) return x;
 	  return __builtin_fma(x,-0x1p-55,x);
 	}
@@ -305,10 +305,10 @@ double cr_tanh(double x){
     double lb = rh + (rl - e), ub = rh + (rl + e);
     if(lb == ub) return lb;
   } else {
-    if(__builtin_expect(aix>=0x40330fc1931f09caul, 0)){
-      if(aix>0x7ff0000000000000ul) return x;
+    if(__builtin_expect(aix>=0x40330fc1931f09caull, 0)){
+      if(aix>0x7ff0000000000000ull) return x;
       double f = __builtin_copysign(1.0, x);
-      if(aix==0x7ff0000000000000ul) return f;
+      if(aix==0x7ff0000000000000ull) return f;
       double df = __builtin_copysign(0x1p-55, x);
       return f - df;
     }

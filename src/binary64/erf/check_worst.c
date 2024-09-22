@@ -53,10 +53,10 @@ int transform(double, double*);
 int nextarg(double*);
 void test(int);
 
-long parselong(const char *str){
+int64_t parselong(const char *str){
   char *endptr;
   errno = 0;    /* To distinguish success/failure after call */
-  long val = strtol(str, &endptr, 0);
+  int64_t val = strtoll(str, &endptr, 0);
   /* Check for various possible errors. */
   if (errno != 0) {
     perror("strtol");
@@ -138,7 +138,7 @@ static inline int
 is_nan (double x)
 {
   uint64_t u = asuint64 (x);
-  int e = u >> 52;
+  uint64_t e = u >> 52;
   return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
 }
 

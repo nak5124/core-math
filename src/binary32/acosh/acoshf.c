@@ -140,7 +140,7 @@ float cr_acoshf(float x) {
     static const double c[] = {0x1.0000000066947p+0, -0x1.00007f053d8cbp-1, 0x1.555280111d914p-2};
     double z2 = z*z;
     b64u64_u r = {.f = ((lix[128]*e + lix[j]) + z*c[0]) + z2*(c[1] + z*c[2])};
-    if(__builtin_expect(((r.u+259000)&0xfffffffl) < 260000, 0)){
+    if(__builtin_expect(((r.u+259000)&0xfffffffll) < 260000, 0)){
       static const double cp[] =
 	{0x1p+0, -0x1p-1, 0x1.55555555030bcp-2, -0x1.ffffffff2b4e5p-3, 0x1.999b5076a42f2p-3, -0x1.55570c45a647dp-3};
       z2 = z*z;
@@ -151,7 +151,7 @@ float cr_acoshf(float x) {
       const double ln2l = 0x1.7f7d1cf79abcap-20, ln2h = 0x1.62e4p-1;
       double Lh = ln2h * e, Ll = ln2l * e;
       r.f =  __builtin_fma(z, c0, Ll+lix[j]) + Lh;
-      if(__builtin_expect((r.u&0xfffffffl) == 0, 0)){
+      if(__builtin_expect((r.u&0xfffffffll) == 0, 0)){
 	double h =  __builtin_fma(z, c0, Ll+lix[j]) + (Lh-r.f);
 	r.f = r.f + 64.0*h;
       }

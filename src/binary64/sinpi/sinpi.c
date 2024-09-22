@@ -178,7 +178,7 @@ double cr_sinpi(double x){
     return sh + sl;
   }
 
-  if(__builtin_expect(ax<=0x3fa2000000000000ul, 0)){ // = 0x1.2p-5 = 3.515625e-02
+  if(__builtin_expect(ax<=0x3fa2000000000000ull, 0)){ // = 0x1.2p-5 = 3.515625e-02
     double ph = 0x1.921fb54442d18p+1, pl = 0x1.1a62633145c07p-53;
     double zh = ph*x, zl = __builtin_fma(ph, x, -zh) + pl*x;
     if(__builtin_expect(__builtin_fabs(x)<0x1p-54, 0)){

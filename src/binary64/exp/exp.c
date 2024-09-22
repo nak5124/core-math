@@ -171,9 +171,9 @@ static double __attribute__((noinline)) as_exp_database(double x, double f){
     if (c[m].u < ix.u){
       a = m + 1;
     } else if (__builtin_expect(c[m].u == ix.u, 0)) {
-      static const u64 s2[2] = {0x57f5fe2e5bde4075ul, 0x3c1f16b8edul};
+      static const u64 s2[2] = {0x57f5fe2e5bde4075ull, 0x3c1f16b8edull};
       const u64 s = 333811522313371;
-      b64u64_u jf = {.f = f}, dr = {.u = ((s>>m)<<63)|0x3c90000000000000ul};
+      b64u64_u jf = {.f = f}, dr = {.u = ((s>>m)<<63)|0x3c90000000000000ull};
       u64 t = (s2[m>>5]>>((m<<1)&63))&3;
       for(i64 k = -1; k<=1; k++){
 	b64u64_u r = {.u = jf.u + k};
@@ -276,7 +276,7 @@ static double __attribute__((noinline)) as_exp_accurate(double x){
   double dxh = dx + dxl; dxl = (dx - dxh) + dxl + dxll;
   double fl, fh = opolydd(dxh,dxl, 7,ch, &fl);
   fh = muldd(dxh,dxl, fh,fl, &fl);
-  if(__builtin_expect(ix.u>0xc086232bdd7abcd2ul, 0)){
+  if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     ix.u = (1-ie)<<52;
     fh = muldd(fh,fl, th,tl, &fl);
     fh = fastsum(th,tl, fh,fl, &fl);
@@ -313,9 +313,9 @@ double cr_exp(double x){
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~(u64)0>>1);
   if(__builtin_expect(aix == 0, 0)) return 1.0;
-  if(__builtin_expect(aix>=0x40862e42fefa39f0ul, 0)){
-    if(aix>0x7ff0000000000000ul) return x;
-    if(aix==0x7ff0000000000000ul){
+  if(__builtin_expect(aix>=0x40862e42fefa39f0ull, 0)){
+    if(aix>0x7ff0000000000000ull) return x;
+    if(aix==0x7ff0000000000000ull){
       if(ix.u>>63)
 	return 0.0;
       else
@@ -325,7 +325,7 @@ double cr_exp(double x){
       volatile double z = 0x1p1023;
       return z*z;
     }
-    if(aix>=0x40874910d52d3052ul) return 0x1.5p-1022 * 0x1p-55;
+    if(aix>=0x40874910d52d3052ull) return 0x1.5p-1022 * 0x1p-55;
   }
   const double s = 0x1.71547652b82fep+12;
   double t = __builtin_roundeven(x*s);
@@ -339,7 +339,7 @@ double cr_exp(double x){
   double p = (ch[0] + dx*ch[1]) + dx2*(ch[2] + dx*ch[3]);
   double fh = th, tx = th*dx, fl = tl + tx*p;
   double eps = 1.64e-19;
-  if(__builtin_expect(ix.u>0xc086232bdd7abcd2ul, 0)){
+  if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     ix.u = (1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);

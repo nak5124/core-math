@@ -229,7 +229,7 @@ double cr_asinh(double x){
     ah = 2*ax;
     al = 0.5/ax;
   } else {
-    if(__builtin_expect(u>=(u64)0x7ff0000000000000ul, 0)) return x; // +-inf or nan
+    if(__builtin_expect(u>=(u64)0x7ff0000000000000ull, 0)) return x; // +-inf or nan
     off = 0x3fe;
     ah = ax;
     al = 0;

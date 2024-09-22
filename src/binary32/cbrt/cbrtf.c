@@ -140,7 +140,7 @@ float cr_cbrtf (float x){
   ub = r;
   int64_t m0 = cvt1.u<<19, m1 = m0>>63;
   if(__builtin_expect((m0^m1)<((int64_t)1<<31),0)){
-    cvt1.u = (cvt1.u + ((uint64_t)1<<31))&(uint64_t)0xffffffff00000000ul;
+    cvt1.u = (cvt1.u + ((uint64_t)1<<31))&(uint64_t)0xffffffff00000000ull;
     ub = cvt1.f;
     set_flags (&flag);
   }

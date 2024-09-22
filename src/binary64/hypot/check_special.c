@@ -54,7 +54,7 @@ static double
 get_random (struct drand48_data *buffer)
 {
   b64u64_u v;
-  long l;
+  int64_t l;
   lrand48_r (buffer, &l);
   v.u = l;
   lrand48_r (buffer, &l);
@@ -142,7 +142,7 @@ check_random (int i, int nthreads)
   srand48_r (i, buffer);
 
 #define N 1000000000ul // total number of tests
-  for (unsigned long n = i; n < N; n += nthreads)
+  for (uint64_t n = i; n < N; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -262,7 +262,7 @@ check_worst_i (int m, int i, int nthreads)
   srand48_r (getpid () + i, buffer);
 
 #define N 1000000000ul // total number of tests
-  for (unsigned long n = i; n < N; n += nthreads)
+  for (uint64_t n = i; n < N; n += nthreads)
   {
     drand48_r (buffer, &x); // 0 <= x < 1
     x = 0.5 + x * 0.5;      // 1/2 <= x < 1

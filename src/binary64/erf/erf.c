@@ -506,7 +506,7 @@ cr_erf_accurate_tiny (double *h, double *l, double z)
     {0x1.e71184977c017p-4, 0x1.1182584b11eb2p-3, -0x1.1090da30ef177p-106},
     {0x1.ef3067c6cf276p-4, 0x1.16067d36b3d43p-3, 0x1.aa0e12c21f3f6p-104},
   };
-  unsigned long i, j, k;
+  uint64_t i, j, k;
   /* use dichotomy */
   for (i = 0, j = sizeof(exceptions)/sizeof(exceptions[0]); i + 1 < j;)
   {

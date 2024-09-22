@@ -71,7 +71,7 @@ cr_atan2f_tiny (float y, float x)
   double cz = c * z;
   e = e / x + cz * zz;
   b64u64_u t = {.f = z};
-  if ((t.u & 0xffffffful) == 0) /* boundary case */
+  if ((t.u & 0xfffffffull) == 0) /* boundary case */
   {
     /* If z and e are of same sign (resp. of different signs), we increase
        (resp. decrease) the significant of t by 1 to avoid a double-rounding

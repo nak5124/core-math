@@ -53,10 +53,10 @@ int transform(double, double*);
 int nextarg(double*);
 void test();
 
-long parselong(const char *str){
+int64_t parselong(const char *str){
   char *endptr;
   errno = 0;    /* To distinguish success/failure after call */
-  long val = strtol(str, &endptr, 0);
+  int64_t val = strtoll(str, &endptr, 0);
   /* Check for various possible errors. */
   if (errno != 0) {
     perror("strtol");
@@ -143,7 +143,7 @@ void test(){
 
 int transform(double x, double *out){
   static int first = 1;
-  static b64u64_u px = {.u = 0x7ff8000000054312ul};
+  static b64u64_u px = {.u = 0x7ff8000000054312ull};
   static int64_t k, kmax;
   b64u64_u s = {.f = x};
   if (first || px.u != s.u) {
@@ -152,7 +152,7 @@ int transform(double x, double *out){
     k = -1;
     kmax = 2;
     if(isnormal(x)){
-      long j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
+      int64_t j = (s.u>>52) - 1022 + __builtin_ctzll(s.u);
       if(j > 0) kmax <<= j+1;
       if(kmax>(1l<<15)) kmax = 1l<<15;
     }

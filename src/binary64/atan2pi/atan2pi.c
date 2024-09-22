@@ -47,7 +47,7 @@ typedef union { double f; uint64_t u; } d64u64;
 
 #include "tint.h"
 
-#define MASK 0x7ffffffffffffffful // 2^63-1 (mask the sign bit)
+#define MASK 0x7fffffffffffffffull // 2^63-1 (mask the sign bit)
 
 // assume sign bit was removed
 static inline int is_nan (uint64_t u)
@@ -59,7 +59,7 @@ static inline int is_nan (uint64_t u)
 // assume sign bit was removed
 static inline int is_inf (uint64_t u)
 {
-  return u == (0x7fful << 52);
+  return u == (0x7ffull << 52);
 }
 
 // ONE_OVER_PI_H+ONE_OVER_PI_L approximates 1/pi with rel. error < 2^-107.871

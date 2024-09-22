@@ -827,9 +827,9 @@ exp10m1_accurate_tiny (double x)
 static double exp10m1_accurate (double x)
 {
   b64u64_u t = {.f = x};
-  uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
+  uint64_t ux = t.u, ax = ux & 0x7fffffffffffffffllu;
 
-  if (ax <= 0x3fb0000000000000lu) // |x| <= 0.0625
+  if (ax <= 0x3fb0000000000000llu) // |x| <= 0.0625
     return exp10m1_accurate_tiny (x);
 
   /* now -0x1.041704c068efp+4 < x < -0.0625 or
@@ -954,17 +954,17 @@ double
 cr_exp10m1 (double x)
 {
   b64u64_u t = {.f = x};
-  uint64_t ux = t.u, ax = ux & 0x7ffffffffffffffflu;
+  uint64_t ux = t.u, ax = ux & 0x7fffffffffffffffllu;
 
-  if (__builtin_expect (ux >= 0xc03041704c068ef0lu, 0))
+  if (__builtin_expect (ux >= 0xc03041704c068ef0llu, 0))
   {
     // x = -NaN or x <= -0x1.041704c068efp+4
     if ((ux >> 52) == 0xfff) // -NaN or -Inf
-      return (ux > 0xfff0000000000000lu) ? x : -1.0;
+      return (ux > 0xfff0000000000000llu) ? x : -1.0;
     // for x <= -0x1.041704c068efp+4, exp10m1(x) rounds to -1 to nearest
     return -1.0 + 0x1p-54;
   }
-  else if (__builtin_expect (ax > 0x40734413509f79felu, 0))
+  else if (__builtin_expect (ax > 0x40734413509f79fellu, 0))
   {
     // x = +NaN or x > 0x1.34413509f79fep+8
     if ((ux >> 52) == 0x7ff) // +NaN
@@ -972,13 +972,13 @@ cr_exp10m1 (double x)
     // for x > 0x1.34413509f79fep+8, exp10m1(x) rounds to +Inf to nearest
     return 0x1.fffffffffffffp+1023 * x;
   }
-  else if (ax <= 0x3c90000000000000lu) // |x| <= 2^-54
+  else if (ax <= 0x3c90000000000000llu) // |x| <= 2^-54
   {
     double h, l;
     /* we use special code when log(10)*|x| is very small, in which case
        the double-double approximation h+l has its lower part l
        "truncated" */
-    if (ax <= 0x3970000000000000lu) // |x| <= 2^-104
+    if (ax <= 0x3970000000000000llu) // |x| <= 2^-104
     {
       // special case for 0
       if (x == 0)
@@ -1118,7 +1118,7 @@ cr_exp10m1 (double x)
      or 2^-54 < x <= 0x1.34413509f79fep+8 */
 
   double err, h, l;
-  err = exp10m1_fast (&h, &l, x, ax <= 0x3fb0000000000000lu);
+  err = exp10m1_fast (&h, &l, x, ax <= 0x3fb0000000000000llu);
   double left = h + (l - err);
   double right = h + (l + err);
   if (__builtin_expect (left == right, 1))

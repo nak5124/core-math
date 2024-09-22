@@ -506,7 +506,7 @@ float as_powf_accurate2(float x0, float y0, int is_exact, FLAG_T flag){
   b64u64_u t = {.f = x};
   int e = ((t.u>>52)&0x7ff) - 0x3ff;
   t.u &= ~(uint64_t)0>>12;
-  int k = t.u > 0x6a09e667f3bcdul;
+  int k = t.u > 0x6a09e667f3bcdull;
   e += k;
   t.u |= (int64_t)0x3ff<<52;
   x = t.f;

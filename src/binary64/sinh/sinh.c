@@ -279,8 +279,8 @@ double cr_sinh(double x){
 #endif
   b64u64_u ix = {.f = ax};
   u64 aix = ix.u;
-  if(__builtin_expect(aix<0x3fd0000000000000ul, 0)){
-    if(__builtin_expect(aix<0x3e57137449123ef7ul, 0)) return __builtin_fma(x,0x1p-55,x);
+  if(__builtin_expect(aix<0x3fd0000000000000ull, 0)){
+    if(__builtin_expect(aix<0x3e57137449123ef7ull, 0)) return __builtin_fma(x,0x1p-55,x);
     static const double c[] =
       {0x1.5555555555555p-3, 0x1.1111111111087p-7, 0x1.a01a01a12e1c3p-13, 0x1.71de2e415aa36p-19, 0x1.aed2bff4269e6p-26};
     double x2 = x*x, x3 = x2*x, x4 = x2*x2, p = x3*((c[0] + x2*c[1]) + x4*((c[2] + x2*c[3]) + x4*c[4]));
@@ -300,10 +300,10 @@ double cr_sinh(double x){
   static const double ch[] = {0x1p+0, 0x1p-1, 0x1.5555555aaaaaep-3, 0x1.55555551c98cp-5};
   double pp = dx*((ch[0] + dx*ch[1]) + dx2*(ch[2] + dx*ch[3]));
   double rh, rl;
-  if(__builtin_expect(aix>0x4014000000000000ul, 0)){ // |x| > 5
-    if(__builtin_expect(aix>0x40425e4f7b2737faul, 0)){ // |x| >~ 36.736801
-      if(__builtin_expect(aix>0x408633ce8fb9f87dul, 0)){ // |x| >~ 710.47586
-	if(aix>=0x7ff0000000000000ul) return x;
+  if(__builtin_expect(aix>0x4014000000000000ull, 0)){ // |x| > 5
+    if(__builtin_expect(aix>0x40425e4f7b2737faull, 0)){ // |x| >~ 36.736801
+      if(__builtin_expect(aix>0x408633ce8fb9f87dull, 0)){ // |x| >~ 710.47586
+	if(aix>=0x7ff0000000000000ull) return x;
 	return __builtin_copysign(0x1p1023, x)*2.0;
       }
       sp.u = (1021 + ie)<<52;
@@ -341,7 +341,7 @@ double cr_sinh(double x){
     if(lb == ub) return lb;
 
     th = as_exp_accurate( ax, t, th, tl, &tl);
-    if(__builtin_expect(aix>0x403f666666666666ul, 0)){
+    if(__builtin_expect(aix>0x403f666666666666ull, 0)){
       rh = th - qh; rl = ((th - rh) - qh) + tl;
     } else {
       qh = q0h*q1h;

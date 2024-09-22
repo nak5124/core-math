@@ -172,7 +172,7 @@ static double __attribute__((noinline)) as_exp10_database(double x, double f){
     else if (__builtin_expect(t == ix.u, 0)) {
       static const u64 s2[2] = {0x7eb37ef5ac3fe7c6, 0x3781b19e1};
       const u64 s = 371470981966157;
-      b64u64_u d = {.u = ((s>>m)&1)<<63 | 0x3c90000000000000ul}, jf = {.f = f};
+      b64u64_u d = {.u = ((s>>m)&1)<<63 | 0x3c90000000000000ull}, jf = {.f = f};
       u64 p = s2[m>>5]>>(2*(m&31));
       if(!((jf.u^p)&3)) return jf.f + d.f;
       jf.u -= 1;
@@ -274,7 +274,7 @@ static double __attribute__((noinline)) as_exp10_accurate(double x){
   double dxh = dx + dxl; dxl = ((dx - dxh) + dxl) + dxll;
   double fl, fh = opolydd(dxh,dxl, 6,c, &fl);
   fh = muldd(dxh,dxl, fh,fl, &fl);
-  if(__builtin_expect(ix.u<0xc0733a7146f72a42ul, 0)){
+  if(__builtin_expect(ix.u<0xc0733a7146f72a42ull, 0)){
     if(!(jt&0xfff)){
       fh = fasttwosum(fh, fl, &fl);
       th = fasttwosum(th, fh, &fh);
@@ -307,16 +307,16 @@ static double __attribute__((noinline)) as_exp10_accurate(double x){
 double cr_exp10(double x){
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~(u64)0>>1);
-  if(__builtin_expect(aix>0x40734413509f79feul, 0)){
-    if(aix>0x7ff0000000000000ul) return x;
-    if(aix==0x7ff0000000000000ul){
+  if(__builtin_expect(aix>0x40734413509f79feull, 0)){
+    if(aix>0x7ff0000000000000ull) return x;
+    if(aix==0x7ff0000000000000ull){
       if(ix.u>>63)
 	return 0.0;
       else
 	return x;
     }
     if(!(ix.u>>63)) return 0x1p1023*2.0;
-    if(aix>0x407439b746e36b52ul) return 0x1.5p-1022*0x1p-55;
+    if(aix>0x407439b746e36b52ull) return 0x1.5p-1022*0x1p-55;
   }
   if(__builtin_expect(!(ix.u<<16), 0)){
     if( (aix>>48) <= 0x4036){
@@ -343,7 +343,7 @@ double cr_exp10(double x){
   double p = (ch[0] + dx*ch[1]) + dx2*(ch[2] + dx*ch[3]);
   double fh = th, fx = th*dx, fl = tl + fx*p;
   double eps = 1.63e-19;
-  if(__builtin_expect(ix.u<0xc0733a7146f72a42ul, 0)){
+  if(__builtin_expect(ix.u<0xc0733a7146f72a42ull, 0)){
     double ub = fh + (fl + eps), lb = fh + (fl - eps);
     if(__builtin_expect( lb != ub, 0)) return as_exp10_accurate(x);
     fh = as_ldexp(fh + fl, ie);

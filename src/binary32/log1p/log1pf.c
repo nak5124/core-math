@@ -91,7 +91,7 @@ float cr_log1pf(float x) {
     double z2 = z*z, z4 = z2*z2;
     double f = z2*((b[1] + z*b[2]) + z2*(b[3] + z*b[4]) + z4*((b[5] + z*b[6]) + z2*b[7]));
     b64u64_u r = {.f = z + f};
-    if(__builtin_expect((r.u&0xfffffffl) == 0, 0)) r.f += 0x1p14*(f + (z - r.f));
+    if(__builtin_expect((r.u&0xfffffffll) == 0, 0)) r.f += 0x1p14*(f + (z - r.f));
     return r.f;
   } else {
     if(__builtin_expect(ux>=0xbf800000u||ax>=0x7f800000u, 0)) return as_special(x);
@@ -112,7 +112,7 @@ float cr_log1pf(float x) {
       const double ln2l = 0x1.7f7d1cf79abcap-20, ln2h = 0x1.62e4p-1;
       double Lh = ln2h * e, Ll = ln2l * e, rl = f + Ll + lix[j];
       b64u64_u tr = {.f = rl + Lh};
-      if(__builtin_expect((tr.u&0xfffffffl) == 0 , 0)){
+      if(__builtin_expect((tr.u&0xfffffffll) == 0 , 0)){
 	if(x==-0x1.247ab0p-6) return -0x1.271f0ep-6f - 0x1p-31f;
 	if(x==-0x1.3a415ep-5) return -0x1.407112p-5f + 0x1p-30f;
 	if(x== 0x1.fb035ap-2) return  0x1.9bddc2p-2f + 0x1p-27f;

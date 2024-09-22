@@ -109,7 +109,7 @@ static inline int
 is_nan (double x)
 {
   uint64_t u = asuint64 (x);
-  int e = u >> 52;
+  uint64_t e = u >> 52;
   return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
 }
 

@@ -165,8 +165,8 @@ static double __attribute__((noinline)) as_expm1_database(double x, double f){
     if (c[m].u < ix.u){
       a = m + 1;
     } else if (__builtin_expect(c[m].u == ix.u, 0)) {
-      static const u64 s2[2] = {0x76f58b0d65bd5553ul, 0xc06ul};
-      const u64 s = 0x300e81651cul;
+      static const u64 s2[2] = {0x76f58b0d65bd5553ull, 0xc06ull};
+      const u64 s = 0x300e81651cull;
       b64u64_u jf = {.f = f}, dr = {.u = ((s>>m)<<63)| (((jf.u>>52)&0x7ff) - 54)<<52};
       u64 t = (s2[m>>5]>>((m<<1)&63))&3;
       for(i64 k = -1; k<=1; k++){
@@ -363,8 +363,8 @@ static double __attribute__((noinline)) as_expm1_accurate(double x){
 double cr_expm1(double x){
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~(u64)0>>1);
-  if(__builtin_expect(aix < 0x3fd0000000000000ul, 1)){
-    if( __builtin_expect(aix < 0x3ca0000000000000ul, 0)) {
+  if(__builtin_expect(aix < 0x3fd0000000000000ull, 1)){
+    if( __builtin_expect(aix < 0x3ca0000000000000ull, 0)) {
       if( !aix ) return x;
       return __builtin_fma(0x1p-54, __builtin_fabs(x), x);
     }
@@ -382,9 +382,9 @@ double cr_expm1(double x){
     if(__builtin_expect( ub != lb, 0)) return as_expm1_accurate(x);
     return lb;
   } else {
-    if(__builtin_expect(aix>=0x40862e42fefa39f0ul, 0)){
-      if(aix>0x7ff0000000000000ul) return x;
-      if(aix==0x7ff0000000000000ul){
+    if(__builtin_expect(aix>=0x40862e42fefa39f0ull, 0)){
+      if(aix>0x7ff0000000000000ull) return x;
+      if(aix==0x7ff0000000000000ull){
 	if(ix.u>>63)
 	  return -1.0;
 	else
@@ -395,8 +395,8 @@ double cr_expm1(double x){
 	return z*z;
       }
     }
-    if(__builtin_expect(ix.u>=0xc0425e4f7b2737faul, 0)){
-      if(ix.u>=0xc042b708872320e2ul) return -1.0 + 0x1p-55;
+    if(__builtin_expect(ix.u>=0xc0425e4f7b2737faull, 0)){
+      if(ix.u>=0xc042b708872320e2ull) return -1.0 + 0x1p-55;
       return (0x1.25e4f7b2737fap+5 + x + 0x1.8486612173c69p-51)*0x1.71547652b82fep-54 - 0x1.fffffffffffffp-1;
     }
 

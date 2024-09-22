@@ -42,7 +42,7 @@ typedef union { double f; uint64_t u; } d64u64;
 
 #include "tint.h"
 
-#define MASK 0x7ffffffffffffffful // 2^63-1 (mask the sign bit)
+#define MASK 0x7fffffffffffffffull // 2^63-1 (mask the sign bit)
 
 // PI_H+PI_L approximates pi with error bounded by 2^-108.041
 #define PI_H 0x1.921fb54442d18p+1

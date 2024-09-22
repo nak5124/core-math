@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdlib.h>
+#include <inttypes.h>
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -73,7 +74,7 @@ static const tint_t PI2 = {
 
 // Print a tint_t value for debugging purposes
 static inline void print_tint (const tint_t *a) {
-  printf("{.h=0x%lx, .m=0x%lx, .l=0x%lx, .ex=%ld, .sgn=0x%lx}\n",
+  printf("{.h=0x%"PRIx64", .m=0x%"PRIx64", .l=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n",
          a->h, a->m, a->l, a->ex, a->sgn);
 }
 // Copy a tint_t value
@@ -343,7 +344,7 @@ static inline void tint_fromd (tint_t *a, double x)
 {
   d64u64 u = {.f = x};
   a->sgn = u.u >> 63;
-  uint64_t ax = u.u & 0x7ffffffffffffffful;
+  uint64_t ax = u.u & 0x7fffffffffffffffull;
   int64_t e = ax >> 52;
   if (__builtin_expect (e, 1)) { // normal
     // 1 has e=0x3ff

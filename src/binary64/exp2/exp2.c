@@ -274,7 +274,7 @@ static double __attribute__((noinline)) as_exp2_accurate(double x){
     {0x1.5d87fe7a66459p-70, -0x1.dc47e47beb9ddp-124}, {0x1.430912f9fb79dp-85, -0x1.4fcd51fcb764p-139}};
   double fl, fh = polydd(z, 6, cd, &fl);
   fh = mulddd(z, fh,fl, &fl);
-  if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){ // x >= -1022
+  if(__builtin_expect(ix.u<=0xc08ff00000000000ull, 1)){ // x >= -1022
     // for -0x1.71547652b82fep-54 <= x <= 0x1.71547652b82fdp-53,
     // exp2(x) round to x to nearest
     if (-0x1.71547652b82fep-54 <= x && x <= 0x1.71547652b82fdp-53)
@@ -317,16 +317,16 @@ double cr_exp2(double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   if(__builtin_expect(ax == 0, 0)) return 1.0;
-  if(__builtin_expect(ax >= 0x8120000000000000ul, 0)){
-    if(ax  > 0xffe0000000000000ul) return x;
-    if(ax == 0xffe0000000000000ul) return (ix.u>>63)?0.0:x;
+  if(__builtin_expect(ax >= 0x8120000000000000ull, 0)){
+    if(ax  > 0xffe0000000000000ull) return x;
+    if(ax == 0xffe0000000000000ull) return (ix.u>>63)?0.0:x;
     if(ix.u>>63){
-      if(ix.u >= 0xc090cc0000000000ul) {
+      if(ix.u >= 0xc090cc0000000000ull) {
 	double z = 0x1p-1022;
 	return z*z;
       }
     } else {
-      if(ix.u >= 0x4090000000000000ul){
+      if(ix.u >= 0x4090000000000000ull){
 	double z = 0x1p1023;
 	return z*z;
       }
@@ -342,7 +342,7 @@ double cr_exp2(double x){
     {0x1.62e42fefa39efp-13, 0x1.ebfbdff82c58fp-27, 0x1.c6b08d73b3e01p-41, 0x1.3b2ab6fdda001p-55};
   double tz = th*z, fh = th, fl = tz*((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + tl;
   double eps = 1.64e-19;
-  if(__builtin_expect(ix.u<=0xc08ff00000000000ul, 1)){
+  if(__builtin_expect(ix.u<=0xc08ff00000000000ull, 1)){
     // warning: on 32-bit machines, __builtin_expect(frac,1) does not work
     // since only the low 32 bits of frac are taken into account
     if( __builtin_expect(frac != 0, 1)){

@@ -54,7 +54,7 @@ static double
 get_random (struct drand48_data *buffer)
 {
   b64u64_u v;
-  long l;
+  int64_t l;
   lrand48_r (buffer, &l);
   v.u = l;
   lrand48_r (buffer, &l);
@@ -129,7 +129,7 @@ check_random (int i, int nthreads)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-  for (unsigned long n = 0; n < N; n += nthreads)
+  for (uint64_t n = 0; n < N; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -163,7 +163,7 @@ check_small_aux (int i, int nthreads)
   double x, y;
   srand48_r (i, buffer);
   double ratio = 0, dratio = 64.0 / (N / nthreads);
-  for (unsigned long n = 0; n < N; n += nthreads)
+  for (uint64_t n = 0; n < N; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);

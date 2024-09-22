@@ -389,7 +389,7 @@ double cr_atanpi (double x){
   b64u64_u t = {.f = x};
   u64 at = t.u&(~(u64)0>>1);
   int64_t i = (at>>51) - 2030l;
-  if (__builtin_expect(at < 0x3f7b21c475e6362aul, 0)) {
+  if (__builtin_expect(at < 0x3f7b21c475e6362aull, 0)) {
     // |x| < 0x1.b21c475e6362ap-8
     if (at < 0x3c90000000000000) // |x| < 2^-54
       return atanpi_subnormal (x);
@@ -419,9 +419,9 @@ double cr_atanpi (double x){
   }
   // now |x| >= 0x1.b21c475e6362ap-8
   double h, ah, al;
-  if(__builtin_expect(at>0x4062ded8e34a9035ul, 0)) {
+  if(__builtin_expect(at>0x4062ded8e34a9035ull, 0)) {
     // |x| > 0x1.2ded8e34a9035p+7, atanpi|x| > 0.49789
-    if(__builtin_expect(at >= 0x43445f306dc9c883ul, 0)){
+    if(__builtin_expect(at >= 0x43445f306dc9c883ull, 0)){
       // |x| >= 0x1.45f306dc9c883p+53, atanpi|x| > 0.5 - 0x1p-55
       if(__builtin_expect(at >= ((u64)0x7ff<<52), 0)){
 	// case Inf or NaN

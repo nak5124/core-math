@@ -27,6 +27,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <math.h>
 #include <fenv.h>
 #include <assert.h>
@@ -160,19 +161,19 @@ gcd (uint64_t a, uint64_t b)
 /* generate all inputs x=j*(p^2-q^2), y=j*(2pq) that satisfy
    2^(23+k) <= x < 2^(24+k), 2^23 <= y < 2^24
    Return the number of generated inputs. */
-static unsigned long
+static uint64_t
 generate1 (uint64_t p, uint64_t q, int k)
 {
   /* ensure p and q are coprime, otherwise we will get duplicates */
   if (gcd (p, q) != 1)
     return 0;
-  unsigned long count = 0;
+  uint64_t count = 0;
   assert (p > q);
   uint64_t x = p * p - q * q;
   uint64_t y = 2 * p * q;
   uint64_t z = p * p + q * q;
-  uint64_t xmax = 0xfffffful << k;
-  uint64_t ymax = 0xfffffful;
+  uint64_t xmax = 0xffffffull << k;
+  uint64_t ymax = 0xffffffull;
   for (uint64_t j = 1; ; j++)
   {
     uint64_t xj = j * x;
@@ -194,19 +195,19 @@ generate1 (uint64_t p, uint64_t q, int k)
 /* generate all inputs x=j*(2pq), y=j*(p^2-q^2) that satisfy
    2^(23+k) <= x < 2^(24+k), 2^23 <= y < 2^24
    Return the number of generated inputs. */
-static unsigned long
+static uint64_t
 generate2 (uint64_t p, uint64_t q, int k)
 {
   /* ensure p and q are coprime, otherwise we will get duplicates */
   if (gcd (p, q) != 1)
     return 0;
-  unsigned long count = 0;
+  uint64_t count = 0;
   assert (p > q);
   uint64_t x = 2 * p * q;
   uint64_t y = p * p - q * q;
   uint64_t z = p * p + q * q;
-  uint64_t xmax = 0xfffffful << k;
-  uint64_t ymax = 0xfffffful;
+  uint64_t xmax = 0xffffffull << k;
+  uint64_t ymax = 0xffffffull;
   for (uint64_t j = 1; ; j++)
   {
     uint64_t xj = j * x;
@@ -232,7 +233,7 @@ static void
 check_pythagorean_triples (int k)
 {
   uint64_t p, q;
-  unsigned long count1 = 0, count2 = 0;
+  uint64_t count1 = 0, count2 = 0;
 
   if (verbose)
     fprintf (stderr, "# k=%d\n", k);
@@ -243,11 +244,11 @@ check_pythagorean_triples (int k)
 #pragma omp parallel for
 #endif
   for (q = 1; q <= 2895; q++)
-    for (p = q + 1; 2 * p * q < 0x1000000ul; p+=2)
+    for (p = q + 1; 2 * p * q < 0x1000000ull; p+=2)
       count1 += generate1 (p, q, k);
 
   if (verbose)
-    fprintf (stderr, "# Type 1: %lu\n", count1);
+    fprintf (stderr, "# Type 1: %"PRIu64"\n", count1);
 
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^24, this gives p <= 2^23 */
@@ -258,12 +259,12 @@ check_pythagorean_triples (int k)
   {
     /* we want y < 2^24, thus p^2-q^2 < 2^24 thus p^2 - 2^24 < q^2 */
     uint64_t qmin = 1;
-    if (p * p < 0x1000000ul)
+    if (p * p < 0x1000000ull)
       q = 0;
     else
     {
-      q = sqrt (p * p - 0x1000000ul);
-      while (q * q <= p * p - 0x1000000ul)
+      q = sqrt (p * p - 0x1000000ull);
+      while (q * q <= p * p - 0x1000000ull)
         q ++;
     }
     if (qmin < q)
@@ -274,8 +275,8 @@ check_pythagorean_triples (int k)
       count2 += generate2 (p, q, k);
   }
   if (verbose) {
-    fprintf (stderr, "# Type 2: %lu\n", count2);
-    fprintf (stderr, "# Total: %lu\n", count1 + count2);
+    fprintf (stderr, "# Type 2: %"PRIu64"\n", count2);
+    fprintf (stderr, "# Total: %"PRIu64"\n", count1 + count2);
   }
 }
 

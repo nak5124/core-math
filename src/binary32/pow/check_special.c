@@ -61,7 +61,7 @@ static float
 get_random (struct drand48_data *buffer)
 {
   b32u32_u v;
-  long l;
+  int64_t l;
   lrand48_r (buffer, &l);
   v.u = l;
   // lrand48_r generates only 31 bits
@@ -139,7 +139,7 @@ check_random (int i)
   struct drand48_data buffer[1];
   float x, y;
   srand48_r (i, buffer);
-  for (unsigned long n = 0; n < N; n++)
+  for (uint64_t n = 0; n < N; n++)
   {
     x = get_random (buffer);
     y = get_random (buffer);
