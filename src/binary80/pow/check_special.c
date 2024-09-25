@@ -122,21 +122,19 @@ check (long double x, long double y)
 }
 
 // check x=2^n and y, return 1 iff x is in the long double range
-static int
+static void
 check_pow2_aux (int n, long double y)
 {
   if (n < -16445 || 16384 <= n)
-    return 0;
+    return;
   long double x = ldexpl (1.0L, n);
   check (x, y);
-  return 1;
 }
 
 // check exact values for x=2^n and y=m/2^k with m odd, k >= 6
 static void
 check_pow2 (void)
 {
-  int nsols = 0;
   // since n should be a multiple of 2^k and n <= 16445, we have k <= 14
   for (int k = 6; k <= 14; k++)
   {
@@ -147,8 +145,8 @@ check_pow2 (void)
       int e = n / K;
       for (int m = 1; m * e <= 16445; m += 2)
       {
-        nsols += check_pow2_aux (n, ldexpl ((long double) m, -k));
-        nsols += check_pow2_aux (-n, -ldexpl ((long double) m, -k));
+        check_pow2_aux (n, ldexpl ((long double) m, -k));
+        check_pow2_aux (-n, -ldexpl ((long double) m, -k));
       }
     }
     // negative n
@@ -157,8 +155,8 @@ check_pow2 (void)
       int e = n / K;
       for (int m = 1; m * (-e) <= 16445; m += 2)
       {
-        nsols += check_pow2_aux (n, ldexpl ((long double) m, -k));
-        nsols += check_pow2_aux (-n, -ldexpl ((long double) m, -k));
+        check_pow2_aux (n, ldexpl ((long double) m, -k));
+        check_pow2_aux (-n, -ldexpl ((long double) m, -k));
       }
     }
   }
