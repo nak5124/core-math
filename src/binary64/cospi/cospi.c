@@ -163,7 +163,7 @@ double cr_cospi(double x){
     double sh, sl, ch, cl; sincosn(iq, &sh, &sl, &ch, &cl);
     return sh + sl;
   }
-  if(__builtin_expect(ax<=0x3f30000000000000ul, 0)){
+  if(__builtin_expect(ax<=0x3f30000000000000ul, 0)){ // |x| <= 2^-12
     if(__builtin_expect(ax<=0x3e2ccf6429be6621ul, 0)) return 1.0 - 0x1p-55;
     double x2 = x*x, x4 = x2*x2, eps = x2*0x1.ap-48;
     static const double c[] = {-0x1.3bd3cc9be45dcp+2, 0x1.03c1f081b0833p+2, -0x1.55d3c6fc9af15p+0, 0x1.e1d3ff2ae3f9ap-3};
