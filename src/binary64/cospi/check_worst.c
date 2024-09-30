@@ -135,6 +135,9 @@ void test(){
     zt.f = cr_function_under_test(x);
     if (!is_equal (zr, zt)) {
       if(++failures<10) printf("FAIL x=%a ref=%a z=%a\n", x, zr.f, zt.f);
+#ifndef DO_NOT_ABORT
+      exit (1);
+#endif
     }
     ++count;
   }

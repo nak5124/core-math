@@ -41,12 +41,10 @@ SOFTWARE.
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
-#ifdef __SIZEOF_INT128__
-typedef unsigned __int128 u128;
-#elif (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
 typedef unsigned _BitInt(128) u128;
 #else
-#error "128-bit integers are not supported on this platform!"
+typedef unsigned __int128 u128;
 #endif
 
 typedef union {
