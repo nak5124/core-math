@@ -316,22 +316,26 @@ def doit_bacsel(e,k,t0=2^63,t1=2^64,t=20,command='./doit.sh'):
 
 from functools import cmp_to_key
 
+# sort by increasing exponent, then by increasing t0, then by decreasing t1
+# (so that larger intervals come first)
 def cmp(x,y):
    if x[2] < y[2]:
       return int(-1)
    if x[2] > y[2]:
       return int(1)
    # now x[2] = y[2]
-   if x[1] < y[1]:
-      return int(-1)
-   if x[1] > y[1]:
-      return int(1)
    if x[0] < y[0]:
       return int(-1)
    if x[0] > y[0]:
       return int(1)
+   if x[1] > y[1]:
+      return int(-1)
+   if x[1] < y[1]:
+      return int(1)
    return int(0)
 
+# sort by decreasing exponent, then by increasing t0, then by decreasing t1
+# (so that larger intervals come first)
 def cmpneg(x,y):
    if x[2] > y[2]:
       return int(-1)
@@ -342,30 +346,28 @@ def cmpneg(x,y):
       return int(-1)
    if x[0] > y[0]:
       return int(1)
-   if x[1] < y[1]:
-      return int(-1)
    if x[1] > y[1]:
+      return int(-1)
+   if x[1] < y[1]:
       return int(1)
    return int(0)
 
 # statall("/tmp/log")
-# ([((11826452621474922496, 10), (12786308645202655660, 14))],
-# [((-12833913920309916523, 14), (-12789430302586738339, 14)),
-#  ((-12695713422019218354, 14), (-12571065269731264003, 14)),
-#  ((-12535451511934705617, 14), (-12268348328460517722, 14)),
-#  ((-12250541449562238529, 14), (-11057480563377532598, 14)),
-#  ((-11039673684479253405, 14), (-10345205407446364878, 14)),
-#  ((-10327398528548085685, 14), (-9775385282701430702, 14)),
-#  ((-9757578403803151509, 14), (-9721964646006593123, 14)),
-#  ((-9704157767108313930, 14), (-9668544009311755544, 14)),
-#  ((-9650737130413476351, 14), (-9526088978125522000, 14)),
-#  ((-9508282099227242807, 14), (-9383633946939288456, 14)),
-#  ((-9330213310244450877, 14), (-9258985794651334105, 14)),
-#  ((-9241178915753054912, 14), (-9223372036854775807, 14)),
-#  ((-18446744073709551615, 12), (-12144106515192121444, 10)),
+# nancy+explor:
+# statall("/tmp/log")
+#([((9223372036854775808, -64), (12786308645202655660, 14))],
+# [((-12784747816510614319, 14), (-15636497906230362111, 13)),
+#  ((-15564440312192434175, 13), (-15276209936040722431, 13)),
+#  ((-15204152342002794495, 13), (-15060037153926938623, 13)),
+#  ((-14987979559889010687, 13), (-14843864371813154815, 13)),
+#  ((-14555633995661443071, 13), (-14267403619509731327, 13)),
+#  ((-14195346025471803391, 13), (-14123288431433875455, 13)),
+#  ((-14051230837395947519, 13), (-13492784483602006015, 13)),
+#  ((-13474770085092524031, 13), (-12429934971542568959, 13)),
+#  ((-12393906174523604991, 13), (-12144106515192121444, 10)),
 #  ((-11990383647911208513, 10), (-9898252917600247177, 8)),
 #  ((-9673292624018423376, 8), (-9223372036854775807, -64))])
-def statall(f):
+def statall(f,m=[55,100,102]):
    f = open(f,"r")
    l = []
    while true:
@@ -373,26 +375,44 @@ def statall(f):
       if s=='':
          break
       s = s.split(" ")
-      assert len(s) == 5, "len(s) == 5"
+      assert len(s) == 6, "len(s) == 6" # t0 t1 e n nn m
       t0 = ZZ(s[0])
       t1 = ZZ(s[1])
       e = ZZ(s[2])
       assert ZZ(s[3])==64, "s[3]==64"
-      # assert ZZ(s[4])==64, "s[4]==64"
-      l.append((t0,t1,e))
+      if ZZ(s[4])!=64: # deal separately with subnormal output
+         continue
+      assert ZZ(s[5]) in [55,100,102], "ZZ(s[5]) in [55,100,102]"
+      if ZZ(s[5]) in m:
+        l.append((t0,t1,e,ZZ(s[5])))
    f.close()
    lpos = [x for x in l if x[0]>0]
    lneg = [x for x in l if x[0]<0]
    assert len(l) == len(lpos) + len(lneg)
    lpos.sort(key=cmp_to_key(cmp))
    lpos2 = []
-   for t0,t1,e in lpos:
+   for t0,t1,e,m in lpos:
+      # if m==55, check 2^-65 <= x < 0x1.484p+9
+      if m==55:
+         if not (2^-65 <= t0/2^64*2^e) and (t1/2^64*2^e <= RR("0x1.484p+9",16)):
+            print ("for m=55, x>0 outside range", (t0,t1,e,m))
+            continue
+      # if m==100 or 102, check x >= 0x1.484p+9
+      if m in [100,102]:
+         if not RR("0x1.484p+9",16) <= t0/2^64*2^e:
+            print ("for m=100/102, x>0 outside range", (t0,t1,e,m))
+            continue
       if lpos2==[]:
          lpos2 = [((t0,e),(t1,e))]
       else:
+         t0old,e0old = lpos2[-1][0]
          t1old,e1old = lpos2[-1][1]
          if t1old*2^e1old > t0*2^e:
-            print ((t1old,e1old), (t0, e))
+            if t1old*2^e1old >= t1*2^e:
+               print ("interval ", (t0,e,t1,e), "included in", (t0old,e0old,t1old,e1old))
+               continue
+            else:
+               print ("interval ", (t0,e,t1,e), "partially overlaps", (t0old,e0old,t1old,e1old))
          assert t1old*2^e1old <= t0*2^e, "t1old*2^e1old <= t0*2^e"
          if t1old*2^e1old == t0*2^e:
             lpos2[-1] = (lpos2[-1][0],(t1,e))
@@ -401,13 +421,28 @@ def statall(f):
    lpos = lpos2
    lneg.sort(key=cmp_to_key(cmpneg))
    lneg2 = []
-   for t0,t1,e in lneg:
+   for t0,t1,e,m in lneg:
+      # if m==55, check -2^4 < x <= 2^-65
+      if m==55:
+         if not (-2^4 < t0/2^64*2^e and (t1-1)/2^64*2^e <= -2^-65):
+            print ("for m=55, x<0 outside range", (t0,t1,e,m))
+            continue
+      # if m==100 or 102, check x <= -2^4
+      if m in [100,102]:
+         if not (t1-1)/2^64*2^e <= -2^4:
+            print ("for m=100/102, x<0 outside range", (t0,t1,e,m))
+            continue
       if lneg2==[]:
          lneg2 = [((t0,e),(t1,e))]
       else:
+         t0old,e0old = lneg2[-1][0]
          t1old,e1old = lneg2[-1][1]
          if (t1old-1)*2^e1old > (t0-1)*2^e:
-            print ((t1old,e1old), (t0, e))
+            if (t1old-1)*2^e1old >= (t1-1)*2^e:
+               print ("interval ", (t0,e,t1,e), "included in", (t0old,e0old,t1old,e1old))
+               continue
+            else:
+               print ("interval ", (t0,e,t1,e), "partially overlaps", (t0old,e0old,t1old,e1old))
          assert (t1old-1)*2^e1old <= (t0-1)*2^e, "(t1old-1)*2^e1old <= (t0-1)*2^e"
          if (t1old-1)*2^e1old == (t0-1)*2^e:
             lneg2[-1] = (lneg2[-1][0],(t1,e))
