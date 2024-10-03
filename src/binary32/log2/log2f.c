@@ -25,6 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -111,9 +114,19 @@ float cr_log2f(float x) {
   uint64_t m = ux&(~0u>>9); m <<= 52-23;
   int e = (ux>>23) - 0x7f;
   if (__builtin_expect(ux < 1u<<23 || ux >= 0xffu<<23, 0)) {
-    if (ux==0||ux==(1u<<31)) return -__builtin_inff(); // +0.0 || -0.0
+    if (ux==0||ux==(1u<<31)) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+      return -__builtin_inff(); // +0.0 || -0.0
+    }
     uint32_t inf_or_nan = ((ux>>23)&0xff) == 0xff, nan = inf_or_nan && (ux<<9);
-    if (ux>>31 && !nan) return __builtin_nanf("-");
+    if (ux>>31 && !nan) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = EDOM;
+#endif
+      return __builtin_nanf("-");
+    }
     if (inf_or_nan) return x;
     // subnormal
     int nz = __builtin_clzll(m);

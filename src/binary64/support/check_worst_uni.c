@@ -36,6 +36,9 @@ SOFTWARE.
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 
 #include "function_under_test.h"
 
@@ -49,9 +52,15 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd = 0;
 
 typedef union { double f; uint64_t i; } d64u64;
+typedef struct {
+  double x;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  int errno_ref;
+#endif
+} testcase;
 
 static void
-readstdin(double **result, int *count)
+readstdin(testcase **result, int *count)
 {
   char *buf = NULL;
   size_t buflength = 0;
@@ -59,7 +68,7 @@ readstdin(double **result, int *count)
   int allocated = 512;
 
   *count = 0;
-  if (NULL == (*result = malloc(allocated * sizeof(double)))) {
+  if (NULL == (*result = malloc(allocated * sizeof(testcase)))) {
     fprintf(stderr, "malloc failed\n");
     exit(1);
   }
@@ -68,7 +77,7 @@ readstdin(double **result, int *count)
     if (n > 0 && buf[0] == '#') continue;
     if (*count >= allocated) {
       int newsize = 2 * allocated;
-      double *newresult = realloc(*result, newsize * sizeof(double));
+      testcase *newresult = realloc(*result, newsize * sizeof(testcase));
       if (NULL == newresult) {
         fprintf(stderr, "realloc(%d) failed\n", newsize);
         exit(1);
@@ -76,24 +85,48 @@ readstdin(double **result, int *count)
       allocated = newsize;
       *result = newresult;
     }
-    double *item = *result + *count;
+    testcase *item = *result + *count;
+
     // special code for snan, since glibc does not read them
     if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
     {
       /* According to IEEE 754-2019, qNaN's have 1 as upper bit of their
          52-bit significand, and sNaN's have 0 */
       d64u64 u = {.i = 0x7ff4000000000000};
-      *item = u.f;
+      item->x = u.f;
       (*count)++;
     }
     else if (strncmp (buf, "-snan", 5) == 0)
     {
       d64u64 u = {.i = 0xfff4000000000000};
-      *item = u.f;
+      item->x = u.f;
       (*count)++;
     }
-    else if (sscanf(buf, "%la", item) == 1)
+#ifndef CORE_MATH_SUPPORT_ERRNO
+    else if (sscanf(buf, "%la", &(item->x)) == 1)
       (*count)++;
+#else
+    else {
+      char err_str[7];
+      int readcnt = sscanf(buf, "%la,%7s", &(item->x), err_str);
+      if (readcnt == 1) {
+        item->errno_ref = 0;
+        (*count)++;
+      }
+      else if (readcnt == 2) {
+        if (strncmp(err_str, "ERANGE", 7U) == 0) {
+          item->errno_ref = ERANGE;
+        }
+        else if (strncmp(err_str, "EDOM", 5U) == 0) {
+          item->errno_ref = EDOM;
+        }
+        else {
+          item->errno_ref = 0;
+        }
+        (*count)++;
+      }
+    }
+#endif
   }
 }
 
@@ -125,21 +158,27 @@ is_equal (double x, double y)
 
 // return 1 if failure, 0 otherwise
 static int
-check (double x)
+check (testcase ts)
 {
   ref_init();
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
-  double z1 = ref_function_under_test(x);
+  double z1 = ref_function_under_test(ts.x);
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
-  double z2 = cr_function_under_test(x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  errno = 0;
+#endif
+  double z2 = cr_function_under_test(ts.x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  int cr_errno = errno;
+#endif
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
-    printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
+    printf("FAIL x=%la ref=%la z=%la\n", ts.x, z1, z2);
     fflush(stdout);
 #ifdef DO_NOT_ABORT
     return 1;
@@ -150,7 +189,7 @@ check (double x)
 #ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
-    printf ("Spurious inexact exception for x=%la (y=%la)\n", x, z1);
+    printf ("Spurious inexact exception for x=%la (y=%la)\n", ts.x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return 1;
@@ -160,11 +199,21 @@ check (double x)
   }
   if ((inex1 != 0) && (inex2 == 0))
   {
-    printf ("Missing inexact exception for x=%la (y=%la)\n", x, z1);
+    printf ("Missing inexact exception for x=%la (y=%la)\n", ts.x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return 1;
 #else
+    exit(1);
+#endif
+  }
+#endif
+
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  // most tests don't check for errno setting, so it's not yet possible to check when errno was set incorrectly (case when errno_ref = 0 & cr_errno != 0)
+  if (ts.errno_ref != 0 && cr_errno != ts.errno_ref) {
+    printf("%s error not set for x=%la (y=%la)\n", ts.errno_ref == ERANGE ? "Range" : "Domain", ts.x, z1);
+#ifndef DO_NOT_ABORT
     exit(1);
 #endif
   }
@@ -175,7 +224,7 @@ check (double x)
 void
 doloop(void)
 {
-  double *items;
+  testcase *items;
   int count, tests = 0, failures = 0;
 
   readstdin(&items, &count);
@@ -184,13 +233,14 @@ doloop(void)
 #pragma omp parallel for reduction(+: failures,tests)
 #endif
   for (int i = 0; i < count; i++) {
-    double x = items[i];
+    testcase ts = items[i];
     tests ++;
-    if (check (x))
+    if (check (ts))
       failures ++;
 #ifdef WORST_SYMMETRIC
     tests ++;
-    if (check (-x))
+    ts.x = -ts.x;
+    if (check (ts))
       failures ++;
 #endif
   }

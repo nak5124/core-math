@@ -25,6 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -345,7 +348,15 @@ double cr_log1p(double x){
 	} else {
 	  if(ax>0xffe0000000000000ull) return x; // nan
 	  if(ix.u==0x7ff0000000000000ull) return x; // +inf
-	  if(ix.u==0xbff0000000000000ull) return -1./0.0; // -1
+	  if(ix.u==0xbff0000000000000ull){ // -1
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+      return -1./0.0;
+    }
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = EDOM;
+#endif
 	  return 0.0/0.0; // <-1
 	}
       }

@@ -23,7 +23,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 #include <stdint.h>
 
 // Warning: clang also defines __GNUC__
@@ -138,15 +140,30 @@ double cr_log2(double x){
   b64u64_u t = {.f = x};
   int ex = t.u>>52, e = ex - 0x3ff;
   if (__builtin_expect(!ex, 0)){ // 0 or subnormal
-    if(!t.u) return -1.0 / 0.0; // 0 
+    if(!t.u) { // 0
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+      return -1.0 / 0.0;
+    }
     int k = __builtin_clzll(t.u);
     e -= k-12;
     t.u <<= k-11;
   }
   if (__builtin_expect(ex >= 0x7ff, 0)){
-    if(!(t.u<<1)) return -1.0 / 0.0; // 0
+    if(!(t.u<<1)) { // 0
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+      return -1.0 / 0.0;
+    }
     if((t.u<<1)>((u64)0x7ff<<53)) return x; // nan
-    if(t.u>>63) return 0.0 / 0.0; // < 0
+    if(t.u>>63) { // < 0
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = EDOM;
+#endif
+      return 0.0 / 0.0;
+    }
     return x; // inf
   }
   t.u &= ~(u64)0>>12;

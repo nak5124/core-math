@@ -25,6 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h> /* for uint64_t */
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -327,6 +330,9 @@ double cr_exp2(double x){
       }
     } else {
       if(ix.u >= 0x4090000000000000ull){
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  errno = ERANGE;
+#endif
 	double z = 0x1p1023;
 	return z*z;
       }

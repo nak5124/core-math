@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -105,10 +107,15 @@ float cr_sinhf(float x){
     float sgn = __builtin_copysignf(2.0f, x);
     if(ux>=0xff000000u) {
       if(ux<<8) return x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
       return sgn*__builtin_inff(); // +-inf
     }
     float r = sgn*0x1.fffffep127f;
-    if(__builtin_fabsf(r)>0x1.fffffep127f) errno = ERANGE;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     return r;
   }
   if(__builtin_expect(ux<0x7c000000u, 0)){ // |x| < 0.125

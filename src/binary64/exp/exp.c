@@ -25,6 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -322,6 +325,9 @@ double cr_exp(double x){
 	return x;
     }
     if(!(ix.u>>63)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
       volatile double z = 0x1p1023;
       return z*z;
     }

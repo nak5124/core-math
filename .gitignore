@@ -1,5 +1,6 @@
 *~
 *.o
+*.swp
 perf.data
 src/*/*/check_exhaustive
 src/*/*/check_worst

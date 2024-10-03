@@ -25,6 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -303,6 +306,9 @@ double cr_sinh(double x){
   if(__builtin_expect(aix>0x4014000000000000ull, 0)){ // |x| > 5
     if(__builtin_expect(aix>0x40425e4f7b2737faull, 0)){ // |x| >~ 36.736801
       if(__builtin_expect(aix>0x408633ce8fb9f87dull, 0)){ // |x| >~ 710.47586
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  errno = ERANGE;
+#endif
 	if(aix>=0x7ff0000000000000ull) return x;
 	return __builtin_copysign(0x1p1023, x)*2.0;
       }

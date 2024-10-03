@@ -58,6 +58,9 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 #ifdef __x86_64__
 #include <x86intrin.h>
 #endif
@@ -1004,6 +1007,10 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
          For s=-1 we return eh = el = -DBL_MAX, which similarly gives
          res_min = res_max = -Inf or res_min = res_max = -DBL_MAX,
          which is the correct rounding. */
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+
       *eh = 0x1.fffffffffffffp+1023 * s;
       *el = 0x1.fffffffffffffp+1023 * s;
     }
@@ -1633,6 +1640,9 @@ double cr_pow (double x, double y) {
         // y is a negative odd integer
         if (y < 0.0) {
           feraiseexcept(FE_DIVBYZERO);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+          errno = ERANGE;
+#endif
           return INFINITY;
         }
 
@@ -1646,6 +1656,9 @@ double cr_pow (double x, double y) {
 
       // y is negative, finite and an even integer or a non-integer
       feraiseexcept(FE_DIVBYZERO);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
       return INFINITY;
 
     // x = -0.0
@@ -1656,6 +1669,9 @@ double cr_pow (double x, double y) {
 
         // y is a negative odd integer
         if (y < 0.0) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+          errno = ERANGE;
+#endif
           feraiseexcept(FE_DIVBYZERO);
           return -INFINITY;
         }
@@ -1668,13 +1684,20 @@ double cr_pow (double x, double y) {
       if (y > 0.0)
         return 0.0;
 
+
       // y is negative, finite and an even integer or a non-integer
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
       feraiseexcept(FE_DIVBYZERO);
       return INFINITY;
 
     }
 
     if (!is_int(y)) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = EDOM;
+#endif
       feraiseexcept(FE_INVALID);
       return NAN;
     }

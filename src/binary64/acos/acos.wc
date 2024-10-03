@@ -179044,3 +179044,5 @@
 -1
 +0x1.fffffffffffffp+1023
 -0x1.fffffffffffffp+1023
+# errno tests
+-2,EDOM

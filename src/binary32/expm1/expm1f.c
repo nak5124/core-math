@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -110,15 +112,17 @@ float cr_expm1f(float x){
     double r = z + z2*((b[0]+z*b[1]) + z2*(b[2]+z*b[3]) + z4*((b[4]+z*b[5]) + z2*(b[6]+z*b[7])));
     return r;
   }
-  if(__builtin_expect(ax>0x8562e430u, 0)){  // |x| > 88.72
+  if(__builtin_expect(ax>=0x8562e430u, 0)){  // |x| > 88.72
     if(ax>(0xffu<<24)) return x; // nan
     if(__builtin_expect(ux>>31, 0)){ // x < 0
       if(ax==(0xffu<<24)) return -1.0f;
       return -1.0f + 0x1p-26f;
     }
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     if(ax==(0xffu<<24)) return __builtin_inff();
     float r = 0x1.fffffep127*z;
-    if(r>0x1.fffffep127f) errno = ERANGE;
     return r;
   }
   double a = iln2*z, ia = __builtin_roundeven(a), h = a - ia, h2 = h*h;

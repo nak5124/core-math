@@ -36,6 +36,9 @@ SOFTWARE.
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 
 #include "function_under_test.h"
 
@@ -49,6 +52,14 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd;
 
 typedef double double2[2];
+
+typedef struct {
+  double x;
+  double y;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  int errno_ref;
+#endif
+} testcase;
 
 typedef union { double f; uint64_t i; } d64u64;
 
@@ -74,7 +85,7 @@ sscanf_snan (char *buf, double *x)
 }
 
 static void
-readstdin(double2 **result, int *count)
+readstdin(testcase **result, int *count)
 {
   char *buf = NULL;
   size_t buflength = 0;
@@ -82,7 +93,7 @@ readstdin(double2 **result, int *count)
   int allocated = 512;
 
   *count = 0;
-  if (NULL == (*result = malloc(allocated * sizeof(double2)))) {
+  if (NULL == (*result = malloc(allocated * sizeof(testcase)))) {
     fprintf(stderr, "malloc failed\n");
     exit(1);
   }
@@ -91,7 +102,7 @@ readstdin(double2 **result, int *count)
     if (n > 0 && buf[0] == '#') continue;
     if (*count >= allocated) {
       int newsize = 2 * allocated;
-      double2 *newresult = realloc(*result, newsize * sizeof(double2));
+      testcase *newresult = realloc(*result, newsize * sizeof(testcase));
       if (NULL == newresult) {
         fprintf(stderr, "realloc(%d) failed\n", newsize);
         exit(1);
@@ -99,14 +110,36 @@ readstdin(double2 **result, int *count)
       allocated = newsize;
       *result = newresult;
     }
-    double2 *item = *result + *count;
-    if (sscanf(buf, "%la,%la", &(*item)[0], &(*item)[1]) == 2)
+    testcase *item = *result + *count;
+#ifndef CORE_MATH_SUPPORT_ERRNO
+    if (sscanf(buf, "%la,%la", &item->x, &item->y) == 2)
       (*count)++;
-    else if (sscanf_snan (buf, &(*item)[0]) == 1)
+#else
+    char err_str[7];
+    int readcnt = sscanf(buf, "%la,%la,%7s", &item->x, &item->y, err_str);
+    if (readcnt == 2) {
+      item->errno_ref = 0;
+      (*count)++;
+    }
+    else if (readcnt == 3) {
+      if (strncmp(err_str, "ERANGE", 7U) == 0) {
+        item->errno_ref = ERANGE;
+      }
+      else if (strncmp(err_str, "EDOM", 5U) == 0) {
+        item->errno_ref = EDOM;
+      }
+      else {
+        item->errno_ref = 0;
+      }
+
+      (*count)++;
+    }
+#endif
+    else if (sscanf_snan (buf, &item->x) == 1)
     {
       char *tbuf = buf;
       while (*tbuf++ != ',');
-      if (sscanf_snan (tbuf, &(*item)[1]) == 1)
+      if (sscanf_snan (tbuf, &item->y) == 1)
         (*count)++;
     }
   }
@@ -162,7 +195,7 @@ print_binary64 (double x)
 }
 
 static void
-check (double x, double y)
+check (testcase ts)
 {
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp atomic update
@@ -171,20 +204,26 @@ check (double x, double y)
   ref_init();
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
-  double z1 = ref_function_under_test(x, y);
+  double z1 = ref_function_under_test(ts.x, ts.y);
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
-  double z2 = cr_function_under_test(x, y);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  errno = 0;
+#endif
+  double z2 = cr_function_under_test(ts.x, ts.y);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  int cr_errno = errno;
+#endif
   fexcept_t inex2;
   fegetexceptflag (&inex2, FE_INEXACT);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
 #ifndef EXCHANGE_X_Y
     printf("FAIL x=");
-    print_binary64 (x);
+    print_binary64 (ts.x);
     printf (" y=");
-    print_binary64 (y);
+    print_binary64 (ts.y);
     printf (" ref=");
     print_binary64 (z1);
     printf (" z=");
@@ -192,9 +231,9 @@ check (double x, double y)
     printf ("\n");
 #else
     printf("FAIL y=");
-    print_binary64 (x);
+    print_binary64 (ts.x);
     printf (" x=");
-    print_binary64 (y);
+    print_binary64 (ts.y);
     printf (" ref=");
     print_binary64 (z1);
     printf (" z=");
@@ -209,7 +248,7 @@ check (double x, double y)
 #ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
-    printf ("Spurious inexact exception for x=%la y=%la (z=%la)\n", x, y, z1);
+    printf ("Spurious inexact exception for x=%la y=%la (z=%la)\n", ts.x, ts.y, z1);
     fflush (stdout);
 #ifndef DO_NOT_ABORT
     exit(1);
@@ -217,8 +256,18 @@ check (double x, double y)
   }
   if ((inex1 != 0) && (inex2 == 0))
   {
-    printf ("Missing inexact exception for x=%la y=%la (z=%la)\n", x, y, z1);
+    printf ("Missing inexact exception for x=%la y=%la (z=%la)\n", ts.x, ts.y, z1);
     fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+#endif
+
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  // most tests don't check for errno setting, so it's not yet possible to check when errno was set incorrectly (case when errno_ref = 0 & cr_errno != 0)
+  if (ts.errno_ref != 0 && cr_errno != ts.errno_ref) {
+    printf("%s error not set for x=%la y=%la (z=%la)\n", ts.errno_ref == ERANGE ? "Range" : "Domain", ts.x, ts.y, z1);
 #ifndef DO_NOT_ABORT
     exit(1);
 #endif
@@ -229,7 +278,7 @@ check (double x, double y)
 void
 doloop(void)
 {
-  double2 *items;
+  testcase *items;
   int count;
 
   readstdin(&items, &count);
@@ -238,26 +287,46 @@ doloop(void)
 #pragma omp parallel for
 #endif
   for (int i = 0; i < count; i++) {
-    double x = items[i][0], y = items[i][1];
-    check (x, y);
+    testcase ts = items[i];
+    double x = ts.x, y = ts.y;
+
+    /* the following is just to avoid a compiler warning that x and y are
+       unused when neither WORST_SYMMETRIC_* no WORST_SWAP is defined */
+    ts.x = x;
+    ts.y = y;
+    check (ts);
 #ifdef WORST_SYMMETRIC_Y
-    check (x, -y);
+    ts.x = x;
+    ts.y = -y;
+    check (ts);
 #endif
 #ifdef WORST_SYMMETRIC_X
-    check (-x, y);
+    ts.x = -x;
+    ts.y = y;
+    check (ts);
 #ifdef WORST_SYMMETRIC_Y
-    check (-x, -y);
+    ts.x = -x;
+    ts.y = -y;
+    check (ts);
 #endif
 #endif
 #ifdef WORST_SWAP
-    check (y, x);
+    ts.x = y;
+    ts.y = x;
+    check (ts);
 #ifdef WORST_SYMMETRIC_Y
-    check (-y, x);
+    ts.x = -y;
+    ts.y = x;
+    check (ts);
 #endif
 #ifdef WORST_SYMMETRIC_X
-    check (y, -x);
+    ts.x = y;
+    ts.y = -x;
+    check (ts);
 #ifdef WORST_SYMMETRIC_Y
-    check (-y, -x);
+    ts.x = -y;
+    ts.y = -x;
+    check (ts);
 #endif
 #endif
 #endif

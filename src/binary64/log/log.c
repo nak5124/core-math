@@ -26,6 +26,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#include <errno.h>
+#endif
 #include "dint.h"
 
 // Warning: clang also defines __GNUC__
@@ -653,10 +656,18 @@ cr_log (double x)
     if (x <= 0.0)
     {
       /* f(x<0) is NaN, f(+/-0) is -Inf and raises DivByZero */
-      if (x < 0)
+      if (x < 0) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+        errno = EDOM;
+#endif
         return 0.0 / 0.0;
-      else
+      }
+      else {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+        errno = ERANGE;
+#endif
         return 1.0 / -0.0;
+      }
     }
     if (e == 0x400 || e == 0xc00) /* +Inf or NaN */
       return x;
