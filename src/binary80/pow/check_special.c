@@ -225,8 +225,24 @@ static void
 check_exact_or_midpoint_3 (void)
 {
   long double x, y = 3.0L;
+  // 1664511 = ceil(2^(62/3)), 3329021 = floor(2^(65/3))
   for (x = 1664511.0L; x <= 3329021.0L; x++)
     check (x, y); // check will also try (-x,y)
+}
+
+// check exact or midpoint squares in one binade
+static void
+check_exact_or_midpoint_2 (void)
+{
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  // 2147483648 = ceil(2^(62/2)), 6074001000 = floor(2^(65/2))
+  for (uint64_t n = 2147483648; n <= 6074001000; n++)
+  {
+    long double x = n;
+    check (x, 2.0L); // check will also try (-x,y)
+  }
 }
 
 // check exact or midpoint values for y integer
@@ -323,6 +339,9 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
+
+  printf ("Checking exact/midpoint squares\n");
+  check_exact_or_midpoint_2 ();
 
   printf ("Checking exact/midpoint 3rd powers\n");
   check_exact_or_midpoint_3 ();
