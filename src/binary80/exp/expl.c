@@ -1051,7 +1051,6 @@ long double accurate_path(long double x, const redinfo* ri) {
 	   (the difference between 2^(-167.006+128)*h and 2^(-167+128)*h is at
 	   least 2^16, thus largely dominates the terms m and l that are
 	   neglected in the shift) */
-	int64_t eps = final->h >> (167 - 128);
 
 	final->ex += 16383 - 1; // binary80 exponent shift
 	if(final->ex <= 0) {
@@ -1064,8 +1063,6 @@ long double accurate_path(long double x, const redinfo* ri) {
 				return 0x1p-16445L * .25L;
 		}
 		rshift (final, final, shiftby);
-		eps >>= shiftby;
-		eps += 1;
 
 		final->ex = 0;
 	}
@@ -1084,8 +1081,6 @@ long double accurate_path(long double x, const redinfo* ri) {
 		final->l >>= 1;
 		final->l |= (final->m & 1) << 63;
 		final->m /= 2; // Signed semantics matter
-		eps >>= 1;
-		eps += 1;  // overestimate eps
 		final->ex++;
 	}
 
@@ -1096,6 +1091,9 @@ long double accurate_path(long double x, const redinfo* ri) {
 	if(__builtin_expect(final->ex >= 32767, 0)) {
 		return 0x1p16383L + 0x1p16383L;
 	}
+
+        /* The search for hard-to-round cases is done, thus at this point
+           we are sure that all values are correctly rounded. */
 
 	b96u96_u retval;
 	retval.e = final->ex;
