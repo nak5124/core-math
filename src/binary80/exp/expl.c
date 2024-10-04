@@ -1097,11 +1097,6 @@ long double accurate_path(long double x, const redinfo* ri) {
 		return 0x1p16383L + 0x1p16383L;
 	}
 
-	__int128 roundpart = ((__int128)final->m << 64) | final->l;
-	bool test = (unsigned __int128)(roundpart + eps) <= 2*(unsigned __int128)eps; 
-
-	if(__builtin_expect(test != 0, 0)) {return -1;}
-
 	b96u96_u retval;
 	retval.e = final->ex;
 	retval.m = final->h;
