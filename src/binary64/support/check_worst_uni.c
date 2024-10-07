@@ -107,7 +107,7 @@ readstdin(testcase **result, int *count)
       (*count)++;
 #else
     else {
-      char err_str[7];
+      char err_str[8];
       int readcnt = sscanf(buf, "%la,%7s", &(item->x), err_str);
       if (readcnt == 1) {
         item->errno_ref = 0;

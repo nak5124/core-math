@@ -245,7 +245,7 @@ check_exact_or_midpoint_2 (void)
   }
 }
 
-// check exact or midpoint values for y integer
+// check exact or midpoint values for y integer in the full long double range
 static void
 check_exact_or_midpoint (void)
 {
