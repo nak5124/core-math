@@ -110,3 +110,10 @@ files:
 In addition, in `src/generic/foo`, you will need the following file:
 - `random_under_test.h`: defining a function `random_under_test`,
   which samples suitable inputs for `foo`
+
+## Notes
+
+The CORE-MATH code assumes all double-precision computations are rounded to
+double precision. On x86 processors where these computations are performed
+on the x87 FPU, the user should set up the rounding precision to double
+precision (on Linux it is set to double-extended by default).
