@@ -115,7 +115,7 @@ readstdin(testcase **result, int *count)
     if (sscanf(buf, "%la,%la", &item->x, &item->y) == 2)
       (*count)++;
 #else
-    char err_str[7];
+    char err_str[8];
     int readcnt = sscanf(buf, "%la,%la,%7s", &item->x, &item->y, err_str);
     if (readcnt == 2) {
       item->errno_ref = 0;
