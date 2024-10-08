@@ -1848,8 +1848,13 @@ double cr_pow (double x, double y) {
 
   R.sgn = s == -1.0;
 
-  if (rd)
+  if (rd) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    if (R.ex >= 1024)
+      errno = ERANGE;
+#endif
     return dint_tod (&R);
+  }
 
 #if ENABLE_EXACT > 0
   // Detect rounding boundary cases
