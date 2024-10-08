@@ -1451,15 +1451,19 @@ is_exact (double x, double y)
   // |x| = m*2^e with m odd
 
   /* if y < 0 and y is not an integer, the only case where x^y might be
-     exact is when y = -n/2^k and x = 2^e with 2^k dividing e */
+     exact is when x = 2^e and n*e*2^f is an integer */
   if (y < 0)
   {
     if (m != 1) return 0;
-    // y = -2^f thus k = -f
-    // now e <> 0
-    t = __builtin_ctzll (e);
-    if (-f > t) return 0; // 2^k does not divide e
-    int64_t ez = (-e >> (-f)) * n;
+    // now e <> 0 since the case |x|=1 has already been treated
+    int64_t ez;
+    if (f >= 0)
+      ez = (-n * e) << f;
+    else { // f < 0 thus 2^-f should divide e
+      t = __builtin_ctzll (e);
+      if (-f > t) return 0; // 2^-f does not divide e
+      ez = (-e >> (-f)) * n;
+    }
     return -1074 <= ez && ez < 1024;
   }
 
