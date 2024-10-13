@@ -28,9 +28,9 @@ SOFTWARE.
 #include <stdint.h>
 #include <stdio.h>
 
-#pragma once
+#include "cm_types.h"
 
-typedef unsigned __int128 u128;
+#pragma once
 
 // the following represent (-1)^sgn*(h/2^64+m/2^128+l/2^192)*2^ex
 // we have either h=m=l=0 to represent +0 or -0

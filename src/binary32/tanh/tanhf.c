@@ -33,7 +33,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; uint32_t u;} b32u32_u;
+#include "cm_types.h"
 
 float cr_tanhf(float x){
   double z = x;

@@ -36,7 +36,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; uint32_t u;} b32u32_u;
+#include "cm_types.h"
 
 float cr_cospif(float x){
   static const double sn[] = { 0x1.921fb54442d0fp-37, -0x1.4abbce6102b94p-112,  0x1.4669fa3c58463p-189};

@@ -27,7 +27,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <inttypes.h>
 
-typedef unsigned __int128 u128;
+#include "cm_types.h"
 
 // the following represent (-1)^sgn*(h/2^64+m/2^128+l/2^192)*2^ex
 // we have either h=m=l=0 to represent +0 or -0
@@ -332,7 +332,7 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 // This operation is exact
 static inline void tint_fromd (tint_t *a, double x)
 {
-  d64u64 u = {.f = x};
+  b64u64_u u = {.f = x};
   a->sgn = u.u >> 63;
   uint64_t ax = u.u & 0x7fffffffffffffffull;
   int64_t e = ax >> 52;

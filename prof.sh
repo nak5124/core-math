@@ -20,7 +20,7 @@ if [ "$CFLAGS" == "" ]; then
    export CFLAGS="-O3 -march=native"
 fi
 
-CFLAGS="$CFLAGS -ggdb"
+CFLAGS="$CFLAGS -ggdb -I${PWD}/src/generic/support"
 
 COMMON_PERF_ARGS=(--file "$RANDOMS_FILE" --count 1000000)
 

@@ -36,6 +36,8 @@ SOFTWARE.
 #endif
 #include <mpfr.h>
 
+#include "cm_types.h"
+
 double cr_hypot (double, double);
 double ref_hypot (double, double);
 extern void ref_init (void);
@@ -71,8 +73,6 @@ doit (double x, double y)
     exit(1);
   }
 }
-
-typedef unsigned __int128 u128;
 
 /* check that z is exactly representable on 54 bits */
 static int

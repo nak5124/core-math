@@ -25,9 +25,6 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#if defined(__x86_64__)
-#include <x86intrin.h>
-#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -36,8 +33,8 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef uint64_t u64;
-typedef union {double f; u64 u;} b64u64_u;
+#include "cm_intrin_compat.h"
+#include "cm_types.h"
 
 static __attribute__((noinline)) double as_tanh_database(double, double);
 

@@ -34,14 +34,11 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h>
 
+#include "cm_types.h"
+
 /*
   Type definition
 */
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
 
 // Extract both the mantissa and exponent of a double
 static inline void fast_extract (int64_t *e, uint64_t *m, double x) {

@@ -39,26 +39,14 @@ SOFTWARE.
 #include <inttypes.h>
 #include <stdio.h>
 
+#include "cm_types.h"
+
 /*
   Type and structure definitions
 */
 
 #ifndef UINT128_T
 #define UINT128_T
-
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
-typedef unsigned _BitInt(128) u128;
-#else
-typedef unsigned __int128 u128;
-#endif
-
-typedef union {
-  u128 r;
-  struct {
-    uint64_t l;
-    uint64_t h;
-  };
-} uint128_t;
 
 // Add two 128-bit integers and return 1 if a carry occurred
 static inline uint64_t addu_128 (uint128_t a, uint128_t b, uint128_t *r) {
@@ -81,20 +69,6 @@ static inline int cmpu(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
 static inline int cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
 
 #endif
-
-typedef union {
-  struct {
-    u128 r;
-    int64_t _ex;
-    uint64_t _sgn;
-  };
-  struct {
-    uint64_t lo;
-    uint64_t hi;
-    int64_t ex;
-    uint64_t sgn;
-  };
-} dint64_t;
 
 /*
   Constants

@@ -47,14 +47,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-// anonymous structs, see https://port70.net/~nsz/c/c11/n1570.html#6.7.2.1p19
-typedef union {
-  long double f;
-  struct __attribute__((__packed__))
-  {uint64_t m; uint32_t e:16; uint32_t empty:16;};
-} b96u96_u;
-
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 /* s + t <- a + b, assuming |a| >= |b| */
 static inline void

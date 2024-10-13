@@ -29,10 +29,6 @@ SOFTWARE.
 #include <fenv.h>
 #include <stdint.h>
 
-#ifdef __x86_64__
-#include <x86intrin.h>
-#endif
-
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
@@ -40,66 +36,18 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-// This code emulates the _mm_getcsr SSE intrinsic by reading the FPCR register.
-// fegetexceptflag accesses the FPSR register, which seems to be much slower
-// than accessing FPCR, so it should be avoided if possible.
-// Adapted from sse2neon: https://github.com/DLTcollab/sse2neon
-#if defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
-#if defined(_MSC_VER)
-#include <arm64intr.h>
-#endif
-
-typedef struct
-{
-  uint16_t res0;
-  uint8_t  res1  : 6;
-  uint8_t  bit22 : 1;
-  uint8_t  bit23 : 1;
-  uint8_t  bit24 : 1;
-  uint8_t  res2  : 7;
-  uint32_t res3;
-} fpcr_bitfield;
-
-inline static unsigned int _mm_getcsr()
-{
-  union
-  {
-    fpcr_bitfield field;
-    uint64_t value;
-  } r;
-
-#if defined(_MSC_VER) && !defined(__clang__)
-  r.value = _ReadStatusReg(ARM64_FPCR);
-#else
-  __asm__ __volatile__("mrs %0, FPCR" : "=r"(r.value));
-#endif
-  static const unsigned int lut[2][2] = {{0x0000, 0x2000}, {0x4000, 0x6000}};
-  return lut[r.field.bit22][r.field.bit23];
-}
-#endif  // defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+#include "cm_intrin_compat.h"
+#include "cm_types.h"
 
 static inline int get_rounding_mode (void)
 {
-#if defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+#ifdef CORE_MATH_MM_GETCSR_SUPPORTED
   const unsigned flagp = _mm_getcsr ();
   return (flagp&(3<<13))>>3;
 #else
   return fegetround ();
 #endif
 }
-
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
-typedef unsigned _BitInt(128) u128;
-typedef _BitInt(128) i128;
-#else
-typedef unsigned __int128 u128;
-typedef __int128 i128;
-#endif
-
-typedef uint64_t u64;
-typedef int64_t i64;
-typedef union {u128 a; u64 b[2];} u128_u;
-typedef union {double f; uint64_t u;} b64u64_u;
 
 inline static void shl(u128_u *a, int n){(*a).a <<= n;}
 inline static void shr(u128_u *a, int n){(*a).a >>= n;}

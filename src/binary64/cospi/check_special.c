@@ -39,6 +39,8 @@ SOFTWARE.
 #include <errno.h>
 #include "function_under_test.h"
 
+#include "cm_types.h"
+
 double cr_function_under_test (double);
 double ref_function_under_test (double);
 
@@ -57,8 +59,6 @@ static inline double tfun(double x){
 static inline double rfun(double x){
   return ref_function_under_test(x);
 }
-
-typedef union {double f; uint64_t u;} b64u64_u;
 
 double rand_arg(struct drand48_data *buf, double s){
   int64_t r0,r1;

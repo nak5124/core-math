@@ -33,6 +33,8 @@ SOFTWARE.
 #include <unistd.h>
 #include <math.h> // for ldexpl, cbrtl
 
+#include "cm_types.h"
+
 int ref_fesetround (int);
 void ref_init (void);
 
@@ -43,18 +45,6 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
-
-// only the lower 16 bits of e are used
-// 1.0 has encoding m=2^63, e=16383
-// -1.0 has encoding m=2^63, e=49151
-// 2 has encoding m=2^63, e=16384
-// +qnan has encoding m=2^63+2^62, e=32767
-// -qnan has encoding m=2^63+2^62, e=65535
-// +inf has encoding m=2^63, e=32767
-// -inf has encoding m=2^63, e=65535
-// +snan has encoding m=2^63+2^62-1, e=32767
-// -snan has encoding m=2^63+2^62-1, e=65535
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 
 static int
 is_nan (long double x)

@@ -39,22 +39,11 @@ SOFTWARE.
 #include <stdio.h>
 #include <inttypes.h>
 
+#include "cm_types.h"
+
 /*
   Type and structure definitions
 */
-
-#ifndef UINT128_T
-#define UINT128_T
-
-typedef unsigned __int128 u128;
-
-typedef union {
-  u128 r;
-  struct {
-    uint64_t l;
-    uint64_t h;
-  };
-} uint128_t;
 
 // Add two 128 bit integers and return 1 if an overflow occured
 static inline int addu_128(uint128_t a, uint128_t b, uint128_t *r) {
@@ -78,15 +67,6 @@ static inline int subu_128(uint128_t a, uint128_t b, uint128_t *r) {
 static inline int cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
 
 static inline int cmpu(uint64_t a, uint64_t b) { return (a > b) - (a < b); }
-
-#endif
-
-typedef struct {
-  uint64_t hi;
-  uint64_t lo;
-  int64_t ex;
-  uint64_t sgn;
-} dint64_t;
 
 /*
   Constants
@@ -257,11 +237,6 @@ static inline void mul_dint_2(dint64_t *r, int64_t b, const dint64_t *a) {
   r->lo = t.l;
   r->ex = a->ex + 64 - m;
 }
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
 
 // Extract both the significand and exponent of a double
 static inline void fast_extract(int64_t *e, uint64_t *m, double x) {

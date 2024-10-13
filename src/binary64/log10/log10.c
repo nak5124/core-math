@@ -32,6 +32,8 @@ SOFTWARE.
 #include <fenv.h>
 #include "dint.h"
 
+#include "cm_types.h"
+
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
@@ -39,7 +41,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union { double f; uint64_t u; } d64u64;
+#include "cm_types.h"
 
 /* Add a + b, such that *hi + *lo approximates a + b.
    Assumes |a| >= |b|.  */
@@ -532,7 +534,7 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
    (details below).
 */
 static void
-cr_log10_fast (double *h, double *l, int e, d64u64 v)
+cr_log10_fast (double *h, double *l, int e, b64u64_u v)
 {
   uint64_t m = v.u & 0xfffffffffffff;
   /* x = m/2^52 */
@@ -690,7 +692,7 @@ cr_log10_accurate (double x)
 double
 cr_log10 (double x)
 {
-  d64u64 v = {.f = x};
+  b64u64_u v = {.f = x};
   int e = (v.u >> 52) - 0x3ff;
   if (e >= 0x400 || e == -0x3ff) /* x <= 0 or NaN/Inf or subnormal */
   {
@@ -825,11 +827,6 @@ static void accurate_log (dint64_t *r, dint64_t *x) {
 
   add_dint(r, &p, r);
 }
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
 
 // Extract both the significand and exponent of a double
 static inline void fast_extract(int64_t *e, uint64_t *m, double x) {

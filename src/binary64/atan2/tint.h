@@ -25,16 +25,11 @@ SOFTWARE.
 */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <inttypes.h>
-#if defined(__x86_64__)
-#include <x86intrin.h>
-#endif
 
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
-typedef unsigned _BitInt(128) u128;
-#else
-typedef unsigned __int128 u128;
-#endif
+#include "cm_intrin_compat.h"
+#include "cm_types.h"
 
 // the following represent (-1)^sgn*(h/2^64+m/2^128+l/2^192)*2^ex
 // we have either h=m=l=0 to represent +0 or -0
@@ -340,7 +335,7 @@ add_tint (tint_t *r, const tint_t *a, const tint_t *b)
 // This operation is exact
 static inline void tint_fromd (tint_t *a, double x)
 {
-  d64u64 u = {.f = x};
+  b64u64_u u = {.f = x};
   a->sgn = u.u >> 63;
   uint64_t ax = u.u & 0x7fffffffffffffffull;
   int64_t e = ax >> 52;
@@ -370,7 +365,7 @@ static inline double as_ldexp(double x, int64_t i){
     r = (__m128d)_mm_add_epi64(sb, (__m128i)r);
     return r[0];
 #else
-    d64u64 ix = {.f = x};
+    b64u64_u ix = {.f = x};
     ix.u += i<<52;
     return ix.f;
 #endif

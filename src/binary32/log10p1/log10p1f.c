@@ -35,8 +35,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 /* clang does not like __builtin_nan("<0") even with -fhonor-nans,
    https://www.mail-archive.com/llvm-branch-commits@lists.llvm.org/msg14854.html */

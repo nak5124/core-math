@@ -36,34 +36,8 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-/* __builtin_roundeven was introduced in gcc 10:
-   https://gcc.gnu.org/gcc-10/changes.html,
-   and in clang 17 */
-#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
-/* round x to nearest integer, breaking ties to even */
-static float
-__builtin_roundevenf (float x)
-{
-  float y = roundf (x); /* nearest, away from 0 */
-  if (fabsf (y - x) == 0.5)
-  {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
-    union { float f; uint32_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0f : y + 1.0f;
-    if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
-  }
-  return y;
-}
-#endif
-
-typedef union {float f; uint32_t u;} b32u32_u;
+#include "cm_builtin_compat.h"
+#include "cm_types.h"
 
 float cr_tanpif(float x){
   b32u32_u ix = {.f = x};

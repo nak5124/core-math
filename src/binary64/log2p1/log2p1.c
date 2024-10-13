@@ -32,6 +32,8 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
+#include "cm_types.h"
+
 #include <stdint.h>
 #include <math.h> // for log2
 #include "dint_log2p1.h"
@@ -541,8 +543,6 @@ static const dint64_t P_2[] = {
     {.hi = 0xffffffffffffffff, .lo = 0xffffffffffffebd8, .ex = -2, .sgn = 0x1},
     {.hi = 0x8000000000000000,                .lo = 0x0,  .ex = 0, .sgn = 0x0},
 };
-
-typedef union { double f; uint64_t u; } d64u64;
 
 /* Add a + b, such that *hi + *lo approximates a + b.
    Assumes |a| >= |b|.  */
@@ -1105,7 +1105,7 @@ p_1a (double *h, double *l, double z)
    of log(2^e*x), with absolute error bounded by 2^-69.99 (details below).
 */
 static void
-cr_log_fast (double *h, double *l, int e, d64u64 v)
+cr_log_fast (double *h, double *l, int e, b64u64_u v)
 {
   uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
   /* x = m/2^52 */
@@ -1797,7 +1797,7 @@ cr_log2p1_accurate (double x)
   else
     fast_two_sum (&xh, &xl, 1.0, x);
 
-  d64u64 t;
+  b64u64_u t;
   /* log2p1(x) is exact when 1+x = 2^e, thus when 2^e-1 is exactly
      representable. This can only occur when xl=0 here. */
   if (xl == 0)
@@ -1851,7 +1851,7 @@ cr_log2p1_accurate (double x)
    This routine is adapted from cr_log1p_fast.
 */
 static double
-cr_log2p1_fast (double *h, double *l, double x, int e, d64u64 v)
+cr_log2p1_fast (double *h, double *l, double x, int e, b64u64_u v)
 {
   if (e < -5) /* e <= -6 thus |x| < 2^-5 */
   {
@@ -1962,7 +1962,7 @@ cr_log2p1_fast (double *h, double *l, double x, int e, d64u64 v)
 double
 cr_log2p1 (double x)
 {
-  d64u64 v = {.f = x};
+  b64u64_u v = {.f = x};
   int e = ((v.u >> 52) & 0x7ff) - 0x3ff;
   if (__builtin_expect (e == 0x400 || x == 0 || x <= -1.0, 0))
     /* case NaN/Inf, +/-0 or x <= -1 */
@@ -2071,7 +2071,7 @@ static void log_2(dint64_t *r, dint64_t *x) {
 // assuming the input is not in the subnormal range
 static inline double dint_tod(dint64_t *a) {
 
-  d64u64 r = {.u = (a->hi >> 11) | (0x3ffll << 52)};
+  b64u64_u r = {.u = (a->hi >> 11) | (0x3ffll << 52)};
   /* r contains the upper 53 bits of a->hi, 1 <= r < 2 */
 
   double rd = 0.0;
@@ -2086,7 +2086,7 @@ static inline double dint_tod(dint64_t *a) {
   r.u = r.u | a->sgn << 63;
   r.f += (a->sgn == 0) ? rd : -rd;
 
-  d64u64 e;
+  b64u64_u e;
 
   /* For log, the result is always in the normal range,
      thus a->ex > -1023. Similarly, we cannot have a->ex > 1023. */

@@ -140,7 +140,7 @@ else
 fi
 
 # add EXTRA_CFLAGS if given
-export CFLAGS="$CFLAGS $EXTRA_CFLAGS"
+export CFLAGS="$CFLAGS $EXTRA_CFLAGS -I${PWD}/src/generic/support"
 
 case "$KIND" in
     --exhaustive)

@@ -36,12 +36,11 @@ SOFTWARE.
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#ifdef __x86_64__
-#include <x86intrin.h>
-#endif
 #ifdef __INTEL_CLANG_COMPILER
 #include <mathimf.h>
 #endif
+
+#include "cm_intrin_compat.h"
 
 #include "random_under_test.h"
 

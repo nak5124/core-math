@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#include "cm_types.h"
+
 /* Define MODE=0 to analyze the maximal value of the ratios
    |mlogrh/mlogr12h|, |mlogr1h/mlogr12h|, |mlogr2h/mlogr12h|.
    With -DMODE=0 we get these last lines as output (where the ratios
@@ -57,8 +59,6 @@ r=1 extra_int=0 i1=127 i2=125 |mlogr12h|=0x1.7148ec2a1bfc8p-12
 #ifndef MODE
 #error "You should define MODE (0, 1, or 2)"
 #endif
-
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 
 #define POWL_DPRINTF(x,y,z)
 

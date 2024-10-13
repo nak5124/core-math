@@ -38,7 +38,7 @@ SOFTWARE.
 
 #include "function_under_test.h"
 
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 double cr_function_under_test (double);
 double ref_function_under_test (double);

@@ -21,6 +21,8 @@ FUNCTIONS_SPECIAL=(acos acosh acospi asin asinh asinpi atan atan2 atan2f atan2pi
 
 echo "Reference commit is $LAST_COMMIT"
 
+CFLAGS="$CFLAGS -I${PWD}/src/generic/support"
+
 check () {
     KIND="$1"
     if [ "$FORCE" != "" ]; then

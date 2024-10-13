@@ -2,8 +2,7 @@
 #include "fenv_mpfr.h"
 #include <stdint.h>
 
-
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
+#include "cm_types.h"
 
 inline
 static int is_nan(long double x) {

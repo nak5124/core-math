@@ -34,6 +34,8 @@ SOFTWARE.
 #endif
 #include <math.h>
 
+#include "cm_types.h"
+
 extern void check (float, float); // defined in triples.c
 
 typedef struct { uint32_t p; uint64_t pe; uint64_t r, a, b; } fb_entry;
@@ -226,8 +228,6 @@ inv_mod (uint64_t r, uint64_t p)
   mpz_clear (pp);
   return r;
 }
-
-typedef unsigned __int128 u128;
 
 /* Lift root r^2 = -1 mod p^e to root r'^2 mod p^(e+1) for e >= 1.
    Let r' = r + lambda*p^e,

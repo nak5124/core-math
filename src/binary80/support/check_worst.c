@@ -39,6 +39,8 @@ SOFTWARE.
 
 #include "function_under_test.h"
 
+#include "cm_types.h"
+
 long double cr_function_under_test (long double, long double);
 long double ref_function_under_test (long double, long double);
 int ref_fesetround (int);
@@ -49,8 +51,6 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd;
 
 typedef long double ldouble2[2];
-
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 
 /* scanf %La from buf, allowing snan, +snan and -snan */
 static int

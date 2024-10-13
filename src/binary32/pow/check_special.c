@@ -36,6 +36,8 @@ SOFTWARE.
 #include <omp.h>
 #endif
 
+#include "cm_types.h"
+
 float cr_powf (float, float);
 float ref_pow (float, float);
 int ref_fesetround (int);
@@ -47,8 +49,6 @@ int rnd = 0;
 int verbose = 0;
 
 int mid = 1; // if mid=1, also check midpoint cases
-
-typedef union {float f; uint32_t u;} b32u32_u;
 
 static inline uint32_t
 asuint (float f)

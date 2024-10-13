@@ -32,6 +32,8 @@ SOFTWARE.
 #include <math.h>
 #include <unistd.h>
 
+#include "cm_types.h"
+
 int ref_fesetround (int);
 void ref_init (void);
 
@@ -74,8 +76,6 @@ check (double x)
     exit (1);
   }
 }
-
-typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
 get_random ()
