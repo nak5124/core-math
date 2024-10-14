@@ -1849,11 +1849,12 @@ double cr_pow (double x, double y) {
   R.sgn = s == -1.0;
 
   if (rd) {
+    double z = dint_tod (&R);
 #ifdef CORE_MATH_SUPPORT_ERRNO
-    if (R.ex >= 1024)
+    if (__builtin_isinf (z))
       errno = ERANGE;
 #endif
-    return dint_tod (&R);
+    return z;
   }
 
 #if ENABLE_EXACT > 0
