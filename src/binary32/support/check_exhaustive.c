@@ -130,6 +130,32 @@ doit (uint32_t n)
 #endif
 }
 
+static inline int doloop (void)
+{
+  // check sNaN
+  doit (0x7f800001);
+  doit (0xff800001);
+  // check qNaN
+  doit (0x7fc00000);
+  doit (0xffc00000);
+  // check +Inf and -Inf
+  doit (0x7f800000);
+  doit (0xff800000);
+
+  // check regular numbers
+  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (uint32_t n = nmin; n <= nmax; n++)
+  {
+    doit (n);
+    doit (n | 0x80000000);
+  }
+  printf ("all ok\n");
+  return 0;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -172,18 +198,5 @@ main (int argc, char *argv[])
         }
     }
 
-  // check sNaN
-  doit (0x7f800001);
-  doit (0xff800001);
-  // check qNaN
-  doit (0x7fc00000);
-  doit (0xffc00000);
-  // check +Inf and -Inf
-  doit (0x7f800000);
-  doit (0xff800000);
-
-  doit (asuint (-0x1.1p+4f));
-
-  // check regular numbers
   return doloop();
 }
