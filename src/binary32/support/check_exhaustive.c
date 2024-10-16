@@ -157,6 +157,23 @@ check_signaling_nan (void)
              asuint (y));
     exit (1);
   }
+  // also test sNaN with sign bit set
+  snan = asfloat (0xff800001ul);
+  y = cr_function_under_test (snan);
+  // check that foo(NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
 }
 
 static inline int doloop (void)
