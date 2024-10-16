@@ -62,7 +62,7 @@ asuint (float f)
   return u.n;
 }
 
-// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN             
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
 static inline int issignaling(float x) {
   union_t _x = {.x = x};
 
