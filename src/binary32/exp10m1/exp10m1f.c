@@ -1,6 +1,6 @@
 /* Correctly-rounded base-10 exponent function biased by 1 for binary32 value.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2022-2024 Alexei Sibidanov, Paul Zimmermann.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -51,11 +51,13 @@ float cr_exp10m1f(float x){
   double z = x;
   uint32_t ux = t.u, ax = ux&(~0u>>1);
   if(__builtin_expect(ux>0xc0f0d2f1u, 0)){ // x < -7.52575
-    if(ax>(0xffu<<23)) return x; // nan
-    return q[1][0] + q[1][1];
-  } else if(__builtin_expect(ax>0x421a209bu, 0)){  // x > 38.5318
-    if(ax>(0xffu<<23)) return x; // nan
-    return q[0][0] + q[0][1];
+    if(ax>(0xffu<<23)) return x + x; // nan
+    // for x=-Inf, don't raise the inexact exception
+    return (ux == 0xff800000) ? q[1][0] : q[1][0] + q[1][1];
+  } else if(__builtin_expect(ax>0x421a209au, 0)){  // x > 38.5318
+    if(ax>(0xffu<<23)) return x + x; // nan
+    // for x=+Inf, don't raise the inexact exception
+    return (ux == 0x7f800000) ? x : q[0][0] + q[0][1];
   } else if (__builtin_expect(ax<0x3d89c604u, 0)){ // |x| < 0.1549/log(10)
     double z2 = z*z, r;
     if (__builtin_expect(ax<0x3d1622fbu, 0)){ // |x| < 8.44e-2/log(10)
@@ -113,7 +115,7 @@ float cr_exp10m1f(float x){
     }
     r *= z;
     return r;
-  } else {
+  } else { // -7.52575 < x < -0.1549/log(10) or 0.1549/log(10) < x < 38.5318
     if(__builtin_expect((ux<<11)==0,0)){
       uint32_t k = (ux>>21) - 0x1fc;
       if(k<=0xb){
