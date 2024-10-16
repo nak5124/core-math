@@ -775,7 +775,7 @@ double cr_atan2pi (double y, double x)
   if (__builtin_expect (ey == 0x7ff || ex == 0x7ff, 0)) // NaN or Inf
   {
     if (is_nan (ay) || is_nan (ax))
-      return y + x; // if y or x is sNaN, returns qNaN are raises invalid
+      return y + x; // if y or x is sNaN, returns qNaN and raises invalid
     // Now neither y nor x is NaN, but at least one is +Inf or -Inf
     if (is_inf (ay) && is_inf (ax)) // both y and x are +/-Inf
     {

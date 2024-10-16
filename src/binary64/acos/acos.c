@@ -213,7 +213,7 @@ double cr_acos (double x){
     f0l = off[k][1];
     if(__builtin_expect(ax>=0x7fe0000000000000ull, 0)){ // |x| >= 1
       if(ax==0x7fe0000000000000ull) return f0h + f0l; // |x| = 1
-      if(ax>0xffe0000000000000ull) return x; // nan
+      if(ax>0xffe0000000000000ull) return x + x; // nan
       errno = EDOM;
       return 0./0.; // |x|>1
     }

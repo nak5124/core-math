@@ -308,7 +308,7 @@ double cr_exp10(double x){
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~(u64)0>>1);
   if(__builtin_expect(aix>0x40734413509f79feull, 0)){
-    if(aix>0x7ff0000000000000ull) return x;
+    if(aix>0x7ff0000000000000ull) return x + x; // nan
     if(aix==0x7ff0000000000000ull){
       if(ix.u>>63)
 	return 0.0;

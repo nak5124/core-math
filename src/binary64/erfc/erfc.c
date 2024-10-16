@@ -1192,7 +1192,7 @@ cr_erfc (double x)
     {
       if (t.u >= 0xfff0000000000000){              // -Inf or NaN
         if (t.u == 0xfff0000000000000) return 2.0; // -Inf
-        return x;                                  // NaN
+        return x + x;                              // NaN
       }
       return 2.0 - 0x1p-54;                        // rounds to 2 or below(2)
     }
@@ -1209,9 +1209,9 @@ cr_erfc (double x)
     {
       if (at >= 0x7ff0000000000000){               // +Inf or NaN
         if (at == 0x7ff0000000000000) return 0.0;  // +Inf
-        return x;                                  // NaN
+        return x + x;                              // NaN
       }
-      return 0x1p-1074 * 0.25;                    // 0 or 2^-1074 wrt rounding
+      return 0x1p-1074 * 0.25;                     // 0 or 2^-1074 wrt rounding
     }
 
     // for 0 <= x <= 0x1.c5bf891b4ef6ap-55, erfc(x) rounds to 1 (to nearest)

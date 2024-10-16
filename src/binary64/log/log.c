@@ -670,7 +670,7 @@ cr_log (double x)
       }
     }
     if (e == 0x400 || e == 0xc00) /* +Inf or NaN */
-      return x;
+      return x + x;
     if (e == -0x3ff) /* subnormal */
     {
       v.f *= 0x1p52;

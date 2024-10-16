@@ -157,7 +157,7 @@ double cr_log2(double x){
 #endif
       return -1.0 / 0.0;
     }
-    if((t.u<<1)>((u64)0x7ff<<53)) return x; // nan
+    if((t.u<<1)>((u64)0x7ff<<53)) return x + x; // nan
     if(t.u>>63) { // < 0
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;

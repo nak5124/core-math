@@ -354,7 +354,7 @@ double __attribute__((noinline)) as_atan2_special(double y0, double x0){
 
   if (__builtin_expect (aiy >= 0x7ffull<<53 || aix >= 0x7ffull<<53, 0)){ // NaN or Inf
     if (aiy > 0x7ffull<<53 || aix > 0x7ffull<<53)
-      return y0 + x0; // if y or x is sNaN, returns qNaN are raises invalid
+      return y0 + x0; // if y or x is sNaN, returns qNaN and raises invalid
     // Now neither y nor x is NaN, but at least one is +Inf or -Inf
     if (aiy == 0x7ffull<<53 && aix == 0x7ffull<<53){ // both y and x are +/-Inf
       static const double finf[][2] = {{0x1p-55, 0x1.921fb54442d18p-1}, {0x1p-54, 0x1.2d97c7f3321d2p+1}};

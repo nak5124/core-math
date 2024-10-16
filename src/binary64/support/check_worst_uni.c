@@ -137,6 +137,13 @@ asuint64 (double f)
   return u.i;
 }
 
+static inline double
+asfloat64 (uint64_t i)
+{
+  d64u64 u = {.i = i};
+  return u.f;
+}
+
 /* define our own is_nan function to avoid depending from math.h */
 static inline int
 is_nan (double x)
@@ -249,6 +256,52 @@ doloop(void)
   printf("%d tests passed, %d failure(s)\n", tests, failures);
 }
 
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int issignaling(double x) {
+  d64u64 _x = {.f = x};
+
+  return !(_x.i & (1ull << 51));
+}
+
+/* check for signaling NaN input */
+static void
+check_signaling_nan (void)
+{
+  double snan = asfloat64 (0x7ff0000000000001ull);
+  double y = cr_function_under_test (snan);
+  // check that foo(NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%lx\n",
+             y, asuint64 (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%lx\n",
+             asuint64 (y));
+    exit (1);
+  }
+  // check also sNaN with the sign bit set
+  snan = asfloat64 (0xfff0000000000001ull);
+  y = cr_function_under_test (snan);
+  // check that foo(NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%lx\n",
+             y, asuint64 (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%lx\n",
+             asuint64 (y));
+    exit (1);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -284,6 +337,8 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  check_signaling_nan ();
 
   doloop();
 }

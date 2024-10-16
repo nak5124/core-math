@@ -386,7 +386,7 @@ double cr_expm1(double x){
     return lb;
   } else {
     if(__builtin_expect(aix>=0x40862e42fefa39f0ull, 0)){
-      if(aix>0x7ff0000000000000ull) return x;
+      if(aix>0x7ff0000000000000ull) return x + x; // nan
       if(aix==0x7ff0000000000000ull){
 	if(ix.u>>63)
 	  return -1.0;

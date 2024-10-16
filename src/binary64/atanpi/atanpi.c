@@ -427,7 +427,7 @@ double cr_atanpi (double x){
 	// case Inf or NaN
 	if(at == ((u64)0x7ff<<52)) // Inf
 	  return __builtin_copysign(0.5, x); // atanpi_specific
-	return x; // NaN
+	return x + x; // NaN
       }
       return __builtin_copysign(0.5, x) - __builtin_copysign(0x1p-56, x);
     }

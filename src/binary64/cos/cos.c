@@ -2004,7 +2004,7 @@ cr_cos (double x)
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
       t.u = ~0ull;
-      return t.f;
+      return t.f; // return qNaN
     }
 
   /* now x is a regular number */

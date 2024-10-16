@@ -151,14 +151,14 @@ double cr_rsqrt(double x){
     }
   } else if(__builtin_expect(ix.u >= 0x7ffull<<52, 0)){
     if(!(ix.u<<1)) return -__builtin_inf(); // x=-0
-    if(ix.u > 0xfff0000000000000ull) return x;
+    if(ix.u > 0xfff0000000000000ull) return x + x; // nan
     if(ix.u >> 63){
       errno = EDOM;
       feraiseexcept (FE_INVALID);
       return __builtin_nan("<0");
     }
-    if(!(ix.u<<12)) return 0.0;
-    return x;
+    if(!(ix.u<<12)) return 0.0; // +Inf
+    return x + x; // nan
   } else {
     r = (1/x)*__builtin_sqrt(x);
   }

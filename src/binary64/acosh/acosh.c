@@ -223,7 +223,7 @@ double cr_acosh(double x){
   } else {
     if(__builtin_expect(ix.u>=0x7ff0000000000000ull, 0)){
       u64 aix = ix.u<<1;
-      if(ix.u==0x7ff0000000000000ull || aix>((u64)0x7ff<<53)) return x; // +inf or nan
+      if(ix.u==0x7ff0000000000000ull || aix>((u64)0x7ff<<53)) return x + x; // +inf or nan
       errno = EDOM;
       return __builtin_nan("x<1");
     }

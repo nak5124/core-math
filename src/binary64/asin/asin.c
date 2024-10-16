@@ -346,7 +346,7 @@ double cr_asin(double x){
          and 0x1.1a62633145c07p-54 is pi/2-h rounded to nearest */
       return __builtin_copysign (0x1.921fb54442d18p+0, x)
         + __builtin_copysign (0x1.1a62633145c07p-54, x);
-    if (e==0x400 && m) return x; // nan
+    if (e==0x400 && m) return x + x; // nan
     errno = EDOM;
     feraiseexcept (FE_INVALID);
     return __builtin_nan (">1");

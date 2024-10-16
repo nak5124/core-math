@@ -321,7 +321,7 @@ double cr_exp2(double x){
   u64 ax = ix.u<<1;
   if(__builtin_expect(ax == 0, 0)) return 1.0;
   if(__builtin_expect(ax >= 0x8120000000000000ull, 0)){
-    if(ax  > 0xffe0000000000000ull) return x;
+    if(ax  > 0xffe0000000000000ull) return x + x; // nan
     if(ax == 0xffe0000000000000ull) return (ix.u>>63)?0.0:x;
     if(ix.u>>63){
       if(ix.u >= 0xc090cc0000000000ull) {

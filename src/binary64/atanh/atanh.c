@@ -129,7 +129,7 @@ double cr_atanh(double x){
       errno = ERANGE;
       return __builtin_copysign(1, x) / 0.0;
     }
-    if(aix>0x7ff0000000000000ull) return x;
+    if(aix>0x7ff0000000000000ull) return x + x; // nan
     errno = EDOM;
     return __builtin_sqrt(-1.0);
   }

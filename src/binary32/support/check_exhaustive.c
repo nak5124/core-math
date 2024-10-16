@@ -141,7 +141,7 @@ static inline int issignaling(float x) {
 static void
 check_signaling_nan (void)
 {
-  float snan = asfloat (0x7f800001);
+  float snan = asfloat (0x7f800001ul);
   float y = cr_function_under_test (snan);
   // check that foo(NaN) = NaN
   if (!is_nan (y))

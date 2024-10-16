@@ -346,7 +346,7 @@ double cr_log1p(double x){
 	if(__builtin_expect(ix.u<0x7ff0000000000000ull, 1)){ // x < 0x1p+1024
 	  t.f = x; dt.f = 0;
 	} else {
-	  if(ax>0xffe0000000000000ull) return x; // nan
+	  if(ax>0xffe0000000000000ull) return x + x; // nan
 	  if(ix.u==0x7ff0000000000000ull) return x; // +inf
 	  if(ix.u==0xbff0000000000000ull){ // -1
 #ifdef CORE_MATH_SUPPORT_ERRNO

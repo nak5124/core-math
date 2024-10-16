@@ -306,7 +306,7 @@ double cr_tanh(double x){
     if(lb == ub) return lb;
   } else {
     if(__builtin_expect(aix>=0x40330fc1931f09caull, 0)){
-      if(aix>0x7ff0000000000000ull) return x;
+      if(aix>0x7ff0000000000000ull) return x + x; // nan
       double f = __builtin_copysign(1.0, x);
       if(aix==0x7ff0000000000000ull) return f;
       double df = __builtin_copysign(0x1p-55, x);

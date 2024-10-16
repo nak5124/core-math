@@ -1068,7 +1068,7 @@ cr_acospi (double x)
   else
     if (k==0x3ff00000 && u.i[0]==0) return (x>0) ? 0 : 1; // acospi_specific
   else
-  if (k>0x7ff00000 || (k == 0x7ff00000 && u.i[0] != 0)) return x + x;
+    if (k>0x7ff00000 || (k == 0x7ff00000 && u.i[0] != 0)) return x + x; // nan
   else {
     u.i[1]=0x7ff00000;
     v.i[1]=0x7ff00000;
