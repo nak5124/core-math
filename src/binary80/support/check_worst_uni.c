@@ -221,6 +221,53 @@ check_long_double (void)
   }
 }
 
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int issignaling(long double x) {
+  b80u80_t u = {.f = x};
+
+  return !(u.m >> 63);
+}
+
+/* check for signaling NaN input */
+static void
+check_signaling_nan (void)
+{
+  b80u80_t u;
+  u.e = 0x7fffu;
+  u.m = 0xc000000000000000ull;
+  long double snan = u.f;
+  long double y = cr_function_under_test (snan);
+  // check that foo(NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %La\n", y);
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got %La\n", y);
+    exit (1);
+  }
+  // check also sNaN with the sign bit set
+  u.e = 0xffffu;
+  u.m = 0xc000000000000000ull;
+  snan = u.f;
+  y = cr_function_under_test (snan);
+  // check that foo(NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %La\n", y);
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got %La\n", y);
+    exit (1);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -256,6 +303,8 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  check_signaling_nan ();
 
   check_long_double ();
 
