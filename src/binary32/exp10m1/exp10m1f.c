@@ -55,9 +55,8 @@ float cr_exp10m1f(float x){
     // for x=-Inf, don't raise the inexact exception
     return (ux == 0xff800000) ? q[1][0] : q[1][0] + q[1][1];
   } else if(__builtin_expect(ax>0x421a209au, 0)){  // x > 38.5318
-    if(ax>(0xffu<<23)) return x + x; // nan
-    // for x=+Inf, don't raise the inexact exception
-    return (ux == 0x7f800000) ? x : q[0][0] + q[0][1];
+    if(ax>=(0xffu<<23)) return x + x; // +Inf or NaN
+    return q[0][0] + q[0][1];
   } else if (__builtin_expect(ax<0x3d89c604u, 0)){ // |x| < 0.1549/log(10)
     double z2 = z*z, r;
     if (__builtin_expect(ax<0x3d1622fbu, 0)){ // |x| < 8.44e-2/log(10)
