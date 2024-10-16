@@ -105,7 +105,7 @@ float cr_erff(float x){
      largest float such that erf(x) does not round to 1 (to nearest) */
   if (__builtin_expect(ux > 0x407ad444u, 0)) {
     float os = __builtin_copysignf(1.0f, x);
-    if (ux> (0xffu<<23)) return x; // nan
+    if (ux> (0xffu<<23)) return x + x; // nan
     if (ux==(0xffu<<23)) return os; // +-inf
     return os - 0x1p-25f*os;
   }

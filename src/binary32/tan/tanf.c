@@ -140,7 +140,7 @@ float cr_tanf(float x){
   } else if (e<0xff){
     z = rbig(t.u, &i);
   } else {
-    if(t.u<<9) return x; // nan
+    if(t.u<<9) return x + x; // nan
     errno = EDOM;
     feraiseexcept(FE_INVALID);
     return __builtin_nanf("tinf"); // inf

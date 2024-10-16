@@ -75,7 +75,7 @@ float cr_sinpif(float x){
       feraiseexcept (FE_INVALID);
       return __builtin_nanf("inf");
     }
-    return x;
+    return x + x; // nan
   }
   int32_t m = (ix.u&~0u>>9)|1<<23, sgn = ix.u; sgn >>= 31;
   m = (m^sgn) - sgn;

@@ -41,7 +41,7 @@ float cr_tanhf(float x){
   uint32_t ux = t.u;
   int e = (ux>>23)&0xff;
   if (__builtin_expect(e==0xff, 0)){
-    if(ux<<9) return x; // nan
+    if(ux<<9) return x + x; // nan
     static const float ir[] = {1.0f,-1.0f};
     return ir[ux>>31]; // +-inf
   }

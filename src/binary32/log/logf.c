@@ -49,7 +49,7 @@ static __attribute__((noinline)) float as_special(float x){
     errno = ERANGE;
     return -1.0f/0.0f; // to raise FE_DIVBYZERO
   }
-  if(ax > 0xff000000u) return x; // nan
+  if(ax > 0xff000000u) return x + x; // nan
   errno = EDOM;
   return 0.0f/0.0f; // to raise FE_INVALID and return nan
 }

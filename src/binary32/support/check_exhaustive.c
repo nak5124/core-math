@@ -130,6 +130,35 @@ doit (uint32_t n)
 #endif
 }
 
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int issignaling(float x) {
+  union_t _x = {.x = x};
+
+  return !(_x.n & (1ull << 22));
+}
+
+/* check for signaling NaN input */
+static void
+check_signaling_nan (void)
+{
+  float snan = asfloat (0x7f800001);
+  float y = cr_function_under_test (snan);
+  // check that foo(NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+}
+
 static inline int doloop (void)
 {
   // check sNaN
@@ -141,6 +170,8 @@ static inline int doloop (void)
   // check +Inf and -Inf
   doit (0x7f800000);
   doit (0xff800000);
+
+  check_signaling_nan ();
 
   // check regular numbers
   uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);

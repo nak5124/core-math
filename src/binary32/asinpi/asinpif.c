@@ -45,7 +45,7 @@ float cr_asinpif(float x){
   int32_t e = (t.u>>23)&0xff;
   if(__builtin_expect(e>=127, 0)){
     if(ax == 1.0f) return __builtin_copysignf(0.5f, x);
-    if(e==0xff && (t.u<<9)) return x; // nan
+    if(e==0xff && (t.u<<9)) return x+x; // nan
     errno = EDOM;
     feraiseexcept(FE_INVALID);
     return __builtin_nanf("1");

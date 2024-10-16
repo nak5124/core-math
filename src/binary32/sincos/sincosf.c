@@ -171,8 +171,8 @@ static void __attribute__((noinline)) as_sincosf_big(float x, float *sout, float
   uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>=0xffu<<24, 0)){ // nan or +-inf
     if(ax<<8){
-      *sout = x;
-      *cout = x;
+      *sout = x + x;
+      *cout = x + x;
       return; // nan
     }
     errno = EDOM;

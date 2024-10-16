@@ -118,6 +118,87 @@ doit (uint32_t n)
 #endif
 }
 
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int issignaling(float x) {
+  union_t _x = {.x = x};
+
+  return !(_x.n & (1ull << 22));
+}
+
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+/* check for signaling NaN input */
+static void
+check_signaling_nan (void)
+{
+  float snan = asfloat (0x7f800001);
+  float y, z;
+  cr_function_under_test (snan, &y, &z);
+  // check that y = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, 1st return value should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, 1st return value should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+  // check that z = NaN
+  if (!is_nan (z))
+  {
+    fprintf (stderr, "Error, 2nd return value should be NaN, got %la=%x\n",
+             z, asuint (z));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (z))
+  {
+    fprintf (stderr, "Error, 2nd return value should be qNaN, got sNaN=%x\n",
+             asuint (z));
+    exit (1);
+  }
+}
+
+static inline int doloop (void)
+{
+  // check sNaN
+  doit (0x7f800001);
+  doit (0xff800001);
+  // check qNaN
+  doit (0x7fc00000);
+  doit (0xffc00000);
+  // check +Inf and -Inf
+  doit (0x7f800000);
+  doit (0xff800000);
+
+  check_signaling_nan ();
+
+  // check regular numbers
+  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (uint32_t n = nmin; n <= nmax; n++)
+  {
+    doit (n);
+    doit (n | 0x80000000);
+  }
+  printf ("all ok\n");
+  return 0;
+}
+
 int
 main (int argc, char *argv[])
 {

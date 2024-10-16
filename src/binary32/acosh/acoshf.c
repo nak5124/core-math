@@ -40,7 +40,7 @@ typedef union {double f; uint64_t u;} b64u64_u;
 static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};
   if(t.u==0x3f800000u) return 0.0f;
-  if((t.u<<1)>0xff000000u) return x; // nan
+  if((t.u<<1)>0xff000000u) return x + x; // nan
   if(t.u==0x7f800000u) return x; // inf
   errno = EDOM;
   return __builtin_nanf("<1");

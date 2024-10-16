@@ -103,7 +103,7 @@ float cr_tgammaf(float x){
       return x; /* x=+Inf */
     }
     return x + x; /* x=NaN, where x+x ensures the "Invalid operation"
-                     exception is set if x is sNaN */
+                     exception is set if x is sNaN, and it yields a qNaN */
   }
   double z = x;
   if(__builtin_expect(ax<0x6d000000u, 0)){ /* |x| < 0x1p-18 */

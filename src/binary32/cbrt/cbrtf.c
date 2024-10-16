@@ -104,7 +104,7 @@ float cr_cbrtf (float x){
   b32u32_u t = {.f = x};
   uint32_t u = t.u, au = u<<1, sgn = u>>31, e = au>>24;
   if(__builtin_expect(au<1u<<24 || au>=0xffu<<24, 0)){
-    if(au>=0xffu<<24) return x; /* inf, nan */
+    if(au>=0xffu<<24) return x + x; /* inf, nan */
     if(au==0) return x; /* +-0 */
     int nz = __builtin_clz(au) - 7;  /* subnormal */
     au <<= nz;

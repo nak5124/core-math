@@ -41,7 +41,7 @@ static float as_special(float x){
   b32u32_u t = {.f = x};
   uint32_t ux = t.u<<1;
   if(ux >= 0xffu<<24) { // x is inf or nan
-    if(ux > 0xffu<<24) return x; // x = nan
+    if(ux > 0xffu<<24) return x + x; // x = nan
     static const float ir[] = {__builtin_inff(), 0.0f};
     return ir[t.u>>31]; // x = +-inf
   }

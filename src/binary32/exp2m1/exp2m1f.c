@@ -42,11 +42,13 @@ float cr_exp2m1f(float x){
   double z = x;
   uint32_t ux = t.u, ax = ux&(~0u>>1);
   if(__builtin_expect(ux>=0xc1c80000u, 0)){ // x <= -25
-    if(ax>(0xffu<<23)) return x; // nan
-    return q[1][0] + q[1][1];
+    if(ax>(0xffu<<23)) return x + x; // nan
+    // avoid spurious inexact exception for -Inf
+    return (ux == 0xff800000) ? q[1][0] : q[1][0] + q[1][1];
   } else if(__builtin_expect(ax>=0x43000000u, 0)){  // x >= 128
-    if(ax>(0xffu<<23)) return x; // nan
-    return q[0][0] + q[0][1];
+    if(ax>(0xffu<<23)) return x + x; // nan
+    // avoid spurious inexact exception for +Inf
+    return (ux == 0x7f800000) ? x : q[0][0] + q[0][1];
   } else if (__builtin_expect(ax<0x3df95f1fu, 0)){ // |x| < 8.44e-2/log(2)
     double z2 = z*z, r;
     if (__builtin_expect(ax<0x3d67a4ccu, 0)){ // |x| < 3.92e-2/log(2)

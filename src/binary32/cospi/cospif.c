@@ -76,7 +76,7 @@ float cr_cospif(float x){
       feraiseexcept (FE_INVALID);
       return __builtin_nanf("inf");
     }
-    return x;
+    return x + x; // nan
   }
   int32_t m = (ix.u&~0u>>9)|1<<23, s = 143 - e, p = e - 112;
   if(__builtin_expect(p<0, 0)) return __builtin_fmaf(-0x1.3bd3ccp+2f*x, x, 1.0f);

@@ -106,7 +106,7 @@ float cr_sinhf(float x){
   if(__builtin_expect(ux>0x8565a9f8u, 0)){ // |x| >~ 89.4
     float sgn = __builtin_copysignf(2.0f, x);
     if(ux>=0xff000000u) {
-      if(ux<<8) return x; // nan
+      if(ux<<8) return x + x; // nan
       return sgn*__builtin_inff(); // +-inf
     }
     float r = sgn*0x1.fffffep127f;

@@ -167,7 +167,7 @@ static float __attribute__((noinline)) as_sinf_big(float x){
   b32u32_u t = {.f = x};
   uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>=0xffu<<24, 0)){ // nan or +-inf
-    if(ax<<8) return x; // nan
+    if(ax<<8) return x + x; // nan
     errno = EDOM;
     return 0.0f/0.0f; // to raise FE_INVALID
   }

@@ -43,7 +43,7 @@ static __attribute__((noinline)) float as_special(float x){
   if(t.u == (0x7fu<<23)) return 0.0f; // x=1
   if(t.u == (0x17fu<<23)) return pih + pil;  // x=-1
   uint32_t ax = t.u<<1;
-  if(ax>(0xffu<<24)) return x; // nan
+  if(ax>(0xffu<<24)) return x + x; // nan
   errno = EDOM;
   return 0.0f/0.0f; // to raise FE_INVALID
 }

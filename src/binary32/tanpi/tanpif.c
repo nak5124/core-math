@@ -75,7 +75,7 @@ float cr_tanpif(float x){
 	feraiseexcept (FE_INVALID);
 	return __builtin_nanf("inf");
       }
-      return x;
+      return x + x; // nan
     }
     return __builtin_copysign(0.0f, x);
   }

@@ -45,7 +45,7 @@ static __attribute__((noinline)) float as_special(float x){
   }
   if(t.u == 0x7f800000u) return x; // +inf
   uint32_t ax = t.u<<1;
-  if(ax > 0xff000000u) return x; // nan
+  if(ax > 0xff000000u) return x + x; // nan
   errno = EDOM;
   return 0.0f/0.0f; // to raise FE_INVALID
 }

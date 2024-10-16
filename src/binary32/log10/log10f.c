@@ -48,7 +48,7 @@ static __attribute__((noinline)) float as_special(float x){
     feraiseexcept(FE_DIVBYZERO);
     return -__builtin_inff(); // to raise FE_DIVBYZERO
   }
-  if(ax > 0xff000000u) return x; // nan
+  if(ax > 0xff000000u) return x + x; // nan
   errno = EDOM;
   feraiseexcept(FE_INVALID);
   return __builtin_nanf("<0"); // to raise FE_DIVBYZERO

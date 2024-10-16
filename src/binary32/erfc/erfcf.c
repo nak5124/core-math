@@ -80,7 +80,7 @@ float cr_erfcf(float xf){
   if(__builtin_expect(t.u > 0xc07547ca, 0)){    // xf < -0x1.ea8f94p+1
     if(__builtin_expect(t.u >= 0xff800000, 0)){ // -Inf or NaN
       if(t.u == 0xff800000) return 2.0f;        // -Inf
-      return xf;                                // NaN
+      return xf + xf;                           // NaN
     }
     return 2.0f - 0x1p-25f;                     // rounds to 2 or nextbelow(2)
   }
@@ -89,7 +89,7 @@ float cr_erfcf(float xf){
   if(__builtin_expect(at >= 0x4120ddfc, 0)){    // |xf| >= 0x1.41bbf8p+3
     if(__builtin_expect(at >= 0x7f800000, 0)){  // +Inf or NaN
       if(at == 0x7f800000) return 0.0f;         // +Inf
-      return xf;                                // NaN
+      return xf + xf;                           // NaN
     }
     return 0x1p-149f * 0.25f;                   // 0 or 2^-149 wrt rounding
   }

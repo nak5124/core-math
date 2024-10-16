@@ -43,6 +43,7 @@ void ref_init (void);
 extern void doloop (int, int);
 extern void check (float, float);
 extern uint64_t gcd (uint64_t, uint64_t);
+float cr_hypotf (float, float);
 
 // worst_p1.c
 extern void doit_subnormal_above (uint32_t);
@@ -167,6 +168,73 @@ check_random_all (void)
     check_random (getpid () + i);
 }
 
+static float
+asfloat (uint32_t n)
+{
+  b32u32_u u = {.u = n};
+  return u.f;
+}
+
+static inline uint32_t
+asuint (float f)
+{
+  b32u32_u u = {.f = f};
+  return u.u;
+}
+
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int issignaling(float x) {
+  b32u32_u _x = {.f = x};
+
+  return !(_x.u & (1ull << 22));
+}
+
+/* check for signaling NaN input */
+static void
+check_signaling_nan (void)
+{
+  float snan = asfloat (0x7f800001);
+  float y = cr_hypotf (snan, 1.0f);
+  // check that foo(NaN,x) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN,x) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+  y = cr_hypotf (1.0f, snan);
+  // check that foo(x,NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -208,6 +276,8 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  check_signaling_nan ();
 
   printf ("Checking random values\n");
   check_random_all ();

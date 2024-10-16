@@ -122,7 +122,7 @@ float cr_asinhf(float x) {
     double r = xs - xs*f;
     return r;
   } else {
-    if(__builtin_expect(t.u>=0x7f800000u, 0)) return x; // +-inf or nan
+    if(__builtin_expect(t.u>=0x7f800000u, 0)) return x + x; // +-inf or nan
     double xd = __builtin_fabs(xs), x2 = xd*xd;
     b64u64_u tp = {.f = xd + __builtin_sqrt(x2 + 1)};
     uint64_t m = tp.u&(~(uint64_t)0>>12);

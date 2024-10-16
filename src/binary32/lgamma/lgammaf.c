@@ -121,7 +121,7 @@ float cr_lgammaf(float x){
       signgam = 1;
       return __builtin_inff();
     }
-    return x; // nan
+    return x + x; // nan
   }
   if(__builtin_expect(fx==x, 0)){
     if(x <= 0.0f) {

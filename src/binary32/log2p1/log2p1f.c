@@ -111,10 +111,10 @@ float cr_log2p1f(float x) {
   uint32_t ux = t.u, ax = ux&(~0u>>1);
   if (__builtin_expect(ux >= 0x17fu<<23, 0)) { // x <= -1
     if (ux==(0x17fu<<23)) return -1.0/0.0f; // -1.0
-    if (ux>(0x1ffu<<23)) return x; // nan
+    if (ux>(0x1ffu<<23)) return x + x; // nan
     return __builtin_nanf("-"); // x < -1
   } else if(__builtin_expect(ax >= (0xff<<23), 0)){ // +inf, nan
-    if(ax > (0xff<<23)) return x; // nan
+    if(ax > (0xff<<23)) return x + x; // nan
     return __builtin_inff();
   } else if(__builtin_expect(ax<0x3cb7aa26u, 1)){ // |x| < 0x1.6f544cp-6
     double z2 = z*z, z4 = z2*z2;

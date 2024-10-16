@@ -127,7 +127,7 @@ float cr_log2f(float x) {
 #endif
       return __builtin_nanf("-");
     }
-    if (inf_or_nan) return x;
+    if (inf_or_nan) return x + x;
     // subnormal
     int nz = __builtin_clzll(m);
     m <<= nz-11;

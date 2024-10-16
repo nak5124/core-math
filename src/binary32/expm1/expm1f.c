@@ -113,7 +113,7 @@ float cr_expm1f(float x){
     return r;
   }
   if(__builtin_expect(ax>=0x8562e430u, 0)){  // |x| > 88.72
-    if(ax>(0xffu<<24)) return x; // nan
+    if(ax>(0xffu<<24)) return x + x; // nan
     if(__builtin_expect(ux>>31, 0)){ // x < 0
       if(ax==(0xffu<<24)) return -1.0f;
       return -1.0f + 0x1p-26f;

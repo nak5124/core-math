@@ -42,7 +42,7 @@ float cr_atanf(float x){
   b32u32_u t = {.f = x};
   int e = (t.u>>23)&0xff, gt = e>=127;
   if(__builtin_expect(e==0xff, 0)) {
-    if(t.u<<9) return x; // nan
+    if(t.u<<9) return x + x; // nan
     return __builtin_copysign(pi2,(double)x); // inf
   }
   if (__builtin_expect(e<127-13, 0)){

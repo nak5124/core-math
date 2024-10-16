@@ -42,7 +42,7 @@ float cr_atanpif(float x){
   if(__builtin_expect(e>127+24, 0)) {
     float f = __builtin_copysignf(0.5f, x);
     if(__builtin_expect(e==0xff, 0)) {
-      if(t.u<<9) return x; // nan
+      if(t.u<<9) return x + x; // nan
       return f; // inf
     }
     return f - 0x1.45f306p-2f/x;

@@ -51,7 +51,7 @@ float cr_rsqrtf(float x){
       return __builtin_nanf("<0");
     }
     if(!(ix.u<<9)) return 0.0f;
-    return x;
+    return x + x; // nan
   }
   unsigned m = ix.u<<8;
   if(__builtin_expect(ix.u == 0x2f7e2au || m == 0xbdf8a800u || m == 0x55b7bd00u, 0)){
