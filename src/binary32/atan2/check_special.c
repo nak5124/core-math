@@ -134,70 +134,6 @@ check_random (int i)
   }
 }
 
-static inline uint32_t
-asuint (float f)
-{
-  union
-  {
-    float f;
-    uint32_t i;
-  } u = {f};
-  return u.i;
-}
-
-/* define our own is_nan function to avoid depending from math.h */
-static inline int
-is_nan (float x)
-{
-  uint32_t u = asuint (x);
-  int e = u >> 23;
-  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
-}
-
-// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
-static inline int issignaling(float x) {
-  union_t _x = {.x = x};
-
-  return !(_x.n & (1ull << 22));
-}
-
-/* check for signaling NaN input */
-static void
-check_signaling_nan (void)
-{
-  float snan = asfloat (0x7f800001);
-  float y = cr_atan2f (snan, 1.0f);
-  // check that foo(NaN,x) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%x\n",
-             y, asuint (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (issignaling (y))
-  {
-    fprintf (stderr, "Error, foo(sNaN,x) should be qNaN, got sNaN=%x\n",
-             asuint (y));
-    exit (1);
-  }
-  y = cr_atan2f (1.0f, snan);
-  // check that foo(x,NaN) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%x\n",
-             y, asuint (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (issignaling (y))
-  {
-    fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%x\n",
-             asuint (y));
-    exit (1);
-  }
-}
-
 int
 main (int argc, char *argv[])
 {
@@ -239,8 +175,6 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
-
-  check_signaling_nan ();
 
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))

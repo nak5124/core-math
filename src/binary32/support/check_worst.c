@@ -83,15 +83,20 @@ readstdin(float2 **result, int *count)
   }
 }
 
+typedef union {float f; uint32_t u;} b32u32_u;
+
 static inline uint32_t
 asuint (float f)
 {
-  union
-  {
-    float f;
-    uint32_t i;
-  } u = {f};
-  return u.i;
+  b32u32_u u = {.f = f};
+  return u.u;
+}
+
+static inline float
+asfloat (uint32_t n)
+{
+  b32u32_u u = {.u = n};
+  return u.f;
 }
 
 /* define our own is_nan function to avoid depending from math.h */
@@ -208,6 +213,84 @@ doloop(void)
   printf("%d tests, %d failure(s)\n", tests, failures);
 }
 
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int issignaling(float x) {
+  b32u32_u u = {.f = x};
+
+  return !(u.u & (1ull << 22));
+}
+
+/* check for signaling NaN input */
+static void
+check_signaling_nan (void)
+{
+  float snan = asfloat (0x7f800001);
+  float y = cr_function_under_test (snan, 1.0f);
+  // check that foo(NaN,x) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN,x) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+  // don't use 1 for 1st argument since powf(1,sNaN) = 1
+  y = cr_function_under_test (-1.0f, snan);
+  // check that foo(x,NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+  // also check sNaN with sign bit set
+  snan = asfloat (0xff800001);
+  y = cr_function_under_test (snan, 1.0f);
+  // check that foo(NaN,x) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(sNaN,x) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+  // don't use 1 for 1st argument since powf(1,sNaN) = 1
+  y = cr_function_under_test (-1.0f, snan);
+  // check that foo(x,NaN) = NaN
+  if (!is_nan (y))
+  {
+    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%x\n",
+             y, asuint (y));
+    exit (1);
+  }
+  // check that the signaling bit disappeared
+  if (issignaling (y))
+  {
+    fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%x\n",
+             asuint (y));
+    exit (1);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -243,6 +326,8 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  check_signaling_nan ();
 
   doloop();
 }

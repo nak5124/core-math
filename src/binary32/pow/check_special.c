@@ -205,57 +205,6 @@ check_exact_or_midpoint (void)
   }
 }
 
-static float
-asfloat (uint32_t n)
-{
-  b32u32_u u = {.u = n};
-  return u.f;
-}
-
-// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
-static inline int issignaling(float x) {
-  b32u32_u _x = {.f = x};
-
-  return !(_x.u & (1ull << 22));
-}
-
-/* check for signaling NaN input */
-static void
-check_signaling_nan (void)
-{
-  float snan = asfloat (0x7f800001);
-  float y = cr_powf (snan, 1.0f);
-  // check that foo(NaN,x) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%x\n",
-             y, asuint (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (issignaling (y))
-  {
-    fprintf (stderr, "Error, foo(sNaN,x) should be qNaN, got sNaN=%x\n",
-             asuint (y));
-    exit (1);
-  }
-  y = cr_powf (-1.0f, snan); // don't use x=1 since 1^NaN = 1 even for sNaN
-  // check that foo(x,NaN) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%x\n",
-             y, asuint (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (issignaling (y))
-  {
-    fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%x\n",
-             asuint (y));
-    exit (1);
-  }
-}
-
 int
 main (int argc, char *argv[])
 {
@@ -297,8 +246,6 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
-
-  check_signaling_nan ();
 
   printf ("Checking random values\n");
   check_random_all ();
