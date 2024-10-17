@@ -79,6 +79,15 @@ is_nan (float x)
   return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
 }
 
+/* define our own is_inf function to avoid depending from math.h */
+static inline int
+is_inf (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) == 0;
+}
+
 static int
 is_equal (float y1, float y2)
 {
@@ -176,7 +185,59 @@ check_signaling_nan (void)
   }
 }
 
-static inline int doloop (void)
+static void
+check_exceptions_aux (uint32_t n)
+{
+  float x = asfloat (n);
+  fexcept_t inex;
+  feclearexcept (FE_INEXACT);
+  float y = cr_function_under_test (x);
+  fegetexceptflag (&inex, FE_INEXACT);
+  // there should be no inexact exception if the result is NaN, +/-Inf or +/-0
+  if (inex && (is_nan (y) || is_inf (y) || y == 0))
+  {
+    fprintf (stderr, "Error, for x=%a=%x, inexact exception set (y=%a=%x)\n",
+             x, asuint (x), y, asuint (y));
+    exit (1);
+  }
+  feclearexcept (FE_OVERFLOW);
+  y = cr_function_under_test (x);
+  fegetexceptflag (&inex, FE_OVERFLOW);
+  if (inex)
+  {
+    fprintf (stderr, "Error, for x=%a, overflow exception set (y=%a)\n", x, y);
+    exit (1);
+  }
+  feclearexcept (FE_UNDERFLOW);
+  y = cr_function_under_test (x);
+  fegetexceptflag (&inex, FE_UNDERFLOW);
+  if (inex)
+  {
+    fprintf (stderr, "Error, for x=%a, underflow exception set (y=%a)\n", x, y);
+    exit (1);
+  }
+}
+
+// check that no overflow/underflor/inexact is set for input NaN, Inf, 0
+// when the output is also NaN, Inf, 0
+static void
+check_exceptions (void)
+{
+  // check +sNaN and -sNaN
+  check_exceptions_aux (0x7f800001);
+  check_exceptions_aux (0xff800001);
+  // check +qNaN and -qNaN
+  check_exceptions_aux (0x7fc00000);
+  check_exceptions_aux (0xffc00000);
+  // check +Inf and -Inf
+  check_exceptions_aux (0x7f800000);
+  check_exceptions_aux (0xff800000);
+  // check +0 and -0
+  check_exceptions_aux (0x0);
+  check_exceptions_aux (0x80000000);
+}
+
+static int doloop (void)
 {
   // check sNaN
   doit (0x7f800001);
@@ -189,6 +250,8 @@ static inline int doloop (void)
   doit (0xff800000);
 
   check_signaling_nan ();
+
+  check_exceptions ();
 
   // check regular numbers
   uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);
