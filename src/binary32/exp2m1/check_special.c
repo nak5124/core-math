@@ -56,22 +56,29 @@ check_near_overflow (void)
      or to nearest */
   float x = 128.0;
   feclearexcept (FE_OVERFLOW);
+  errno = 0;
   float y = cr_exp2m1f (x);
   int inex = fetestexcept (FE_OVERFLOW);
   if (mode == FE_DOWNWARD || mode == FE_TOWARDZERO)
   {
     if (y != FLT_MAX)
     {
-      fprintf (stderr, "Error for x=%a, expected %a, got %a\n",
-               x, FLT_MAX, y);
+      fprintf (stderr, "Error for x=%a, expected %a, got %a\n", x, FLT_MAX, y);
       exit (1);
     }
     if (inex)
     {
-      fprintf (stderr, "Unexpected overflow exception for x=%a [y=%a]\n",
-               x, y);
+      fprintf (stderr, "Unexpected overflow exception for x=%a [y=%a]\n", x, y);
       exit (1);
     }
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    // there should be no overflow
+    if (errno)
+    {
+      fprintf (stderr, "Unexpected errno=%d for x=%a [y=%a]\n", errno, x, y);
+      exit (1);
+    }
+#endif
   }
   else { // for FE_TONEAREST and FE_UPWARD we should get y = +Inf and overflow
     if (y != FLT_MAX + FLT_MAX)
@@ -86,6 +93,14 @@ check_near_overflow (void)
                x, y);
       exit (1);
     }
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    // there should be overflow
+    if (errno != ERANGE)
+    {
+      fprintf (stderr, "Expected errno=ERANGE, got %d for x=%a [y=%a]\n", errno, x, y);
+      exit (1);
+    }
+#endif
   }
 }
 
