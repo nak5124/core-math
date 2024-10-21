@@ -1,6 +1,6 @@
 /* Generate special cases for rsqrt testing.
 
-Copyright (c) 2022-2023 Stéphane Glondu and Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -31,6 +31,9 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h>
 #include <unistd.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#include <omp.h>
+#endif
 
 int ref_fesetround (int);
 void ref_init (void);
@@ -42,6 +45,10 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
+
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
 
 static inline uint64_t
 asuint64 (double f)
@@ -90,12 +97,12 @@ check (double x)
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
-get_random ()
+get_random (int tid)
 {
   b64u64_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
   return v.f;
 }
 
@@ -157,8 +164,13 @@ main (int argc, char *argv[])
   {
     ref_init ();
     ref_fesetround (rnd);
-    double x;
-    x = get_random ();
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    double x = get_random (tid);
     check (x);
   }
 
