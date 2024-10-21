@@ -1722,7 +1722,9 @@ reduce_fast (double *h, double *l, double x, double *err1)
 static double
 sincos_fast (double *h, double *l, double *hc, double *lc, double x)
 {
-  int neg = x < 0, is_sin = 1;
+  int neg = x < 0; // should we negate the sin value
+  int negc;        // should we negate the cos value
+  int is_sin = 1;  // does the reduce argument approximate sin or cos
   double absx = neg ? -x : x;
 
   /* now x > 0x1.7137449123ef6p-26 */
@@ -1732,21 +1734,23 @@ sincos_fast (double *h, double *l, double *hc, double *lc, double x)
      | i/2^11 + h + l - frac(x/(2pi)) | < err1 */
 
   // if i >= 2^10: 1/2 <= frac(x/(2pi)) < 1 thus pi <= x <= 2pi
-  // we use sin(pi+x) = -sin(x)
+  // we use sin(pi+x) = -sin(x), cos(pi+x) = -cos(x)
   neg = neg ^ (i >> 10);
+  negc = i >> 10;
   i = i & 0x3ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/2 < err1
 
   // now i < 2^10
   // if i >= 2^9: 1/4 <= frac(x/(2pi)) < 1/2 thus pi/2 <= x <= pi
-  // we use sin(pi/2+x) = cos(x)
+  // we use sin(pi/2+x) = cos(x), cos(pi/2+x) = -sin(x)
   is_sin = is_sin ^ (i >> 9);
+  negc = negc ^ (i >> 9);
   i = i & 0x1ff;
   // | i/2^11 + h + l - frac(x/(2pi)) | mod 1/4 < err1
 
   // now 0 <= i < 2^9
   // if i >= 2^8: 1/8 <= frac(x/(2pi)) < 1/4
-  // we use sin(pi/2-x) = cos(x)
+  // we use sin(pi/2-x) = cos(x), cos(pi/2-x) = sin(x)
   if (i & 0x100) // case pi/4 <= x_red <= pi/2
     {
       is_sin = !is_sin;
@@ -1812,8 +1816,8 @@ sincos_fast (double *h, double *l, double *hc, double *lc, double x)
          thus:
          | h + l - sin |x| | < 2^-68.588 + | sin2pi (R) - sin |x| |
                              < 2^-68.588 + err1 */
-      s_mul (&Ch, &Cl, sgn[neg] * SC[i][2], ch, cl);
-      s_mul (&Sh, &Sl, sgn[neg] * SC[i][1], sh, sl);
+      s_mul (&Ch, &Cl, sgn[negc] * SC[i][2], ch, cl);
+      s_mul (&Sh, &Sl, sgn[negc] * SC[i][1], sh, sl);
       fast_two_sum (hc, lc, Ch, -Sh);
       *lc += Cl - Sl;
     }
@@ -1831,8 +1835,8 @@ sincos_fast (double *h, double *l, double *hc, double *lc, double x)
          thus:
          | h + l - sin |x| | < 2^-68.414 + | cos2pi (R) - sin |x| |
                              < 2^-68.414 + err1 */
-      s_mul (&Sh, &Sl, sgn[1-neg] * SC[i][2], sh, sl);
-      s_mul (&Ch, &Cl, sgn[1-neg] * SC[i][1], ch, cl);
+      s_mul (&Sh, &Sl, sgn[negc] * SC[i][2], sh, sl);
+      s_mul (&Ch, &Cl, sgn[negc] * SC[i][1], ch, cl);
       fast_two_sum (hc, lc, Ch, Sh);
       *lc += Sl + Cl;
     }
@@ -2213,7 +2217,8 @@ cr_sincos (double x, double *s, double *c)
     return;
   }
 
-  *c = cos_accurate (x);
+  // cos_accurate expects x > 0
+  *c = cos_accurate ((x > 0) ? x : -x);
 
   if (*s == right) // fast path succeeded for sin
     return;

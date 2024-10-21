@@ -1,3 +1,4 @@
+# this file is the concatenation of the files sin.wc and cos.wc (revision 577e308)
 # worst cases from https://www.vinc17.net/research/testlibm/testlibm-data.xz
 # (update from 2020-11-27), from 0 to pi, with 46 to 59 identical bits after
 # the round bit
