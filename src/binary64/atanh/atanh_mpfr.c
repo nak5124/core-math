@@ -26,7 +26,8 @@ SOFTWARE. */
 #include <mpfr.h>
 #include <stdint.h>
 #include "fenv_mpfr.h"
-typedef union {double f; uint64_t u;} b64u64_u;
+
+#include "cm_types.h"
 
 double ref_atanh(double x){
   mpfr_t y;

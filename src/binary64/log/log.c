@@ -38,7 +38,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union { double f; uint64_t u; } d64u64;
+#include "cm_types.h"
 
 /* Add a + b, such that *hi + *lo approximates a + b.
    Assumes |a| >= |b|.  */
@@ -512,7 +512,7 @@ static const double P[6] = {0x1p0,                 /* degree 1 */
    of log(2^e*x), with absolute error bounded by 2^-68.22 (details below).
 */
 static void
-cr_log_fast (double *h, double *l, int e, d64u64 v)
+cr_log_fast (double *h, double *l, int e, b64u64_u v)
 {
   uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
   /* x = m/2^52 */
@@ -649,7 +649,7 @@ cr_log_accurate (double x)
 double
 cr_log (double x)
 {
-  d64u64 v = {.f = x};
+  b64u64_u v = {.f = x};
   int e = (v.u >> 52) - 0x3ff;
   if (e >= 0x400 || e == -0x3ff) /* x <= 0 or NaN/Inf or subnormal */
   {
@@ -774,11 +774,6 @@ static void log_2(dint64_t *r, dint64_t *x) {
 
   add_dint(r, &p, r);
 }
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
 
 // Extract both the significand and exponent of a double
 static inline void fast_extract(int64_t *e, uint64_t *m, double x) {

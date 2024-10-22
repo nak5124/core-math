@@ -41,53 +41,14 @@ SOFTWARE.
 #include <stdlib.h>
 #endif
 
-#ifdef __x86_64__
-#include <x86intrin.h>
-#endif 
-
-#if 0 // defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+#if 0 // ifdef CORE_MATH_MM_GETCSR_SUPPORTED
 #define FLAG_T uint32_t
 #else
 #define FLAG_T fexcept_t
 #endif
 
-// This code emulates the _mm_getcsr SSE intrinsic by reading the FPCR register.
-// fegetexceptflag accesses the FPSR register, which seems to be much slower
-// than accessing FPCR, so it should be avoided if possible.
-// Adapted from sse2neon: https://github.com/DLTcollab/sse2neon
-#if defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
-#if defined(_MSC_VER)
-#include <arm64intr.h>
-#endif
-
-typedef struct
-{
-  uint16_t res0;
-  uint8_t  res1  : 6;
-  uint8_t  bit22 : 1;
-  uint8_t  bit23 : 1;
-  uint8_t  bit24 : 1;
-  uint8_t  res2  : 7;
-  uint32_t res3;
-} fpcr_bitfield;
-
-inline static unsigned int _mm_getcsr()
-{
-  union
-  {
-    fpcr_bitfield field;
-    uint64_t value;
-  } r;
-
-#if defined(_MSC_VER) && !defined(__clang__)
-  r.value = _ReadStatusReg(ARM64_FPCR);
-#else
-  __asm__ __volatile__("mrs %0, FPCR" : "=r"(r.value));
-#endif
-  static const unsigned int lut[2][2] = {{0x0000, 0x2000}, {0x4000, 0x6000}};
-  return lut[r.field.bit22][r.field.bit23];
-}
-#endif  // defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+#include "cm_intrin_compat.h"
+#include "cm_types.h"
 
 /* FIXME: For now, only the naïve versions are enabled, because
    the intrinsics do not work. They only handle the SSE status word side of
@@ -98,7 +59,7 @@ inline static unsigned int _mm_getcsr()
 static FLAG_T
 get_flag (void)
 {
-#if 0 // defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+#if 0 // ifdef CORE_MATH_MM_GETCSR_SUPPORTED
   return _mm_getcsr ();
 #else
   fexcept_t flag;
@@ -123,13 +84,6 @@ set_flag (FLAG_T flag)
 #endif
 
 #pragma STDC FENV_ACCESS ON
-
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
-typedef union {
-	double f;
-	struct __attribute__((packed)) {uint64_t m:52;uint32_t e:11;uint32_t s:1;};
-	uint64_t u;
-} b64u64_t;
 
 #include "qint.h"
 static inline int get_rounding_mode (void)
@@ -539,7 +493,7 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   for 64 <= k' < 128.
 	*/
 
-	b64u64_t cvt_xh = {.f = xh};
+	b64u64_u cvt_xh = {.f = xh};
 	lut_t l2 = fine[(cvt_xh.u>>40) & 0x7f]; // k' = (cvt_xh.u>>40) & 0x7f
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
 	double r2 = l2.r;
@@ -769,12 +723,12 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 // with |eps| <= 2^-85.010, 0.499 < |resh| < 2.004, |resl| <= 2^-47.638
 static inline
 int exp2d(double* resh, double* resl, double xh, double xl) {
-	b64u64_t cvt = {.f = xh};
+	b64u64_u cvt = {.f = xh};
 	bool do_red	= cvt.e >= -20 + 0x3ff;
         // do_red is true iff |xh| >= 2^-20
 
 	static const double C = 0x1.8p+32; // ulp(C) = 2^-20
-	b64u64_t y = {.f = xh + C};
+	b64u64_u y = {.f = xh + C};
 	uint64_t fracpart = y.u;
 	int16_t extra_exponent = y.u>>20;
 
@@ -1006,7 +960,7 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	unsigned rm = get_rounding_mode();
 	fast_two_sum(&rh, &rl, rh, rl); // The fast_two_sum precondition is satisfied
 
-	b64u64_t th = {.f = rh}, tl = {.f = rl};
+	b64u64_u th = {.f = rh}, tl = {.f = rl};
 	long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
 	// the high part is always positive, the low part can be positive or negative
 	// represent the mantissa of the low part in two's complement format
@@ -1185,7 +1139,7 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	extra_int += l.z;
 	xh *= l.r; xl *= l.r; // exact (see compute_log2pow)
 
-	b64u64_t cvt_xh = {.f = xh};
+	b64u64_u cvt_xh = {.f = xh};
 	int i2 = (cvt_xh.u>>40) & 0x7f; // index in the fine[] table
 	lut_t l2 = fine[i2];
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8

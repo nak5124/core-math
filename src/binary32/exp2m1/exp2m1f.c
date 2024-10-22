@@ -34,8 +34,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 float cr_exp2m1f(float x){
   static const float q[][2] = {{0x1.fffffep127f, 0x1.fffffep127f}, {-1.0f, 0x1p-26f}};

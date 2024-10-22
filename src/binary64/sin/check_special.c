@@ -36,6 +36,8 @@ SOFTWARE.
 #include <omp.h>
 #endif
 
+#include "cm_types.h"
+
 int ref_init (void);
 int ref_fesetround (int);
 
@@ -61,8 +63,6 @@ asuint64 (double f)
   } u = {f};
   return u.i;
 }
-
-typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
 get_random (int tid)

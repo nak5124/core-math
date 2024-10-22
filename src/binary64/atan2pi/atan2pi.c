@@ -43,7 +43,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union { double f; uint64_t u; } d64u64;
+#include "cm_types.h"
 
 #include "tint.h"
 
@@ -555,7 +555,7 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
    (conditions needed for fast_div). */
 static double atan2pi_fast (double *h, double *l, double y, double x)
 {
-  d64u64 vy = {.f = y}, vx = {.f = x};
+  b64u64_u vy = {.f = y}, vx = {.f = x};
   uint64_t ay = vy.u << 1, ax = vx.u << 1;
   int inv = ay > ax, negx = vx.u >> 63, negz = (vy.u ^ vx.u) >> 63;
   if (inv) { double t = y; y = x; x = t; }
@@ -768,7 +768,7 @@ static double atan2pi_fast (double *h, double *l, double y, double x)
 // atan(y/x)
 double cr_atan2pi (double y, double x)
 {
-  d64u64 uy = {.f = y}, ux = {.f = x};
+  b64u64_u uy = {.f = y}, ux = {.f = x};
   uint64_t ay = uy.u & MASK, ax = ux.u & MASK;
   int ey = ay >> 52, ex = ax >> 52;
 

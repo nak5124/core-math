@@ -29,7 +29,7 @@ SOFTWARE.
 #include <math.h> // for log2
 #include "dint.h"
 
-typedef union { double f; uint64_t u; } d64u64;
+#include "cm_types.h"
 
 /* Add a + b, such that *hi + *lo approximates a + b.
    Assumes |a| >= |b|.  */
@@ -592,7 +592,7 @@ p_1a (double *h, double *l, double z)
    of log(2^e*x), with absolute error bounded by 2^-69.99 (details below).
 */
 static void
-cr_log_fast (double *h, double *l, int e, d64u64 v)
+cr_log_fast (double *h, double *l, int e, b64u64_u v)
 {
   uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
   /* x = m/2^52 */
@@ -1288,7 +1288,7 @@ cr_log10p1_accurate (double x)
    This routine is adapted from cr_log1p_fast.
 */
 static double
-cr_log10p1_fast (double *h, double *l, double x, int e, d64u64 v)
+cr_log10p1_fast (double *h, double *l, double x, int e, b64u64_u v)
 {
   if (e < -5) /* e <= -6 thus |x| < 2^-5 */
   {
@@ -1400,7 +1400,7 @@ cr_log10p1_fast (double *h, double *l, double x, int e, d64u64 v)
 double
 cr_log10p1 (double x)
 {
-  d64u64 v = {.f = x};
+  b64u64_u v = {.f = x};
   int e = ((v.u >> 52) & 0x7ff) - 0x3ff;
   if (__builtin_expect (e == 0x400 || x == 0 || x <= -1.0, 0))
     /* case NaN/Inf, +/-0 or x <= -1 */
@@ -1418,7 +1418,7 @@ cr_log10p1 (double x)
 
   /* check x=10^n-1 for 0 <= n <= 15, where log10p1(x) is exact,
      and we shouldn't raise the inexact flag */
-  d64u64 t = {.f = x + 1.0};
+  b64u64_u t = {.f = x + 1.0};
   if (__builtin_expect ((t.u << 46) == 0, 0))
   {
     static const double T[] = {

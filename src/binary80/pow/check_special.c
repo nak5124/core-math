@@ -11,6 +11,8 @@
 #include <math.h>
 #include <assert.h>
 
+#include "cm_types.h"
+
 void doloop (int, int);
 extern long double cr_powl (long double, long double);
 extern int ref_fesetround (int);
@@ -22,8 +24,6 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd;
 int verbose = 0;
-
-typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
 
 static long double
 get_random ()

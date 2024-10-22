@@ -34,7 +34,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; uint32_t u;} b32u32_u;
+#include "cm_types.h"
 
 static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};

@@ -37,7 +37,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 static void sincosn(int, double*, double*, double*, double*);
 static void sincosn2(int, double*, double*, double*, double*);

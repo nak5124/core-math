@@ -33,8 +33,7 @@ SOFTWARE.
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #endif
 
-typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 static double as_r7(double x, const double *c){
   return (((x-c[0])*(x-c[1]))*((x-c[2])*(x-c[3])))*(((x-c[4])*(x-c[5]))*((x-c[6])));

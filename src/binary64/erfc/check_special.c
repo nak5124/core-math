@@ -36,6 +36,8 @@ SOFTWARE.
 #include <omp.h>
 #endif
 
+#include "cm_types.h"
+
 #define N 1000000000UL /* total number of tests */
 
 int ref_init (void);
@@ -74,8 +76,6 @@ asfloat64 (uint64_t i)
   } u = {i};
   return u.f;
 }
-
-typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
 get_random (int tid)

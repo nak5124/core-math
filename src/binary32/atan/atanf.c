@@ -33,9 +33,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
-typedef uint64_t u64;
+#include "cm_types.h"
 
 float cr_atanf(float x){
   const double pi2 = 0x1.921fb54442d18p+0;

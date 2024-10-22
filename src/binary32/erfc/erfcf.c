@@ -33,8 +33,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 static const double E[] =
   {0x1p+0, 0x1.0163da9fb3335p+0, 0x1.02c9a3e778061p+0, 0x1.04315e86e7f85p+0, 0x1.059b0d3158574p+0,

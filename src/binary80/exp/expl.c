@@ -45,16 +45,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {
-	long double f;
-	struct __attribute__((packed)) {uint64_t m;uint32_t e:16;uint32_t empty:16;};
-} b96u96_u;
-
-typedef union {
-	double f;
-	struct __attribute__((packed)) {uint64_t m:52;uint32_t e:11;uint32_t s:1;};
-	uint64_t u;
-} b64u64_u;
+#include "cm_types.h"
 
 // this is always exact, whatever the rounding mode
 static inline void a_mul(double *hi, double *lo, double a, double b) {

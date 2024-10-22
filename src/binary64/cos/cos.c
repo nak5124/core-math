@@ -40,38 +40,7 @@ SOFTWARE.
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
-typedef unsigned _BitInt(128) u128;
-#else
-typedef unsigned __int128 u128;
-#endif
-
-typedef union {
-  struct {
-    u128 r;
-    int64_t _ex;
-    uint64_t _sgn;
-  };
-  struct {
-    uint64_t lo;
-    uint64_t hi;
-    int64_t ex;
-    uint64_t sgn;
-  };
-} dint64_t;
-
-typedef union {
-  u128 r;
-  struct {
-    uint64_t l;
-    uint64_t h;
-  };
-} uint128_t;
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
+#include "cm_types.h"
 
 // Extract both the mantissa and exponent of a double
 static inline void fast_extract (int64_t *e, uint64_t *m, double x) {
@@ -383,8 +352,6 @@ static inline double dint_tod(dint64_t *a) {
 /**************** end of code copied from dint.h and pow.[ch] ****************/
 
 /**************** the following is copied from sin.c *************************/
-
-typedef union {double f; uint64_t u;} b64u64_u;
 
 /* This table approximates 1/(2pi) downwards with precision 1280:
    1/(2*pi) ~ T[0]/2^64 + T[1]/2^128 + ... + T[i]/2^((i+1)*64) + ...

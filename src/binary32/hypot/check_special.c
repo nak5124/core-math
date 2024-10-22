@@ -36,6 +36,8 @@ SOFTWARE.
 #endif
 #include <assert.h>
 
+#include "cm_types.h"
+
 int ref_fesetround (int);
 void ref_init (void);
 
@@ -120,8 +122,6 @@ check_triples_subnormal_above (void)
 {
   doit_subnormal_above (8388608);
 }
-
-typedef union {float f; uint32_t u;} b32u32_u;
 
 static float
 get_random (struct drand48_data *buffer)

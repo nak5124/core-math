@@ -27,8 +27,7 @@ SOFTWARE. */
 #include "fenv_mpfr.h"
 #include <stdint.h>
 
-typedef uint64_t u64;
-typedef union {double f; u64 u;} b64u64_u;
+#include "cm_types.h"
 
 double ref_hypot (double x, double y){
   b64u64_u xi = {.f = x}, yi = {.f = y};

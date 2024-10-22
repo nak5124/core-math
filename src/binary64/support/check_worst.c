@@ -40,6 +40,8 @@ SOFTWARE.
 #include <errno.h>
 #endif
 
+#include "cm_types.h"
+
 #include "function_under_test.h"
 
 double cr_function_under_test (double, double);
@@ -61,8 +63,6 @@ typedef struct {
 #endif
 } testcase;
 
-typedef union { double f; uint64_t i; } d64u64;
-
 /* scanf %la from buf, allowing snan, +snan and -snan */
 static int
 sscanf_snan (char *buf, double *x)
@@ -71,13 +71,13 @@ sscanf_snan (char *buf, double *x)
     return 1;
   else if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
   {
-    d64u64 u = {.i = 0x7ff4000000000000};
+    b64u64_u u = {.u = 0x7ff4000000000000};
     *x = u.f;
     return 1;
   }
   else if (strncmp (buf, "-snan", 5) == 0)
   {
-    d64u64 u = {.i = 0xfff4000000000000};
+    b64u64_u u = {.u = 0xfff4000000000000};
     *x = u.f;
     return 1;
   }
@@ -177,13 +177,13 @@ int tests = 0;
 static void
 print_binary64 (double x)
 {
-  d64u64 v = {.f = x};
+  b64u64_u v = {.f = x};
   if (!is_nan (x)) // not NaN
     printf ("%la", x);
   else
   {
     // if bit 51 is 1, this is a qNaN, otherwise a sNaN
-    if ((v.i >> 51) & 1)
+    if ((v.u >> 51) & 1)
       printf ("qnan");
     else
       printf ("snan");

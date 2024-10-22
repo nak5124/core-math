@@ -36,6 +36,8 @@ SOFTWARE.
 #include <unistd.h>
 #include <math.h>
 
+#include "cm_types.h"
+
 void doloop (int, int);
 extern double cr_hypot (double, double);
 extern int ref_fesetround (int);
@@ -47,8 +49,6 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd;
 int verbose = 0;
-
-typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
 get_random (struct drand48_data *buffer)

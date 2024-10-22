@@ -41,15 +41,14 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
+#include "cm_types.h"
+
 // atanpi_begin
 // ONE_OVER_PIH + ONE_OVER_PIL approximates 1/pi
 #define ONE_OVER_PIH 0x1.45f306dc9c883p-2
 #define ONE_OVER_PIL -0x1.6b01ec5417056p-56
 #define ONE_OVER_3PI 0x1.b2995e7b7b604p-4 // approximates 1/(3pi)
 // atanpi_end
-
-typedef union {double f; uint64_t u;} b64u64_u;
-typedef uint64_t u64;
 
 static inline double fasttwosum(double x, double y, double *e){
   double s = x + y, z = s - x;

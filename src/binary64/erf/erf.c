@@ -33,7 +33,7 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-typedef union {double f; uint64_t u;} b64u64_u;
+#include "cm_types.h"
 
 /* CH+CL is a double-double approximation of 2/sqrt(pi) to nearest */
 static const double CH = 0x1.20dd750429b6dp+0;

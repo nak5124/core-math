@@ -34,9 +34,7 @@ SOFTWARE. */
 
 #pragma STDC FENV_ACCESS ON
 
-typedef uint64_t u64;
-typedef union {double f; u64 u;} b64u64_u;
-typedef uint16_t ushort;
+#include "cm_types.h"
 
 static inline double fasttwosum(double x, double y, double *e){
   double s = x + y, z = s - x;

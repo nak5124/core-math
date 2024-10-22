@@ -36,6 +36,8 @@ SOFTWARE.
 #include <omp.h>
 #endif
 
+#include "cm_types.h"
+
 #include "function_under_test.h"
 
 double cr_function_under_test (double);
@@ -46,8 +48,6 @@ void ref_init (void);
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
-
-typedef union { double f; uint64_t i; } d64u64;
 
 static void
 readstdin(double **result, int *count)
@@ -81,13 +81,13 @@ readstdin(double **result, int *count)
     {
       /* According to IEEE 754-2019, qNaN's have 1 as upper bit of their
          52-bit significand, and sNaN's have 0 */
-      d64u64 u = {.i = 0x7ff4000000000000};
+      b64u64_u u = {.u = 0x7ff4000000000000};
       *item = u.f;
       (*count)++;
     }
     else if (strncmp (buf, "-snan", 5) == 0)
     {
-      d64u64 u = {.i = 0xfff4000000000000};
+      b64u64_u u = {.u = 0xfff4000000000000};
       *item = u.f;
       (*count)++;
     }
@@ -99,8 +99,8 @@ readstdin(double **result, int *count)
 static inline uint64_t
 asuint64 (double f)
 {
-  d64u64 u = {.f = f};
-  return u.i;
+  b64u64_u u = {.f = f};
+  return u.u;
 }
 
 /* define our own is_nan function to avoid depending from math.h */
