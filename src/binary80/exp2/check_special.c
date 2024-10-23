@@ -31,6 +31,9 @@ SOFTWARE.
 #include <fenv.h>
 #include <unistd.h>
 #include <math.h> // for ldexpl
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#include <omp.h>
+#endif
 
 int ref_fesetround (int);
 void ref_init (void);
@@ -54,6 +57,10 @@ int verbose = 0;
 // +snan has encoding m=2^63+2^62-1, e=32767
 // -snan has encoding m=2^63+2^62-1, e=65535
 typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
+
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
 
 static int
 is_nan (long double x)
@@ -87,14 +94,14 @@ check (long double x)
 }
 
 static long double
-get_random ()
+get_random (int tid)
 {
   b80u80_t v;
-  v.m = rand ();
-  v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) (rand () & 1) << 62;
+  v.m = rand_r (Seed + tid);
+  v.m |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.m |= (uint64_t) (rand_r (Seed + tid) & 1) << 62;
   // the low 63 bits of m are random
-  v.e = rand () & 0xffff;
+  v.e = rand_r (Seed + tid) & 0xffff;
   // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
   // significant bit set, otherwise it should be cleared
   // cf https://en.wikipedia.org/wiki/Extended_precision
@@ -155,6 +162,10 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
   printf ("Checking exact cases\n");
   check_exact ();
 
@@ -168,12 +179,12 @@ main (int argc, char *argv[])
      of 15 bits, thus we multiply by 2^49 to get integers, where 49 = 64-15 */
   uint64_t n0 = ldexpl (x0, 49);
   uint64_t n1 = ldexpl (x1, 49);
-#define SKIP 32000000
-  n0 -= getpid () % SKIP;
+  uint64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  n0 -= getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = n0; n > n1; n -= SKIP)
+  for (uint64_t n = n0; n > n1; n -= skip)
     check (-ldexpl ((long double) n, -49));
   /* x2 is the smallest x such that 2^-16382 <= RN(2^-x) */
   long double x2 = 16382;
@@ -181,28 +192,34 @@ main (int argc, char *argv[])
      of 14 bits, thus we multiply by 2^50 to get integers, where 50 = 64-14 */
   n1 = ldexpl (x1, 50);
   uint64_t n2 = ldexpl (x2, 50);
-  n1 -= getpid () % SKIP;
+  skip = (n2 - n1) / CORE_MATH_TESTS;
+  n1 -= getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = n1; n > n2; n -= SKIP)
+  for (uint64_t n = n1; n > n2; n -= skip)
     check (-ldexpl ((long double) n, -50));
 
   printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
-    long double x;
-    x = get_random ();
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    long double x = get_random (tid);
     check (x);
   }
 

@@ -31,6 +31,9 @@ SOFTWARE.
 #include <fenv.h>
 #include <unistd.h>
 #include <math.h> // for ldexpl
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#include <omp.h>
+#endif
 
 int ref_fesetround (int);
 void ref_init (void);
@@ -54,6 +57,10 @@ int verbose = 0;
 // +snan has encoding m=2^63+2^62-1, e=32767
 // -snan has encoding m=2^63+2^62-1, e=65535
 typedef union {long double f; struct {uint64_t m; uint16_t e;};} b80u80_t;
+
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
 
 static int
 is_nan (long double x)
@@ -87,18 +94,18 @@ check (long double x)
 }
 
 static long double
-get_random ()
+get_random (int tid)
 {
   b80u80_t v;
-  v.m = rand ();
-  v.m |= (uint64_t) rand () << 31;
-  v.m |= (uint64_t) (rand () & 1) << 62;
-	// the low 63 bits of m are random
-  v.e = rand () & 0xffff;
+  v.m = rand_r (Seed + tid);
+  v.m |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.m |= (uint64_t) (rand_r (Seed + tid) & 1) << 62;
+  // the low 63 bits of m are random
+  v.e = rand_r (Seed + tid) & 0xffff;
   // if e is not 0 nor 0x8000 (0 or subnormal), m should have its most
   // significant bit set, otherwise it should be cleared
   // cf https://en.wikipedia.org/wiki/Extended_precision
-  uint64_t t = (v.e&0x7fff) != 0;
+  uint64_t t = (v.e & 0x7fff) != 0;
   v.m |= t << 63;
   return v.f;
 }
@@ -149,9 +156,12 @@ main (int argc, char *argv[])
   ref_fesetround (rnd);
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
-#define N 10000000UL /* total number of tests */
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
@@ -161,56 +171,61 @@ main (int argc, char *argv[])
   long double x1 = -0x1.62e42fefa39ef356p+13L;
   /* in the [x0,x1) range, floating-point numbers have ulp = 2^-50 */
   long double ulp = 0x1p-50L; // ulp = ulp(x0) = ulp(x1)
-  long double dx = (x1 - x0) / (long double) N; // total numbers in [x0,x1]
+  long double dx = (x1 - x0) / (long double) CORE_MATH_TESTS; // total numbers in [x0,x1]
   unsigned long skip = dx / ulp; // distance between two checked numbers
   int n0 = seed % skip;
   x0 += (long double) n0 * ulp;  // we start at a random x0
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
     check (x0 + (long double) n * dx);
 
   /* x2 is the smallest x such that 2^-16382 <= RN(exp(x)) */
   long double x2 = -0x1.62d918ce2421d65ep+13L;
-  dx = (x2 - x1) / (long double) N;
+  dx = (x2 - x1) / (long double) CORE_MATH_TESTS;
   x1 += (long double) n0 * ulp;  // we start at a random x1
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++) {
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++) {
     ref_init ();
     ref_fesetround (rnd);
     check (x1 + (long double) n * dx);
-	}
+  }
 
-	printf("Checking results near overflow\n");
-	/*x3 is the biggest x such that exp(x) < MAX_LDBL*/
-	long double x3 = 0x1.62e42fefa39ef357p+13L;
-	dx             = 0x0.0000000010000000p+13L/ (long double) N;
-	ulp = 0x1p-50L;
-	skip = dx / ulp;
-	n0 = seed % skip;
-	x3 += (long double) n0 * ulp - (skip/2) * ulp;
+  printf("Checking results near overflow\n");
+  /* x3 is the biggest x such that exp(x) < MAX_LDBL */
+  long double x3 = 0x1.62e42fefa39ef357p+13L;
+  dx             = 0x0.0000000010000000p+13L/ (long double) CORE_MATH_TESTS;
+  ulp = 0x1p-50L;
+  skip = dx / ulp;
+  n0 = seed % skip;
+  x3 += (long double) n0 * ulp - (skip/2) * ulp;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-	for (uint64_t n = 0; n < N; n++) {
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++) {
     ref_init ();
     ref_fesetround (rnd);
-		check(x3 + (long double) n * dx);
-	}
+    check(x3 + (long double) n * dx);
+  }
 
   printf ("Checking random values with |x| < 2^-20\n");
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
-    long double x;
-    x = get_random ();
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    long double x = get_random (tid);
     int e;
     x = frexpl (x, &e);
     check (ldexpl (x, -20));
@@ -220,12 +235,17 @@ main (int argc, char *argv[])
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
-    long double x;
-    x = get_random ();
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    long double x = get_random (tid);
     check (x);
   }
 
