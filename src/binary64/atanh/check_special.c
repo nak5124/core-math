@@ -253,7 +253,8 @@ int main(int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 1;
+  // for atanh, p=1 makes little sense since the domain is (-1,1)
+  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 0;
   double x = __builtin_nan(""), a = -1, b = 1;
   int64_t n = 10*1000;
   while(1) {
