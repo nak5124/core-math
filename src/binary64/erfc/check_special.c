@@ -36,7 +36,9 @@ SOFTWARE.
 #include <omp.h>
 #endif
 
-#define N 1000000000UL /* total number of tests */
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -117,7 +119,10 @@ check_subnormal (void)
   double xmax = 0x1.b39dc41e48bfcp+4;
   uint64_t umin = asuint64 (xmin);
   uint64_t umax = asuint64 (xmax);
-  uint64_t urange = (umax - umin) / (uint64_t) N;
+  uint64_t urange = (umax - umin) / (uint64_t) CORE_MATH_TESTS;
+  /* we multiply urange by 10 since tests in the subnormal range are more
+     expensive */
+  urange = 10 * urange;
   printf ("Check subnormal output range\n");
   umin += getpid () % urange;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
@@ -177,12 +182,16 @@ main (int argc, char *argv[])
 
   printf ("Random tests\n");
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #define XMAX 0x1.b39dc41e48bfdp+4
 #define XMIN -0x1.7744f8f74e94bp2
   
-  for (uint64_t n = 0; n < N; n++)
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);

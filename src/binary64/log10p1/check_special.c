@@ -165,16 +165,19 @@ main (int argc, char *argv[])
   printf ("Checking inexact flag\n");
   check_inexact ();
 
-#define N 1000000000UL /* total number of tests */
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
   printf ("Checking random values\n");
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);

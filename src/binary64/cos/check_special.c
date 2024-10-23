@@ -1,6 +1,6 @@
 /* Check cos on random inputs.
 
-Copyright (c) 2022-2023 Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -139,15 +139,18 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-#define N 1000000000UL /* total number of tests */
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);

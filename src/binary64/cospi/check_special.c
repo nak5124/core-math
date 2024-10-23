@@ -39,6 +39,10 @@ SOFTWARE.
 #include <errno.h>
 #include "function_under_test.h"
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
 double cr_function_under_test (double);
 double ref_function_under_test (double);
 
@@ -80,7 +84,7 @@ static int check (double x){
   return 0;
 }
 
-static void check_random(int seed, double a, double b){
+static void check_random(int seed, double a, double b, int64_t ntests){
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
@@ -92,7 +96,7 @@ static void check_random(int seed, double a, double b){
   double s = (b - a)*0.5, m = (a+b)*0.5;
   int64_t count = 0;
   while (1){
-    int64_t i = 0, n = 10*1000*1000;
+    int64_t i = 0, n = 10*1000;
     for(;i<n;i++){
       double x = m + rand_arg (buf, s);
       if(check (x)) fail++;
@@ -101,7 +105,7 @@ static void check_random(int seed, double a, double b){
     count += i;
     if (verbose)
       printf("failure(s) %d, total %"PRIx64"\n",fail,count);
-    if(count>=1000l*1000l*1000l) break;
+    if(count>=ntests) break;
     if(fail>=maxfail) break;
   }
   if (verbose)
@@ -143,7 +147,7 @@ static void check_val(double x){
   check(x);
 }
 
-static void check_random_all(double a, double b){
+static void check_random_all(int seed, double a, double b){
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
@@ -153,7 +157,7 @@ static void check_random_all(double a, double b){
 #pragma omp parallel for
 #endif
   for (int i = 0; i < nthreads; i++)
-    check_random(getpid () + i, a, b);
+    check_random(seed + i, a, b, CORE_MATH_TESTS / nthreads);
 }
 
 int64_t parselong(const char *str){
@@ -188,7 +192,7 @@ int main (int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 0, seed = getpid (), darts = 0, conseq = 0;
+  int thread = 1, seed = getpid (), darts = 0, conseq = 0;
   double x = __builtin_nan(""), a = -1, b = 1;
   int64_t n = 10*1000;
   while (1) {
@@ -234,9 +238,9 @@ int main (int argc, char *argv[]){
       scan_consecutive(n, a);
     } else {
       if (thread)
-	check_random_all(a, b);
+	check_random_all(seed, a, b);
       else
-	check_random(seed, a, b);
+	check_random(seed, a, b, CORE_MATH_TESTS);
     }
   }
   return 0;

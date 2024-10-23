@@ -86,7 +86,9 @@ check (double x)
 {
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   double y1 = ref_exp2 (x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   double y2 = cr_exp2 (x);
@@ -190,6 +192,10 @@ main (int argc, char *argv[])
   printf ("Checking exact results\n");
   check_exact ();
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp2(x)) */
@@ -200,12 +206,12 @@ main (int argc, char *argv[])
      of 11 bits, thus we multiply by 2^42 to get integers */
   int64_t n0 = ldexp (x0, 42); /* n0 = -4727899999436800 */
   int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
-#define SKIP 20000
-  n0 += getpid () % SKIP;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (int64_t n = n0; n < n1; n += SKIP)
+  for (int64_t n = n0; n < n1; n += skip)
     check (ldexp ((double) n, -42));
   /* x2 is the smallest x such that 2^-1022 <= RN(exp2(x)) */
   double x2 = -1022;
@@ -213,22 +219,23 @@ main (int argc, char *argv[])
      of 10 bits, thus we multiply by 2^43 to get integers */
   n1 = ldexp (x1, 43); /* n1 = -9007199254740992, twice as large as above */
   int64_t n2 = ldexp (x2, 43); /* n2 = -8989607068696576 */
+  skip = (n2 - n1) / CORE_MATH_TESTS;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (int64_t n = n1; n < n2; n += SKIP)
+  for (int64_t n = n1; n < n2; n += skip)
     check (ldexp ((double) n, -43));
 
   printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);

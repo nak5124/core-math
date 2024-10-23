@@ -1,6 +1,6 @@
 /* Generate special cases for asinpi testing.
 
-Copyright (c) 2022-2023 Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -47,6 +47,12 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd = 0;
 int verbose = 0;
 
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
+
+typedef union {double f; uint64_t u;} b64u64_u;
+
 static inline uint64_t
 asuint64 (double f)
 {
@@ -58,13 +64,30 @@ asuint64 (double f)
   return u.i;
 }
 
+static double
+get_random (int tid)
+{
+  b64u64_u v;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
+  return v.f;
+}
+
 static void
 check (double x)
 {
   double y1 = ref_asinpi (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_asinpi (x);
-  if (asuint64 (y1) != asuint64 (y2))
+  int bug;
+  if (isnan (y1))
+    bug = !isnan (y2);
+  else if (isnan (y2))
+    bug = !isnan (y1);
+  else
+    bug = asuint64 (y1) != asuint64 (y2);
+  if (bug)
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
@@ -117,29 +140,32 @@ main (int argc, char *argv[])
   ref_fesetround (rnd);
 
   printf ("Checking random values\n");
-#define K 1000000000UL /* total number of tests */
+
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
 #define BUF_SIZE 1000
 
   long seed = getpid ();
-  srand48 (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
   
-  double buf[BUF_SIZE];
-  uint64_t N = K / BUF_SIZE;
-  for (uint64_t n = 0; n < N; n++)
-  {
-    /* warning: drand48 is not thread-safe, thus we put it outside
-       the parallel loop */
-    for (int i = 0; i < BUF_SIZE; i++)
-    {
-      buf[i] = drand48 ();
-      if (i & 1)
-        buf[i] = -buf[i];
-    }
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-    for (int i = 0; i < BUF_SIZE; i++)
-      check (buf[i]);
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
+  {
+    ref_init ();
+    ref_fesetround (rnd);
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    double x = get_random (tid);
+    check (x);
   }
 
   return 0;

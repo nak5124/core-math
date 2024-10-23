@@ -1,6 +1,6 @@
 /* Generate exact cases for cbrt testing.
 
-Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -46,6 +46,12 @@ double cr_cbrt (double);
 int rnd = 0;
 int verbose = 0;
 
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
+
+typedef union {double f; uint64_t u;} b64u64_u;
+
 static inline uint64_t
 asuint64 (double f)
 {
@@ -57,17 +63,35 @@ asuint64 (double f)
   return u.i;
 }
 
+static double
+get_random (int tid)
+{
+  b64u64_u v;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
+  return v.f;
+}
+
 static void
 check (double x)
 {
-  double z1, z2;
-  z1 = ref_cbrt (x);
+  double y1, y2;
+  y1 = ref_cbrt (x);
   fesetround(rnd1[rnd]);
-  z2 = cr_cbrt (x);
-  if (asuint64 (z1) != asuint64 (z2)) {
-    printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
-    fflush(stdout);
-    exit(1);
+  y2 = cr_cbrt (x);
+  int bug;
+  if (isnan (y1))
+    bug = !isnan (y2);
+  else if (isnan (y2))
+    bug = !isnan (y1);
+  else
+    bug = asuint64 (y1) != asuint64 (y2);
+  if (bug)
+  {
+    printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
+    fflush (stdout);
+    exit (1);
   }
 }
 
@@ -150,30 +174,27 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-  printf ("Checking random values\n");
-#define K 1000000000UL /* total number of tests */
-#define BUF_SIZE 1000
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
   long seed = getpid ();
-  srand48 (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
-  double buf[BUF_SIZE];
-  uint64_t N = K / BUF_SIZE;
-  for (uint64_t n = 0; n < N; n++)
+  printf ("Checking random values\n");
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
-    /* warning: drand48 is not thread-safe, thus we put it outside
-       the parallel loop */
-    for (int i = 0; i < BUF_SIZE; i++)
-    {
-      buf[i] = drand48 ();
-      if (i & 1)
-        buf[i] = -buf[i];
-    }
+    ref_init ();
+    ref_fesetround (rnd);
+    int tid;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
 #endif
-    for (int i = 0; i < BUF_SIZE; i++)
-      check (buf[i]);
+    double x = get_random (tid);
+    check (x);
   }
 
   return 0;

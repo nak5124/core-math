@@ -168,9 +168,11 @@ main (int argc, char *argv[])
   for (uint64_t n = n1; n < n1 + 2 * N; n+=2)
     check (ldexp ((double) n, -53));
 
-#undef N
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
   printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
   srand (seed);
@@ -178,7 +180,7 @@ main (int argc, char *argv[])
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);

@@ -78,10 +78,10 @@ get_random (int tid)
 static void
 check (double x)
 {
-  int bug;
   double y1 = ref_atan (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_atan (x);
+  int bug;
   if (isnan (y1))
     bug = !isnan (y2);
   else if (isnan (y2))
@@ -159,16 +159,19 @@ main (int argc, char *argv[])
   check_near (0x1p-27);
   check_near (0x1.2ded8e34a9035p+7);
 
-#define N 1000000000UL /* total number of tests */
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
   printf ("Checking random values\n");
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);

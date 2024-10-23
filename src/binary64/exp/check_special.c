@@ -151,6 +151,10 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= exp(x) */
   double x0 = -0x1.74910d52d3051p+9;
@@ -184,24 +188,23 @@ main (int argc, char *argv[])
   for (int64_t n = n1 - K; n < n1 + K; n++)
     check (ldexp ((double) n, -43));
   printf ("Checking results in subnormal range\n");
-#define SKIP 20000
-  n0 += getpid () % SKIP;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (int64_t n = n0; n < n1; n += SKIP)
+  for (int64_t n = n0; n < n1; n += skip)
     check (ldexp ((double) n, -43));
 
-  printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
-
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
+  printf ("Checking random values\n");
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
