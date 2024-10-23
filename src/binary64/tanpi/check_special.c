@@ -253,7 +253,7 @@ int main(int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 0;
+  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 1;
   double x = __builtin_nan(""), a = -1, b = 1;
   int64_t n = 10*1000;
   while(1) {

@@ -253,8 +253,8 @@ int main(int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 0;
-  double x = __builtin_nan(""), a = -1, b = 1;
+  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 1;
+  double x = __builtin_nan(""), a = 1, b = 2;
   int64_t n = 10*1000;
   while(1) {
     int ind = 0, c = getopt_long(argc, argv, "nudzhvtps:D:C:r:i:x:a:b:", opts, &ind);

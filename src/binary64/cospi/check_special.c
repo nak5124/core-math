@@ -176,6 +176,58 @@ int64_t parselong(const char *str){
   return val;
 }
 
+double rand_arg2(struct drand48_data *buf){
+  int64_t r0,r1;
+  b64u64_u o;
+  do {
+    mrand48_r(buf, &r0);
+    mrand48_r(buf, &r1);
+    o.u = r0^(r1<<32);
+  } while((o.u<<1)>=(0x7ffull<<53));
+  return o.f;
+}
+
+static void check_random_p(int seed, int64_t ntests){
+  ref_init();
+  ref_fesetround(rnd);
+  fesetround(rnd1[rnd]);
+  struct drand48_data buf[1];
+  if (verbose)
+    printf("seed = %d\n",seed);
+  srand48_r(seed, buf);
+  int fail = 0, maxfail = 10;
+  int64_t count = 0;
+  while(1){
+    int64_t i = 0, n = 10*1000;
+    for(;i<n;i++){
+      double x = rand_arg2(buf);
+      if(check(x)) fail++;
+      if(fail>=maxfail) break;
+    }
+    count += i;
+    if (verbose)
+      printf("failure(s) %d, total %"PRIx64"\n",fail,count);
+    if(count>=ntests) break;
+    if(fail>=maxfail) break;
+  }
+  if (verbose)
+    printf("%d fails per %"PRIx64" calls or %.1e %%\n",
+           fail, count, (double)fail/count*100);
+}
+
+static void check_random_all_p (int seed){
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel
+  nthreads = omp_get_num_threads();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for(int i = 0; i < nthreads; i++)
+    check_random_p(seed + i, CORE_MATH_TESTS / nthreads);
+}
+
 int main (int argc, char *argv[]){
   static struct option opts[] = {
     { "rndn",        no_argument, 0, 'n'},
@@ -192,7 +244,7 @@ int main (int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 1, seed = getpid (), darts = 0, conseq = 0;
+  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 1;
   double x = __builtin_nan(""), a = -1, b = 1;
   int64_t n = 10*1000;
   while (1) {
@@ -237,10 +289,17 @@ int main (int argc, char *argv[]){
     } else if(conseq){
       scan_consecutive(n, a);
     } else {
-      if (thread)
-	check_random_all(seed, a, b);
-      else
-	check_random(seed, a, b, CORE_MATH_TESTS);
+      if(p){
+	if(thread)
+	  check_random_all_p(seed);
+	else
+	  check_random_p(seed, CORE_MATH_TESTS);
+      } else {
+	if(thread)
+	  check_random_all(seed, a, b);
+	else
+	  check_random(seed, a, b, CORE_MATH_TESTS);
+      }
     }
   }
   return 0;
