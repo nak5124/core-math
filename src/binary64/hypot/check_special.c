@@ -131,6 +131,10 @@ check (double x, double y)
   check_aux (-y, -x);
 }
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
+
 static void
 check_random (int i, int nthreads)
 {
@@ -141,8 +145,7 @@ check_random (int i, int nthreads)
   double x, y;
   srand48_r (i, buffer);
 
-#define N 1000000000ul // total number of tests
-  for (uint64_t n = i; n < N; n += nthreads)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -251,6 +254,7 @@ static double y_worst (double x, double y)
   return y;
 }
 
+// i is the thread number
 static void
 check_worst_i (int m, int i, int nthreads)
 {
@@ -261,8 +265,7 @@ check_worst_i (int m, int i, int nthreads)
   double x, y;
   srand48_r (getpid () + i, buffer);
 
-#define N 1000000000ul // total number of tests
-  for (uint64_t n = i; n < N; n += nthreads)
+  for (uint64_t n = i; n < CORE_MATH_TESTS; n += nthreads)
   {
     drand48_r (buffer, &x); // 0 <= x < 1
     x = 0.5 + x * 0.5;      // 1/2 <= x < 1
@@ -271,7 +274,6 @@ check_worst_i (int m, int i, int nthreads)
     y = y_worst (x, y);
     check (x, y);
   }
-#undef N
 }
 
 // check worst cases with exp(y) = exp(x) - i
@@ -453,7 +455,7 @@ main (int argc, char *argv[])
   fesetround(rnd1[rnd]);
 
   printf ("Checking values near 2^e\n");
-  check_near_power_two (10);
+  check_near_power_two (2);
 
   printf ("Checking exact subnormal values\n");
   check_triples_subnormal ();

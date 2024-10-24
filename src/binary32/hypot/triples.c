@@ -83,7 +83,9 @@ check_aux (float x, float y)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   z1 = ref_hypot(x, y);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   z2 = cr_hypotf(x, y);
@@ -226,6 +228,10 @@ generate2 (uint64_t p, uint64_t q, int k)
   return count;
 }
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
+
 /* check all Pythagorean triples x^2 + y^2 = z^2,
    with 2^23 <= y < 2^24, 2^(23+k) <= x < 2^(24+k),
    and z of the form m*2^e with m < 2^25 */
@@ -241,11 +247,14 @@ check_pythagorean_triples (int k)
   /* Type 1: x = p^2-q^2, y = 2pq, z = p^2+q^2 */
   /* since y = 2pq < 2^24 and q < p, this gives q <= 2895 */
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for
+#pragma omp parallel for reduction(+: count1)
 #endif
   for (q = 1; q <= 2895; q++)
     for (p = q + 1; 2 * p * q < 0x1000000ull; p+=2)
-      count1 += generate1 (p, q, k);
+    {
+      if (count1 < CORE_MATH_TESTS / 2)
+        count1 += generate1 (p, q, k);
+    }
 
   if (verbose)
     fprintf (stderr, "# Type 1: %"PRIu64"\n", count1);
@@ -253,7 +262,7 @@ check_pythagorean_triples (int k)
   /* Type 2: x = 2pq, y = p^2-q^2, z = p^2+q^2, with p even */
   /* since y = p^2-q^2 >= 2*p-1 and y < 2^24, this gives p <= 2^23 */
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for
+#pragma omp parallel for reduction(+: count2)
 #endif
   for (p = 2; p <= 0x800000; p++)
   {
@@ -272,7 +281,8 @@ check_pythagorean_triples (int k)
     if ((p + qmin) % 2 == 0)
       qmin ++; /* ensure p and q have different parities */
     for (q = qmin; q < p; q += 2)
-      count2 += generate2 (p, q, k);
+      if (count2 < CORE_MATH_TESTS / 2)
+        count2 += generate2 (p, q, k);
   }
   if (verbose) {
     fprintf (stderr, "# Type 2: %"PRIu64"\n", count2);

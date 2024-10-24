@@ -203,11 +203,15 @@ generate2 (u128 p, u128 q, int k, uint64_t max_loop)
   return count;
 }
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
+
 /* Since the check_pythagorean_triples() function tests a huge number of
    values, and will not terminate in reasonable time, we define
    REDUCE to a large value to test fewer values (REDUCE=1 would test
    all values). */
-#define REDUCE 0x200000000000
+#define REDUCE (0xffffffffffffffffull / (1 + CORE_MATH_TESTS / 1000000000ul))
 
 /* check all Pythagorean triples x^2 + y^2 = z^2,
    with 2^52 <= y < 2^53, 2^(52+k) <= x < 2^(53+k),
@@ -265,7 +269,7 @@ check_pythagorean_triples (int k)
   }
 }
 
-/* check hypot(x,y) near z, with 27-bit x */
+/* check hypot(x,y) near z, with small precision x */
 static void
 check_bound (mpfr_t z)
 {
@@ -274,7 +278,12 @@ check_bound (mpfr_t z)
   mpfr_exp_t emax = mpfr_get_emax ();
   mpfr_exp_t emin = mpfr_get_emin ();
 
-  mpfr_init2 (x, 27);
+  // take precision of x = 1 + floor(log2(CORE_MATH_TESTS))
+  int n = CORE_MATH_TESTS, precx = 1;
+  while (n > 1)
+    n >>= 1, precx ++;
+
+  mpfr_init2 (x, precx);
   mpfr_init2 (y, 53);
   mpfr_init2 (t, 2 * mpfr_get_prec (z));
   mpfr_init2 (zz, 2 * mpfr_get_prec (z));

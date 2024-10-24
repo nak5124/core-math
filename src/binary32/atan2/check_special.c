@@ -77,7 +77,9 @@ check (float y, float x)
   float z, t;
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   t = ref_atan2 (y, x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   feclearexcept (FE_INEXACT);
   z = cr_atan2f (y, x);
   fexcept_t inex2;
@@ -110,10 +112,12 @@ check (float y, float x)
 #endif
 }
 
-#define N 100000000
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
 
 static void
-check_random (int i)
+check_random (int i, int nthreads)
 {
   int64_t l;
   float x, y;
@@ -121,7 +125,7 @@ check_random (int i)
   ref_init ();
   fesetround (rnd1[rnd]);
   srand48_r (i, buffer);
-  for (int n = 0; n < N; n++)
+  for (int n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     lrand48_r (buffer, &l);
     y = asfloat (l);
@@ -186,6 +190,6 @@ main (int argc, char *argv[])
 #pragma omp parallel for
 #endif
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
   return 0;
 }

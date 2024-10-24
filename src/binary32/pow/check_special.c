@@ -97,7 +97,9 @@ check (float x, float y)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   z1 = ref_pow(x, y);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   z2 = cr_powf(x, y);
@@ -128,18 +130,20 @@ check (float x, float y)
 #endif
 }
 
-#define N 1000000ul
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
 
 static void
-check_random (int i)
+check_random (int seed, int nthreads)
 {
   ref_init ();
   ref_fesetround (rnd);
   fesetround(rnd1[rnd]);
   struct drand48_data buffer[1];
   float x, y;
-  srand48_r (i, buffer);
-  for (uint64_t n = 0; n < N; n++)
+  srand48_r (seed, buffer);
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -157,7 +161,7 @@ check_random_all (void)
 #endif
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
 }
 
 // check exact and midpoint values
