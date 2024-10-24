@@ -120,9 +120,9 @@ check_subnormal (void)
   uint64_t umin = asuint64 (xmin);
   uint64_t umax = asuint64 (xmax);
   uint64_t urange = (umax - umin) / (uint64_t) CORE_MATH_TESTS;
-  /* we multiply urange by 10 since tests in the subnormal range are more
+  /* we multiply urange by 100 since tests in the subnormal range are more
      expensive */
-  urange = 10 * urange;
+  urange = 100 * urange + 1; // +1 to avoid urange=0
   printf ("Check subnormal output range\n");
   umin += getpid () % urange;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))

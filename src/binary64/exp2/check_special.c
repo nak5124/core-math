@@ -207,6 +207,9 @@ main (int argc, char *argv[])
   int64_t n0 = ldexp (x0, 42); /* n0 = -4727899999436800 */
   int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
   int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  /* we multiply skip by 10 since tests in the subnormal range are more
+     expensive */
+  skip = 10 * skip + 1; // +1 to avoid skip = 0
   n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
