@@ -206,7 +206,7 @@ main (int argc, char *argv[])
      of 11 bits, thus we multiply by 2^42 to get integers */
   int64_t n0 = ldexp (x0, 42); /* n0 = -4727899999436800 */
   int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
-  int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
   /* we multiply skip by 10 since tests in the subnormal range are more
      expensive */
   skip = 10 * skip + 1; // +1 to avoid skip = 0
@@ -222,7 +222,7 @@ main (int argc, char *argv[])
      of 10 bits, thus we multiply by 2^43 to get integers */
   n1 = ldexp (x1, 43); /* n1 = -9007199254740992, twice as large as above */
   int64_t n2 = ldexp (x2, 43); /* n2 = -8989607068696576 */
-  skip = (n2 - n1) / CORE_MATH_TESTS;
+  skip = (n2 - n1) / CORE_MATH_TESTS + 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif

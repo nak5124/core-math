@@ -148,7 +148,7 @@ main (int argc, char *argv[])
   int64_t n0 = 1;
   // n1 is the smallest integer such that exp10m1(n1*2^-1074) > 2^-1022
   int64_t n1 = 1955888466868548ul;
-  int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
   /* we multiply skip by 10 since tests in the subnormal range are more
      expensive */
   skip = 10 * skip + 1; // +1 to avoid skip = 0

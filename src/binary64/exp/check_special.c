@@ -188,7 +188,7 @@ main (int argc, char *argv[])
   for (int64_t n = n1 - K; n < n1 + K; n++)
     check (ldexp ((double) n, -43));
   printf ("Checking results in subnormal range\n");
-  int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
   n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for

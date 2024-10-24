@@ -179,7 +179,7 @@ main (int argc, char *argv[])
      of 15 bits, thus we multiply by 2^49 to get integers, where 49 = 64-15 */
   uint64_t n0 = ldexpl (x0, 49);
   uint64_t n1 = ldexpl (x1, 49);
-  uint64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  uint64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
   n0 -= getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
@@ -192,7 +192,7 @@ main (int argc, char *argv[])
      of 14 bits, thus we multiply by 2^50 to get integers, where 50 = 64-14 */
   n1 = ldexpl (x1, 50);
   uint64_t n2 = ldexpl (x2, 50);
-  skip = (n2 - n1) / CORE_MATH_TESTS;
+  skip = (n2 - n1) / CORE_MATH_TESTS + 1;
   n1 -= getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for

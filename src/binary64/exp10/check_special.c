@@ -178,7 +178,7 @@ main (int argc, char *argv[])
   double x1 = -0x1.33a7146f72a41p+8;
   int64_t n0 = ldexp (x0, 44); /* n0 = -5692958865320786 */
   int64_t n1 = ldexp (x1, 44); /* n1 = -5412282753821249 */
-  int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
   n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for

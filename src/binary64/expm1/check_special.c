@@ -146,7 +146,7 @@ main (int argc, char *argv[])
   printf ("Checking results in subnormal range\n");
   int64_t n0 = 1;
   int64_t n1 = 0x10000000000000ul; // 2^-1022/2^-1074
-  int64_t skip = (n1 - n0) / CORE_MATH_TESTS;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
   n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
