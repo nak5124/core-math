@@ -1,4 +1,4 @@
-/* Correctly-rounded biased argument base-2 logarithm function for binary32 value.
+/* Correctly-rounded log2(1+x) function for binary32 value.
 
 Copyright (c) 2022 Alexei Sibidanov.
 
