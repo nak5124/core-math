@@ -137,9 +137,9 @@ float cr_lgammaf(float x){
 
   /* Check the value of fx to avoid a spurious invalid exception. */
   int k;
-  if (__builtin_expect (fx > (float) INT_MAX, 0))
+  if (__builtin_expect (fx >= 0x1p31f, 0))
     k = INT_MAX;
-  else if (__builtin_expect (fx < (float) INT_MIN, 0))
+  else if (__builtin_expect (fx < -0x1p31f, 0))
     k = INT_MIN;
   else
     k = fx;
