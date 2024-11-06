@@ -27,6 +27,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 #include <math.h>
+#include <limits.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -133,8 +134,15 @@ float cr_lgammaf(float x){
       return 0.0f;
     }
   }
-  
-  int k = fx;
+
+  /* Check the value of fx to avoid a spurious invalid exception. */
+  int k;
+  if (__builtin_expect (fx > (float) INT_MAX, 0))
+    k = INT_MAX;
+  else if (__builtin_expect (fx < (float) INT_MIN, 0))
+    k = INT_MIN;
+  else
+    k = fx;
   signgam = 1 - (((k&(k>>31))&1)<<1);
   double z = ax, f;
   if(__builtin_expect(ax<0x1.52p-1f, 0)){
