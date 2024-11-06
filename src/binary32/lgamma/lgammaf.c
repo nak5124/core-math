@@ -135,12 +135,13 @@ float cr_lgammaf(float x){
     }
   }
 
-  /* Check the value of fx to avoid a spurious invalid exception. */
+  /* Check the value of fx to avoid a spurious invalid exception.
+     Note that for a binary32 |x| >= 2^23, x is necessarily an integer,
+     and we already dealed with negative integers, thus now:
+     -2^23 < x < +Inf and x is not a negative integer nor 0, 1, 2. */
   int k;
   if (__builtin_expect (fx >= 0x1p31f, 0))
     k = INT_MAX;
-  else if (__builtin_expect (fx < -0x1p31f, 0))
-    k = INT_MIN;
   else
     k = fx;
   signgam = 1 - (((k&(k>>31))&1)<<1);
