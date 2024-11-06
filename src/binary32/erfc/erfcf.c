@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -91,6 +92,9 @@ float cr_erfcf(float xf){
       if(at == 0x7f800000) return 0.0f;         // +Inf
       return xf + xf;                           // NaN
     }
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     return 0x1p-149f * 0.25f;                   // 0 or 2^-149 wrt rounding
   }
   if(__builtin_expect(at <= 0x3db80000, 0)){ // |x| <= 0x1.7p-4
