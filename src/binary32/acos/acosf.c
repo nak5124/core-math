@@ -70,7 +70,7 @@ float cr_acosf(float x){
   b32u32_u t = {.f = x};
   uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>=0x7f<<24, 0)) return as_special(x);
-  if(__builtin_expect(ax<0x7ec29000u, 1)){ // |x| < 0x1.c29p-1
+  if(__builtin_expect(ax<0x7ec2a1dcu, 1)){ // |x| < 0x1.c2a1dcp-1
     static const double b[] =
       {0x1.fffffffd9ccb8p-1, 0x1.5555c94838007p-3, 0x1.32ded4b7c20fap-4, 0x1.8566df703309ep-5,
        -0x1.980c959bec9a3p-6, 0x1.56fbb04998344p-1, -0x1.403d8e4c49f52p+2, 0x1.b06c3e9f311eap+4,
