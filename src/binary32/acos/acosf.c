@@ -70,14 +70,14 @@ float cr_acosf(float x){
   b32u32_u t = {.f = x};
   uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>=0x7f<<24, 0)) return as_special(x);
-  if(__builtin_expect(ax<0x7ec29000u, 1)){
+  if(__builtin_expect(ax<0x7ec29000u, 1)){ // |x| < 0x1.c29p-1
     static const double b[] =
       {0x1.fffffffd9ccb8p-1, 0x1.5555c94838007p-3, 0x1.32ded4b7c20fap-4, 0x1.8566df703309ep-5,
        -0x1.980c959bec9a3p-6, 0x1.56fbb04998344p-1, -0x1.403d8e4c49f52p+2, 0x1.b06c3e9f311eap+4,
        -0x1.9ea97c4e2c21fp+6, 0x1.200b8261cc61bp+8, -0x1.2274c2799a5c7p+9, 0x1.a558a59cc19d3p+9,
        -0x1.aca4b6a529ffp+9, 0x1.228744703f813p+9, -0x1.d7dbb0b322228p+7, 0x1.5c2018c0c0105p+5};
     /* avoid spurious underflow */
-    if (__builtin_expect(ax < 0x40000000, 0)) // |x| < 2^-63
+    if (__builtin_expect(ax < 0x40000000u, 0)) // |x| < 2^-63
       return (float) pi2;
     double z = xs, z2 = z*z, z4 = z2*z2, z8 = z4*z4, z16=z8*z8;
     r = z*((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
