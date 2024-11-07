@@ -90,7 +90,9 @@ doit (uint32_t n)
   ref_fesetround (rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   ref_function_under_test (x, &y1, &y2);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   cr_function_under_test (x, &z1, &z2);
