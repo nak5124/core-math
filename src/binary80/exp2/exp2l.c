@@ -24,7 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* References:
+/* This code assumes "long double" corresponds to the 80-bit double extended
+   format.
+
+   References:
    [1] Note on the Veltkamp/Dekker Algorithms with Directed Roundings,
        Paul Zimmermann, https://inria.hal.science/hal-04480440, February 2024.
    [2] CR-LIBM A library of correctly rounded elementary functions in double-precision,

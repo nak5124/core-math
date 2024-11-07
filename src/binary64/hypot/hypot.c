@@ -100,7 +100,7 @@ static inline void set_flags (fexcept_t flag)
 typedef uint64_t u64;
 typedef int64_t i64;
 
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14 && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
 typedef unsigned _BitInt(128) u128;
 #else
 typedef unsigned __int128 u128;

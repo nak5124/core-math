@@ -24,7 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* References:
+/* This code assumes "long double" corresponds to the 80-bit double extended
+   format.
+
+   References:
    [1] Note on FastTwoSum with Directed Roundings, Sélène Corbineau and Paul
        Zimmermann, July 2024, https://inria.hal.science/hal-03798376.
    [2] An efficient rounding boundary test for pow(x,y) in double precision,

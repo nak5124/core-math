@@ -88,7 +88,7 @@ static inline int get_rounding_mode (void)
 #endif
 }
 
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14 && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
 typedef unsigned _BitInt(128) u128;
 typedef _BitInt(128) i128;
 #else

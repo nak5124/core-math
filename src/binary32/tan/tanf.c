@@ -79,7 +79,7 @@ __builtin_roundeven (double x)
 
 typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14 && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
 typedef unsigned _BitInt(128) u128;
 #else
 typedef unsigned __int128 u128;

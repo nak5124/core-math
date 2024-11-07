@@ -1,4 +1,4 @@
-/* Correctly rounded expl function for binary64 values.
+/* Correctly rounded expl function for binary80 values.
 
 Copyright (c) 2024 Sélène Corbineau, Alexei Sibidanov and Paul Zimmermann
 
@@ -24,7 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* References:
+/* This code assumes "long double" corresponds to the 80-bit double extended
+   format.
+
+   References:
    [1] Markstein, P. IA-64 and Elementary Functions.
        Hewlett-Packard Professional Books, 2000.
    [2] Note on FastTwoSum with Directed Roundings,
