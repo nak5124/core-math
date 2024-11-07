@@ -34,6 +34,11 @@ check () {
         echo "__int128 support is needed for" $FUNCTION "but is not available"
         doit=0
     fi
+    if [ "$doit" == "1" ] && [ "$SKIP80" == "1" ] && echo src/*/*/$FUNCTION.c | grep -q binary80; then
+        echo "binary80 support is needed for" $FUNCTION "but is not available"
+        doit=0
+    fi
+
     if [ "$doit" == "0" ]; then
         echo "Skip $FUNCTION"
     else
@@ -52,6 +57,13 @@ if $CC -E $CFLAGS ci/int128test.c -o /dev/null &> /dev/null; then
 else
     echo "Compiler lacks __int128 support"
     SKIP128=1
+fi
+
+if $CC -E $CFLAGS ci/ldbl80test.c -o /dev/null &> /dev/null; then
+    echo "long double is binary80"
+else
+    echo "long double is not binary80"
+    SKIP80=1
 fi
 
 for FUNCTION in "${FUNCTIONS_EXHAUSTIVE[@]}"; do
