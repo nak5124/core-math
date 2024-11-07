@@ -48,6 +48,7 @@ SOFTWARE.
 
 typedef unsigned __int128 u128;
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   u128 r;
   struct {
@@ -55,6 +56,15 @@ typedef union {
     uint64_t h;
   };
 } uint128_t;
+#else
+typedef union {
+  u128 r;
+  struct {
+    uint64_t h;
+    uint64_t l;
+  };
+} uint128_t;
+#endif
 
 // Add two 128 bit integers and return 1 if an overflow occured
 static inline int addu_128(uint128_t a, uint128_t b, uint128_t *r) {

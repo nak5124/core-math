@@ -348,7 +348,7 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
   return sh;
 }
 
-double __attribute__((noinline)) as_atan2_special(double y0, double x0){
+static double __attribute__((noinline)) as_atan2_special(double y0, double x0){
   d64u64 iy = {.f = y0}, ix = {.f = x0};
   u64 aiy = iy.u<<1, aix = ix.u<<1;
 

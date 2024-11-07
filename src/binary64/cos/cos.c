@@ -46,6 +46,7 @@ typedef unsigned _BitInt(128) u128;
 typedef unsigned __int128 u128;
 #endif
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   struct {
     u128 r;
@@ -59,7 +60,23 @@ typedef union {
     uint64_t sgn;
   };
 } dint64_t;
+#else
+typedef union {
+  struct {
+    u128 r;
+    int64_t _ex;
+    uint64_t _sgn;
+  };
+  struct {
+    uint64_t hi;
+    uint64_t lo;
+    int64_t ex;
+    uint64_t sgn;
+  };
+} dint64_t;
+#endif
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   u128 r;
   struct {
@@ -67,6 +84,15 @@ typedef union {
     uint64_t h;
   };
 } uint128_t;
+#else
+typedef union {
+  u128 r;
+  struct {
+    uint64_t h;
+    uint64_t l;
+  };
+} uint128_t;
+#endif
 
 typedef union {
   double f;
