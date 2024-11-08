@@ -158680,3 +158680,7 @@
 0x9.c0ef0edc0f74c3p+379
 0xa.33235f1bfb0b63dp+9825
 0x8.eba3c4b2a5db767p+141
+# extremal values
+0x1.fffffffffffffffep+13
+0x1.62e42fefa39ef356p+13
+0x1.62e42fefa39ef358p+13
