@@ -1179,9 +1179,12 @@ static inline void mul_qint_2 (qint64_t *r, int64_t b, const qint64_t *a) {
     }
 }
 
+#if 0
 // Prints a qint64_t value for debugging purposes
 static inline void print_qint(const qint64_t *a) {
   printf("{.hh=0x%lx, .hl=0x%lx, .lh=0x%lx, .ll=0x%lx, .ex=%ld, .sgn=0x%lx}\n",
          a->hh, a->hl, a->lh, a->ll, a->ex, a->sgn);
 }
+#endif
+
 #endif
