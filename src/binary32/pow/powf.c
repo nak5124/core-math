@@ -46,12 +46,12 @@ typedef union {double f; uint64_t u;} b64u64_u;
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
-#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
+#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__) || defined(__powerpc64__))
 #define HAS_BUILTIN_ROUNDEVEN
 #endif
 
 #if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-inline double __builtin_roundeven(double x){
+static inline double __builtin_roundeven(double x){
    double ix;
 #if defined __AVX__
    __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
