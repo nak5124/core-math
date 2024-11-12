@@ -386,6 +386,56 @@ def check_S(m=55,t=20,width=2^63,d=2,alpha=2,nthreads=64,out=None):
    if out != None:
       out.close()
 
+# nancy+explor
+# return list of (t0,t1,e,y) for all bacsel runs
+def statall(f):
+   f = open(f,"r")
+   l = []
+   while true:
+      s = f.readline()
+      if s=='':
+         break
+      s = s[:-1] # skip final \n
+      s = s.split(" ")
+      assert len(s) == 6, "len(s) == 6" # t0 t1 e nn m y
+      t0 = ZZ(s[0])
+      t1 = ZZ(s[1])
+      e = ZZ(s[2])
+      nn = ZZ(s[3])
+      assert nn==64, "nn==64"
+      m = ZZ(s[4])
+      assert m==169, "m==169"
+      y = R64(s[5],16)
+      l.append((t0,t1,e,y))
+   f.close()
+   return l
+
+# check if l contains all required checks for y
+# l = statall("/tmp/out")
+# check_complete_y(l,R64("0x1.8p-4",16))
+def check_complete_y(l,y,out):
+   Y = y.exact_rational()
+   emax = QQ(Y).denom()
+   # l should contain (2^63,2^64,e,y) for 0 <= e < emax
+   t0 = 2^63
+   t1 = 2^64
+   for e in range(emax):
+      if not (t0,t1,e,y) in l:
+         # print ("missing", (t0,t1,e,get_hex(y)))
+         print_bacsel_command(out,y,e,169,29,t0,t1,4,2,64)
+
+# l = statall("/tmp/out")
+# check_complete_all(l,"/tmp/missing")
+def check_complete_all(l,out=None):
+   if out != None:
+      out = open(out,"w")
+   S = get_S()
+   for y in S:
+      check_complete_y(l,y,out)
+   if out != None:
+      out.close()
+
+# return the values of y that appear in S
 def get_S():
    S = []
    for n in range(2,41+1):
