@@ -125,7 +125,7 @@ check_random (int i, int nthreads)
   ref_init ();
   fesetround (rnd1[rnd]);
   srand48_r (i, buffer);
-  for (int n = 0; n < CORE_MATH_TESTS; n += nthreads)
+  for (unsigned int n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     lrand48_r (buffer, &l);
     y = asfloat (l);
