@@ -1195,6 +1195,8 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	xh = __builtin_fma(l2.r, xh, -1); xl *= l2.r;
 	/* The above operations are exact (see the analysis in compute_log2pow). */
 
+	two_sum(&xh, &xl, xh, xl);
+
 	qint64_t reducted[1];
 	qint_fromdd(reducted, xh, xl);
 	/* From the fastpath we know that we should have |reducted| <= 2^-11.999.
