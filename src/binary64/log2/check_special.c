@@ -63,17 +63,6 @@ asuint64 (double f)
   return u.i;
 }
 
-static inline double
-asfloat64 (uint64_t i)
-{
-  union
-  {
-    uint64_t i;
-    double f;
-  } u = {i};
-  return u.f;
-}
-
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
