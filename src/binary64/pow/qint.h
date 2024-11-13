@@ -52,7 +52,7 @@ typedef unsigned _BitInt(128) u128;
 typedef unsigned __int128 u128;
 #endif
 
-#if __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   u128 r;
   struct {
@@ -112,7 +112,7 @@ static inline int subu128 (u128 a, u128 b, u128 *r) {
   return *r > a;
 }
 
-#if __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   /* Use a little-endian representation.
      FIXME: adapt for big-endian processors. */

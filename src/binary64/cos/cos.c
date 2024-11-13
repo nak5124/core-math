@@ -46,7 +46,7 @@ typedef unsigned _BitInt(128) u128;
 typedef unsigned __int128 u128;
 #endif
 
-#if __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   struct {
     u128 r;
@@ -76,7 +76,7 @@ typedef union {
 } dint64_t;
 #endif
 
-#if __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   u128 r;
   struct {

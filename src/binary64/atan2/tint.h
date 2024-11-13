@@ -39,7 +39,7 @@ typedef unsigned __int128 u128;
 // the following represent (-1)^sgn*(h/2^64+m/2^128+l/2^192)*2^ex
 // we have either h=m=l=0 to represent +0 or -0
 // or the most significant bit of h is 1
-#if __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   struct {
     uint64_t m, h, l; // put m before h on little-endian processor
