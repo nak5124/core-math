@@ -137,7 +137,9 @@ typedef union {
 #include "qint.h"
 static inline int get_rounding_mode (void)
 {
-#ifdef __x86_64__
+  /* Warning: on __aarch64__ (for example cfarm103), FE_UPWARD=0x400000
+     instead of 0x800. */
+#if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)
   const unsigned flagp = _mm_getcsr ();
   return (flagp&(3<<13))>>3;
 #else
