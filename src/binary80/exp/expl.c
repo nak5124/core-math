@@ -382,7 +382,7 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 	   Since |xr|<= 2^-19.999 we check that |Axr+B| <= 2^-2.049 and thus
 	   the error is at most 2^-92.011.
 
-	   Since |xsq| <= 2^-39.997 and ||A*xh+B| < 1/4 - 0.008, the product
+	   Since |xsq| <= 2^-39.997 and |A*xh+B| < 1/4 - 0.008, the product
 	   is bounded by 2^-39.997 * (1/4 - 0.008) < 2^-42.04. The rounding
 	   error on orders23 is thus at most ulp(2^-42.04) = 2^-95.
 	   Therefore |orders23| <= 2^-42.04 + 2^-95 < 2^-42.03.

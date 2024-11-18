@@ -121,15 +121,14 @@ check_random (int i, int nthreads)
 {
   int64_t l;
   float x, y;
-  struct drand48_data buffer[1];
   ref_init ();
   fesetround (rnd1[rnd]);
-  srand48_r (i, buffer);
+  srand (i);
   for (unsigned int n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
-    lrand48_r (buffer, &l);
+    l = rand () | (int64_t) rand () << 31;
     y = asfloat (l);
-    lrand48_r (buffer, &l);
+    l = rand () | (int64_t) rand () << 31;
     x = asfloat (l);
     check (y, x);
     check (y, -x);
