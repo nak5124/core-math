@@ -68,21 +68,21 @@ static inline double rfun(double x){
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
-double rand_arg(struct drand48_data *buf, double s){
+double rand_arg(double s){
   int64_t r0,r1;
-  mrand48_r(buf, &r0);
-  mrand48_r(buf, &r1);
+  r0 = rand () | (int64_t) rand () << 31;
+  r1 = rand () | (int64_t) rand () << 31;
   b64u64_u o = {.u = (((r0^(r1<<32))&(~(0x7ffull<<52)))|(0x3ffull<<52))};
   double r = o.f-copysign(1,o.f);
   return r*s;
 }
 
-double rand_arg2(struct drand48_data *buf){
+double rand_arg2(){
   int64_t r0,r1;
   b64u64_u o;
   do {
-    mrand48_r(buf, &r0);
-    mrand48_r(buf, &r1);
+    r0 = rand () | (int64_t) rand () << 31;
+    r1 = rand () | (int64_t) rand () << 31;
     o.u = r0^(r1<<32);
   } while((o.u<<1)>=(0x7ffull<<53));
   return o.f;
@@ -103,17 +103,16 @@ static void check_random(int seed, double a, double b, int64_t ntests){
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
-  struct drand48_data buf[1];
   if (verbose)
     printf("seed = %d\n",seed);
-  srand48_r(seed, buf);
+  srand(seed);
   int fail = 0, maxfail = 10;
   double s = (b - a)*0.5, m = (a+b)*0.5;
   int64_t count = 0;
   while(1){
     int64_t i = 0, n = 10*1000;
     for(;i<n;i++){
-      double x = m + rand_arg(buf, s);
+      double x = m + rand_arg(s);
       if(check(x)) fail++;
       if(fail>=maxfail) break;
     }
@@ -130,11 +129,10 @@ static void check_random(int seed, double a, double b, int64_t ntests){
 
 static void call_random(int seed, int64_t n, double a, double b){
   fesetround(rnd1[rnd]);
-  struct drand48_data buf[1];
-  srand48_r(seed, buf);
+  srand(seed);
   double s = (b - a)*0.5, m = (a+b)*0.5;
   for(int64_t j=0;j<n;j++){
-    double x = m + rand_arg(buf, s);
+    double x = m + rand_arg(s);
     tfun(x);
   }
 }
@@ -183,16 +181,15 @@ static void check_random_p(int seed, int64_t ntests){
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
-  struct drand48_data buf[1];
   if (verbose)
     printf("seed = %d\n",seed);
-  srand48_r(seed, buf);
+  srand(seed);
   int fail = 0, maxfail = 10;
   int64_t count = 0;
   while(1){
     int64_t i = 0, n = 10*1000;
     for(;i<n;i++){
-      double x = rand_arg2(buf);
+      double x = rand_arg2();
       if(check(x)) fail++;
       if(fail>=maxfail) break;
     }
