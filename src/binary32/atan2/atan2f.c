@@ -134,7 +134,12 @@ float cr_atan2f(float y, float x){
   
   double zx = x, zy = y;
   double z = (m[gt]*zx + m[1-gt]*zy)/(m[gt]*zy + m[1-gt]*zx);
+  // z = x/y if |y| > |x|, and z = y/x otherwise
+
   double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
+  /* z2 cannot underflow, since for |y|=0x1p-149 and |x|=0x1.fffffep+127
+     we get |z| > 2^-277 thus z2 > 2^-554, but z4 and z8 might underflow,
+     which might give spurious underflow exceptions. */
   double cn0 = cn[0] + z2*cn[1];
   double cn2 = cn[2] + z2*cn[3];
   double cn4 = cn[4] + z2*cn[5];
