@@ -358,14 +358,14 @@ check_signaling_nan (void)
   // check that foo(NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(sNaN,1.0) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
     exit (1);
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
-    fprintf (stderr, "Error, foo(sNaN,x) should be qNaN, got sNaN=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(sNaN,1.0) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
     exit (1);
   }
@@ -373,14 +373,14 @@ check_signaling_nan (void)
   // check that foo(NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(1.0,sNaN) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
     exit (1);
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
-    fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(1.0,sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
     exit (1);
   }
@@ -390,14 +390,14 @@ check_signaling_nan (void)
   // check that foo(NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(sNaN,1.0) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
     exit (1);
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
-    fprintf (stderr, "Error, foo(sNaN,x) should be qNaN, got sNaN=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(sNaN,1.0) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
     exit (1);
   }
@@ -405,14 +405,14 @@ check_signaling_nan (void)
   // check that foo(NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(1.0,sNaN) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
     exit (1);
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
-    fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
+    fprintf (stderr, "Error, foo(1.0,sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
     exit (1);
   }

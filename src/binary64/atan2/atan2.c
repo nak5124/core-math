@@ -199,6 +199,10 @@ atan2_accurate (double y, double x)
   /* First check when t=y/x is small and exact and x > 0, since for
      |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest). */
   double t = y / x;
+  /* If t underflows, then atan(y/x) rounds to t for x > 0, to pi for y > 0 and x < 0,
+     and to -pi for x, y < 0. */
+  if (t == 0)
+    return (x > 0) ? t : (y > 0) ? PI_H + PI_L : -PI_H - PI_L;
   double corr = __builtin_fma (t, x, -y);
   if (corr == 0 && x > 0) // t is exact
     if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
