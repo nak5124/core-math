@@ -135,27 +135,32 @@ float cr_atan2f(float y, float x){
   double zx = x, zy = y;
   double z = (m[gt]*zx + m[1-gt]*zy)/(m[gt]*zy + m[1-gt]*zx);
   // z = x/y if |y| > |x|, and z = y/x otherwise
-
-  double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
-  /* z2 cannot underflow, since for |y|=0x1p-149 and |x|=0x1.fffffep+127
-     we get |z| > 2^-277 thus z2 > 2^-554, but z4 and z8 might underflow,
-     which might give spurious underflow exceptions. */
-  double cn0 = cn[0] + z2*cn[1];
-  double cn2 = cn[2] + z2*cn[3];
-  double cn4 = cn[4] + z2*cn[5];
-  double cn6 = cn[6];
-  cn0 += z4*cn2;
-  cn4 += z4*cn6;
-  cn0 += z8*cn4;
+  double r;
+  int d = (int)ax-(int)ay;
+  if (__builtin_expect(d<(27<<23)&&d>(-(27<<23)),1)){
+    double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
+    /* z2 cannot underflow, since for |y|=0x1p-149 and |x|=0x1.fffffep+127
+       we get |z| > 2^-277 thus z2 > 2^-554, but z4 and z8 might underflow,
+       which might give spurious underflow exceptions. */
+    double cn0 = cn[0] + z2*cn[1];
+    double cn2 = cn[2] + z2*cn[3];
+    double cn4 = cn[4] + z2*cn[5];
+    double cn6 = cn[6];
+    cn0 += z4*cn2;
+    cn4 += z4*cn6;
+    cn0 += z8*cn4;
+    double cd0 = cd[0] + z2*cd[1];
+    double cd2 = cd[2] + z2*cd[3];
+    double cd4 = cd[4] + z2*cd[5];
+    double cd6 = cd[6];
+    cd0 += z4*cd2;
+    cd4 += z4*cd6;
+    cd0 += z8*cd4;
+    r = cn0/cd0;
+  } else {
+    r = 1;
+  }
   z *= sgn[gt];
-  double cd0 = cd[0] + z2*cd[1];
-  double cd2 = cd[2] + z2*cd[3];
-  double cd4 = cd[4] + z2*cd[5];
-  double cd6 = cd[6];
-  cd0 += z4*cd2;
-  cd4 += z4*cd6;
-  cd0 += z8*cd4;
-  double r = cn0/cd0;
   r = z*r + off[i];
   b64u64_u res = {.f = r};
   if(__builtin_expect(((res.u + 8)&0xfffffff) <= 16, 0)){
