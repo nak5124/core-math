@@ -112,6 +112,15 @@ check (float y, float x)
 #endif
 }
 
+static void
+check_all (float y, float x)
+{
+  check (y, x);
+  check (y, -x);
+  check (-y, x);
+  check (-y, -x);
+}
+
 #ifndef CORE_MATH_TESTS
 #define CORE_MATH_TESTS 1000000000ul // total number of tests
 #endif
@@ -130,10 +139,7 @@ check_random (int i, int nthreads)
     y = asfloat (l);
     l = rand () | (int64_t) rand () << 31;
     x = asfloat (l);
-    check (y, x);
-    check (y, -x);
-    check (-y, x);
-    check (-y, -x);
+    check_all (y, x);
   }
 }
 
@@ -191,6 +197,33 @@ check_spurious_underflow (void)
   }
 }
 
+/* check y,x near power of 2 */
+static void
+check_near_pow2 (void)
+{
+  for (int ex = -149; ex <= 128; ex++)
+  {
+    float x = ldexpf (0x1.fffffep-1f, ex);
+    float xl = nextafterf (x, 0.0);
+    float xh = nextafterf (x, 0x1.fffffep+127f);
+    for (int ey = -149; ey <= 128; ey++)
+    {
+      float y = ldexpf (0x1.fffffep-1f, ey);
+      float yl = nextafterf (y, 0.0);
+      float yh = nextafterf (y, 0x1.fffffep+127f);
+      check_all (y, x);
+      check_all (y, xl);
+      check_all (y, xh);
+      check_all (yl, x);
+      check_all (yl, xl);
+      check_all (yl, xh);
+      check_all (yh, x);
+      check_all (yh, xl);
+      check_all (yh, xh);
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -234,6 +267,8 @@ main (int argc, char *argv[])
     }
 
   check_spurious_underflow ();
+
+  check_near_pow2 ();
 
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
