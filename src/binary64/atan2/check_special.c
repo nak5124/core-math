@@ -118,6 +118,15 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
+static void
+check_all (double y, double x)
+{
+  check (y, x);
+  check (y, -x);
+  check (-y, x);
+  check (-y, -x);
+}
+
 #ifndef CORE_MATH_TESTS
 #define CORE_MATH_TESTS 1000000000ul // total number of tests
 #endif
@@ -193,6 +202,36 @@ check_small (void)
     check_small_aux (getpid () + i, nthreads);
 }
 
+/* check y,x near power of 2 */
+static void
+check_near_pow2 (void)
+{
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
+  for (int ex = -1074; ex <= 1024; ex++)
+  {
+    double x = ldexp (0x1.fffffffffffffp-1, ex);
+    double xl = nextafter (x, 0.0);
+    double xh = nextafter (x, 0x1.fffffffffffffp1023);
+    for (int ey = -1074; ey <= 1024; ey++)
+    {
+      double y = ldexp (0x1.fffffffffffffp-1, ey);
+      double yl = nextafter (y, 0.0);
+      double yh = nextafter (y, 0x1.fffffffffffffp1023);
+      check_all (y, x);
+      check_all (y, xl);
+      check_all (y, xh);
+      check_all (yl, x);
+      check_all (yl, xl);
+      check_all (yl, xh);
+      check_all (yh, x);
+      check_all (yh, xl);
+      check_all (yh, xh);
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -234,6 +273,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking y,x near powers of 2\n");
+  check_near_pow2 ();
 
   printf ("Checking small values\n");
   check_small ();
