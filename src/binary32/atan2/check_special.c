@@ -37,6 +37,7 @@ SOFTWARE.
 #include <mpfr.h>
 
 float cr_atan2f (float, float);
+extern int ref_fesetround (int);
 void ref_init (void);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
@@ -201,6 +202,9 @@ check_spurious_underflow (void)
 static void
 check_near_pow2 (void)
 {
+  ref_init ();
+  ref_fesetround (rnd);
+  fesetround(rnd1[rnd]);
   for (int ex = -149; ex <= 128; ex++)
   {
     float x = ldexpf (0x1.fffffep-1f, ex);
@@ -266,10 +270,13 @@ main (int argc, char *argv[])
         }
     }
 
+  printf ("Checking spurious underflow\n");
   check_spurious_underflow ();
 
+  printf ("Checking y,x near powers of 2\n");
   check_near_pow2 ();
 
+  printf ("Checking random values\n");
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
