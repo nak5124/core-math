@@ -224,7 +224,9 @@ static inline int issignaling(float x) {
 static void
 check_signaling_nan (void)
 {
+  fexcept_t flag;
   float snan = asfloat (0x7f800001);
+  feclearexcept (FE_INVALID);
   float y = cr_function_under_test (snan, 1.0f);
   // check that foo(NaN,x) = NaN
   if (!is_nan (y))
@@ -240,6 +242,15 @@ check_signaling_nan (void)
              asuint (y));
     exit (1);
   }
+  // check the invalid exception was set
+  fegetexceptflag (&flag, FE_INVALID);
+  if (!flag)
+  {
+    printf ("Missing invalid exception for x=%a y=%a\n", snan, 1.0f);
+    exit (1);
+  }
+
+  feclearexcept (FE_INVALID);
   // don't use 1 for 1st argument since powf(1,sNaN) = 1
   y = cr_function_under_test (-1.0f, snan);
   // check that foo(x,NaN) = NaN
@@ -256,8 +267,17 @@ check_signaling_nan (void)
              asuint (y));
     exit (1);
   }
+  // check the invalid exception was set
+  fegetexceptflag (&flag, FE_INVALID);
+  if (!flag)
+  {
+    printf ("Missing invalid exception for x=%a y=%a\n", -1.0f, snan);
+    exit (1);
+  }
+
   // also check sNaN with sign bit set
   snan = asfloat (0xff800001);
+  feclearexcept (FE_INVALID);
   y = cr_function_under_test (snan, 1.0f);
   // check that foo(NaN,x) = NaN
   if (!is_nan (y))
@@ -273,6 +293,15 @@ check_signaling_nan (void)
              asuint (y));
     exit (1);
   }
+  // check the invalid exception was set
+  fegetexceptflag (&flag, FE_INVALID);
+  if (!flag)
+  {
+    printf ("Missing invalid exception for x=%a y=%a\n", snan, 1.0f);
+    exit (1);
+  }
+
+  feclearexcept (FE_INVALID);
   // don't use 1 for 1st argument since powf(1,sNaN) = 1
   y = cr_function_under_test (-1.0f, snan);
   // check that foo(x,NaN) = NaN
@@ -287,6 +316,13 @@ check_signaling_nan (void)
   {
     fprintf (stderr, "Error, foo(x,sNaN) should be qNaN, got sNaN=%x\n",
              asuint (y));
+    exit (1);
+  }
+  // check the invalid exception was set
+  fegetexceptflag (&flag, FE_INVALID);
+  if (!flag)
+  {
+    printf ("Missing invalid exception for x=%a y=%a\n", -1.0f, snan);
     exit (1);
   }
 }

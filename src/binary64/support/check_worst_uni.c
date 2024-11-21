@@ -270,6 +270,7 @@ static inline int issignaling(double x) {
 static void
 check_signaling_nan (void)
 {
+  fexcept_t flag;
   double snan = asfloat64 (0x7ff0000000000001ull);
   double y = cr_function_under_test (snan);
   // check that foo(NaN) = NaN
