@@ -86,13 +86,20 @@ typedef unsigned __int128 u128;
 #endif
 typedef uint64_t u64;
 
+
+// argument reduction
+// for |z| < 2^28, return r such that 2/pi*x = q + r
 static inline double rltl(float z, int *q){
   double x = z;
+  /* The constants in idh, idl approximate 2/pi. Since idh is representable
+     on 28 bits, and x on 24 bits, idh is exact */
   double idl = -0x1.b1bbead603d8bp-32*x, idh = 0x1.45f306ep-1*x, id = __builtin_roundeven(idh);
   *q = (int64_t)id;
   return (idh - id) + idl;
 }
 
+// argument reduction
+// same as rltl, but for |x| >= 2^28
 static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   static const u64 ipi[] = {0xfe5163abdebbc562, 0xdb6295993c439041, 0xfc2757d1f534ddc0, 0xa2f9836e4e441529};
   int e = (u>>23)&0xff, i;
@@ -106,6 +113,7 @@ static double __attribute__((noinline)) rbig(uint32_t u, int *q){
   int k = e-127, s = k-23;
   /* in cr_tanf(), rbig() is called in the case 127+28 <= e < 0xff
      thus 155 <= e <= 254, which yields 28 <= k <= 127 and 5 <= s <= 104 */
+
   if (s<64) {
     i = p3h<<s|p3l>>(64-s);
     a = p3l<<s|p2l>>(64-s);
@@ -129,7 +137,7 @@ float cr_tanf(float x){
   b32u32_u t = {.f = x};
   int e = (t.u>>23)&0xff, i;
   double z;
-  if (__builtin_expect(e<127+28, 1)){
+  if (__builtin_expect(e<127+28, 1)){ // |x| < 2^28
     if (__builtin_expect(e<115, 0)){
       if (__builtin_expect(e<102, 0))
 	return __builtin_fmaf(x, __builtin_fabsf(x), x);
