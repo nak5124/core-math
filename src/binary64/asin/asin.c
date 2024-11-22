@@ -145,6 +145,7 @@ static u128 pasin(u128 x){
   return mUU(x, ch[0].a + mUU(x, ch[1].a + mUU(x, ch[2].a + mUU(x, t.a))));
 }
 
+// assume |x| >= 2^-26 since the case |x| < 2^-26 is treated in the fast path
 static double asin_acc(double x){
   static const u128_u s[] =
     {{.b = {0x4e29cf6e5fed0679, 0x648557de8d99f7e}},
@@ -184,19 +185,19 @@ static double asin_acc(double x){
 
   const unsigned rm = get_rounding_mode ();
   b64u64_u t = {.f = x};
-  int se = (((i64)t.u>>52)&0x7ff)-0x3ff;
+  int se = (((i64)t.u>>52)&0x7ff)-0x3ff; // -26 <= se
   i64 xsign = t.u&((i64)1<<63);
   double ax = __builtin_fabs(x);
   u128_u fi;
   u64 sm = (t.u<<11)|(i64)1<<63;
   u128_u sm2 = {.a = (u128)sm * sm};
-  if(__builtin_expect(ax<0.0131875,0)) {
-    int ss = 2*se;
-    sm2.a >>= -14 - ss;
+  if(__builtin_expect(ax<0.0131875,0)) { // then -26 <= se <= -7
+    int ss = 2*se; // -52 <= ss <= -14
+    sm2.a >>= -14 - ss; // the shift is well defined since 0 <= -14 - ss <= 38
     u128 Sm = (u128)(sm>>1)<<64;
     fi.a = Sm + muU(sm>>1, pasin(sm2.a));
     se += 0x3ff;
-  } else {
+  } else { // |x| >= 0.0131875, -7 <= se <= -1
     double xx = __builtin_fma(x,-x,1.0);
     b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt(xx)};
     ixx.f *= c.f;
@@ -230,7 +231,7 @@ static double asin_acc(double x){
     sm2.a += dsm3.a;
     int k = ixe-ce;
     ss = 24 + k;
-    u128_u Cm = {.b = {0, cm}}, D = {.b = {(u64)dc << ss, (u64)(dc>>-ss)}};
+    u128_u Cm = {.b = {0, cm}}, D = {.b = {(u64)dc << ss, (u64)(dc>>(64-ss))}};
     Cm.a -= D.a;
     h = sm2.a>>14;
     dc = mh(h, ixm);
