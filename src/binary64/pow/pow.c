@@ -1295,7 +1295,7 @@ exact_pow (double *r, double x, double y, const dint64_t *z)
     if ((E & (~0ull >> (64 + F))))
       return 0;
 
-    int64_t G, g = (E >> -F) * n;
+    int64_t G, g = (E >> -F) * n; // since F < 0, the shift by -F is ok
     /* g = E*y */
     int64_t k;
     round_54 (&G, &k, z); /* z is rounded to k*2^G */

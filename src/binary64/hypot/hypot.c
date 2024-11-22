@@ -179,7 +179,7 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const
   } else {
     u128 lm2 = (u128)lm*lm;
     ls *= 2;
-    m2 += lm2 >> -ls;
+    m2 += lm2 >> -ls; // since ls < 0, the shift by -ls is legitimate
     m2 |= !!(lm2 << (128 + ls));
   }
   int k = bs+re;
