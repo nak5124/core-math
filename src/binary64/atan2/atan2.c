@@ -496,7 +496,12 @@ double cr_atan2 (double y0, double x0){
     double rdh = 1/dh;
     dl += e;
     double nh = x*t0, nl = __builtin_fma(x,t0,-nh);
-    nh = fasttwosum(y-nh, -nl, &nl);
+    double dt = y-nh, y1 = dt+nh;
+    if( __builtin_expect(y1 == y, 1)){
+      nh = fasttwosum(dt, -nl, &nl);
+    } else {
+      nh = fasttwosum(dt, (y - y1) - nl, &nl);
+    }
     double zh = nh * rdh;
     z2 = zh*zh;
     double zl = rdh * (__builtin_fma(dh, -zh, nh) + (nl - (nh*rdh)*dl));
