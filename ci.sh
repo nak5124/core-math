@@ -44,7 +44,10 @@ check () {
     else
         echo "Checking $FUNCTION..."				
 	# we want to detect compiler warnings
-        EXTRA_CFLAGS=-Werror ./check.sh $DRY "$KIND" "$FUNCTION"
+	if [ "$EXTRA_CFLAGS" != "" ]; then
+	    EXTRA_CFLAGS=-Werror
+	fi
+        EXTRA_CFLAGS=$EXTRA_CFLAGS ./check.sh $DRY "$KIND" "$FUNCTION"
     fi
 }
 
