@@ -206,11 +206,14 @@ check_small (void)
 static void
 check_near_pow2 (void)
 {
-  ref_init ();
-  ref_fesetround (rnd);
-  fesetround(rnd1[rnd]);
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
   for (int ex = -1074; ex <= 1024; ex++)
   {
+    ref_init ();
+    ref_fesetround (rnd);
+    fesetround(rnd1[rnd]);
     double x = ldexp (0x1.fffffffffffffp-1, ex);
     double xl = nextafter (x, 0.0);
     double xh = nextafter (x, 0x1.fffffffffffffp1023);
