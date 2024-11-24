@@ -236,11 +236,11 @@ static double asinpi_acc(double x){
     if(__builtin_expect(sc>=0, 1))
       shr(&dsm3, sc);
     else
-      dsm3.a <<= -sc;
+      dsm3.a <<= -sc; // since sc < 0, the shift by -sc is legitimate
     sm2.a += dsm3.a;
     int k = ixe-ce;
     ss = 24 + k;
-    u128_u Cm = {.b = {0, cm}}, D = {.b = {(u64)dc << ss, (u64)(dc>>-ss)}};
+    u128_u Cm = {.b = {0, cm}}, D = {.b = {(u64)dc << ss, (u64)(dc>>64-ss)}};
     Cm.a -= D.a;
     h = sm2.a>>14;
     dc = mh(h, ixm);
@@ -248,7 +248,7 @@ static double asinpi_acc(double x){
     if(__builtin_expect(ss>=0,1))
       Cm.a -= (i128)dc>> ss;
     else
-      Cm.a -= (u128)dc<<-ss;
+      Cm.a -= (u128)dc<<-ss; // since ss < 0, the shift by -ss is legitimate
     fi.b[0] = 0xd313198a2e037073;
     fi.b[1] = 0x3243f6a8885a308;
     fi.a *= (u64)(64u - indx);
@@ -259,7 +259,7 @@ static double asinpi_acc(double x){
       Cm.a += mUU(Cm.a, z.a);
       fi.a -= Cm.a>>7;
     } else {
-      i128 v = muU(sm>>-se, s[indx-1].a) - (mUU(Cm.a,s[63-indx].a)>>-ce), msk = v>>127, v2 = sqrU(v) - (msk&(v+v));
+      i128 v = muU(sm>>-se, s[indx-1].a) - (mUU(Cm.a,s[63-indx].a)>>-ce), msk = v>>127, v2 = sqrU(v) - (msk&(v+v)); // since se<0 and ce<0, the shifts by -se and -ce are legitimate
       v2 <<= 14;
       u128 p = pasin(v2);
       v += mUU(p,v)-(msk&p);
@@ -615,7 +615,7 @@ double cr_asinpi(double x){
     if(__builtin_expect(sc>=0, 1))
       shl(&cm2, sc);
     else
-      cm2.a >>= -sc;
+      cm2.a >>= -sc; // since sc < 0, the shift by -sc is legitimate
     /* now frac(2^50*c^2) = cm2/2^128 */
     sm2.a += cm2.a; /* now frac(2^50*(x^2+c^2)) = sm2/2^128 */
     /* since |c-sqrt(xx)| < 2^-51.41, we have:
@@ -644,7 +644,7 @@ double cr_asinpi(double x){
     if(__builtin_expect(sc>=0,1))
       Cmh = cm<<sc;
     else
-      Cmh = cm>>-sc;
+      Cmh = cm>>-sc; // since sc < 0, the shift by -sc is legitimate
     Cmh -= sh[indx];
     /* We now need to add
        1/2*(1-x^2-c^2)/c to c. Instead we subtract 1/2*h/2^114*ixm*2^(ixe-52),
