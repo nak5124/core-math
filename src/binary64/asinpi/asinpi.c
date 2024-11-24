@@ -240,7 +240,7 @@ static double asinpi_acc(double x){
     sm2.a += dsm3.a;
     int k = ixe-ce;
     ss = 24 + k;
-    u128_u Cm = {.b = {0, cm}}, D = {.b = {(u64)dc << ss, (u64)(dc>>64-ss)}};
+    u128_u Cm = {.b = {0, cm}}, D = {.b = {(u64)dc << ss, (u64)(dc>>(64-ss))}};
     Cm.a -= D.a;
     h = sm2.a>>14;
     dc = mh(h, ixm);
