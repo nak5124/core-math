@@ -51,15 +51,15 @@ int verbose = 0;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
-get_random (struct drand48_data *buffer)
+get_random (void)
 {
   b64u64_u v;
   int64_t l;
-  lrand48_r (buffer, &l);
+  l = rand ();
   v.u = l;
-  lrand48_r (buffer, &l);
+  l = rand ();
   v.u |= (uint64_t) l << 31;
-  lrand48_r (buffer, &l);
+  l = rand ();
   v.u |= (uint64_t) l << 62;
   return v.f;
 }
@@ -141,14 +141,13 @@ check_random (int i, int nthreads)
   ref_init ();
   ref_fesetround (rnd);
   fesetround(rnd1[rnd]);
-  struct drand48_data buffer[1];
   double x, y;
-  srand48_r (i, buffer);
+  srand (i);
 
   for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
-    x = get_random (buffer);
-    y = get_random (buffer);
+    x = get_random ();
+    y = get_random ();
     check (x, y);
   }
 #undef N
@@ -261,16 +260,18 @@ check_worst_i (int m, int i, int nthreads)
   ref_init ();
   ref_fesetround (rnd);
   fesetround(rnd1[rnd]);
-  struct drand48_data buffer[1];
   double x, y;
-  srand48_r (getpid () + i, buffer);
+  srand (getpid () + i);
 
   for (uint64_t n = i; n < CORE_MATH_TESTS; n += nthreads)
   {
-    drand48_r (buffer, &x); // 0 <= x < 1
-    x = 0.5 + x * 0.5;      // 1/2 <= x < 1
-    drand48_r (buffer, &y);
-    y = ldexp (0.5 + x * 0.5, -m);
+    int e;
+    x = get_random ();
+    x = fabs (x);
+    x = frexp (x, &e); // 1/2 <= x < 1
+    y = get_random ();
+    y = frexp (y, &e);
+    y = ldexp (y, -m);
     y = y_worst (x, y);
     check (x, y);
   }
