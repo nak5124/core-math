@@ -124,14 +124,14 @@ check_triples_subnormal_above (void)
 typedef union {float f; uint32_t u;} b32u32_u;
 
 static float
-get_random (struct drand48_data *buffer)
+get_random (void)
 {
   b32u32_u v;
   int64_t l;
-  lrand48_r (buffer, &l);
+  l = rand ();
   v.u = l;
-  // lrand48_r generates only 31 bits
-  lrand48_r (buffer, &l);
+  // rand() generates only 31 bits
+  l = rand ();
   v.u |= (uint32_t) l << 31;
   return v.f;
 }
@@ -146,13 +146,12 @@ check_random (int seed, int nthreads)
   ref_init ();
   ref_fesetround (rnd);
   fesetround(rnd1[rnd]);
-  struct drand48_data buffer[1];
   float x, y;
-  srand48_r (seed, buffer);
+  srand (seed);
   for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
-    x = get_random (buffer);
-    y = get_random (buffer);
+    x = get_random ();
+    y = get_random ();
     check (x, y);
   }
 }
