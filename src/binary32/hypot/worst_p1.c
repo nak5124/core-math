@@ -231,8 +231,6 @@ inv_mod (uint64_t r, uint64_t p)
   return r;
 }
 
-typedef unsigned __int128 u128;
-
 /* Lift root r^2 = -1 mod p^e to root r'^2 mod p^(e+1) for e >= 1.
    Let r' = r + lambda*p^e,
    then r'^2 = r^2 + 2*lambda*r*p^e+lambda^2*p^(2*e)
@@ -248,15 +246,20 @@ typedef unsigned __int128 u128;
 static uint64_t
 lift_root (uint64_t r, uint64_t p, uint64_t pe) // pe = p^e
 {
-  u128 rr = r;
-  u128 s = rr * rr + 1;
-  assert (s % pe == 0);
-  uint64_t k = s / (u128) pe;
+  mpz_t s;
+  mpz_init (s);
+  mpz_set_ui (s, r);
+  mpz_mul (s, s, s);
+  mpz_add_ui (s, s, 1); // s = r^2+1
+  assert (mpz_fdiv_ui (s, pe) == 0);
+  mpz_divexact_ui (s, s, pe);
+  uint64_t k = mpz_get_ui (s);
   k = (pe - k) % p; // -k
   uint64_t lambda;
   uint64_t inv = inv_mod ((2 * r) % p, p);
   lambda = (k * inv) % p;
   r = (r + lambda * pe) % (pe * p);
+  mpz_clear (s);
   return r;
 }
 
