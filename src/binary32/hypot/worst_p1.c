@@ -251,7 +251,6 @@ lift_root (uint64_t r, uint64_t p, uint64_t pe) // pe = p^e
   mpz_set_ui (s, r);
   mpz_mul (s, s, s);
   mpz_add_ui (s, s, 1); // s = r^2+1
-  assert (mpz_fdiv_ui (s, pe) == 0);
   mpz_divexact_ui (s, s, pe);
   uint64_t k = mpz_get_ui (s);
   k = (pe - k) % p; // -k
