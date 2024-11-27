@@ -46,7 +46,7 @@ typedef union {double f; uint64_t u;} b64u64_u;
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
-#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__) || defined(__powerpc64__))
+#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__))
 # define roundeven_finite(x) __builtin_roundeven (x)
 #else
 /* round x to nearest integer, breaking ties to even */
@@ -69,7 +69,7 @@ roundeven_finite (double x)
     /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
     u.f = ix;
-    v.f = (x > 0) ? ix - 1.0 : ix + 1.0;
+    v.f = ix - __builtin_copysign (1.0, x);
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
       ix = v.f;
   }
