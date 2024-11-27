@@ -136,7 +136,7 @@ float cr_acoshf(float x) {
     int j = (m + ((int64_t)1<<(52-8)))>>(52-7);
     int e = (tp.u>>52) - 0x3ff;
     b64u64_u w = {.u = m | (uint64_t)0x3ff<<52};
-    double z = __builtin_fma(w.f, ix[j], -1.0);
+    double z = w.f * ix[j] - 1.0;
     static const double c[] = {0x1.0000000066947p+0, -0x1.00007f053d8cbp-1, 0x1.555280111d914p-2};
     double z2 = z*z;
     b64u64_u r = {.f = ((lix[128]*e + lix[j]) + z*c[0]) + z2*(c[1] + z*c[2])};
