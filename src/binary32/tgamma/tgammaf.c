@@ -36,41 +36,34 @@ SOFTWARE.
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
 #if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__) || defined(__powerpc64__))
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-static inline double __builtin_roundeven(double x){
-   double ix;
-#if defined __AVX__
-   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
-#elif __ARM_ARCH >= 8
-   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
-#else /* __SSE4_1__ */
-   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
-#endif
-   return ix;
-}
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static double
-__builtin_roundeven (double x)
+roundeven_finite (double x)
 {
-  double y = round (x); /* nearest, away from 0 */
-  if (fabs (y - x) == 0.5)
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    u.f = ix;
+    v.f = (x > 0) ? ix - 1.0 : ix + 1.0;
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -155,7 +148,7 @@ float cr_tgammaf(float x){
      0x1.1fd0051a0525bp-10, 0x1.9808a8b96c37ep-13, 0x1.b3f78e01152b5p-15, 0x1.49c85a7e1fd04p-18,
      0x1.471ca49184475p-19, -0x1.368f0b7ed9e36p-23, 0x1.882222f9049efp-23, -0x1.a69ed2042842cp-25};
 
-  double m = z - 0x1.7p+1, i = __builtin_roundeven(m), step = __builtin_copysign(1.0,i);
+  double m = z - 0x1.7p+1, i = roundeven_finite(m), step = __builtin_copysign(1.0,i);
   double d = m - i, d2 = d*d, d4 = d2*d2, d8 = d4*d4;
   double f = (c[0] + d*c[1]) + d2*(c[2] + d*c[3]) + d4*((c[4] + d*c[5]) + d2*(c[6] + d*c[7]))
     + d8*((c[8] + d*c[9]) + d2*(c[10] + d*c[11]) + d4*((c[12] + d*c[13]) + d2*(c[14] + d*c[15])));

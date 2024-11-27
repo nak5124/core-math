@@ -47,41 +47,34 @@ typedef union {double f; uint64_t u;} b64u64_u;
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
 #if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__) || defined(__powerpc64__))
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-static inline double __builtin_roundeven(double x){
-   double ix;
-#if defined __AVX__
-   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
-#elif __ARM_ARCH >= 8
-   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
-#else /* __SSE4_1__ */
-   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
-#endif
-   return ix;
-}
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static double
-__builtin_roundeven (double x)
+roundeven_finite (double x)
 {
-  double y = round (x); /* nearest, away from 0 */
-  if (fabs (y - x) == 0.5)
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    u.f = ix;
+    v.f = (x > 0) ? ix - 1.0 : ix + 1.0;
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -515,7 +508,7 @@ float as_powf_accurate2(float x0, float y0, int is_exact, FLAG_T flag){
   z2h = polydd(z2h,z2l, 13, ch, &z2l);
   zh = muldd(zh,zl, z2h,z2l, &zl);
   zh = mulddd(zh,zl, y, &zl);
-  double ey = e*y, eh = ey + zh, el = ((ey - eh) + zh) + zl, ee = __builtin_roundeven(eh);
+  double ey = e*y, eh = ey + zh, el = ((ey - eh) + zh) + zl, ee = roundeven_finite(eh);
   eh -= ee;
   eh = polydd(eh, el, 18, ce, &el);
   b64u64_u r = {.u = ((uint64_t)0x3ff+(int64_t)ee)<<52};

@@ -42,41 +42,34 @@ typedef union {double f; uint64_t u;} b64u64_u;
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
 #if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__) || defined(__powerpc64__))
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-static inline double __builtin_roundeven(double x){
-   double ix;
-#if defined __AVX__
-   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
-#elif __ARM_ARCH >= 8
-   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
-#else /* __SSE4_1__ */
-   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
-#endif
-   return ix;
-}
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static double
-__builtin_roundeven (double x)
+roundeven_finite (double x)
 {
-  double y = round (x); /* nearest, away from 0 */
-  if (fabs (y - x) == 0.5)
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    u.f = ix;
+    v.f = (x > 0) ? ix - 1.0 : ix + 1.0;
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -129,7 +122,7 @@ float cr_exp10f(float x){
       if(bt&msk) return ex[__builtin_popcount(msk&(bt-1))];
     }
   }
-  double a = iln102*z, ia = __builtin_roundeven(a), h = a - ia;
+  double a = iln102*z, ia = roundeven_finite(a), h = a - ia;
   int64_t ja = ia;
   b64u64_u sv = {.u = tb[ja&0x1f] + ((ja>>5)<<52)};
   double h2 = h*h, r = ((b[0] + h*b[1]) + h2*(b[2] + h*(b[3])))*(sv.f);

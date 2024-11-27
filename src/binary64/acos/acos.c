@@ -38,41 +38,34 @@ SOFTWARE.
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
 #if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__) || defined(__powerpc64__))
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-static inline double __builtin_roundeven(double x){
-   double ix;
-#if defined __AVX__
-   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
-#elif __ARM_ARCH >= 8
-   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
-#else /* __SSE4_1__ */
-   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
-#endif
-   return ix;
-}
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static double
-__builtin_roundeven (double x)
+roundeven_finite (double x)
 {
-  double y = round (x); /* nearest, away from 0 */
-  if (fabs (y - x) == 0.5)
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    u.f = ix;
+    v.f = (x > 0) ? ix - 1.0 : ix + 1.0;
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -221,7 +214,7 @@ double cr_acos (double x){
     // acos(x) = 2*asin((1-x)/2) and for x<-0.5 acos(x) = pi -
     // 2*asin((1-x)/2)
     t = 2 - 2*__builtin_fabs(x);
-    jd = __builtin_roundeven(t*0x1p5);
+    jd = roundeven_finite(t*0x1p5);
     z = __builtin_copysign(__builtin_sqrt(t), x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
@@ -230,7 +223,7 @@ double cr_acos (double x){
     // range for asin is the same for both branches to reuse the lookup
     // tables.
     t = x*x;
-    jd = __builtin_roundeven(t*0x1p7);
+    jd = roundeven_finite(t*0x1p7);
     t = __builtin_fma(x,x,-0x1p-7*jd);
     z = -x;
     zl = 0;
@@ -264,7 +257,7 @@ double as_acos_refine(double x, double phi){
   double ch = __builtin_sqrt(c2f);
   double cl = (c2l - __builtin_fma(ch,ch,-c2f))*((0.5/c2f)*ch);
 
-  int64_t jf = __builtin_roundeven(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
+  int64_t jf = roundeven_finite(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
   // sin(pi/64*j) in the double-double format
   static const double s[33][2] = {
     {0x0p+0, 0x0p+0}, {-0x1.912bd0d569a9p-61, 0x1.91f65f10dd814p-5},

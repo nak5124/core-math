@@ -1054,7 +1054,7 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
      const double magic = 0x1.8p+52;
      double k = __builtin_fma (rh, INVLOG2, magic) - magic;
   */
-  double k = __builtin_roundeven (rh * INVLOG2);
+  double k = roundeven_finite (rh * INVLOG2);
 
 #define LOG2H 0x1.62e42fefa39efp-13
 #define LOG2L 0x1.abc9e3b39803fp-68

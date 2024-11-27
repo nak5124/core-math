@@ -56,41 +56,34 @@ SOFTWARE.
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
 #if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__) || defined(__powerpc64__))
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-static inline double __builtin_roundeven(double x){
-   double ix;
-#if defined __AVX__
-   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
-#elif __ARM_ARCH >= 8
-   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
-#else /* __SSE4_1__ */
-   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
-#endif
-   return ix;
-}
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static double
-__builtin_roundeven (double x)
+roundeven_finite (double x)
 {
-  double y = round (x); /* nearest, away from 0 */
-  if (fabs (y - x) == 0.5)
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    u.f = ix;
+    v.f = (x > 0) ? ix - 1.0 : ix + 1.0;
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -643,7 +636,7 @@ static inline void q_1 (double *hi, double *lo, double zh, double zl) {
 static inline void exp_1 (double *hi, double *lo, double xh, double xl) {
 
 #define INVLOG2 0x1.71547652b82fep+12 /* |INVLOG2-2^12/log(2)| < 2^-43.4 */
-  double k = __builtin_roundeven (xh * INVLOG2);
+  double k = roundeven_finite (xh * INVLOG2);
 
   double kh, kl;
 #define LOG2H 0x1.62e42fefa39efp-13
@@ -730,7 +723,7 @@ exp_accurate (double *h, double *l, int *e, double xh, double xl)
   double th, tl, yh, yl;
   /* first reduce argument: xh + xl ~ k*log(2) + yh + yl */
 #define INVLOG2acc 0x1.71547652b82fep+0 // approximates 1/log(2)
-  int k = __builtin_roundeven (xh * INVLOG2acc);
+  int k = roundeven_finite (xh * INVLOG2acc);
   /* since |xh| <= 742, |k| <= round(742/log(2)) = 1070 */
   /* subtract k*log(2), where LOG2H+LOG2L approximates log(2) */
 #define LOG2Hacc 0x1.62e42fefa39efp-1
