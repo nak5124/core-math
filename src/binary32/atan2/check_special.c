@@ -31,6 +31,7 @@ SOFTWARE.
 #include <unistd.h>
 #include <fenv.h>
 #include <math.h>
+#include <errno.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
@@ -228,6 +229,32 @@ check_near_pow2 (void)
   }
 }
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
+static void
+check_errno (void)
+{
+  float x, y, z;
+  x = 0x1.fffffep+127f;
+  y = 0x1p-149f;
+  errno = 0;
+  z = cr_atan2f (y, x);
+  if (errno != ERANGE)
+  {
+    printf ("Missing errno=ERANGE for y=%a x=%a (z=%a)\n", y, x, z);
+    exit (1);
+  }
+  x = 0x1.fffffep+127f;
+  y = -0x1p-149f;
+  errno = 0;
+  z = cr_atan2f (y, x);
+  if (errno != ERANGE)
+  {
+    printf ("Missing errno=ERANGE for y=%a x=%a (z=%a)\n", y, x, z);
+    exit (1);
+  }
+}
+#endif
+
 int
 main (int argc, char *argv[])
 {
@@ -269,6 +296,10 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  check_errno ();
+#endif
 
   printf ("Checking spurious underflow\n");
   check_spurious_underflow ();
