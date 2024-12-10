@@ -91,7 +91,14 @@ float cr_atanf(float x){
   double r = cn0/cd0;
   if (!gt) return r; /* for |x| < 1, (float) r is correctly rounded */
 
-  /* now |x| >= 1 */
-  r = __builtin_copysign(0x1.0fdaa22168c23p-7, z) - r + __builtin_copysign(0x1.9p0, z);
+#define PI_OVER2_H 0x1.9p0
+#define PI_OVER2_L 0x1.0fdaa22168c23p-7
+  /* now r approximates atan(1/x), we use atan(x) + atan(1/x) = sign(x)*pi/2,
+     where PI_OVER2_H + PI_OVER2_L approximates pi/2.
+     With sign(z)*L + (-r + sign(z)*H), it fails for x=0x1.98c252p+12 and
+     rounding upward.
+     With sign(z)*PI - r, where PI is a double approximation of pi to nearest,
+     it fails for x=0x1.ddf9f6p+0 and rounding upward. */
+  r = (__builtin_copysign(PI_OVER2_L, z) - r) + __builtin_copysign(PI_OVER2_H, z);
   return r;
 }
