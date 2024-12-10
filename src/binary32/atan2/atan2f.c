@@ -109,9 +109,9 @@ float cr_atan2f(float y, float x){
     uint32_t yinf = ay==(0xff<<23), xinf = ax==(0xff<<23);
     if(yinf&xinf){
       if(ux>>31)
-	return 0x1.2d97c7f3321d2p+1*sgn[uy>>31];
+	return 0x1.2d97c7f3321d2p+1*sgn[uy>>31]; // +/-3pi/4
       else
-	return 0x1.921fb54442d18p-1*sgn[uy>>31];
+	return 0x1.921fb54442d18p-1*sgn[uy>>31]; // +/-pi/4
     }
     if(xinf){
       if(ux>>31)
@@ -124,7 +124,7 @@ float cr_atan2f(float y, float x){
     }
   }
   if(__builtin_expect(ay==0, 0)){
-    if(__builtin_expect(!(ay|ax),0)){
+    if(__builtin_expect(!ax,0)){
       uint32_t i = (uy>>31)*4 + (ux>>31)*2;
       if(ux>>31)
 	return off[i] + offl[i];
