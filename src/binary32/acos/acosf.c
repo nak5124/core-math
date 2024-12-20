@@ -80,7 +80,7 @@ float cr_acosf(float x){
     if (__builtin_expect(ax < 0x40000000u, 0)) // |x| < 2^-63
       /* GCC <= 11 wrongly assumes the rounding is to nearest and
          performs a constant folding here:
-         https://gcc.gnu.org/bugzilla/show_bug.cgi?id=112367 */
+         https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57245 */
       return (float) pi2;
     double z = xs, z2 = z*z, z4 = z2*z2, z8 = z4*z4, z16=z8*z8;
     r = z*((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +

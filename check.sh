@@ -119,7 +119,7 @@ if [ "$CFLAGS" == "" ]; then
 else
    # the core-math code assumes -frounding-math
    # see also https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
-   # and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=112367
+   # and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57245 (fixed in gcc12)
    export ROUNDING_MATH="-frounding-math"
 fi
 
