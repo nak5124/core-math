@@ -255,7 +255,7 @@ def format_sollya_poly(s):
 			print ("    {.hh = " + hex(l[3]) + ", .hl = " + hex(l[2]) + ", .lh = " +
 		hex(l[1]) + ", .ll = " + hex(l[0]) + ", .ex = " + str(e+255) +
 		", .sgn = 0x1}, /* degree " + str(i) + " */")
-	return [get_hex(p[n - i]) for i in [0..n]]
+	return [get_hex(p[n - i]) for i in range(n+1)]
 
 # for i in range(4):
 #    T=corr_tk(k=i)
@@ -412,7 +412,7 @@ def statall(f):
 
 # check if l contains all required checks for y
 # l = statall("/tmp/out")
-# check_complete_y(l,R64("0x1.8p-4",16))
+# check_complete_y(l,R64("0x1.8p-4",16),None)
 def check_complete_y(l,y,out):
    Y = y.exact_rational()
    emax = QQ(Y).denom()
@@ -420,9 +420,41 @@ def check_complete_y(l,y,out):
    t0 = 2^63
    t1 = 2^64
    for e in range(emax):
-      if not (t0,t1,e,y) in l:
+      le = [x for x in l if x[3]==y and x[2]==e]
+      le = merge(le)
+      if le != [(t0,t1,e,y)]:
          # print ("missing", (t0,t1,e,get_hex(y)))
+         print ("le",le)
          print_bacsel_command(out,y,e,169,29,t0,t1,4,2,64)
+
+from functools import cmp_to_key
+
+# sort by increasing increasing t0, then by decreasing t1
+def cmp(x,y):
+   if x[0] < y[0]:
+      return int(-1)
+   if x[0] > y[0]:
+      return int(1)
+   if x[1] > y[1]:
+      return int(-1)
+   if x[1] < y[1]:
+      return int(1)
+   return int(0)
+
+# merge list of (t0,t1,e,y) with same e and y
+def merge(l):
+   l.sort(key=cmp_to_key(cmp))
+   newl = []
+   for (t0,t1,e,y) in l:
+      if newl==[]:
+         newl.append((t0,t1,e,y))
+      elif t1<=newl[-1][1]: # range (t0,t1) already included in newl
+         pass
+      elif t0<=newl[-1][1] and t1>newl[-1][1]: # t0 included, t1 larger
+         newl[-1] = (newl[-1][0],t1,e,y)
+      else: # hole
+         newl.append((t0,t1,e,y))
+   return newl
 
 # l = statall("/tmp/out")
 # check_complete_all(l,"/tmp/missing")
