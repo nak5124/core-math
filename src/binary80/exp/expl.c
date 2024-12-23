@@ -990,6 +990,7 @@ evaluate_polynomial(tint_t *y, const tint_t* x) {
 
 // accurate path, where ri contains some information computed in the fast path:
 // x/log(2) ~ extra_exponent + 2^-20 fracpart + xs
+__attribute__((cold))
 static inline
 long double accurate_path(long double x, const redinfo* ri) {
 	tint_t tx[1];
@@ -1105,6 +1106,7 @@ long double accurate_path(long double x, const redinfo* ri) {
 	return retval.f;
 };
 
+__attribute__((cold))
 static inline
 long double catch_exceptions(long double x, bool* caught) {
  
