@@ -65,7 +65,7 @@ float cr_expf(float x){
   double z = x, a = iln2*z;
   b64u64_u u = {.f = a + big};
   uint32_t ux = t.u<<1;
-  if (__builtin_expect(ux>0x859d1d80u || ux<0x6f93813eu, 0)){
+  if (__builtin_expect(ux>0x8562e42eu || ux<0x6f93813eu, 0)){
     if(__builtin_expect(ux<0x6f93813eu, 1)) return 1.0 + z*(1 + z*0.5);
     if(ux >= 0xffu<<24) { // x is inf or nan
       if(ux > 0xffu<<24) return x + x; // x = nan
