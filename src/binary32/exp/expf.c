@@ -79,7 +79,7 @@ float cr_expf(float x){
       if(r==0.0f) errno = ERANGE;
       return r;
     }
-    if(t.u>0x42b17217u){
+    if(!(t.u>>31) && t.u>0x42b17217u){
       float r = 0x1p127f * 0x1p127f;
       if(r>0x1.fffffep127f) errno = ERANGE;
       return r;
