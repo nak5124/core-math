@@ -596,7 +596,6 @@ static __attribute__((noinline)) double as_tgamma_accurate(double x){
 }
 
 double cr_tgamma(double x){
-  //  return as_tgamma_accurate(x);
   b64u64_u t = {.f = x};
   uint64_t ax = t.u<<1;
   if(__builtin_expect(ax>=(0x7fful<<53), 0)){ /* x=NaN or +/-Inf */
@@ -654,7 +653,7 @@ double cr_tgamma(double x){
   double fx = __builtin_floor(x);
   /* compute k only after the overflow check, otherwise the case to integer
      might overflow */
-  int k = fx;
+  int64_t k = fx;
   if(__builtin_expect(fx==x, 0)){ /* x is integer */
     if(x == 0.0f){
       errno = ERANGE;
