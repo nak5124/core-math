@@ -83,7 +83,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   return ch;
 }
 
-double as_sinpi_zero(double x){
+static double as_sinpi_zero(double x){
   double x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
   double x3 = x2*x, dx3 = __builtin_fma(x2,x,-x3) + dx2*x;
   static const double ch[][2] = {

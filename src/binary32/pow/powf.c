@@ -474,7 +474,7 @@ float cr_powf(float x0, float y0){
 }
 
 // when is_exact is non-zero, flag is the original inexact flag
-float as_powf_accurate2(float x0, float y0, int is_exact, FLAG_T flag){
+static float as_powf_accurate2(float x0, float y0, int is_exact, FLAG_T flag){
   static const double o[] = {1, 2};
   static const double ch[][2] =
     {{0x1.71547652b82fep+1, 0x1.777d0ffda2b89p-55}, {0x1.ec709dc3a03fdp-1, 0x1.d27f04ff73b3ap-55},

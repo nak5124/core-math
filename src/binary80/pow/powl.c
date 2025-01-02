@@ -1005,7 +1005,7 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
    Assume 2^extra_exp * (rh + rl) = x^y * (1 + eps) with |eps| < 2^-83.287,
    with 0.499 < |rh| < 2.004, |rl| <= 2^-47.638.
 */
-inline static
+static
 long double fastpath_roundtest(double rh, double rl, int extra_exp,
                                bool invert, bool* fail) {
 	unsigned rm = get_rounding_mode();
