@@ -1865,6 +1865,7 @@ sin_fast (double *h, double *l, double x)
 }
 
 /* Assume x is a regular number, and |x| > 0x1.7137449123ef6p-26. */
+__attribute__((cold))
 static double
 sin_accurate (double x)
 {

@@ -121,7 +121,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   return ch;
 }
 
-static double __attribute__((noinline)) as_acos_refine(double, double);
+static double __attribute__((noinline,cold)) as_acos_refine(double, double);
 
 double cr_acos (double x){
   // coefficients of a polynomial approximation of asin(x):
@@ -244,6 +244,8 @@ double cr_acos (double x){
   return lb;
 }
 
+__attribute__((noinline,cold))
+static
 double as_acos_refine(double x, double phi){
   // Consider x as sin(phi) then cos(phi) is ch + cl = sqrt(1-x^2)
   // Using angle rotation formula bring the argument close to zero

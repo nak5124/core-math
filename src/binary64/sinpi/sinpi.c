@@ -117,7 +117,7 @@ double as_sinpi_zero(double x){
   return y0 + y1;
 }
 
-double as_sinpi_refine(int iq, double z){
+static double as_sinpi_refine(int iq, double z){
   double x = z*0x1p-63, x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
   static const double sh[][2] = {
     {0x1.921fb54442d18p+1, 0x1.1a62633145c06p-53}, {-0x1.4abbce625be53p-22, 0x1.05511cbc65743p-76},

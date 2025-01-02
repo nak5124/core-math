@@ -70,7 +70,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   return ch;
 }
 
-static double __attribute__((noinline)) as_exp_accurate(double x, double t, double th, double tl, double *l){
+static double __attribute__((cold,noinline)) as_exp_accurate(double x, double t, double th, double tl, double *l){
   static const double ch[][2] = {
     {0x1p+0, 0x1.6c16bd194535dp-94}, {0x1p-1, -0x1.8259d904fd34fp-93},
     {0x1.5555555555555p-3, 0x1.53e93e9f26e62p-57}};

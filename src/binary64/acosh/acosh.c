@@ -276,7 +276,7 @@ static __attribute__((noinline)) double as_acosh_database(double x, double f){
   return f;
 }
 
-double as_acosh_refine(double x, double a){
+static double as_acosh_refine(double x, double a){
   static const double t1[] = {
     0x1p+0, 0x1.ea4afap-1, 0x1.d5818ep-1, 0x1.c199bep-1, 0x1.ae89f98p-1, 0x1.9c4918p-1,
     0x1.8ace54p-1, 0x1.7a1147p-1, 0x1.6a09e68p-1, 0x1.5ab07ep-1, 0x1.4bfdad8p-1,

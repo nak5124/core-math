@@ -159,6 +159,7 @@ static u128 pasin(u128 x){
 #define ONE_OVER_PIL -0x1.6b01ec5417056p-56
 // asinpi_end
 
+__attribute__((cold))
 static double asinpi_acc(double x){
   static const u128_u s[] =
     {{.bl = 0x4e29cf6e5fed0679, .bh = 0x648557de8d99f7e},

@@ -381,6 +381,7 @@ static const double C2[47][27] = {
 /* Assuming 0 <= z <= 0x1.7afb48dc96626p+2, put in h+l an accurate
    approximation of erf(z).
    Assumes z >= 2^-61, thus no underflow can occur. */
+__attribute__((cold))
 static void
 cr_erf_accurate (double *h, double *l, double z)
 {

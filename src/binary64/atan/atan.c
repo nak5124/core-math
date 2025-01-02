@@ -152,7 +152,7 @@ static const uint16_t c[31][3] = {
 // this routine might be called for 0x1p-27 <= |x|
 // a is the approximation of atan(x) from the fast path
 // thus 0x1p-27 <= |a| <= pi/2
-static double __attribute__((noinline)) as_atan_refine2(double x, double a){
+static double __attribute__((cold,noinline)) as_atan_refine2(double x, double a){
   static const double ch[][2] = {
     {-0x1.5555555555555p-2, -0x1.5555555555555p-56}, {0x1.999999999999ap-3, -0x1.999999999bcb8p-57},
     {-0x1.2492492492492p-3, -0x1.249242093c016p-57}};

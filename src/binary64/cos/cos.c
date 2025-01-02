@@ -1858,6 +1858,7 @@ cos_fast (double *h, double *l, double x)
 }
 
 /* Assume x is a regular number and x > 0x1.6a09e667f3bccp-27. */
+__attribute__((cold))
 static double
 cos_accurate (double x)
 {

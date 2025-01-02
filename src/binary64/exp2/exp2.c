@@ -257,7 +257,7 @@ static const double t1[][2] = {
   {0x1.4a47a505b3a46p-54, 0x1.02b338c811703p+0}, {0x1.e47120223468p-54, 0x1.02be6e199c811p+0},
 };
 
-static double __attribute__((noinline)) as_exp2_accurate(double x){
+static double __attribute__((cold,noinline)) as_exp2_accurate(double x){
   b64u64_u ix = {.f = x};
   double sx = 4096.0*x, fx = roundeven_finite(sx), z = sx - fx;
   int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
