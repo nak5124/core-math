@@ -96,7 +96,10 @@ float cr_acospif(float x){
     double c6 = c[6] + z2*c[7];
     c0 += c2*z4;
     c4 += c6*z4;
-    c0 += c4*(z4*z4);
+    /* For |x| <= 0x1.0fd288p-127, we get an underflow in c4*(z4*z4),
+       but then, c0 alone is sufficiently accurate. */
+    if (__builtin_expect (ax > 0x1.0fd288p-127f, 1))
+      c0 += c4*(z4*z4);
     return 0.5 - z*c0;
   } else {
     double f = __builtin_sqrt(1-az);
