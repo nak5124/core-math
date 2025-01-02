@@ -1426,7 +1426,7 @@ is_exact (double x, double y)
       return 0;
     // since m is odd, x^y is an odd multiple of 2^(e*y)
     return e * y_int >= -1074;
-  } 
+  }
 
   uint64_t n = w.u & 0xfffffffffffffull;
   int64_t f = ((w.u << 1) >> 53) - 0x433;
@@ -1458,7 +1458,8 @@ is_exact (double x, double y)
     // now e <> 0 since the case |x|=1 has already been treated
     int64_t ez;
     if (f >= 0)
-      ez = (-n * e) << f;
+      // if f >= 12, since n*e <> 0, (n*e)<<f cannot be in [-1074,1024)
+      ez = (f < 12) ? (-n * e) << f : 1024;
     else { // f < 0 thus 2^-f should divide e
       t = __builtin_ctzll (e);
       if (-f > t) return 0; // 2^-f does not divide e
