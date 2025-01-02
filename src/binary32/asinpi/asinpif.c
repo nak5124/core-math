@@ -25,7 +25,6 @@ SOFTWARE.
 
 */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
