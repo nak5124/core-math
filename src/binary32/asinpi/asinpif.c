@@ -25,6 +25,7 @@ SOFTWARE.
 
 */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
@@ -95,6 +96,8 @@ float cr_asinpif(float x){
     c0 += c2*z4;
     c4 += c6*z4;
     c0 += c4*(z4*z4);
+    if (__builtin_expect(ax <= 0x1.921fb4p-126, 0))
+      errno = ERANGE; // underflow
     return z*c0;
   } else {
     double f = __builtin_sqrt(1-az);
