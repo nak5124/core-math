@@ -42,7 +42,11 @@ typedef unsigned __int128 u128;
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     uint64_t m, h, l; // put m before h on little-endian processor
+#else
+    uint64_t h, m, l; // put h before m on little-endian processor
+#endif
     int64_t ex;
     uint64_t sgn;
   };
