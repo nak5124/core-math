@@ -31,6 +31,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#include <errno.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
@@ -112,6 +113,7 @@ doit (uint32_t n)
 #endif
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
+  errno = 0;
   z = cr_function_under_test (x);
   fexcept_t inex_z;
   fegetexceptflag (&inex_z, FE_INEXACT);
@@ -135,6 +137,26 @@ doit (uint32_t n)
     printf ("Missing inexact exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
     if (!keep) exit (1);
+  }
+#endif
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  /* If x is a normal number and y is NaN, we should have errno = EDOM.
+     If x is a normal number and y is +/-Inf, we should have errno = ERANGE.
+  */
+  if (-0x1.fffffep+127f <= x && x <= 0x1.fffffep+127f)
+  {
+    if (is_nan (y) && errno != EDOM)
+    {
+      printf ("Missing errno=EDOM for x=%a (y=%a)\n", x, y);
+      fflush (stdout);
+      if (!keep) exit (1);
+    }
+    if (is_inf (y) && errno != ERANGE)
+    {
+      printf ("Missing errno=ERANGE for x=%a (y=%a)\n", x, y);
+      fflush (stdout);
+      if (!keep) exit (1);
+    }
   }
 #endif
 }
