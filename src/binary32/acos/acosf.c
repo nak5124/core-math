@@ -38,7 +38,7 @@ typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static __attribute__((noinline)) float as_special(float x){
-  const float pih = 0x1.921fb6p+1, pil = -0x1p-24f;
+  const float pih = 0x1.921fb6p+1f, pil = -0x1p-24f;
   b32u32_u t = {.f = x};
   if(t.u == (0x7fu<<23)) return 0.0f; // x=1
   if(t.u == (0x17fu<<23)) return pih + pil;  // x=-1
@@ -94,8 +94,8 @@ float cr_acosf(float x){
       {0x1.555555555529cp-3, 0x1.333333337e0ddp-4, 0x1.6db6db3b4465ep-5, 0x1.f1c72e13ac306p-6,
        0x1.6e89cebe06bc4p-6, 0x1.1c6dcf5289094p-6, 0x1.c6dbbcc7c6315p-7, 0x1.8f8dc2615e996p-7,
        0x1.a5833b7bf15e8p-8, 0x1.43f44ace1665cp-6, -0x1.0fb17df881c73p-6, 0x1.07520c026b2d6p-5};
-    if(t.u == 0x328885a3u) return 0x1.921fb6p+0f + 0x1p-25;
-    if(t.u == 0x39826222u) return 0x1.920f6ap+0f + 0x1p-25;
+    if(t.u == 0x328885a3u) return 0x1.921fb6p+0f + 0x1p-25f;
+    if(t.u == 0x39826222u) return 0x1.920f6ap+0f + 0x1p-25f;
     double x2 = xs*xs;
     r = (pi2 - xs) - (xs*x2)*poly12(x2, c);
   } else {
