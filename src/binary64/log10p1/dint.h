@@ -51,8 +51,11 @@ typedef unsigned __int128 u128;
 typedef union {
   u128 r;
   struct {
-    uint64_t l;
-    uint64_t h;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    uint64_t l, h;
+#else
+    uint64_t h, l;
+#endif
   };
 } uint128_t;
 
