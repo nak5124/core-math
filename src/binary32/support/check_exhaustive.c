@@ -112,7 +112,7 @@ doit (uint32_t n)
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround (rnd1[rnd]);
-  feclearexcept (FE_INEXACT);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW);
   errno = 0;
   z = cr_function_under_test (x);
   fexcept_t inex_z;
@@ -122,6 +122,13 @@ doit (uint32_t n)
   if (!is_equal (y, z))
   {
     printf ("FAIL x=%a ref=%a y=%a\n", x, y, z);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  // check spurious underflow
+  if ((y < -0x1p-149f || 0x1p-149f < y) && fetestexcept (FE_UNDERFLOW))
+  {
+    printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
     if (!keep) exit (1);
   }
@@ -276,7 +283,7 @@ static int doloop (void)
   check_exceptions ();
 
   // check regular numbers
-  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);
+  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127f);
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
   /* Use a static schedule with small chunks, since the function might be
      very easy to evaluate in some ranges, for example log of x < 0. */
