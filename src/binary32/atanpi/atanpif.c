@@ -45,7 +45,11 @@ float cr_atanpif(float x){
       if(t.u<<9) return x + x; // nan
       return f; // inf
     }
-    return f - 0x1.45f306p-2f/x;
+    // Warning: 0x1.45f306p-2f / x underflows for |x| >= 0x1.45f306p+124
+    if (__builtin_fabsf (x) >= 0x1.45f306p+124f)
+      return f - 4.0f / x;
+    else
+      return f - 0x1.45f306p-2f / x;
   }
   double z = x;
   if (__builtin_expect(e<127-13, 0)){

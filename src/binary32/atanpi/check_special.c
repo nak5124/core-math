@@ -1,4 +1,4 @@
-/* Generate special cases for acospif testing.
+/* Generate special cases for atanpif testing.
 
 Copyright (c) 2022-2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
@@ -38,7 +38,7 @@ SOFTWARE.
 #endif
 #include <mpfr.h>
 
-float cr_acospif (float);
+float cr_atanpif (float);
 void ref_init (void);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
@@ -51,12 +51,15 @@ int verbose = 0;
 static void
 check_spurious_underflow (void)
 {
-  float T[] = {0x1p-149f, -0x1p-149f};
-  for (int i = 0; i < 2; i++)
+  float T[] = {0xf.fffffp+124f, -0xf.fffffp+124f,
+               0x1.45f306p+124f, -0x1.45f306p+124f,
+               0x1.fffffep+127f, -0x1.fffffep+127f,
+               0x1.921fb6p-125f, 0x1.921fb6p-125f};
+  for (int i = 0; i < 8; i++)
   {
     float x = T[i];
     feclearexcept (FE_UNDERFLOW);
-    float y = cr_acospif (x);
+    float y = cr_atanpif (x);
     int inex = fetestexcept (FE_UNDERFLOW);
     if (inex)
     {
@@ -67,7 +70,7 @@ check_spurious_underflow (void)
     // also test -x
     x = -x;
     feclearexcept (FE_UNDERFLOW);
-    y = cr_acospif (x);
+    y = cr_atanpif (x);
     inex = fetestexcept (FE_UNDERFLOW);
     if (inex)
     {

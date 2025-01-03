@@ -126,7 +126,7 @@ doit (uint32_t n)
     if (!keep) exit (1);
   }
   // check spurious underflow
-  if ((y < -0x1p-149f || 0x1p-149f < y) && fetestexcept (FE_UNDERFLOW))
+  if ((y < -0x1p-126f || 0x1p-126f < y) && fetestexcept (FE_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
