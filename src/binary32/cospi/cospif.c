@@ -81,7 +81,14 @@ float cr_cospif(float x){
   }
   int32_t m = (ix.u&~0u>>9)|1<<23, s = 143 - e, p = e - 112;
   if(__builtin_expect(p<0, 0)) // |x| < 2^-15
-    return __builtin_fmaf(-0x1.3bd3ccp+2f*x, x, 1.0f);
+  {
+    uint32_t ax = ix.u & (~0u>>1);
+    // Warning: -0x1.3bd3ccp+2f * x underflows for |x| < 0x1.9f03p-129
+    if (ax >= 0x19f030u)
+      return __builtin_fmaf (-0x1.3bd3ccp+2f * x, x, 1.0f);
+    else // |x| < 0x1.9f03p-129
+      return __builtin_fmaf (-x, x, 1.0f);
+  }
   if(__builtin_expect(p>31, 0)) {
     if(__builtin_expect(p>63, 0)) return 1.0f;
     int32_t iq = m << (p - 32);
