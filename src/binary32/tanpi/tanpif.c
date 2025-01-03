@@ -79,7 +79,9 @@ float cr_tanpif(float x){
   if(__builtin_expect(e > (150<<23), 0)){
     if(e==(0xff<<23)){
       if(!(ix.u << 9)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	errno = EDOM;
+#endif
 	feraiseexcept (FE_INVALID);
 	return __builtin_nanf("inf");
       }
@@ -95,6 +97,9 @@ float cr_tanpif(float x){
     k &= 7;
     if(k==0) return  __builtin_copysignf(0.0f,x);
     if(k==4) return  -__builtin_copysignf(0.0f,x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     if(k==2) return  1.0f/0.0f;
     if(k==6) return -1.0f/0.0f;
   }
