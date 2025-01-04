@@ -51,52 +51,55 @@ int verbose = 0;
 static void
 check_near_underflow (void)
 {
-  /* for x=0x1.921fb6p-125, asinpi(x) should not underflow */
-  float x = 0x1.921fb6p-125f;
-  feclearexcept (FE_UNDERFLOW);
-  errno = 0;
-  float y = cr_asinpif (x);
-  int inex = fetestexcept (FE_UNDERFLOW);
-  if (inex)
-  {
-    fprintf (stderr, "Unexpected underflow exception for x=%a [y=%a]\n", x, y);
-    exit (1);
-  }
+  float Y[] = {0x1.921fb6p-125f, 0.0f};
+  /* for entries in Y[], asinpi(x) should not underflow */
+  for (int i = 0; i < 2; i++) {
+    float x = Y[i];
+    feclearexcept (FE_UNDERFLOW);
+    errno = 0;
+    float y = cr_asinpif (x);
+    int inex = fetestexcept (FE_UNDERFLOW);
+    if (inex)
+    {
+      fprintf (stderr, "Unexpected underflow exception for x=%a [y=%a]\n", x, y);
+      exit (1);
+    }
 #ifdef CORE_MATH_SUPPORT_ERRNO
-  // there should be no underflow
-  if (errno)
-  {
-    fprintf (stderr, "Unexpected errno=%d for x=%a [y=%a]\n", errno, x, y);
-    exit (1);
-  }
+    // there should be no underflow
+    if (errno)
+    {
+      fprintf (stderr, "Unexpected errno=%d for x=%a [y=%a]\n", errno, x, y);
+      exit (1);
+    }
 #endif
-  // also try -x
-  x = -0x1.921fb6p-121f;
-  feclearexcept (FE_UNDERFLOW);
-  errno = 0;
-  y = cr_asinpif (x);
-  inex = fetestexcept (FE_UNDERFLOW);
-  if (inex)
-  {
-    fprintf (stderr, "Unexpected underflow exception for x=%a [y=%a]\n", x, y);
-    exit (1);
-  }
-#ifdef CORE_MATH_SUPPORT_ERRNO
-  // there should be no underflow
-  if (errno)
-  {
-    fprintf (stderr, "Unexpected errno=%d for x=%a [y=%a]\n", errno, x, y);
-    exit (1);
-  }
-#endif
-  float X[] = {0x1.921fb4p-126f, 0x1.921fb2p-126f, 0x1p-126f,
-               0x1p-147f, 0x1p-148f, 0x1p-149f};
-  for (int i = 0; i < 6; i++) {
-    x = X[i];
+    // also try -x
+    x = -x;
     feclearexcept (FE_UNDERFLOW);
     errno = 0;
     y = cr_asinpif (x);
     inex = fetestexcept (FE_UNDERFLOW);
+    if (inex)
+    {
+      fprintf (stderr, "Unexpected underflow exception for x=%a [y=%a]\n", x, y);
+      exit (1);
+    }
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    // there should be no underflow
+    if (errno)
+    {
+      fprintf (stderr, "Unexpected errno=%d for x=%a [y=%a]\n", errno, x, y);
+      exit (1);
+    }
+#endif
+  }
+  float X[] = {0x1.921fb4p-126f, 0x1.921fb2p-126f, 0x1p-126f,
+               0x1p-147f, 0x1p-148f, 0x1p-149f};
+  for (int i = 0; i < 6; i++) {
+    float x = X[i];
+    feclearexcept (FE_UNDERFLOW);
+    errno = 0;
+    float y = cr_asinpif (x);
+    int inex = fetestexcept (FE_UNDERFLOW);
     if (!inex)
     {
       fprintf (stderr, "Missing underflow exception for x=%a [y=%a]\n",
