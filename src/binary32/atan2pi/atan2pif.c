@@ -107,38 +107,27 @@ float cr_atan2pif(float y, float x){
   
   double zx = x, zy = y;
   double z = (m[gt]*zx + m[1-gt]*zy)/(m[gt]*zy + m[1-gt]*zx);
-  double z2 = z*z, z4, z8;
-  // avoid spurious underflow when computing z4 and z8
-  if (__builtin_expect (__builtin_fabs (z2) >= 0x1p-511, 1))
-  {
-    z4 = z2 * z2;
-    if (__builtin_expect (__builtin_fabs (z4) >= 0x1p-511, 1))
-      z8 = z4*z4;
-    else
-      z8 = 0.0;
+  double r = cn[0], z2 = z*z;
+  // avoid spurious underflow in the polynomial evaluation excluding extremely small arguments
+  if(__builtin_expect(z2>0x1p-54, 1)){
+    double z4 = z2*z2, z8 = z4*z4;
+    double cn0 =     r + z2*cn[1];
+    double cn2 = cn[2] + z2*cn[3];
+    double cn4 = cn[4] + z2*cn[5];
+    double cn6 = cn[6];
+    cn0 += z4*cn2;
+    cn4 += z4*cn6;
+    cn0 += z8*cn4;
+    z *= sgn[gt];
+    double cd0 = cd[0] + z2*cd[1];
+    double cd2 = cd[2] + z2*cd[3];
+    double cd4 = cd[4] + z2*cd[5];
+    double cd6 = cd[6];
+    cd0 += z4*cd2;
+    cd4 += z4*cd6;
+    cd0 += z8*cd4;
+    r = cn0/cd0;
   }
-  else
-    z4 = z8 = 0.0;
-  double cn0 = cn[0] + z2*cn[1];
-  double cn2 = cn[2] + z2*cn[3];
-  double cn4 = cn[4] + z2*cn[5];
-  double cn6 = cn[6];
-  cn0 += z4*cn2;
-  // use a FMA to avoid a spurious underflow in z4*cn6
-  cn4 = __builtin_fma (z4, cn6, cn4);
-  // same for z8*cn4
-  cn0 = __builtin_fma (z8, cn4, cn0);
-  z *= sgn[gt];
-  double cd0 = cd[0] + z2*cd[1];
-  double cd2 = cd[2] + z2*cd[3];
-  double cd4 = cd[4] + z2*cd[5];
-  double cd6 = cd[6];
-  cd0 += z4*cd2;
-  // use a FMA to avoid a spurious underflow in z4*cd6
-  cd4 = __builtin_fma (z4, cd6, cd4);
-  // same for z8*cd4
-  cd0 = __builtin_fma (z8, cd4, cd0);
-  double r = cn0/cd0;
   r = z*r + off[i];
   b64u64_u res = {.f = r};
   if(__builtin_expect((res.u<<1) > 0x6d40000000000000 && ((res.u + 8)&0xfffffff) <= 16, 0)){
