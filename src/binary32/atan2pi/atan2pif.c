@@ -108,6 +108,7 @@ float cr_atan2pif(float y, float x){
   double zx = x, zy = y;
   double z = (m[gt]*zx + m[1-gt]*zy)/(m[gt]*zy + m[1-gt]*zx);
   double r = cn[0], z2 = z*z;
+  z *= sgn[gt];
   // avoid spurious underflow in the polynomial evaluation excluding extremely small arguments
   if(__builtin_expect(z2>0x1p-54, 1)){
     double z4 = z2*z2, z8 = z4*z4;
@@ -118,7 +119,6 @@ float cr_atan2pif(float y, float x){
     cn0 += z4*cn2;
     cn4 += z4*cn6;
     cn0 += z8*cn4;
-    z *= sgn[gt];
     double cd0 = cd[0] + z2*cd[1];
     double cd2 = cd[2] + z2*cd[3];
     double cd4 = cd[4] + z2*cd[5];
