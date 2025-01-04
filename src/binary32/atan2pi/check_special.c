@@ -137,6 +137,65 @@ check_random (int i, int nthreads)
   }
 }
 
+static void
+check_spurious_underflow (void)
+{
+  float T[6][2] = {
+    {0x1p+0f, 0xf.fffffp+124f},
+    {0x4p-128f, 0xf.fffffp+124f},
+    {0x8p-152f, 0x1p+0f},
+    {0x8p-152f, 0xf.fffffp+124f},
+    {0xf.fffffp+124f, 0x4p-128f},
+    {0xf.fffffp+124f, 0x8p-152f},
+  };
+  for (int i = 0; i < 6; i++)
+  {
+    float y = T[i][0], x = T[i][1];
+    feclearexcept (FE_UNDERFLOW);
+    float z = cr_atan2pif (y, x);
+    int inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,x
+    y = -y;
+    feclearexcept (FE_UNDERFLOW);
+    z = cr_atan2pif (y, x);
+    inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,-x
+    x = -x;
+    feclearexcept (FE_UNDERFLOW);
+    z = cr_atan2pif (y, x);
+    inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test y,-x
+    y = -y;
+    feclearexcept (FE_UNDERFLOW);
+    z = cr_atan2pif (y, x);
+    inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -178,6 +237,8 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  check_spurious_underflow ();
 
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
