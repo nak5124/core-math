@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -177,7 +178,12 @@ float cr_atan2pif(float y, float x){
       }
     }
   }
-  return r;
+  float rf = r;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  if (__builtin_expect (rf == 0.0f && y != 0.0f, 0))
+    errno = ERANGE;
+#endif
+  return rf;
 }
 
 #ifndef SKIP_C_FUNC_REDEF // icx provides this function

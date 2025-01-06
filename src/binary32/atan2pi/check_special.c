@@ -31,6 +31,7 @@ SOFTWARE.
 #include <unistd.h>
 #include <fenv.h>
 #include <math.h>
+#include <errno.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
@@ -196,6 +197,57 @@ check_spurious_underflow (void)
   }
 }
 
+static void
+check_errno (void)
+{
+  float T[2][2] = {
+    {0x1p-149f, 0x1.fffffep+127f},
+    {0x1.8p-148f, 0x1.20f90cp+1f},
+  };
+  for (int i = 0; i < 2; i++)
+  {
+    float y = T[i][0], x = T[i][1];
+    errno = 0;
+    float z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,x
+    y = -y;
+    errno = 0;
+    z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,-x
+    x = -x;
+    errno = 0;
+    z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test y,-x
+    y = -y;
+    errno = 0;
+    z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -238,8 +290,13 @@ main (int argc, char *argv[])
         }
     }
 
+  printf ("Checking errno\n");
+  check_errno ();
+
+  printf ("Checking spurious underflow\n");
   check_spurious_underflow ();
 
+  printf ("Checking random inputs\n");
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
