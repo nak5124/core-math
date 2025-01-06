@@ -126,7 +126,9 @@ float cr_lgammaf(float x){
   }
   if(__builtin_expect(fx==x, 0)){
     if(x <= 0.0f) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;
+#endif
       return 1.0f/0.0f;
     }
     if(x==1.0f || x==2.0f) {
@@ -157,9 +159,11 @@ float cr_lgammaf(float x){
     f = (c0*s)*as_r8(s, rn)/as_r8(s, rd) - as_ln(z);
   } else {
     if(ax > 0x1.afc1ap+1f){
-      if(__builtin_expect(x > 0x1.895f1cp+121f, 0)){
+      if(__builtin_expect(x >= 0x1.895f1cp+121f, 0)){
 	float r = 0x1p127f * 0x1p127f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	if(r>0x1.fffffep+127f) errno = ERANGE;
+#endif
 	return r;
       }
       double lz = as_ln(z);
