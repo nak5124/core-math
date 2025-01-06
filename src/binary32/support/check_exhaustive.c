@@ -150,7 +150,7 @@ doit (uint32_t n)
   /* If x is a normal number and y is NaN, we should have errno = EDOM.
      If x is a normal number and y is +/-Inf, we should have errno = ERANGE.
   */
-  if (-0x1.fffffep+127f <= x && x <= 0x1.fffffep+127f)
+  if (!is_nan (x) && !is_inf (x))
   {
     if (is_nan (y) && errno != EDOM)
     {
