@@ -142,7 +142,9 @@ float cr_tanf(float x){
     z = rbig(t.u, &i);
   } else {
     if(t.u<<9) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     feraiseexcept(FE_INVALID);
     return __builtin_nanf("tinf"); // inf
   }

@@ -475,7 +475,9 @@ double cr_asinpi(double x){
          and 0x1.1a62633145c07p-54 is pi/2-h rounded to nearest */
       return x * 0.5; // asinpi_specific
     if (e==0x400 && m) return x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     feraiseexcept (FE_INVALID);
     return __builtin_nan ("");
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */

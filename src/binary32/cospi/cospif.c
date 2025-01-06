@@ -73,7 +73,9 @@ float cr_cospif(float x){
   int32_t e = (ix.u>>23)&0xff;
   if(__builtin_expect(e == 0xff, 0)){
     if(!(ix.u << 9)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       feraiseexcept (FE_INVALID);
       return __builtin_nanf("inf");
     }

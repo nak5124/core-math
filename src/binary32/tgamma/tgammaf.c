@@ -90,7 +90,9 @@ float cr_tgammaf(float x){
   if(__builtin_expect(ax>=(0xffu<<24), 0)){ /* x=NaN or +/-Inf */
     if(ax==(0xffu<<24)){ /* x=+/-Inf */
       if(t.u>>31){ /* x=-Inf */
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	errno = EDOM;
+#endif
 	return x / x; /* will raise the "Invalid operation" exception */
       }
       return x; /* x=+Inf */
@@ -103,7 +105,9 @@ float cr_tgammaf(float x){
     volatile double d = (0x1.fa658c23b1578p-1 - 0x1.d0a118f324b63p-1*z)*z - 0x1.2788cfc6fb619p-1;
     double f = 1.0/z + d;
     float r = f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
     if(__builtin_fabsf(r)>0x1.fffffep+127f) errno = ERANGE;
+#endif
     b64u64_u rt = {.f = f};
     if(((rt.u+2)&0xfffffff) < 4){
       for(unsigned i=0;i<sizeof(tb)/sizeof(tb[0]);i++)
@@ -113,9 +117,11 @@ float cr_tgammaf(float x){
   }
   float fx = __builtin_floorf(x);
   if(__builtin_expect(x >= 0x1.18522p+5f, 0)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
     /* The C standard says that if the function overflows,
        errno is set to ERANGE. */
     errno = ERANGE;
+#endif
     return 0x1p127f * 0x1p127f;
   }
   /* compute k only after the overflow check, otherwise the case to integer
@@ -123,11 +129,15 @@ float cr_tgammaf(float x){
   int k = fx;
   if(__builtin_expect(fx==x, 0)){ /* x is integer */
     if(x == 0.0f){
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;
+#endif
       return 1.0f/x;
     }
     if(x < 0.0f) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       return 0.0f / 0.0f; /* should raise the "Invalid operation" exception */
     }
     double t0 = 1, x0 = 1;
@@ -137,9 +147,11 @@ float cr_tgammaf(float x){
   if(__builtin_expect(x<-42.0f, 0)){ /* negative non-integer */
     /* For x < -42, x non-integer, |gamma(x)| < 2^-151.  */
     static const float sgn[2] = {0x1p-127f, -0x1p-127f};
+#ifdef CORE_MATH_SUPPORT_ERRNO
     /* The C standard says that if the function underflows,
        errno is set to ERANGE. */
     errno = ERANGE;
+#endif
     return 0x1p-127f * sgn[k&1];
   }
   static const double c[] =
@@ -163,7 +175,9 @@ float cr_tgammaf(float x){
   f *= w;
   b64u64_u rt = {.f = f};
   float r = f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
   if(__builtin_expect(r==0.0f, 0)) errno = ERANGE;
+#endif
   /* Deal with exceptional cases.  */
   if(__builtin_expect(((rt.u+2)&0xfffffff) < 8, 0)){
     for(unsigned j=0;j<sizeof(tb)/sizeof(tb[0]);j++) {

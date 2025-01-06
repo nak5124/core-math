@@ -387,7 +387,9 @@ double cr_asin(double x){
       return __builtin_copysign (0x1.921fb54442d18p+0, x)
         + __builtin_copysign (0x1.1a62633145c07p-54, x);
     if (e==0x400 && m) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     feraiseexcept (FE_INVALID);
     return __builtin_nan (">1");
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */

@@ -42,7 +42,9 @@ static __attribute__((noinline)) float as_special(float x){
   if(t.u==0x3f800000u) return 0.0f;
   if((t.u<<1)>0xff000000u) return x + x; // nan
   if(t.u==0x7f800000u) return x; // inf
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
+#endif
   return __builtin_nanf("<1");
 }
 

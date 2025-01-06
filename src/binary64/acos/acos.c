@@ -207,7 +207,9 @@ double cr_acos (double x){
     if(__builtin_expect(ax>=0x7fe0000000000000ull, 0)){ // |x| >= 1
       if(ax==0x7fe0000000000000ull) return f0h + f0l; // |x| = 1
       if(ax>0xffe0000000000000ull) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       return 0./0.; // |x|>1
     }
     // for x>0.5 we use range reduction for double angle formula

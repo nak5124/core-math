@@ -155,7 +155,9 @@ double cr_rsqrt(double x){
     if(!(ix.u<<1)) return -__builtin_inf(); // x=-0
     if(ix.u > 0xfff0000000000000ull) return x + x; // nan
     if(ix.u >> 63){
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       feraiseexcept (FE_INVALID);
       return __builtin_nan("<0");
     }

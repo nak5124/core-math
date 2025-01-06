@@ -58,9 +58,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
-#endif
 #ifdef __x86_64__
 #include <x86intrin.h>
 #endif

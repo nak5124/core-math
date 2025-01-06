@@ -26,9 +26,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
-#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
-#endif
 #include "dint.h"
 
 // Warning: clang also defines __GNUC__

@@ -200,7 +200,9 @@ double cr_tanpi(double x){
     if(__builtin_expect(ax >= ((uint64_t)0x42d<<52), 0)) {
       if(__builtin_expect(ax >= ((uint64_t)0x7ff<<52), 0)) {
 	if(__builtin_expect(ax > ((uint64_t)0x7ff<<52), 0)) return x;
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	errno = EDOM;
+#endif
 	return 0.0/0.0;
       }
       int32_t e = ax>>52, s = e - 1069;

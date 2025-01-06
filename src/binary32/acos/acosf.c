@@ -44,7 +44,9 @@ static __attribute__((noinline)) float as_special(float x){
   if(t.u == (0x17fu<<23)) return pih + pil;  // x=-1
   uint32_t ax = t.u<<1;
   if(ax>(0xffu<<24)) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
+#endif
   return 0.0f/0.0f; // to raise FE_INVALID
 }
 

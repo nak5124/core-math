@@ -216,7 +216,9 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const
 static double __attribute__((noinline)) as_hypot_overflow (void){
   volatile double z = 0x1.fffffffffffffp1023;
   double f = z + z;
+#ifdef CORE_MATH_SUPPORT_ERRNO
   if(f>z) errno = ERANGE;
+#endif
   return f;
 }
 

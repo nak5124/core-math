@@ -184,7 +184,9 @@ double cr_acosh(double x){
   b64u64_u ix = {.f = x};
   if(__builtin_expect((int64_t)ix.u<=0x3ff0000000000000ll, 0)){
     if(ix.u==0x3ff0000000000000ull) return 0;
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     return __builtin_nan("x<1");
   }
   double x2h = x*x, z = 1/x2h, g = 0;
@@ -224,7 +226,9 @@ double cr_acosh(double x){
     if(__builtin_expect(ix.u>=0x7ff0000000000000ull, 0)){
       u64 aix = ix.u<<1;
       if(ix.u==0x7ff0000000000000ull || aix>((u64)0x7ff<<53)) return x + x; // +inf or nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       return __builtin_nan("x<1");
     }
   }

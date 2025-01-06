@@ -37,9 +37,7 @@ SOFTWARE.
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
-#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
-#endif
 
 #include "function_under_test.h"
 

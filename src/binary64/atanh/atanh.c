@@ -126,11 +126,15 @@ double cr_atanh(double x){
   u64 aix = ix.u;
   if(__builtin_expect(aix>=0x3ff0000000000000ull,0)){
     if(aix==0x3ff0000000000000ull){
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;
+#endif
       return __builtin_copysign(1, x) / 0.0;
     }
     if(aix>0x7ff0000000000000ull) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     return __builtin_sqrt(-1.0);
   }
 

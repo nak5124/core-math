@@ -168,7 +168,9 @@ static void __attribute__((noinline)) as_sincosf_big(float x, float *sout, float
       *cout = x + x;
       return; // nan
     }
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     *sout = 0.0f/0.0f; // to raise FE_INVALID
     *cout = 0.0f/0.0f; // to raise FE_INVALID
     return;

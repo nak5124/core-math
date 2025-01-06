@@ -47,7 +47,9 @@ float cr_acospif(float x){
     if(x == 1.0f) return 0.0f;
     if(x ==-1.0f) return 1.0f;
     if(e==0xff && (t.u<<9)) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     feraiseexcept(FE_INVALID);
     return __builtin_nanf("1");
   }
