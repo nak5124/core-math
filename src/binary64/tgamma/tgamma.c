@@ -601,7 +601,9 @@ double cr_tgamma(double x){
   if(__builtin_expect(ax>=(0x7fful<<53), 0)){ /* x=NaN or +/-Inf */
     if(ax==(0x7fful<<53)){ /* x=+/-Inf */
       if(t.u>>63){ /* x=-Inf */
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	errno = EDOM;
+#endif
 	return x / x; /* will raise the "Invalid operation" exception */
       }
       return x; /* x=+Inf */
@@ -612,9 +614,12 @@ double cr_tgamma(double x){
 
   double z = x;
   if(__builtin_expect(__builtin_fabs(x)<0.25, 0)){ /* |x| < 0x1p-2 */
-    if(ax<0x71e0000000000000ul){
-      double r = 1/x;
+    if(ax<0x71e0000000000000ul){ // |x| < 0x1p-112
+      // gamma(x) ~ 1/x - euler_gamma near x=0
+      double r = 1/x - 0.5;
+#ifdef CORE_MATH_SUPPORT_ERRNO
       if(__builtin_fabs(r)>0x1.fffffffffffffp+1023) errno = ERANGE;
+#endif
       return r;
     }
     static const double cc[][2] = {
@@ -644,9 +649,11 @@ double cr_tgamma(double x){
   }
 
   if(__builtin_expect(x >= 0x1.573fae561f648p+7, 0)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
     /* The C standard says that if the function overflows,
        errno is set to ERANGE. */
     errno = ERANGE;
+#endif
     return 0x1.fp1023 + 0x1.fp1023;
   }
 
@@ -656,11 +663,15 @@ double cr_tgamma(double x){
   int64_t k = fx;
   if(__builtin_expect(fx==x, 0)){ /* x is integer */
     if(x == 0.0f){
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;
+#endif
       return 1.0/x;
     }
     if(x < 0.0f) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       return 0.0 / 0.0; /* should raise the "Invalid operation" exception */
     }
     double t0h = 1, t0l = 0, x0 = 1;
@@ -671,9 +682,11 @@ double cr_tgamma(double x){
   if(__builtin_expect(x<=-184.0, 0)){ /* negative non-integer */
     /* For x <= -184, x non-integer, |gamma(x)| < 2^-1078.  */
     static const double sgn[2] = {0x1p-1022, -0x1p-1022};
+#ifdef CORE_MATH_SUPPORT_ERRNO
     /* The C standard says that if the function underflows,
        errno is set to ERANGE. */
     errno = ERANGE;
+#endif
     return 0x1p-1022 * sgn[k&1];
   }
 
