@@ -95,8 +95,9 @@ float cr_exp10f(float x){
   double z = x;
   uint32_t ux = t.u<<1;
   if (__builtin_expect(ux>0x84344134u || ux<0x72adf1c6u, 0)){
-    // x >= 0x1.344136p+5 or x <= -0x1.adf1c8p-13
-    if(__builtin_expect(ux<0x72adf1c6u, 1))
+    // ux>0x84344134u: |x| > 0x1.344134p+5
+    // ux<0x72adf1c6: |x| < 0x1.adf1c6p-13
+    if(ux < 0x72adf1c6u)
       return 1.0 + z*(0x1.26bb1bbb55516p+1 + z*(0x1.53524c73cea69p+1 + z*0x1.0470591de2ca4p+1));
     if(ux >= 0xffu<<24) { // x is inf or nan
       if(ux > 0xffu<<24) return x + x; // x = nan
@@ -112,7 +113,7 @@ float cr_exp10f(float x){
 #endif
       return r;
     }
-    if(t.u>0x421a209au){
+    if(t.u<0x80000000u){ // x > 0x1.344134p+5
       float r = 0x1p127f * 0x1p127f;
 #ifdef CORE_MATH_SUPPORT_ERRNO
       if(r>0x1.fffffep127f) errno = ERANGE;
