@@ -112,6 +112,17 @@ check (double x)
 
 typedef union { double f; uint64_t i; } d64u64;
 
+static void
+check_negative (void)
+{
+  for (int n = -1000000; n < 0; n++)
+  {
+    check (nextafter ((double) n, 0.0));
+    check (nextafter ((double) (n+1), (double) n));
+    check ((double) n + 0.5);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -155,6 +166,9 @@ main (int argc, char *argv[])
     }
   ref_init ();
   ref_fesetround (rnd);
+
+  printf ("Check negative inputs\n");
+  check_negative ();
 
 #ifndef CORE_MATH_TESTS
 #define CORE_MATH_TESTS 1000000000UL /* total number of tests */
