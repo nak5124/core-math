@@ -197,6 +197,7 @@ check_spurious_underflow (void)
   }
 }
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
 static void
 check_errno (void)
 {
@@ -247,6 +248,7 @@ check_errno (void)
     }
   }
 }
+#endif
 
 int
 main (int argc, char *argv[])
@@ -290,8 +292,10 @@ main (int argc, char *argv[])
         }
     }
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
   printf ("Checking errno\n");
   check_errno ();
+#endif
 
   printf ("Checking spurious underflow\n");
   check_spurious_underflow ();
