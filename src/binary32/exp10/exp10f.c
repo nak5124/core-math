@@ -94,7 +94,8 @@ float cr_exp10f(float x){
   b32u32_u t = {.f = x};
   double z = x;
   uint32_t ux = t.u<<1;
-  if (__builtin_expect(ux>0x8466d3e8u || ux<0x72adf1c6u, 0)){
+  if (__builtin_expect(ux>0x84344134u || ux<0x72adf1c6u, 0)){
+    // x >= 0x1.344136p+5 or x <= -0x1.adf1c8p-13
     if(__builtin_expect(ux<0x72adf1c6u, 1))
       return 1.0 + z*(0x1.26bb1bbb55516p+1 + z*(0x1.53524c73cea69p+1 + z*0x1.0470591de2ca4p+1));
     if(ux >= 0xffu<<24) { // x is inf or nan
@@ -106,12 +107,16 @@ float cr_exp10f(float x){
       double y = 0x1p-149 + (z + 0x1.66d3e7bd9a403p+5)*0x1.a934f0979a37p-149;
       y = __builtin_fmax(y, 0x1p-151);
       float r = y;
+#ifdef CORE_MATH_SUPPORT_ERRNO
       if(r==0.0f) errno = ERANGE;
+#endif
       return r;
     }
     if(t.u>0x421a209au){
       float r = 0x1p127f * 0x1p127f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
       if(r>0x1.fffffep127f) errno = ERANGE;
+#endif
       return r;
     }
   }
