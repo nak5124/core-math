@@ -246,6 +246,23 @@ check_subnormal (void)
   }
 }
 
+// check precision-p inputs
+static void
+check_low_precision (int p)
+{
+  int e;
+  double x = 0x1p-1074, oldx = 0;
+  while (x > oldx)
+  {
+    oldx = x;
+    check (x);
+    check (-x);
+    frexp (x, &e);
+    // 0.5*2^e <= x < 2^e
+    x += (e - p >= -1074) ? ldexp (1.0, e - p) : 0x1p-1074;
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -289,6 +306,9 @@ main (int argc, char *argv[])
     }
   ref_init ();
   ref_fesetround (rnd);
+
+  printf ("Check low-precision inputs\n");
+  check_low_precision (10);
 
   printf ("Check subnormal output\n");
   check_subnormal ();
