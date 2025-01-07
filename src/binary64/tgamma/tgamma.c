@@ -615,8 +615,10 @@ double cr_tgamma(double x){
   double z = x;
   if(__builtin_expect(__builtin_fabs(x)<0.25, 0)){ /* |x| < 0x1p-2 */
     if(ax<0x71e0000000000000ul){ // |x| < 0x1p-112
-      // gamma(x) ~ 1/x - euler_gamma near x=0
-      double r = 1/x - 0.5;
+      double r = 1/x;
+      /* gamma(x) ~ 1/x - euler_gamma near x=0, thus we should raise the
+         inexact exception even for x = 2^k */
+      if (__builtin_expect(__builtin_fma (r, x, -1.0) == 0, 0)) r -= 0.5;
 #ifdef CORE_MATH_SUPPORT_ERRNO
       if(__builtin_fabs(r)>0x1.fffffffffffffp+1023) errno = ERANGE;
 #endif
