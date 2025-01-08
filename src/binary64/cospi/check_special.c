@@ -39,6 +39,10 @@ SOFTWARE.
 #include <errno.h>
 #include "function_under_test.h"
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
 double cr_function_under_test (double);
 double ref_function_under_test (double);
 
@@ -60,10 +64,10 @@ static inline double rfun(double x){
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
-double rand_arg(struct drand48_data *buf, double s){
+double rand_arg(double s){
   int64_t r0,r1;
-  mrand48_r (buf, &r0);
-  mrand48_r (buf, &r1);
+  r0 = rand () | (int64_t) rand () << 31;
+  r1 = rand () | (int64_t) rand () << 31;
   b64u64_u o = {.u = (((r0^(r1<<32))&(~(0x7ffull<<52)))|(0x3ffull<<52))};
   double r = o.f-copysign(1,o.f);
   return r*s;
@@ -80,28 +84,27 @@ static int check (double x){
   return 0;
 }
 
-static void check_random(int seed, double a, double b){
+static void check_random(int seed, double a, double b, int64_t ntests){
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
-  struct drand48_data buf[1];
   if (verbose)
     printf("seed = %d\n",seed);
-  srand48_r (seed, buf);
+  srand (seed);
   int fail = 0, maxfail = 10;
   double s = (b - a)*0.5, m = (a+b)*0.5;
   int64_t count = 0;
   while (1){
-    int64_t i = 0, n = 10*1000*1000;
+    int64_t i = 0, n = 10*1000;
     for(;i<n;i++){
-      double x = m + rand_arg (buf, s);
+      double x = m + rand_arg (s);
       if(check (x)) fail++;
       if(fail>=maxfail) break;
     }
     count += i;
     if (verbose)
       printf("failure(s) %d, total %"PRIx64"\n",fail,count);
-    if(count>=1000l*1000l*1000l) break;
+    if(count>=ntests) break;
     if(fail>=maxfail) break;
   }
   if (verbose)
@@ -111,11 +114,10 @@ static void check_random(int seed, double a, double b){
 
 static void call_random(int seed, int64_t n, double a, double b){
   fesetround(rnd1[rnd]);
-  struct drand48_data buf[1];
-  srand48_r(seed, buf);
+  srand(seed);
   double s = (b - a)*0.5, m = (a+b)*0.5;
   for(int64_t j=0;j<n;j++){
-    double x = m + rand_arg(buf, s);
+    double x = m + rand_arg(s);
     tfun(x);
   }
 }
@@ -143,7 +145,7 @@ static void check_val(double x){
   check(x);
 }
 
-static void check_random_all(double a, double b){
+static void check_random_all(int seed, double a, double b){
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
@@ -153,7 +155,7 @@ static void check_random_all(double a, double b){
 #pragma omp parallel for
 #endif
   for (int i = 0; i < nthreads; i++)
-    check_random(getpid () + i, a, b);
+    check_random(seed + i, a, b, CORE_MATH_TESTS / nthreads);
 }
 
 int64_t parselong(const char *str){
@@ -172,6 +174,57 @@ int64_t parselong(const char *str){
   return val;
 }
 
+double rand_arg2(){
+  int64_t r0,r1;
+  b64u64_u o;
+  do {
+    r0 = rand () | (int64_t) rand () << 31;
+    r1 = rand () | (int64_t) rand () << 31;
+    o.u = r0^(r1<<32);
+  } while((o.u<<1)>=(0x7ffull<<53));
+  return o.f;
+}
+
+static void check_random_p(int seed, int64_t ntests){
+  ref_init();
+  ref_fesetround(rnd);
+  fesetround(rnd1[rnd]);
+  if (verbose)
+    printf("seed = %d\n",seed);
+  srand(seed);
+  int fail = 0, maxfail = 10;
+  int64_t count = 0;
+  while(1){
+    int64_t i = 0, n = 10*1000;
+    for(;i<n;i++){
+      double x = rand_arg2();
+      if(check(x)) fail++;
+      if(fail>=maxfail) break;
+    }
+    count += i;
+    if (verbose)
+      printf("failure(s) %d, total %"PRIx64"\n",fail,count);
+    if(count>=ntests) break;
+    if(fail>=maxfail) break;
+  }
+  if (verbose)
+    printf("%d fails per %"PRIx64" calls or %.1e %%\n",
+           fail, count, (double)fail/count*100);
+}
+
+static void check_random_all_p (int seed){
+  int nthreads = 1;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel
+  nthreads = omp_get_num_threads();
+#endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for(int i = 0; i < nthreads; i++)
+    check_random_p(seed + i, CORE_MATH_TESTS / nthreads);
+}
+
 int main (int argc, char *argv[]){
   static struct option opts[] = {
     { "rndn",        no_argument, 0, 'n'},
@@ -188,7 +241,7 @@ int main (int argc, char *argv[]){
     {"input",  required_argument, 0, 'i'},
     {      0,                  0, 0,  0 }
   };
-  int thread = 0, seed = getpid (), darts = 0, conseq = 0;
+  int thread = 1, seed = getpid (), darts = 0, conseq = 0, p = 1;
   double x = __builtin_nan(""), a = -1, b = 1;
   int64_t n = 10*1000;
   while (1) {
@@ -233,10 +286,17 @@ int main (int argc, char *argv[]){
     } else if(conseq){
       scan_consecutive(n, a);
     } else {
-      if (thread)
-	check_random_all(a, b);
-      else
-	check_random(seed, a, b);
+      if(p){
+	if(thread)
+	  check_random_all_p(seed);
+	else
+	  check_random_p(seed, CORE_MATH_TESTS);
+      } else {
+	if(thread)
+	  check_random_all(seed, a, b);
+	else
+	  check_random(seed, a, b, CORE_MATH_TESTS);
+      }
     }
   }
   return 0;

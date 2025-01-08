@@ -24,7 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* References:
+/* This code assumes "long double" corresponds to the 80-bit double extended
+   format.
+
+   References:
    [1] Note on FastTwoSum with Directed Roundings, Sélène Corbineau and Paul
        Zimmermann, July 2024, https://inria.hal.science/hal-03798376.
    [2] An efficient rounding boundary test for pow(x,y) in double precision,
@@ -134,7 +137,9 @@ typedef union {
 #include "qint.h"
 static inline int get_rounding_mode (void)
 {
-#ifdef __x86_64__
+  /* Warning: on __aarch64__ (for example cfarm103), FE_UPWARD=0x400000
+     instead of 0x800. */
+#if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)
   const unsigned flagp = _mm_getcsr ();
   return (flagp&(3<<13))>>3;
 #else
@@ -1000,7 +1005,7 @@ int exp2d(double* resh, double* resl, double xh, double xl) {
    Assume 2^extra_exp * (rh + rl) = x^y * (1 + eps) with |eps| < 2^-83.287,
    with 0.499 < |rh| < 2.004, |rl| <= 2^-47.638.
 */
-inline static
+static
 long double fastpath_roundtest(double rh, double rl, int extra_exp,
                                bool invert, bool* fail) {
 	unsigned rm = get_rounding_mode();
@@ -1191,6 +1196,8 @@ void q_log2pow(qint64_t* r, long double x, long double y) {
 	// bit 52 goes to 6+5 = 11. Bits 11 - 8
 	xh = __builtin_fma(l2.r, xh, -1); xl *= l2.r;
 	/* The above operations are exact (see the analysis in compute_log2pow). */
+
+	two_sum(&xh, &xl, xh, xl);
 
 	qint64_t reducted[1];
 	qint_fromdd(reducted, xh, xl);

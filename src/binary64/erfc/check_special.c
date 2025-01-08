@@ -1,6 +1,6 @@
 /* Check erfc on special and random inputs.
 
-Copyright (c) 2022-2023 Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -32,8 +32,13 @@ SOFTWARE.
 #include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#include <omp.h>
+#endif
 
-#define N 1000000000UL /* total number of tests */
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -45,6 +50,10 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
+
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
 
 static inline uint64_t
 asuint64 (double f)
@@ -71,12 +80,12 @@ asfloat64 (uint64_t i)
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
-get_random ()
+get_random (int tid)
 {
   b64u64_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
   return v.f;
 }
 
@@ -110,7 +119,10 @@ check_subnormal (void)
   double xmax = 0x1.b39dc41e48bfcp+4;
   uint64_t umin = asuint64 (xmin);
   uint64_t umax = asuint64 (xmax);
-  uint64_t urange = (umax - umin) / (uint64_t) N;
+  uint64_t urange = (umax - umin) / (uint64_t) CORE_MATH_TESTS;
+  /* we multiply urange by 100 since tests in the subnormal range are more
+     expensive */
+  urange = 100 * urange + 1; // +1 to avoid urange=0
   printf ("Check subnormal output range\n");
   umin += getpid () % urange;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
@@ -170,17 +182,27 @@ main (int argc, char *argv[])
 
   printf ("Random tests\n");
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #define XMAX 0x1.b39dc41e48bfdp+4
 #define XMIN -0x1.7744f8f74e94bp2
   
-  for (uint64_t n = 0; n < N; n++)
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
     double x;
-    do x = get_random (); while (x < XMIN || XMAX < x);
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    do x = get_random (tid); while (x < XMIN || XMAX < x);
     check (x);
   }
 

@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -84,14 +85,19 @@ float cr_erfcf(float xf){
     }
     return 2.0f - 0x1p-25f;                     // rounds to 2 or nextbelow(2)
   }
-  // at is the absolute value of xf
-  // for x >= 0x1.41bbf8p+3, erfc(x) < 2^-150, thus rounds to 0 or 2^-149
+  /* at is the absolute value of xf
+     for x >= 0x1.41bbf8p+3, erfc(x) < 2^-150, thus rounds to 0 or to 2^-149
+     depending on the rounding mode */
   if(__builtin_expect(at >= 0x4120ddfc, 0)){    // |xf| >= 0x1.41bbf8p+3
     if(__builtin_expect(at >= 0x7f800000, 0)){  // +Inf or NaN
       if(at == 0x7f800000) return 0.0f;         // +Inf
       return xf + xf;                           // NaN
     }
-    return 0x1p-149f * 0.25f;                   // 0 or 2^-149 wrt rounding
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
+    // 0x1p-149f * 0.25f rounds to 0 or 2^-149 depending on rounding
+    return 0x1p-149f * 0.25f;
   }
   if(__builtin_expect(at <= 0x3db80000, 0)){ // |x| <= 0x1.7p-4
     if(__builtin_expect(t.u == 0xb76c9f62, 0))
@@ -102,7 +108,7 @@ float cr_erfcf(float xf){
       static const float d[] = {-0x1p-26, 0x1p-25};
       return 1.0f + d[sgn];
     }
-    /* around 0, erfc(x) behaves as 1 + (odd polynomial) */
+    /* around 0, erfc(x) behaves as 1 - (odd polynomial) */
     static const double c[] =
       {0x1.20dd750429b6dp+0, -0x1.812746b03610bp-2, 0x1.ce2f218831d2fp-4, -0x1.b82c609607dcbp-6, 0x1.553af09b8008ep-8};
     double f0 = xf*(c[0] + x2*(c[1] + x2*(c[2] + x2*(c[3] + x2*(c[4])))));
@@ -118,11 +124,11 @@ float cr_erfcf(float xf){
   double d = (x2 + ln2h*j) + ln2l*j, d2 = d*d, e0 = E[j&127];
   double f = d + d2*((ch[0] + d*ch[1]) + d2*(ch[2]+d*ch[3]));
   static const double ct[][16] = {
-    {0x1.c162355429b28p-1, 3.70, 0x1.da951cece2b85p-2, -0x1.70ef6cff4bcc4p+0,
+    {0x1.c162355429b28p-1, 0x1.d99999999999ap+1, 0x1.da951cece2b85p-2, -0x1.70ef6cff4bcc4p+0,
      0x1.3d7f7b3d617dep+1, -0x1.9d0aa47537c51p+1, 0x1.9754ea9a3fcb1p+1, -0x1.27a5453fcc015p+1,
      0x1.1ef2e0531aebap+0, -0x1.eca090f5a1c06p-3, -0x1.7a3cd173a063cp-4, 0x1.30fa68a68fdddp-4,
      0x1.55ad9a326993ap-10, -0x1.07e7b0bb39fbfp-6, 0x1.2328706c0e95p-10, 0x1.d6aa0b7b19cfep-9},
-    {0x1.137c8983f8516p+2, 2.95, 0x1.05b53aa241333p-3, -0x1.a3f53872bf87p-3,
+    {0x1.137c8983f8516p+2, 0x1.799999999999ap+1, 0x1.05b53aa241333p-3, -0x1.a3f53872bf87p-3,
      0x1.de4c30742c9d5p-4, -0x1.cb24bfa591986p-5, 0x1.666aec059ca5fp-6, -0x1.a61250eb26b0bp-8,
      0x1.2b28b7924b34dp-10, 0x1.41b13a9d45013p-15, -0x1.6dd5e8a273613p-14, 0x1.09ce8ea5e8da5p-16,
      0x1.33923b4102981p-18, -0x1.1dfd161e3f984p-19, -0x1.c87618fcae3b3p-23, 0x1.e8a6ffa0ba2c7p-23}};

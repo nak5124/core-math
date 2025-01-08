@@ -31,14 +31,13 @@ SOFTWARE.
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <inttypes.h>
 #include <fenv.h>
 #include <mpfr.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
-#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
-#endif
 
 #include "function_under_test.h"
 
@@ -171,7 +170,9 @@ check (testcase ts)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   double z1 = ref_function_under_test(ts.x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
 #ifdef CORE_MATH_SUPPORT_ERRNO
@@ -181,8 +182,6 @@ check (testcase ts)
 #ifdef CORE_MATH_SUPPORT_ERRNO
   int cr_errno = errno;
 #endif
-  fexcept_t inex2;
-  fegetexceptflag (&inex2, FE_INEXACT);
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%la ref=%la z=%la\n", ts.x, z1, z2);
@@ -194,6 +193,8 @@ check (testcase ts)
 #endif
   }
 #ifdef CORE_MATH_CHECK_INEXACT
+  fexcept_t inex2;
+  fegetexceptflag (&inex2, FE_INEXACT);
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%la (y=%la)\n", ts.x, z1);
@@ -272,14 +273,14 @@ check_signaling_nan (void)
   // check that foo(NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%lx\n",
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
     exit (1);
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
-    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%lx\n",
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
     exit (1);
   }
@@ -289,14 +290,14 @@ check_signaling_nan (void)
   // check that foo(NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%lx\n",
+    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
     exit (1);
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
-    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%lx\n",
+    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
     exit (1);
   }

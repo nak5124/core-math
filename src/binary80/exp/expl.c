@@ -1,4 +1,4 @@
-/* Correctly rounded expl function for binary64 values.
+/* Correctly rounded expl function for binary80 values.
 
 Copyright (c) 2024 Sélène Corbineau, Alexei Sibidanov and Paul Zimmermann
 
@@ -24,7 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* References:
+/* This code assumes "long double" corresponds to the 80-bit double extended
+   format.
+
+   References:
    [1] Markstein, P. IA-64 and Elementary Functions.
        Hewlett-Packard Professional Books, 2000.
    [2] Note on FastTwoSum with Directed Roundings,
@@ -379,7 +382,7 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 	   Since |xr|<= 2^-19.999 we check that |Axr+B| <= 2^-2.049 and thus
 	   the error is at most 2^-92.011.
 
-	   Since |xsq| <= 2^-39.997 and ||A*xh+B| < 1/4 - 0.008, the product
+	   Since |xsq| <= 2^-39.997 and |A*xh+B| < 1/4 - 0.008, the product
 	   is bounded by 2^-39.997 * (1/4 - 0.008) < 2^-42.04. The rounding
 	   error on orders23 is thus at most ulp(2^-42.04) = 2^-95.
 	   Therefore |orders23| <= 2^-42.04 + 2^-95 < 2^-42.03.
@@ -987,7 +990,7 @@ evaluate_polynomial(tint_t *y, const tint_t* x) {
 
 // accurate path, where ri contains some information computed in the fast path:
 // x/log(2) ~ extra_exponent + 2^-20 fracpart + xs
-static inline
+static
 long double accurate_path(long double x, const redinfo* ri) {
 	tint_t tx[1];
 	load_ld(tx, x); // exact
@@ -1102,7 +1105,8 @@ long double accurate_path(long double x, const redinfo* ri) {
 	return retval.f;
 };
 
-static inline
+__attribute__((cold))
+static
 long double catch_exceptions(long double x, bool* caught) {
  
 	/* upper_except holds pairs (x, y) where exp(x) is rounded down to y

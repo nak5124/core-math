@@ -41,12 +41,13 @@ SOFTWARE.
 
 /******************** code copied from dint.h and pow.[ch] *******************/
 
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14 && __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128)
 typedef unsigned _BitInt(128) u128;
 #else
 typedef unsigned __int128 u128;
 #endif
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   struct {
     u128 r;
@@ -61,7 +62,25 @@ typedef union {
     uint64_t sgn;
   };
 } dint64_t;
+#else
+typedef union {
+  struct {
+    u128 r;
+    int64_t _ex;
+    uint64_t _sgn;
+  };
+  /* the number represented is (-1)^sgn*(hi/2^64+lo/2^128)*2^ex */
+  struct {
+    uint64_t hi;
+    uint64_t lo;
+    int64_t ex;
+    uint64_t sgn;
+  };
+} dint64_t;
 
+#endif
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   u128 r;
   struct {
@@ -69,6 +88,15 @@ typedef union {
     uint64_t h;
   };
 } uint128_t;
+#else
+typedef union {
+  u128 r;
+  struct {
+    uint64_t h;
+    uint64_t l;
+  };
+} uint128_t;
+#endif
 
 typedef union {
   double f;

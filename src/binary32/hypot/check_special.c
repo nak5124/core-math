@@ -124,33 +124,34 @@ check_triples_subnormal_above (void)
 typedef union {float f; uint32_t u;} b32u32_u;
 
 static float
-get_random (struct drand48_data *buffer)
+get_random (void)
 {
   b32u32_u v;
   int64_t l;
-  lrand48_r (buffer, &l);
+  l = rand ();
   v.u = l;
-  // lrand48_r generates only 31 bits
-  lrand48_r (buffer, &l);
+  // rand() generates only 31 bits
+  l = rand ();
   v.u |= (uint32_t) l << 31;
   return v.f;
 }
 
-#define N 10000000ul
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
 
 static void
-check_random (int i)
+check_random (int seed, int nthreads)
 {
   ref_init ();
   ref_fesetround (rnd);
   fesetround(rnd1[rnd]);
-  struct drand48_data buffer[1];
   float x, y;
-  srand48_r (i, buffer);
-  for (uint64_t n = 0; n < N; n++)
+  srand (seed);
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
-    x = get_random (buffer);
-    y = get_random (buffer);
+    x = get_random ();
+    y = get_random ();
     check (x, y);
   }
 }
@@ -165,7 +166,7 @@ check_random_all (void)
 #endif
 #pragma omp parallel for
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
 }
 
 int

@@ -1,6 +1,6 @@
 /* Generate special cases for atan2 testing.
 
-Copyright (c) 2022-2023 Stéphane Glondu, Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu, Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -118,7 +118,18 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
-#define N 10000000000ul // total number of tests
+static void
+check_all (double y, double x)
+{
+  check (y, x);
+  check (y, -x);
+  check (-y, x);
+  check (-y, -x);
+}
+
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
 
 static void
 check_random (int i, int nthreads)
@@ -129,7 +140,7 @@ check_random (int i, int nthreads)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-  for (uint64_t n = 0; n < N; n += nthreads)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -162,8 +173,8 @@ check_small_aux (int i, int nthreads)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-  double ratio = 0, dratio = 64.0 / (N / nthreads);
-  for (uint64_t n = 0; n < N; n += nthreads)
+  double ratio = 0, dratio = 64.0 / (CORE_MATH_TESTS / nthreads);
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -189,6 +200,39 @@ check_small (void)
 #endif
   for (int i = 0; i < nthreads; i++)
     check_small_aux (getpid () + i, nthreads);
+}
+
+/* check y,x near power of 2 */
+static void
+check_near_pow2 (void)
+{
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (int ex = -1074; ex <= 1024; ex++)
+  {
+    ref_init ();
+    ref_fesetround (rnd);
+    fesetround(rnd1[rnd]);
+    double x = ldexp (0x1.fffffffffffffp-1, ex);
+    double xl = nextafter (x, 0.0);
+    double xh = nextafter (x, 0x1.fffffffffffffp1023);
+    for (int ey = -1074; ey <= 1024; ey++)
+    {
+      double y = ldexp (0x1.fffffffffffffp-1, ey);
+      double yl = nextafter (y, 0.0);
+      double yh = nextafter (y, 0x1.fffffffffffffp1023);
+      check_all (y, x);
+      check_all (y, xl);
+      check_all (y, xh);
+      check_all (yl, x);
+      check_all (yl, xl);
+      check_all (yl, xh);
+      check_all (yh, x);
+      check_all (yh, xl);
+      check_all (yh, xh);
+    }
+  }
 }
 
 int
@@ -232,6 +276,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking y,x near powers of 2\n");
+  check_near_pow2 ();
 
   printf ("Checking small values\n");
   check_small ();

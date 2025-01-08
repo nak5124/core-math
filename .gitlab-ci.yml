@@ -6,7 +6,7 @@ check:
   image: debian:12
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
-    - ./ci.sh
+    - EXTRA_CFLAGS="-Werror -fsanitize=undefined -fno-sanitize-recover" ./ci.sh
 
 check_dry:
   stage: test
@@ -14,6 +14,13 @@ check_dry:
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
     - FORCE=true DRY=--dry ./ci.sh
+
+check_dry_without_inex:
+  stage: test
+  image: debian:12
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - FORCE=true DRY=--dry CFLAGS=-O3 ./ci.sh
 
 check_dry_errno:
   stage: test

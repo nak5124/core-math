@@ -42,7 +42,9 @@ static __attribute__((noinline)) float as_special(float x){
   if(t.u==0x3f800000u) return 0.0f;
   if((t.u<<1)>0xff000000u) return x + x; // nan
   if(t.u==0x7f800000u) return x; // inf
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
+#endif
   return __builtin_nanf("<1");
 }
 
@@ -136,11 +138,11 @@ float cr_acoshf(float x) {
     int j = (m + ((int64_t)1<<(52-8)))>>(52-7);
     int e = (tp.u>>52) - 0x3ff;
     b64u64_u w = {.u = m | (uint64_t)0x3ff<<52};
-    double z = __builtin_fma(w.f, ix[j], -1.0);
+    double z = w.f * ix[j] - 1.0;
     static const double c[] = {0x1.0000000066947p+0, -0x1.00007f053d8cbp-1, 0x1.555280111d914p-2};
     double z2 = z*z;
     b64u64_u r = {.f = ((lix[128]*e + lix[j]) + z*c[0]) + z2*(c[1] + z*c[2])};
-    if(__builtin_expect(((r.u+259000)&0xfffffffll) < 260000, 0)){
+    if(__builtin_expect(((r.u+259000)&0xfffffffll) < 260000, 0)){ // accurate path
       static const double cp[] =
 	{0x1p+0, -0x1p-1, 0x1.55555555030bcp-2, -0x1.ffffffff2b4e5p-3, 0x1.999b5076a42f2p-3, -0x1.55570c45a647dp-3};
       z2 = z*z;

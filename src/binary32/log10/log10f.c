@@ -44,12 +44,16 @@ static __attribute__((noinline)) float as_special(float x){
   if(ux == 0x7f800000u) return x; // +inf
   uint32_t ax = ux<<1;
   if(ax == 0u) { // -0.0
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = ERANGE;
+#endif
     feraiseexcept(FE_DIVBYZERO);
     return -__builtin_inff(); // to raise FE_DIVBYZERO
   }
   if(ax > 0xff000000u) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
+#endif
   feraiseexcept(FE_INVALID);
   return __builtin_nanf("<0"); // to raise FE_DIVBYZERO
 }

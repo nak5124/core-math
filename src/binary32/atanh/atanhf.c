@@ -41,11 +41,15 @@ static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};
   uint32_t ax = t.u<<1;
   if(ax == 0x7f000000u){ // +-1
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = ERANGE;
+#endif
     return x/0.0f; // to raise FE_DIVBYZERO
   }
   if(ax > 0xff000000u) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
+#endif
   return 0.0f/0.0f; // to raise FE_INVALID
 }
 

@@ -34,12 +34,13 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
+typedef union {float f; uint32_t u;} b32u32_u;
+typedef union {double f; uint64_t u;} b64u64_u;
+
+#ifdef CORE_MATH_CHECK_INEXACT
 #ifdef __x86_64__
 #include <x86intrin.h>
 #endif
-
-typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
 
 // This code emulates the _mm_getcsr SSE intrinsic by reading the FPCR register.
 // fegetexceptflag accesses the FPSR register, which seems to be much slower
@@ -96,11 +97,14 @@ static inline void set_flags (const fexcept_t *flagp)
   fesetexceptflag (flagp, FE_ALL_EXCEPT);
 #endif
 }
+#endif
 
 float cr_cbrtf (float x){
   static const double escale[3] = {1.0, 0x1.428a2f98d728bp+0/* 2^(1/3) */, 0x1.965fea53d6e3dp+0/* 2^(2/3) */};
+#ifdef CORE_MATH_CHECK_INEXACT
   fexcept_t flag;
   get_rounding_mode (&flag);
+#endif
   b32u32_u t = {.f = x};
   uint32_t u = t.u, au = u<<1, sgn = u>>31, e = au>>24;
   if(__builtin_expect(au<1u<<24 || au>=0xffu<<24, 0)){
@@ -127,9 +131,10 @@ float cr_cbrtf (float x){
   float ub = r, lb = r - cvt2.f*1.4182e-9;
   if(__builtin_expect(ub==lb, 1)){
     cvt2.f = r;
-    if(__builtin_expect((cvt2.u&((int64_t)0x1fffff<<24)) == 0, 0)){
+#ifdef CORE_MATH_CHECK_INEXACT
+    if(__builtin_expect((cvt2.u&((int64_t)0x1fffff<<24)) == 0, 0))
       set_flags (&flag);
-    }
+#endif
     return ub;
   }
   const double u0 = -0x1.ab16ec65d138fp+3;
@@ -142,7 +147,9 @@ float cr_cbrtf (float x){
   if(__builtin_expect((m0^m1)<((int64_t)1<<31),0)){
     cvt1.u = (cvt1.u + ((uint64_t)1<<31))&(uint64_t)0xffffffff00000000ull;
     ub = cvt1.f;
+#ifdef CORE_MATH_CHECK_INEXACT
     set_flags (&flag);
+#endif
   }
   return ub;
 }

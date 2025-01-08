@@ -126,11 +126,15 @@ double cr_atanh(double x){
   u64 aix = ix.u;
   if(__builtin_expect(aix>=0x3ff0000000000000ull,0)){
     if(aix==0x3ff0000000000000ull){
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;
+#endif
       return __builtin_copysign(1, x) / 0.0;
     }
     if(aix>0x7ff0000000000000ull) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     return __builtin_sqrt(-1.0);
   }
 
@@ -267,7 +271,7 @@ static __attribute__((noinline)) double as_atanh_database(double x, double f){
   return f;
 }
 
-double as_atanh_refine(double x, double zh, double zl, double a){
+static double as_atanh_refine(double x, double zh, double zl, double a){
   static const double t1[] = {
     0x1p+0, 0x1.ea4afap-1, 0x1.d5818ep-1, 0x1.c199bep-1, 0x1.ae89f98p-1, 0x1.9c4918p-1,
     0x1.8ace54p-1, 0x1.7a1147p-1, 0x1.6a09e68p-1, 0x1.5ab07ep-1, 0x1.4bfdad8p-1,

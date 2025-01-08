@@ -1,6 +1,6 @@
 /* Check exp10m1 on random inputs.
 
-Copyright (c) 2022-2023 Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -33,6 +33,9 @@ SOFTWARE.
 #include <sys/types.h>
 #include <unistd.h>
 #include <assert.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#include <omp.h>
+#endif
 
 int ref_init (void);
 int ref_fesetround (int);
@@ -44,6 +47,10 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
+
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
 
 static inline uint64_t
 asuint64 (double f)
@@ -59,12 +66,12 @@ asuint64 (double f)
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
-get_random ()
+get_random (int tid)
 {
   b64u64_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
   return v.f;
 }
 
@@ -133,16 +140,23 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
   printf ("Checking results in subnormal range\n");
   int64_t n0 = 1;
   // n1 is the smallest integer such that exp10m1(n1*2^-1074) > 2^-1022
   int64_t n1 = 1955888466868548ul;
-#define SKIP 200000
-  n0 += getpid () % SKIP;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
+  /* we multiply skip by 10 since tests in the subnormal range are more
+     expensive */
+  skip = 10 * skip + 1; // +1 to avoid skip = 0
+  n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (int64_t n = n0; n < n1; n += SKIP)
+  for (int64_t n = n0; n < n1; n += skip)
   {
     ref_init ();
     ref_fesetround (rnd);
@@ -151,20 +165,25 @@ main (int argc, char *argv[])
   }
 
   printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
-    double x;
-    x = get_random ();
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    double x = get_random (tid);
     check (x);
   }
 

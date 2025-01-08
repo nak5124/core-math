@@ -31,6 +31,7 @@ SOFTWARE.
 #include <unistd.h>
 #include <fenv.h>
 #include <math.h>
+#include <errno.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
@@ -77,7 +78,9 @@ check (float y, float x)
   float z, t;
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   t = ref_atan2pi (y, x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   feclearexcept (FE_INEXACT);
   z = cr_atan2pif (y, x);
   fexcept_t inex2;
@@ -110,22 +113,23 @@ check (float y, float x)
 #endif
 }
 
-#define N 100000000 // number of tests per thread
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 500000000ul // total number of tests
+#endif
 
 static void
-check_random (int i)
+check_random (int i, int nthreads)
 {
   int64_t l;
   float x, y;
-  struct drand48_data buffer[1];
   ref_init ();
   fesetround (rnd1[rnd]);
-  srand48_r (i, buffer);
-  for (int n = 0; n < N; n++)
+  srand (i);
+  for (unsigned int n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
-    lrand48_r (buffer, &l);
+    l = rand () | (int64_t) rand () << 31;
     y = asfloat (l);
-    lrand48_r (buffer, &l);
+    l = rand () | (int64_t) rand () << 31;
     x = asfloat (l);
     check (y, x);
     check (y, -x);
@@ -133,6 +137,118 @@ check_random (int i)
     check (-y, -x);
   }
 }
+
+static void
+check_spurious_underflow (void)
+{
+  float T[6][2] = {
+    {0x1p+0f, 0xf.fffffp+124f},
+    {0x4p-128f, 0xf.fffffp+124f},
+    {0x8p-152f, 0x1p+0f},
+    {0x8p-152f, 0xf.fffffp+124f},
+    {0xf.fffffp+124f, 0x4p-128f},
+    {0xf.fffffp+124f, 0x8p-152f},
+  };
+  for (int i = 0; i < 6; i++)
+  {
+    float y = T[i][0], x = T[i][1];
+    feclearexcept (FE_UNDERFLOW);
+    float z = cr_atan2pif (y, x);
+    int inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,x
+    y = -y;
+    feclearexcept (FE_UNDERFLOW);
+    z = cr_atan2pif (y, x);
+    inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,-x
+    x = -x;
+    feclearexcept (FE_UNDERFLOW);
+    z = cr_atan2pif (y, x);
+    inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test y,-x
+    y = -y;
+    feclearexcept (FE_UNDERFLOW);
+    z = cr_atan2pif (y, x);
+    inex = fetestexcept (FE_UNDERFLOW);
+    if (inex && fabsf (z) > 0x1p-126f)
+    {
+      fprintf (stderr, "Unexpected underflow exception for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+  }
+}
+
+#ifdef CORE_MATH_SUPPORT_ERRNO
+static void
+check_errno (void)
+{
+  float T[2][2] = {
+    {0x1p-149f, 0x1.fffffep+127f},
+    {0x1.8p-148f, 0x1.20f90cp+1f},
+  };
+  for (int i = 0; i < 2; i++)
+  {
+    float y = T[i][0], x = T[i][1];
+    errno = 0;
+    float z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,x
+    y = -y;
+    errno = 0;
+    z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test -y,-x
+    x = -x;
+    errno = 0;
+    z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+    // also test y,-x
+    y = -y;
+    errno = 0;
+    z = cr_atan2pif (y, x);
+    if (fabsf (z) <= 0x1p-149 && errno == 0)
+    {
+      fprintf (stderr, "Missing errno=ERANGE for y,x=%a,%a [z=%a]\n",
+               y, x, z);
+      exit (1);
+    }
+  }
+}
+#endif
 
 int
 main (int argc, char *argv[])
@@ -176,6 +292,15 @@ main (int argc, char *argv[])
         }
     }
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  printf ("Checking errno\n");
+  check_errno ();
+#endif
+
+  printf ("Checking spurious underflow\n");
+  check_spurious_underflow ();
+
+  printf ("Checking random inputs\n");
   int nthreads = 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
@@ -186,6 +311,6 @@ main (int argc, char *argv[])
 #pragma omp parallel for
 #endif
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
   return 0;
 }

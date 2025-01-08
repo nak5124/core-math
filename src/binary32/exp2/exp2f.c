@@ -49,11 +49,15 @@ static float as_special(float x){
     double z = x, y = 0x1p-149 + (z + 149)*0x1p-150;
     y = __builtin_fmax(y, 0x1p-151);
     float r = y;
+#ifdef CORE_MATH_SUPPORT_ERRNO
     if(r==0.0f) errno = ERANGE;
+#endif
     return r;
   } 
   float r = 0x1p127f * 0x1p127f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
   if(r>0x1.fffffep127f) errno = ERANGE;
+#endif
   return r;
 }
 

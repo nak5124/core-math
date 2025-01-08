@@ -65,7 +65,7 @@ float cr_expf(float x){
   double z = x, a = iln2*z;
   b64u64_u u = {.f = a + big};
   uint32_t ux = t.u<<1;
-  if (__builtin_expect(ux>0x859d1d80u || ux<0x6f93813eu, 0)){
+  if (__builtin_expect(ux>0x8562e42eu || ux<0x6f93813eu, 0)){
     if(__builtin_expect(ux<0x6f93813eu, 1)) return 1.0 + z*(1 + z*0.5);
     if(ux >= 0xffu<<24) { // x is inf or nan
       if(ux > 0xffu<<24) return x + x; // x = nan
@@ -76,12 +76,16 @@ float cr_expf(float x){
       double y = 0x1p-149 + (z + 0x1.9d1d9fccf477p+6)*0x1.71547652b82edp-150;
       y = __builtin_fmax(y, 0x1p-151);
       float r = y;
+#ifdef CORE_MATH_SUPPORT_ERRNO
       if(r==0.0f) errno = ERANGE;
+#endif
       return r;
     }
-    if(t.u>0x42b17217u){
+    if(!(t.u>>31) && t.u>0x42b17217u){
       float r = 0x1p127f * 0x1p127f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
       if(r>0x1.fffffep127f) errno = ERANGE;
+#endif
       return r;
     }
   }

@@ -199,6 +199,10 @@ atan2_accurate (double y, double x)
   /* First check when t=y/x is small and exact and x > 0, since for
      |t| <= 0x1.d12ed0af1a27fp-27, atan(t) rounds to t (to nearest). */
   double t = y / x;
+  /* If t underflows, then atan(y/x) rounds to t for x > 0, to pi for y > 0 and x < 0,
+     and to -pi for x, y < 0. */
+  if (t == 0)
+    return (x > 0) ? t : (y > 0) ? PI_H + PI_L : -PI_H - PI_L;
   double corr = __builtin_fma (t, x, -y);
   if (corr == 0 && x > 0) // t is exact
     if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
@@ -348,7 +352,7 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
   return sh;
 }
 
-double __attribute__((noinline)) as_atan2_special(double y0, double x0){
+static double __attribute__((noinline)) as_atan2_special(double y0, double x0){
   d64u64 iy = {.f = y0}, ix = {.f = x0};
   u64 aiy = iy.u<<1, aix = ix.u<<1;
 
@@ -492,7 +496,12 @@ double cr_atan2 (double y0, double x0){
     double rdh = 1/dh;
     dl += e;
     double nh = x*t0, nl = __builtin_fma(x,t0,-nh);
-    nh = fasttwosum(y-nh, -nl, &nl);
+    double dt = y-nh, y1 = dt+nh;
+    if( __builtin_expect(y1 == y, 1)){
+      nh = fasttwosum(dt, -nl, &nl);
+    } else {
+      nh = fasttwosum(dt, (y - y1) - nl, &nl);
+    }
     double zh = nh * rdh;
     z2 = zh*zh;
     double zl = rdh * (__builtin_fma(dh, -zh, nh) + (nl - (nh*rdh)*dl));

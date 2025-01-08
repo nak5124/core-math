@@ -37,7 +37,11 @@ typedef unsigned __int128 u128;
 // or the most significant bit of h is 1
 typedef union {
   struct {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     uint64_t m, h, l; // put m before h on little-endian processor
+#else
+    uint64_t h, m, l; // put h before m on little-endian processor
+#endif
     int64_t ex;
     uint64_t sgn;
   };
@@ -66,11 +70,14 @@ static const tint_t PI2 = {
   .h = 0xc90fdaa22168c234, .m = 0xc4c6628b80dc1cd1, .l = 0x29024e088a67cc74,
   .ex = 1, .sgn = 0};
 
+#if 0
 // Print a tint_t value for debugging purposes
 static inline void print_tint (const tint_t *a) {
   printf("{.h=0x%lx, .m=0x%lx, .l=0x%lx, .ex=%ld, .sgn=0x%lx}\n",
          a->h, a->m, a->l, a->ex, a->sgn);
 }
+#endif
+
 // Copy a tint_t value
 static inline void cp_tint(tint_t *r, const tint_t *a) {
   r->_h = a->_h;

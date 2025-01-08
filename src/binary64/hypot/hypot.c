@@ -100,7 +100,7 @@ static inline void set_flags (fexcept_t flag)
 typedef uint64_t u64;
 typedef int64_t i64;
 
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14 && __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128)
 typedef unsigned _BitInt(128) u128;
 #else
 typedef unsigned __int128 u128;
@@ -179,7 +179,7 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const
   } else {
     u128 lm2 = (u128)lm*lm;
     ls *= 2;
-    m2 += lm2 >> -ls;
+    m2 += lm2 >> -ls; // since ls < 0, the shift by -ls is legitimate
     m2 |= !!(lm2 << (128 + ls));
   }
   int k = bs+re;
@@ -216,7 +216,9 @@ static double  __attribute__((noinline)) as_hypot_hard(double x, double y, const
 static double __attribute__((noinline)) as_hypot_overflow (void){
   volatile double z = 0x1.fffffffffffffp1023;
   double f = z + z;
+#ifdef CORE_MATH_SUPPORT_ERRNO
   if(f>z) errno = ERANGE;
+#endif
   return f;
 }
 

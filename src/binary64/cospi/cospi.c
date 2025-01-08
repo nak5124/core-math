@@ -150,7 +150,9 @@ double cr_cospi(double x){
   if(__builtin_expect(s<0, 0)){ // |x| >= 2^41
     if(__builtin_expect(e == 0x7ff, 0)){
       if(!(ix.u << 12)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	errno = EDOM;
+#endif
 	feraiseexcept (FE_INVALID);
 	return __builtin_nan("inf");
       }

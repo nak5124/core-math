@@ -1,6 +1,6 @@
 /* Generate special cases for exp10 testing.
 
-Copyright (c) 2022-2023 Stéphane Glondu and Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -31,6 +31,9 @@ SOFTWARE.
 #include <fenv.h>
 #include <math.h>
 #include <unistd.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#include <omp.h>
+#endif
 
 int ref_fesetround (int);
 void ref_init (void);
@@ -42,6 +45,10 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
+
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
 
 static inline uint64_t
 asuint64 (double f)
@@ -78,12 +85,12 @@ check (double x)
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
-get_random ()
+get_random (int tid)
 {
   b64u64_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
   return v.f;
 }
 
@@ -159,37 +166,46 @@ main (int argc, char *argv[])
   printf ("Checking inexact flag for exact values\n");
   check_inexact ();
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp10(x)) */
   double x0 = -0x1.439b746e36b52p+8;
-  /* x1 is the smallest x such that 2^-1022 <= RN(exp(x)) */
+  /* x1 is the smallest x such that 2^-1022 <= RN(exp10(x)) */
   double x1 = -0x1.33a7146f72a41p+8;
   int64_t n0 = ldexp (x0, 44); /* n0 = -5692958865320786 */
   int64_t n1 = ldexp (x1, 44); /* n1 = -5412282753821249 */
-#define SKIP 20000
-  n0 += getpid () % SKIP;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
+  n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (int64_t n = n0; n < n1; n += SKIP)
+  for (int64_t n = n0; n < n1; n += skip)
     check (ldexp ((double) n, -44));
 
   printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
-    double x;
-    x = get_random ();
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    double x = get_random (tid);
     check (x);
   }
 

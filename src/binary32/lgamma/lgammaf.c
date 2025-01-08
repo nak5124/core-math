@@ -27,6 +27,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <errno.h>
 #include <math.h>
+#include <limits.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -125,7 +126,9 @@ float cr_lgammaf(float x){
   }
   if(__builtin_expect(fx==x, 0)){
     if(x <= 0.0f) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;
+#endif
       return 1.0f/0.0f;
     }
     if(x==1.0f || x==2.0f) {
@@ -133,9 +136,16 @@ float cr_lgammaf(float x){
       return 0.0f;
     }
   }
-  
-  int k = fx;
-  signgam = 1 - (((k&(k>>31))&1)<<1);
+
+  /* Check the value of fx to avoid a spurious invalid exception.
+     Note that for a binary32 |x| >= 2^23, x is necessarily an integer,
+     and we already dealed with negative integers, thus now:
+     -2^23 < x < +Inf and x is not a negative integer nor 0, 1, 2. */
+  if (__builtin_expect (fx >= 0, 1))
+    signgam = 1;
+  else
+    // gamma(x) is negative in (-2n-1,-2n), thus when fx is odd
+    signgam = 1 - ((((int)fx)&1)<<1);
   double z = ax, f;
   if(__builtin_expect(ax<0x1.52p-1f, 0)){
     static const double rn[] =
@@ -149,9 +159,11 @@ float cr_lgammaf(float x){
     f = (c0*s)*as_r8(s, rn)/as_r8(s, rd) - as_ln(z);
   } else {
     if(ax > 0x1.afc1ap+1f){
-      if(__builtin_expect(x > 0x1.895f1cp+121f, 0)){
+      if(__builtin_expect(x >= 0x1.895f1cp+121f, 0)){
 	float r = 0x1p127f * 0x1p127f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	if(r>0x1.fffffep+127f) errno = ERANGE;
+#endif
 	return r;
       }
       double lz = as_ln(z);

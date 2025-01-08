@@ -1,4 +1,4 @@
-/* Correctly-rounded biased argument base-2 logarithm function for binary32 value.
+/* Correctly-rounded log2(1+x) function for binary32 value.
 
 Copyright (c) 2022 Alexei Sibidanov.
 
@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -110,8 +111,17 @@ float cr_log2p1f(float x) {
   b32u32_u t = {.f = x};
   uint32_t ux = t.u, ax = ux&(~0u>>1);
   if (__builtin_expect(ux >= 0x17fu<<23, 0)) { // x <= -1
-    if (ux==(0x17fu<<23)) return -1.0/0.0f; // -1.0
+    if (ux==(0x17fu<<23))
+    {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+      return -1.0/0.0f; // -1.0
+    }
     if (ux>(0x1ffu<<23)) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = EDOM;
+#endif
     return __builtin_nanf("-"); // x < -1
   } else if(__builtin_expect(ax >= (0xff<<23), 0)){ // +inf, nan
     if(ax > (0xff<<23)) return x + x; // nan

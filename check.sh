@@ -109,7 +109,7 @@ if [ "$CFLAGS" == "" ]; then
    elif [ "$CC" == "icx" ]; then
       # icx needs -fp-model=precise and doesn't like -fsignaling-nans
       export CFLAGS="-fp-model=precise -O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -DCORE_MATH_CHECK_INEXACT"
-   elif [ "$MACHINE" == "ppc64le" ]; then
+   elif [[ $MACHINE == ppc64* ]]; then
       # -march=native is not supported by gcc 14 on ppc64le
       export CFLAGS="-O3 -mcpu=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans -DCORE_MATH_CHECK_INEXACT"
    else
@@ -119,7 +119,7 @@ if [ "$CFLAGS" == "" ]; then
 else
    # the core-math code assumes -frounding-math
    # see also https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
-   # and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=112367
+   # and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57245 (fixed in gcc12)
    export ROUNDING_MATH="-frounding-math"
 fi
 

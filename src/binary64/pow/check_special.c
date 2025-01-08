@@ -1,6 +1,6 @@
 /* Generate special cases for pow testing.
 
-Copyright (c) 2022-2023 Stéphane Glondu, Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu, Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -118,18 +118,20 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
-#define N 1000000ul
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
 
 static void
-check_random (int i)
+check_random (int seed, int nthreads)
 {
   ref_init ();
   ref_fesetround (rnd);
   fesetround(rnd1[rnd]);
   struct drand48_data buffer[1];
   double x, y;
-  srand48_r (i, buffer);
-  for (uint64_t n = 0; n < N; n++)
+  srand48_r (seed, buffer);
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);
@@ -149,13 +151,14 @@ check_random_all (void)
 #pragma omp parallel for
 #endif
   for (int i = 0; i < nthreads; i++)
-    check_random (getpid () + i);
+    check_random (getpid () + i, nthreads);
 }
 
 // check exact and midpoint values
 static void
 check_exact_or_midpoint (void)
 {
+  uint64_t tests = 0;
   double zmin = 0x1p-1074;
   double zmax = 0x1.fffffffffffffp+1023;
   // max_pow[n] is the largest x such that x^n fits in 54 bits
@@ -196,7 +199,7 @@ check_exact_or_midpoint (void)
         frexp (tmax, &emax); // 2^(emax-1) <= tmax < 2^emax
         // we want emin divisible by d
         while (emin % d) emin++;
-#pragma omp parallel for
+#pragma omp parallel for reduction(+: tests)
         for (int e = emin; e <= emax; e += d)
         {
           ref_init();
@@ -204,7 +207,12 @@ check_exact_or_midpoint (void)
           fesetround(rnd1[rnd]);
           double x = ldexp (md, e);
           check (x, y);
+          tests ++;
         }
+        /* these exact/midpoint tests are more expensive than random tests,
+           thus reduce the number of tests */
+        if (tests >= CORE_MATH_TESTS / 15)
+          return;
       }
     }
   }

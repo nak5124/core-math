@@ -564,6 +564,15 @@ static const double T2[128][DEGREE+LARGE+2] = {
 
 typedef union { double x; uint32_t i[2]; } union_t;
 
+// i[HIGH] contains the exponent, i[LOW] the low part of the significant
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define HIGH 1
+#define LOW 0
+#else
+#define HIGH 0
+#define LOW 1
+#endif
+
 // begin_acospi
 // exceptional cases for |x| < 0.5, should be sorted by increasing values
 #define EXCEPTIONS 114
@@ -811,7 +820,7 @@ accurate_path (double x)
   absx = x > 0 ? x : -x;
   w.x = 1.0 + absx; /* 1 <= w.x <= 2 */
   /* Warning: w.x might be 2 for rounding up or nearest. */
-  int i = (w.x == 2.0) ? 127 : (w.i[1] >> 13) & 127;
+  int i = (w.x == 2.0) ? 127 : (w.i[HIGH] >> 13) & 127;
   if (i < 64) /* |x| < 0.5 */
   {
     // begin_acospi
@@ -925,17 +934,17 @@ cr_acospi (double x)
   union_t u, v;
   int32_t k;
   u.x = x;
-  u.i[1] &= 0x7fffffff; /* set sign bit to 0 */
+  u.i[HIGH] &= 0x7fffffff; /* set sign bit to 0 */
   double absx = u.x;
-  k = u.i[1];
+  k = u.i[HIGH];
   if (k < 0x3fe80000) { /* |x| < 0.75 */
-    if (__builtin_expect (k == 0 && u.i[0] == 0, 0)) return 0.5; // x = 0
+    if (__builtin_expect (k == 0 && u.i[LOW] == 0, 0)) return 0.5; // x = 0
     /* approximate acos(x) by p(x-xmid), where [0,0.75) is split
        into 192 sub-intervals */
     v.x = 1.0 + absx; /* 1 <= v.x < 2 */
-    /* v.i[1] contains 20 significant bits in its low bits, we shift by 12
+    /* v.i[HIGH] contains 20 significant bits in its low bits, we shift by 12
        to get the upper 8 (ignoring the implicit leading bit) */
-    int i = (v.i[1] >> 12) & 255;
+    int i = (v.i[HIGH] >> 12) & 255;
     if (__builtin_expect (i == 192, 0))
       i = 191;
     const double *p = T[i];
@@ -1001,10 +1010,10 @@ cr_acospi (double x)
     /* approximate acos(x) by sqrt(1-x)*p(x-xmid) where p is a polynomial,
        and [0.75,1) is split into 64 sub-intervals */
     v.x = 1.0 + absx; /* 1 <= v.x <= 2 */
-    /* The low 20 bits of v.i[1] are the upper bits (except the
+    /* The low 20 bits of v.i[HIGH] are the upper bits (except the
        implicit leading bit) of the significand of 1+|x|.
        Warning: v.x might be 2 for rounding up or nearest. */
-    int i = (v.x == 2.0) ? 255 : (v.i[1] & 0xff000) >> 12;
+    int i = (v.x == 2.0) ? 255 : (v.i[HIGH] & 0xff000) >> 12;
     const double *p = T[i];
     double y = absx - p[6]; /* exact (p[6] = xmid) */
     double h1, l1;
@@ -1066,14 +1075,14 @@ cr_acospi (double x)
 
   /*---------------------------- |x|>=1 -----------------------*/
   else
-    if (k==0x3ff00000 && u.i[0]==0) return (x>0) ? 0 : 1; // acospi_specific
+    if (k==0x3ff00000 && u.i[LOW]==0) return (x>0) ? 0 : 1; // acospi_specific
   else
-    if (k>0x7ff00000 || (k == 0x7ff00000 && u.i[0] != 0)) return x + x; // nan
+    if (k>0x7ff00000 || (k == 0x7ff00000 && u.i[LOW] != 0)) return x + x; // nan
   else {
-    u.i[1]=0x7ff00000;
-    v.i[1]=0x7ff00000;
-    u.i[0]=0;
-    v.i[0]=0;
+    u.i[HIGH]=0x7ff00000;
+    v.i[HIGH]=0x7ff00000;
+    u.i[LOW]=0;
+    v.i[LOW]=0;
     return u.x/v.x;
   }
 }

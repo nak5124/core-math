@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -100,15 +101,17 @@ float cr_atan2f(float y, float x){
   static const double sgn[] = {1,-1};
   b32u32_u tx = {.f = x}, ty = {.f = y};
   uint32_t ux = tx.u, uy = ty.u, ax = ux&(~0u>>1), ay = uy&(~0u>>1);
-  if(__builtin_expect(ay >= (0xff<<23)||ax >= (0xff<<23), 0)){
-    if(ay > (0xff<<23)) return y + y; // nan
-    if(ax > (0xff<<23)) return x + x; // nan
+  if(__builtin_expect(ay >= (0xff<<23)||ax >= (0xff<<23), 0)){ // x or y is nan or inf
+    /* we use x+y below so that the invalid exception is set
+       for (x,y) = (qnan,snan) or (snan,qnan) */
+    if(ay > (0xff<<23)) return x + y; // case y nan
+    if(ax > (0xff<<23)) return x + y; // case x nan
     uint32_t yinf = ay==(0xff<<23), xinf = ax==(0xff<<23);
     if(yinf&xinf){
       if(ux>>31)
-	return 0x1.2d97c7f3321d2p+1*sgn[uy>>31];
+	return 0x1.2d97c7f3321d2p+1*sgn[uy>>31]; // +/-3pi/4
       else
-	return 0x1.921fb54442d18p-1*sgn[uy>>31];
+	return 0x1.921fb54442d18p-1*sgn[uy>>31]; // +/-pi/4
     }
     if(xinf){
       if(ux>>31)
@@ -121,7 +124,7 @@ float cr_atan2f(float y, float x){
     }
   }
   if(__builtin_expect(ay==0, 0)){
-    if(__builtin_expect(!(ay|ax),0)){
+    if(__builtin_expect(!ax,0)){
       uint32_t i = (uy>>31)*4 + (ux>>31)*2;
       if(ux>>31)
 	return off[i] + offl[i];
@@ -134,23 +137,33 @@ float cr_atan2f(float y, float x){
   
   double zx = x, zy = y;
   double z = (m[gt]*zx + m[1-gt]*zy)/(m[gt]*zy + m[1-gt]*zx);
-  double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
-  double cn0 = cn[0] + z2*cn[1];
-  double cn2 = cn[2] + z2*cn[3];
-  double cn4 = cn[4] + z2*cn[5];
-  double cn6 = cn[6];
-  cn0 += z4*cn2;
-  cn4 += z4*cn6;
-  cn0 += z8*cn4;
+  // z = x/y if |y| > |x|, and z = y/x otherwise
+  double r;
+  int d = (int)ax-(int)ay;
+  if (__builtin_expect(d<(27<<23)&&d>(-(27<<23)),1)){
+    double z2 = z*z, z4 = z2*z2, z8 = z4*z4;
+    /* z2 cannot underflow, since for |y|=0x1p-149 and |x|=0x1.fffffep+127
+       we get |z| > 2^-277 thus z2 > 2^-554, but z4 and z8 might underflow,
+       which might give spurious underflow exceptions. */
+    double cn0 = cn[0] + z2*cn[1];
+    double cn2 = cn[2] + z2*cn[3];
+    double cn4 = cn[4] + z2*cn[5];
+    double cn6 = cn[6];
+    cn0 += z4*cn2;
+    cn4 += z4*cn6;
+    cn0 += z8*cn4;
+    double cd0 = cd[0] + z2*cd[1];
+    double cd2 = cd[2] + z2*cd[3];
+    double cd4 = cd[4] + z2*cd[5];
+    double cd6 = cd[6];
+    cd0 += z4*cd2;
+    cd4 += z4*cd6;
+    cd0 += z8*cd4;
+    r = cn0/cd0;
+  } else {
+    r = 1;
+  }
   z *= sgn[gt];
-  double cd0 = cd[0] + z2*cd[1];
-  double cd2 = cd[2] + z2*cd[3];
-  double cd4 = cd[4] + z2*cd[5];
-  double cd6 = cd[6];
-  cd0 += z4*cd2;
-  cd4 += z4*cd6;
-  cd0 += z8*cd4;
-  double r = cn0/cd0;
   r = z*r + off[i];
   b64u64_u res = {.f = r};
   if(__builtin_expect(((res.u + 8)&0xfffffff) <= 16, 0)){
@@ -201,5 +214,11 @@ float cr_atan2f(float y, float x){
     }
     r = th + tm;
   }
-  return r;
+  float rf = r;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  // if rf = 0, and x != 0, set errno=ERANGE
+  if (__builtin_expect (rf == 0 && x != 0, 0))
+    errno = ERANGE;
+#endif
+  return rf;
 }

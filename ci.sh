@@ -16,8 +16,8 @@ fi
 
 # use the same order as on https://core-math.gitlabpages.inria.fr/
 FUNCTIONS_EXHAUSTIVE=(acosf acoshf acospif asinf asinhf asinpif atanf atanhf atanpif cbrtf cosf coshf cospif erff erfcf expf exp10f exp10m1f exp2f exp2m1f expm1f lgammaf logf log10f log10p1f log1pf log2f log2p1f rsqrtf sincosf sinf sinhf sinpif tanf tanhf tanpif tgammaf)
-FUNCTIONS_WORST=(acos acosh acospi asin asinh asinpi atan atan2 atan2f atan2pi atan2pif atanh atanpi cbrt cbrtl cos cosh cospi erf erfc exp expl exp10 exp10m1 exp2 exp2l exp2m1 hypot hypotf log log10 log10p1 log1p log2 log2l log2p1 pow powf powl rsqrt rsqrtl sin sinh sinpi tan tanh tanpi)
-FUNCTIONS_SPECIAL=(acos acosh acospi asin asinh asinpi atan atan2 atan2f atan2pi atan2pif atanh atanpi cbrt cos cosh cospi erf erfc exp exp10 exp10m1 exp10m1f exp2 exp2m1 expm1 hypot hypotf log log10 log10p1 log1p log2 log2p1 pow powf powl rsqrt sin sinh sinpi tan tanh tanpi)
+FUNCTIONS_WORST=(acos acosh acospi asin asinh asinpi atan atan2 atan2f atan2pi atan2pif atanh atanpi cbrt cbrtl cos cosh cospi erf erfc exp expl exp10 exp10m1 exp2 exp2l exp2m1 hypot hypotf log log10 log10p1 log1p log2 log2l log2p1 pow powf powl rsqrt rsqrtl sin sinh sinpi tan tanh tanpi tgamma)
+FUNCTIONS_SPECIAL=(acos acosf acosh acospi acospif asin asinh asinpi asinpif atan atanf atan2 atan2f atan2pi atan2pif atanh atanpi atanpif cbrt cos cosh cospi cospif erf erfc erfcf exp expf exp10 exp10m1 exp2 exp2m1 exp2m1f expm1 hypot hypotf lgammaf log log10 log10p1 log1p log2 log2p1 pow powf powl rsqrt sin sinh sinpi tan tanh tanpi tanpif)
 
 echo "Reference commit is $LAST_COMMIT"
 
@@ -34,12 +34,20 @@ check () {
         echo "__int128 support is needed for" $FUNCTION "but is not available"
         doit=0
     fi
+    if [ "$doit" == "1" ] && [ "$SKIP80" == "1" ] && echo src/*/*/$FUNCTION.c | grep -q binary80; then
+        echo "binary80 support is needed for" $FUNCTION "but is not available"
+        doit=0
+    fi
+
     if [ "$doit" == "0" ]; then
         echo "Skip $FUNCTION"
     else
         echo "Checking $FUNCTION..."				
 	# we want to detect compiler warnings
-        EXTRA_CFLAGS=-Werror ./check.sh $DRY "$KIND" "$FUNCTION"
+	if [ "$EXTRA_CFLAGS" != "" ]; then
+	    EXTRA_CFLAGS=-Werror
+	fi
+        EXTRA_CFLAGS=$EXTRA_CFLAGS ./check.sh $DRY "$KIND" "$FUNCTION"
     fi
 }
 
@@ -52,6 +60,13 @@ if $CC -E $CFLAGS ci/int128test.c -o /dev/null &> /dev/null; then
 else
     echo "Compiler lacks __int128 support"
     SKIP128=1
+fi
+
+if $CC -E $CFLAGS ci/ldbl80test.c -o /dev/null &> /dev/null; then
+    echo "long double is binary80"
+else
+    echo "long double is not binary80"
+    SKIP80=1
 fi
 
 for FUNCTION in "${FUNCTIONS_EXHAUSTIVE[@]}"; do

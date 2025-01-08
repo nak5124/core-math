@@ -45,6 +45,21 @@ inline uint64_t __rdtsc(void) {
 
   return clock_counter * (1000000000 / clock_freq);
 }
+#elif defined __powerpc64__
+# if defined __GLIBC__ && (__GLIBC__ > 2 && __GLIBC_MINOR__ > 16)
+#  include <sys/platform/ppc.h>
+#  define __get_clock_freq() __ppc_get_timebase_freq()
+# else
+/* It should be a good approximation for most POWER processors.  */
+#  define __get_clock_freq() 512000000
+# endif
+uint64_t __rdtsc(void) {
+  uint64_t clock_counter, clock_freq;
+  asm volatile ("lwsync; mfspr %0,268" : "=r" (clock_counter));
+  clock_freq = __get_clock_freq ();
+
+  return clock_counter * (1000000000 / clock_freq);
+}
 #endif
 
 int

@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -56,6 +57,9 @@ float cr_exp10m1f(float x){
     return (ux == 0xff800000) ? q[1][0] : q[1][0] + q[1][1];
   } else if(__builtin_expect(ax>0x421a209au, 0)){  // x > 38.5318
     if(ax>=(0xffu<<23)) return x + x; // +Inf or NaN
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     return q[0][0] + q[0][1];
   } else if (__builtin_expect(ax<0x3d89c604u, 0)){ // |x| < 0.1549/log(10)
     double z2 = z*z, r;

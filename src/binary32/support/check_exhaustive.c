@@ -31,6 +31,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <mpfr.h>
+#include <errno.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
@@ -111,7 +112,8 @@ doit (uint32_t n)
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround (rnd1[rnd]);
-  feclearexcept (FE_INEXACT);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW);
+  errno = 0;
   z = cr_function_under_test (x);
   fexcept_t inex_z;
   fegetexceptflag (&inex_z, FE_INEXACT);
@@ -123,18 +125,45 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+  // check spurious underflow
+  if ((y < -0x1p-126f || 0x1p-126f < y) && fetestexcept (FE_UNDERFLOW))
+  {
+    printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
 #ifdef CORE_MATH_CHECK_INEXACT
   if ((inex_y == 0) && (inex_z != 0))
   {
-    printf ("Spurious inexact exception for x=%a\n", x);
+    printf ("Spurious inexact exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
     if (!keep) exit (1);
   }
   if ((inex_y != 0) && (inex_z == 0))
   {
-    printf ("Missing inexact exception for x=%a\n", x);
+    printf ("Missing inexact exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
     if (!keep) exit (1);
+  }
+#endif
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  /* If x is a normal number and y is NaN, we should have errno = EDOM.
+     If x is a normal number and y is +/-Inf, we should have errno = ERANGE.
+  */
+  if (!is_nan (x) && !is_inf (x))
+  {
+    if (is_nan (y) && errno != EDOM)
+    {
+      printf ("Missing errno=EDOM for x=%a (y=%a)\n", x, y);
+      fflush (stdout);
+      if (!keep) exit (1);
+    }
+    if (is_inf (y) && errno != ERANGE)
+    {
+      printf ("Missing errno=ERANGE for x=%a (y=%a)\n", x, y);
+      fflush (stdout);
+      if (!keep) exit (1);
+    }
   }
 #endif
 }
@@ -254,9 +283,11 @@ static int doloop (void)
   check_exceptions ();
 
   // check regular numbers
-  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127);
+  uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127f);
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for
+  /* Use a static schedule with small chunks, since the function might be
+     very easy to evaluate in some ranges, for example log of x < 0. */
+#pragma omp parallel for schedule(static,1024)
 #endif
   for (uint32_t n = nmin; n <= nmax; n++)
   {

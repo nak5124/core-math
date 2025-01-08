@@ -184,7 +184,9 @@ double cr_acosh(double x){
   b64u64_u ix = {.f = x};
   if(__builtin_expect((int64_t)ix.u<=0x3ff0000000000000ll, 0)){
     if(ix.u==0x3ff0000000000000ull) return 0;
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     return __builtin_nan("x<1");
   }
   double x2h = x*x, z = 1/x2h, g = 0;
@@ -199,7 +201,7 @@ double cr_acosh(double x){
       -0x1.6e8b8e3e40d58p-11, 0x1.1c4ba825ac4fep-12, -0x1.c9045534e6d9ep-14, 0x1.71fedae26a76bp-15,
       -0x1.f1f4f8cc65342p-17};
     double z2 = z*z, z4 = z2*z2, ds = (sh*z)*(cl[0] + z*(((cl[1] + z*cl[2]) + z2*(cl[3] + z*cl[4])) + z4*((cl[5] + z*cl[6]) + z2*(cl[7] + z*cl[8]))));
-    double eps = ds*0x1.dp-51 - 0x1p-104*sh;
+    double eps = ds*0x1.fcp-51 - 0x1p-104*sh;
     ds += sl;
     double lb = sh + (ds - eps), ub = sh + (ds + eps);
     if(lb == ub) return lb;
@@ -224,7 +226,9 @@ double cr_acosh(double x){
     if(__builtin_expect(ix.u>=0x7ff0000000000000ull, 0)){
       u64 aix = ix.u<<1;
       if(ix.u==0x7ff0000000000000ull || aix>((u64)0x7ff<<53)) return x + x; // +inf or nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       return __builtin_nan("x<1");
     }
   }
@@ -276,7 +280,7 @@ static __attribute__((noinline)) double as_acosh_database(double x, double f){
   return f;
 }
 
-double as_acosh_refine(double x, double a){
+static double as_acosh_refine(double x, double a){
   static const double t1[] = {
     0x1p+0, 0x1.ea4afap-1, 0x1.d5818ep-1, 0x1.c199bep-1, 0x1.ae89f98p-1, 0x1.9c4918p-1,
     0x1.8ace54p-1, 0x1.7a1147p-1, 0x1.6a09e68p-1, 0x1.5ab07ep-1, 0x1.4bfdad8p-1,

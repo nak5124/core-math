@@ -25,9 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h> /* for uint64_t */
-#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
-#endif
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -42,42 +40,35 @@ SOFTWARE.
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
-#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-inline double __builtin_roundeven(double x){
-   double ix;
-#if defined __AVX__
-   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
-#elif __ARM_ARCH >= 8
-   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
-#else /* __SSE4_1__ */
-   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
-#endif
-   return ix;
-}
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__))
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static double
-__builtin_roundeven (double x)
+roundeven_finite (double x)
 {
-  double y = round (x); /* nearest, away from 0 */
-  if (fabs (y - x) == 0.5)
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    u.f = ix;
+    v.f = ix - __builtin_copysign (1.0, x);
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -264,9 +255,9 @@ static const double t1[][2] = {
   {0x1.4a47a505b3a46p-54, 0x1.02b338c811703p+0}, {0x1.e47120223468p-54, 0x1.02be6e199c811p+0},
 };
 
-static double __attribute__((noinline)) as_exp2_accurate(double x){
+static double __attribute__((cold,noinline)) as_exp2_accurate(double x){
   b64u64_u ix = {.f = x};
-  double sx = 4096.0*x, fx = __builtin_roundeven(sx), z = sx - fx;
+  double sx = 4096.0*x, fx = roundeven_finite(sx), z = sx - fx;
   int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];
@@ -339,7 +330,7 @@ double cr_exp2(double x){
     }
   }
   u64 m = ix.u<<12, ex = (ax>>53) - 0x3ff, frac = ex>>63 | m<<ex;
-  double sx = 4096.0*x, fx = __builtin_roundeven(sx), z = sx - fx, z2 = z*z;
+  double sx = 4096.0*x, fx = roundeven_finite(sx), z = sx - fx, z2 = z*z;
   int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
   double t0h = t0[i0][1], t0l = t0[i0][0];
   double t1h = t1[i1][1], t1l = t1[i1][0];

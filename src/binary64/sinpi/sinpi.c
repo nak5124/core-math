@@ -83,7 +83,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   return ch;
 }
 
-double as_sinpi_zero(double x){
+static double as_sinpi_zero(double x){
   double x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
   double x3 = x2*x, dx3 = __builtin_fma(x2,x,-x3) + dx2*x;
   static const double ch[][2] = {
@@ -117,7 +117,7 @@ double as_sinpi_zero(double x){
   return y0 + y1;
 }
 
-double as_sinpi_refine(int iq, double z){
+static double as_sinpi_refine(int iq, double z){
   double x = z*0x1p-63, x2 = x*x, dx2 = __builtin_fma(x,x,-x2);
   static const double sh[][2] = {
     {0x1.921fb54442d18p+1, 0x1.1a62633145c06p-53}, {-0x1.4abbce625be53p-22, 0x1.05511cbc65743p-76},
@@ -164,7 +164,9 @@ double cr_sinpi(double x){
   if(__builtin_expect(s<0, 0)){
     if(__builtin_expect(e == 0x7ff, 0)){
       if(!(ix.u << 12)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	errno = EDOM;
+#endif
 	feraiseexcept (FE_INVALID);
 	return __builtin_nan("inf");
       }

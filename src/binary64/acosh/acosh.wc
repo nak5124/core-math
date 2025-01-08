@@ -32408,3 +32408,14 @@
 -1
 +0x1.fffffffffffffp+1023
 -0x1.fffffffffffffp+1023
+# non-regression tests
+0x1.080db895159dp+0
+0x1.113d479d50eacp+0
+0x1.1b0cda0d7d1e4p+0
+0x1.0711af7a9c318p+0
+0x1.1b06262ef398p+0
+0x1.1bfcbd135af6cp+0
+0x1.02ad4e4a965p+0
+0x1.0aba1b439495p+0
+0x1.0ae52a5da1ebp+0
+0x1.11126088fb7ep+0

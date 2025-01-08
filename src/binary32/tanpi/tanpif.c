@@ -39,27 +39,35 @@ SOFTWARE.
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
-#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__))
+# define roundevenf_finite(x) __builtin_roundevenf (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static float
-__builtin_roundevenf (float x)
+roundevenf_finite (float x)
 {
-  float y = roundf (x); /* nearest, away from 0 */
-  if (fabsf (y - x) == 0.5)
+  float ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundss $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %s0, %s1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundss $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_roundf (x); /* nearest, away from 0 */
+  if (__builtin_fabsf (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { float f; uint32_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0f : y + 1.0f;
+    u.f = ix;
+    v.f = ix - __builtin_copysign (1.0, x);
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -71,7 +79,9 @@ float cr_tanpif(float x){
   if(__builtin_expect(e > (150<<23), 0)){
     if(e==(0xff<<23)){
       if(!(ix.u << 9)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
 	errno = EDOM;
+#endif
 	feraiseexcept (FE_INVALID);
 	return __builtin_nanf("inf");
       }
@@ -79,14 +89,17 @@ float cr_tanpif(float x){
     }
     return __builtin_copysign(0.0f, x);
   }
-  float x4 = 4.0f*x, nx4 = __builtin_roundevenf(x4), dx4 = x4-nx4;
-  float ni = __builtin_roundevenf(x), zf = x-ni;
+  float x4 = 4.0f*x, nx4 = roundevenf_finite(x4), dx4 = x4-nx4;
+  float ni = roundevenf_finite(x), zf = x-ni;
   if(__builtin_expect(dx4 == 0.0f, 0)){
     int k = x4;
     if(k&1) return __builtin_copysignf(1.0f,zf);
     k &= 7;
     if(k==0) return  __builtin_copysignf(0.0f,x);
     if(k==4) return  -__builtin_copysignf(0.0f,x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     if(k==2) return  1.0f/0.0f;
     if(k==6) return -1.0f/0.0f;
   }

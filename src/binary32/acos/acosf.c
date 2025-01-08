@@ -38,13 +38,15 @@ typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static __attribute__((noinline)) float as_special(float x){
-  const float pih = 0x1.921fb6p+1, pil = -0x1p-24f;
+  const float pih = 0x1.921fb6p+1f, pil = -0x1p-24f;
   b32u32_u t = {.f = x};
   if(t.u == (0x7fu<<23)) return 0.0f; // x=1
   if(t.u == (0x17fu<<23)) return pih + pil;  // x=-1
   uint32_t ax = t.u<<1;
   if(ax>(0xffu<<24)) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
+#endif
   return 0.0f/0.0f; // to raise FE_INVALID
 }
 
@@ -70,12 +72,18 @@ float cr_acosf(float x){
   b32u32_u t = {.f = x};
   uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>=0x7f<<24, 0)) return as_special(x);
-  if(__builtin_expect(ax<0x7ec29000u, 1)){
+  if(__builtin_expect(ax<0x7ec2a1dcu, 1)){ // |x| < 0x1.c2a1dcp-1
     static const double b[] =
       {0x1.fffffffd9ccb8p-1, 0x1.5555c94838007p-3, 0x1.32ded4b7c20fap-4, 0x1.8566df703309ep-5,
        -0x1.980c959bec9a3p-6, 0x1.56fbb04998344p-1, -0x1.403d8e4c49f52p+2, 0x1.b06c3e9f311eap+4,
        -0x1.9ea97c4e2c21fp+6, 0x1.200b8261cc61bp+8, -0x1.2274c2799a5c7p+9, 0x1.a558a59cc19d3p+9,
        -0x1.aca4b6a529ffp+9, 0x1.228744703f813p+9, -0x1.d7dbb0b322228p+7, 0x1.5c2018c0c0105p+5};
+    /* avoid spurious underflow */
+    if (__builtin_expect(ax < 0x40000000u, 0)) // |x| < 2^-63
+      /* GCC <= 11 wrongly assumes the rounding is to nearest and
+         performs a constant folding here:
+         https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57245 */
+      return (float) pi2;
     double z = xs, z2 = z*z, z4 = z2*z2, z8 = z4*z4, z16=z8*z8;
     r = z*((((b[0] + z2*b[1]) + z4*(b[2] + z2*b[3])) + z8*((b[4] + z2*b[5]) + z4*(b[6] + z2*b[7]))) +
 		  z16*(((b[8] + z2*b[9]) + z4*(b[10] + z2*b[11])) + z8*((b[12] + z2*b[13]) + z4*(b[14] + z2*b[15]))));
@@ -88,8 +96,8 @@ float cr_acosf(float x){
       {0x1.555555555529cp-3, 0x1.333333337e0ddp-4, 0x1.6db6db3b4465ep-5, 0x1.f1c72e13ac306p-6,
        0x1.6e89cebe06bc4p-6, 0x1.1c6dcf5289094p-6, 0x1.c6dbbcc7c6315p-7, 0x1.8f8dc2615e996p-7,
        0x1.a5833b7bf15e8p-8, 0x1.43f44ace1665cp-6, -0x1.0fb17df881c73p-6, 0x1.07520c026b2d6p-5};
-    if(t.u == 0x328885a3u) return 0x1.921fb6p+0f + 0x1p-25;
-    if(t.u == 0x39826222u) return 0x1.920f6ap+0f + 0x1p-25;
+    if(t.u == 0x328885a3u) return 0x1.921fb6p+0f + 0x1p-25f;
+    if(t.u == 0x39826222u) return 0x1.920f6ap+0f + 0x1p-25f;
     double x2 = xs*xs;
     r = (pi2 - xs) - (xs*x2)*poly12(x2, c);
   } else {

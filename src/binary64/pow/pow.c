@@ -58,9 +58,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
-#endif
 #ifdef __x86_64__
 #include <x86intrin.h>
 #endif
@@ -1054,7 +1052,7 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
      const double magic = 0x1.8p+52;
      double k = __builtin_fma (rh, INVLOG2, magic) - magic;
   */
-  double k = __builtin_roundeven (rh * INVLOG2);
+  double k = roundeven_finite (rh * INVLOG2);
 
 #define LOG2H 0x1.62e42fefa39efp-13
 #define LOG2L 0x1.abc9e3b39803fp-68
@@ -1295,7 +1293,7 @@ exact_pow (double *r, double x, double y, const dint64_t *z)
     if ((E & (~0ull >> (64 + F))))
       return 0;
 
-    int64_t G, g = (E >> -F) * n;
+    int64_t G, g = (E >> -F) * n; // since F < 0, the shift by -F is ok
     /* g = E*y */
     int64_t k;
     round_54 (&G, &k, z); /* z is rounded to k*2^G */
@@ -1426,7 +1424,7 @@ is_exact (double x, double y)
       return 0;
     // since m is odd, x^y is an odd multiple of 2^(e*y)
     return e * y_int >= -1074;
-  } 
+  }
 
   uint64_t n = w.u & 0xfffffffffffffull;
   int64_t f = ((w.u << 1) >> 53) - 0x433;
@@ -1458,7 +1456,8 @@ is_exact (double x, double y)
     // now e <> 0 since the case |x|=1 has already been treated
     int64_t ez;
     if (f >= 0)
-      ez = (-n * e) << f;
+      // if f >= 12, since n*e <> 0, (n*e)<<f cannot be in [-1074,1024)
+      ez = (f < 12) ? (-n * e) << f : 1024;
     else { // f < 0 thus 2^-f should divide e
       t = __builtin_ctzll (e);
       if (-f > t) return 0; // 2^-f does not divide e

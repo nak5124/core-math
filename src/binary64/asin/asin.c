@@ -80,7 +80,9 @@ inline static unsigned int _mm_getcsr()
 
 static inline int get_rounding_mode (void)
 {
-#if defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+  /* Warning: on __aarch64__ (for example cfarm103), FE_UPWARD=0x400000
+     instead of 0x800. */
+#if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)
   const unsigned flagp = _mm_getcsr ();
   return (flagp&(3<<13))>>3;
 #else
@@ -88,7 +90,7 @@ static inline int get_rounding_mode (void)
 #endif
 }
 
-#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14)
+#if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14 && __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128)
 typedef unsigned _BitInt(128) u128;
 typedef _BitInt(128) i128;
 #else
@@ -98,7 +100,11 @@ typedef __int128 i128;
 
 typedef uint64_t u64;
 typedef int64_t i64;
-typedef union {u128 a; u64 b[2];} u128_u;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+typedef union {u128 a; struct {u64 bl, bh;};} u128_u;
+#else
+typedef union {u128 a; struct {u64 bh, bl;};} u128_u;
+#endif
 typedef union {double f; uint64_t u;} b64u64_u;
 
 inline static void shl(u128_u *a, int n){(*a).a <<= n;}
@@ -109,23 +115,23 @@ inline static i64 mh(i64 a, i64 b){return (i64)((a*(i128)b)>>64);}
 inline static i128 imul(i64 a, i64 b){return a*(i128)b;}
 inline static u128 mUU(u128 a, u128 b){
   u128_u x = {.a = a}, y = {.a = b};
-  u128 o = x.b[1]*(u128)y.b[1];
-  o += (u64)(x.b[0]*(u128)y.b[1]>>64);
-  o += (u64)(x.b[1]*(u128)y.b[0]>>64);
+  u128 o = x.bh*(u128)y.bh;
+  o += (u64)(x.bl*(u128)y.bh>>64);
+  o += (u64)(x.bh*(u128)y.bl>>64);
   return o;
 }
 
 inline static u128 muU(u64 a, u128 b){
   u128_u y = {.a = b};
-  u128 o = a*(u128)y.b[1];
-  o += a*(u128)y.b[0]>>64;
+  u128 o = a*(u128)y.bh;
+  o += a*(u128)y.bl>>64;
   return o;
 }
 
 inline static u128 sqrU(u128 a){
   u128_u x = {.a = a};
-  u128 os = x.b[0]*(u128)x.b[1]>>63;
-  u128 o = x.b[1]*(u128)x.b[1];
+  u128 os = x.bl*(u128)x.bh>>63;
+  u128 o = x.bh*(u128)x.bh;
   return o + os;
 }
 
@@ -133,68 +139,101 @@ static u128 pasin(u128 x){
   u64 xh = x>>64;
   static const u64 b[] = {0x5ba2e8ba2e8ad9b7, 0x0004713b13b29079, 0x000000393331e196, 0x0000000002f5c315};
   static const u128_u ch[] = {
-    {.b = {0xaaaaaaaaaaaaaaa5, 0x0002aaaaaaaaaaaa}}, // *+1
-    {.b = {0x3333333333333484, 0x0000001333333333}}, // *+1
-    {.b = {0xb6db6db6db6da950, 0x0000000000b6db6d}}, // *+1
-    {.b = {0x1c71c71c71c76217, 0x00000000000007c7}}, // *+1
+    {.bl = 0xaaaaaaaaaaaaaaa5, .bh = 0x0002aaaaaaaaaaaa}, // *+1
+    {.bl = 0x3333333333333484, .bh = 0x0000001333333333}, // *+1
+    {.bl = 0xb6db6db6db6da950, .bh = 0x0000000000b6db6d}, // *+1
+    {.bl = 0x1c71c71c71c76217, .bh = 0x00000000000007c7}, // *+1
   };
   u128_u t = ch[3];
-  t.b[0] += muuh(xh, b[0] + muuh(xh, b[1] + muuh(xh, b[2] + muuh(xh, b[3]))));
+  t.bl += muuh(xh, b[0] + muuh(xh, b[1] + muuh(xh, b[2] + muuh(xh, b[3]))));
   return mUU(x, ch[0].a + mUU(x, ch[1].a + mUU(x, ch[2].a + mUU(x, t.a))));
 }
 
+// assume |x| >= 2^-26 since the case |x| < 2^-26 is treated in the fast path
 static double asin_acc(double x){
   static const u128_u s[] =
-    {{.b = {0x4e29cf6e5fed0679, 0x648557de8d99f7e}},
-     {.b = {0x76a17954b2b7c517, 0xc8fb2f886ec09f3}},{.b = {0xbeeeae8129a786b9, 0x12d52092ce19f5cc}},
-     {.b = {0xd8e72d912977ee71, 0x1917a6bc29b42be1}},{.b = {0x4e08e535cadaf147, 0x1f564e56a9730e34}},
-     {.b = {0xc002a2684781f080, 0x259020dd1cc27444}},{.b = {0x8ffbbceed62c7c43, 0x2bc42889167f8ca9}},
-     {.b = {0x9732300393f33614, 0x31f17078d34c156c}},{.b = {0x43af186b79b2a0f3, 0x381704d4fc9ec5f9}},
-     {.b = {0x90887712e9dc9663, 0x3e33f2f642be355e}},{.b = {0x4c20ab7aa99a2183, 0x4447498ac7d9dd82}},
-     {.b = {0xd725d3b9ed35fbaa, 0x4a5018bb567c16a2}},{.b = {0x97c4afa25181e605, 0x504d72505d98050c}},
-     {.b = {0x408fca9cc277fc1f, 0x563e69d6ac7f73f8}},{.b = {0x4e61f79b3a36f1dc, 0x5c2214c3e9167abb}},
-     {.b = {0x98916152cf7eee1c, 0x61f78a9abaa58b46}},{.b = {0xd409485edd56b172, 0x67bde50ea3b628b6}},
-     {.b = {0x9b165cba0c171818, 0x6d744027857300ad}},{.b = {0x1439670dfe3d68e6, 0x7319ba64c711785a}},
-     {.b = {0x362474f1a105878f, 0x78ad74e01bd8ec78}},{.b = {0x13e03e4889485c69, 0x7e2e936fe26ae7ed}},
-     {.b = {0xbfd79717f2880abf, 0x839c3cc917ff6cb4}},{.b = {0xb892ca8361d8c84c, 0x88f59aa0da591421}},
-     {.b = {0xbba4cfecbff54867, 0x8e39d9cd73464364}},{.b = {0xb17821911e71c16e, 0x93682a66e896f544}},
-     {.b = {0x19cec845ac87a5c6, 0x987fbfe70b81a708}},{.b = {0xe25e39549638ae68, 0x9d7fd1490285c9e3}},
-     {.b = {0x3b5167ee359a234e, 0xa267992848eeb0c0}},{.b = {0x149f6e75993468a3, 0xa73655df1f2f489e}},
-     {.b = {0x1becda8089c1a94c, 0xabeb49a46764fd15}},{.b = {0xe4cad00d5c94bcd2, 0xb085baa8e966f6da}},
-     {.b = {0x597d89b3754abe9f, 0xb504f333f9de6484}},{.b = {0x9de1e3b22b8bf4db, 0xb96841bf7ffcb21a}},
-     {.b = {0xac85320f528d6d5d, 0xbdaef913557d76f0}},{.b = {0xbdf0715cb8b20bd7, 0xc1d8705ffcbb6e90}},
-     {.b = {0x43da25d99267326b, 0xc5e40358a8ba05a7}},{.b = {0x8335241be1693225, 0xc9d1124c931fda7a}},
-     {.b = {0x23af31db7179a4aa, 0xcd9f023f9c3a059e}},{.b = {0x744fea20e8abef92, 0xd14d3d02313c0eed}},
-     {.b = {0xf630e8b6dac83e69, 0xd4db3148750d1819}},{.b = {0x24b9fe00663574a4, 0xd84852c0a80ffcdb}},
-     {.b = {0x2c19b63253da43fc, 0xdb941a28cb71ec87}},{.b = {0x4b19aa71fec3ae6d, 0xdebe05637ca94cfb}},
-     {.b = {0xf4e8a8372f8c5810, 0xe1c5978c05ed8691}},{.b = {0x122785ae67f5515d, 0xe4aa5909a08fa7b4}},
-     {.b = {0x125129529d48a92f, 0xe76bd7a1e63b9786}},{.b = {0x15ad45b4a1b5e823, 0xea09a68a6e49cd62}},
-     {.b = {0x7e610231ac1d6181, 0xec835e79946a3145}},{.b = {0x86f8c20fb664b01b, 0xeed89db66611e307}},
-     {.b = {0x67127db35b287316, 0xf1090827b43725fd}},{.b = {0xa5486bdc455d56a2, 0xf314476247088f74}},
-     {.b = {0x163c5c7f03b718c5, 0xf4fa0ab6316ed2ec}},{.b = {0x2c791f59cc1ffc23, 0xf6ba073b424b19e8}},
-     {.b = {0xc7adc6b4988891bb, 0xf853f7dc9186b952}},{.b = {0x4504ae08d19b2980, 0xf9c79d63272c4628}},
-     {.b = {0x2172a361fd2a722f, 0xfb14be7fbae58156}},{.b = {0x256778ffcb5c1769, 0xfc3b27d38a5d49ab}},
-     {.b = {0xeae6bd951c1dabbe, 0xfd3aabf84528b50b}},{.b = {0x90cd1d959db674ef, 0xfe1323870cfe9a3d}},
-     {.b = {0x41390efdc726e9ef, 0xfec46d1e89292cf0}},{.b = {0xf668633f1ab858a, 0xff4e6d680c41d0a9}},
-     {.b = {0x421e8edaaf59453e, 0xffb10f1bcb6bef1d}},{.b = {0x5657552366961732, 0xffec4304266865d9}}};
+    {{.bl = 0x4e29cf6e5fed0679, .bh = 0x648557de8d99f7e},
+     {.bl = 0x76a17954b2b7c517, .bh = 0xc8fb2f886ec09f3},
+     {.bl = 0xbeeeae8129a786b9, .bh = 0x12d52092ce19f5cc},
+     {.bl = 0xd8e72d912977ee71, .bh = 0x1917a6bc29b42be1},
+     {.bl = 0x4e08e535cadaf147, .bh = 0x1f564e56a9730e34},
+     {.bl = 0xc002a2684781f080, .bh = 0x259020dd1cc27444},
+     {.bl = 0x8ffbbceed62c7c43, .bh = 0x2bc42889167f8ca9},
+     {.bl = 0x9732300393f33614, .bh = 0x31f17078d34c156c},
+     {.bl = 0x43af186b79b2a0f3, .bh = 0x381704d4fc9ec5f9},
+     {.bl = 0x90887712e9dc9663, .bh = 0x3e33f2f642be355e},
+     {.bl = 0x4c20ab7aa99a2183, .bh = 0x4447498ac7d9dd82},
+     {.bl = 0xd725d3b9ed35fbaa, .bh = 0x4a5018bb567c16a2},
+     {.bl = 0x97c4afa25181e605, .bh = 0x504d72505d98050c},
+     {.bl = 0x408fca9cc277fc1f, .bh = 0x563e69d6ac7f73f8},
+     {.bl = 0x4e61f79b3a36f1dc, .bh = 0x5c2214c3e9167abb},
+     {.bl = 0x98916152cf7eee1c, .bh = 0x61f78a9abaa58b46},
+     {.bl = 0xd409485edd56b172, .bh = 0x67bde50ea3b628b6},
+     {.bl = 0x9b165cba0c171818, .bh = 0x6d744027857300ad},
+     {.bl = 0x1439670dfe3d68e6, .bh = 0x7319ba64c711785a},
+     {.bl = 0x362474f1a105878f, .bh = 0x78ad74e01bd8ec78},
+     {.bl = 0x13e03e4889485c69, .bh = 0x7e2e936fe26ae7ed},
+     {.bl = 0xbfd79717f2880abf, .bh = 0x839c3cc917ff6cb4},
+     {.bl = 0xb892ca8361d8c84c, .bh = 0x88f59aa0da591421},
+     {.bl = 0xbba4cfecbff54867, .bh = 0x8e39d9cd73464364},
+     {.bl = 0xb17821911e71c16e, .bh = 0x93682a66e896f544},
+     {.bl = 0x19cec845ac87a5c6, .bh = 0x987fbfe70b81a708},
+     {.bl = 0xe25e39549638ae68, .bh = 0x9d7fd1490285c9e3},
+     {.bl = 0x3b5167ee359a234e, .bh = 0xa267992848eeb0c0},
+     {.bl = 0x149f6e75993468a3, .bh = 0xa73655df1f2f489e},
+     {.bl = 0x1becda8089c1a94c, .bh = 0xabeb49a46764fd15},
+     {.bl = 0xe4cad00d5c94bcd2, .bh = 0xb085baa8e966f6da},
+     {.bl = 0x597d89b3754abe9f, .bh = 0xb504f333f9de6484},
+     {.bl = 0x9de1e3b22b8bf4db, .bh = 0xb96841bf7ffcb21a},
+     {.bl = 0xac85320f528d6d5d, .bh = 0xbdaef913557d76f0},
+     {.bl = 0xbdf0715cb8b20bd7, .bh = 0xc1d8705ffcbb6e90},
+     {.bl = 0x43da25d99267326b, .bh = 0xc5e40358a8ba05a7},
+     {.bl = 0x8335241be1693225, .bh = 0xc9d1124c931fda7a},
+     {.bl = 0x23af31db7179a4aa, .bh = 0xcd9f023f9c3a059e},
+     {.bl = 0x744fea20e8abef92, .bh = 0xd14d3d02313c0eed},
+     {.bl = 0xf630e8b6dac83e69, .bh = 0xd4db3148750d1819},
+     {.bl = 0x24b9fe00663574a4, .bh = 0xd84852c0a80ffcdb},
+     {.bl = 0x2c19b63253da43fc, .bh = 0xdb941a28cb71ec87},
+     {.bl = 0x4b19aa71fec3ae6d, .bh = 0xdebe05637ca94cfb},
+     {.bl = 0xf4e8a8372f8c5810, .bh = 0xe1c5978c05ed8691},
+     {.bl = 0x122785ae67f5515d, .bh = 0xe4aa5909a08fa7b4},
+     {.bl = 0x125129529d48a92f, .bh = 0xe76bd7a1e63b9786},
+     {.bl = 0x15ad45b4a1b5e823, .bh = 0xea09a68a6e49cd62},
+     {.bl = 0x7e610231ac1d6181, .bh = 0xec835e79946a3145},
+     {.bl = 0x86f8c20fb664b01b, .bh = 0xeed89db66611e307},
+     {.bl = 0x67127db35b287316, .bh = 0xf1090827b43725fd},
+     {.bl = 0xa5486bdc455d56a2, .bh = 0xf314476247088f74},
+     {.bl = 0x163c5c7f03b718c5, .bh = 0xf4fa0ab6316ed2ec},
+     {.bl = 0x2c791f59cc1ffc23, .bh = 0xf6ba073b424b19e8},
+     {.bl = 0xc7adc6b4988891bb, .bh = 0xf853f7dc9186b952},
+     {.bl = 0x4504ae08d19b2980, .bh = 0xf9c79d63272c4628},
+     {.bl = 0x2172a361fd2a722f, .bh = 0xfb14be7fbae58156},
+     {.bl = 0x256778ffcb5c1769, .bh = 0xfc3b27d38a5d49ab},
+     {.bl = 0xeae6bd951c1dabbe, .bh = 0xfd3aabf84528b50b},
+     {.bl = 0x90cd1d959db674ef, .bh = 0xfe1323870cfe9a3d},
+     {.bl = 0x41390efdc726e9ef, .bh = 0xfec46d1e89292cf0},
+     {.bl = 0xf668633f1ab858a, .bh = 0xff4e6d680c41d0a9},
+     {.bl = 0x421e8edaaf59453e, .bh = 0xffb10f1bcb6bef1d},
+     {.bl = 0x5657552366961732, .bh = 0xffec4304266865d9}
+    };
     
 #define X1 0x1.fff8133aa33e4p-1
 
   const unsigned rm = get_rounding_mode ();
   b64u64_u t = {.f = x};
-  int se = (((i64)t.u>>52)&0x7ff)-0x3ff;
+  int se = (((i64)t.u>>52)&0x7ff)-0x3ff; // -26 <= se
   i64 xsign = t.u&((i64)1<<63);
   double ax = __builtin_fabs(x);
   u128_u fi;
   u64 sm = (t.u<<11)|(i64)1<<63;
   u128_u sm2 = {.a = (u128)sm * sm};
-  if(__builtin_expect(ax<0.0131875,0)) {
-    int ss = 2*se;
-    sm2.a >>= -14 - ss;
+  if(__builtin_expect(ax<0.0131875,0)) { // then -26 <= se <= -7
+    int ss = 2*se; // -52 <= ss <= -14
+    sm2.a >>= -14 - ss; // the shift is well defined since 0 <= -14 - ss <= 38
     u128 Sm = (u128)(sm>>1)<<64;
     fi.a = Sm + muU(sm>>1, pasin(sm2.a));
     se += 0x3ff;
-  } else {
+  } else { // |x| >= 0.0131875, -7 <= se <= -1
     double xx = __builtin_fma(x,-x,1.0);
     b64u64_u ixx = {.f = 1.0/xx}, c = {.f = __builtin_sqrt(xx)};
     ixx.f *= c.f;
@@ -213,7 +252,7 @@ static double asin_acc(double x){
     int sc = 128 - 104 + 2*ce + off;
     shl(&cm2, sc);
     sm2.a += cm2.a;
-    i64 h = sm2.b[1];
+    i64 h = sm2.bh;
     u64 ixm = (ixx.u&(~0ull>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
     i64 dc = mh(h, ixm);
     u128_u dsm2 = {.a = (u128)imul(dc,cm>>1)};
@@ -224,11 +263,12 @@ static double asin_acc(double x){
     if(__builtin_expect(sc>=0, 1))
       shr(&dsm3, sc);
     else
-      dsm3.a <<= -sc;
+      dsm3.a <<= -sc; // since sc < 0, the shift by -sc is legitimate
     sm2.a += dsm3.a;
     int k = ixe-ce;
     ss = 24 + k;
-    u128_u Cm = {.b = {0, cm}}, D = {.b = {(u64)dc << ss, (u64)(dc>>-ss)}};
+    u128_u Cm = {.bl = 0, .bh = cm},
+      D = {.bl = (u64)dc << ss, .bh = (u64)(dc>>(64-ss))};
     Cm.a -= D.a;
     h = sm2.a>>14;
     dc = mh(h, ixm);
@@ -236,9 +276,9 @@ static double asin_acc(double x){
     if(__builtin_expect(ss>=0,1))
       Cm.a -= (i128)dc>> ss;
     else
-      Cm.a -= (u128)dc<<-ss;
-    fi.b[0] = 0xd313198a2e037073;
-    fi.b[1] = 0x3243f6a8885a308;
+      Cm.a -= (u128)dc<<-ss; // since ss < 0, the shift by -ss is legitimate
+    fi.bl = 0xd313198a2e037073;
+    fi.bh = 0x3243f6a8885a308;
     fi.a *= (u64)(64u - indx);
     if(__builtin_expect(indx==0, 0)){
       shr(&Cm, -ce-7);
@@ -247,7 +287,7 @@ static double asin_acc(double x){
       Cm.a += mUU(Cm.a, z.a);
       fi.a -= Cm.a>>7;
     } else {
-      i128 v = muU(sm>>-se, s[indx-1].a) - (mUU(Cm.a,s[63-indx].a)>>-ce), msk = v>>127, v2 = sqrU(v) - (msk&(v+v));
+      i128 v = muU(sm>>-se, s[indx-1].a) - (mUU(Cm.a,s[63-indx].a)>>-ce), msk = v>>127, v2 = sqrU(v) - (msk&(v+v)); // since se<0 and ce<0, the shifts by -se and -ce are legitimate
       v2 <<= 14;
       u128 p = pasin(v2);
       v += mUU(p,v)-(msk&p);
@@ -255,10 +295,10 @@ static double asin_acc(double x){
     }
     se = 0x3fe;
   }
-  int nz = __builtin_clzll(fi.b[1]);
+  int nz = __builtin_clzll(fi.bh);
   u64 rnd;
   if(__builtin_expect(rm==FE_TONEAREST, 1)){
-    rnd = (fi.b[1]>>(10-nz))&1;
+    rnd = (fi.bh>>(10-nz))&1;
   } else if(rm==FE_DOWNWARD){
     rnd =  (u64)xsign>>63;
   } else if(rm==FE_UPWARD){
@@ -267,7 +307,7 @@ static double asin_acc(double x){
     rnd = 0;
   }
   volatile double k0 = 1.0, __attribute__((unused)) k = k0 + 0x1p-1022;
-  t.u = (fi.b[1]>>(11-nz))+(((u64)se-nz)<<52|xsign|rnd);
+  t.u = (fi.bh>>(11-nz))+(((u64)se-nz)<<52|xsign|rnd);
   return t.f;
 }
 
@@ -347,7 +387,9 @@ double cr_asin(double x){
       return __builtin_copysign (0x1.921fb54442d18p+0, x)
         + __builtin_copysign (0x1.1a62633145c07p-54, x);
     if (e==0x400 && m) return x + x; // nan
+#ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
+#endif
     feraiseexcept (FE_INVALID);
     return __builtin_nan (">1");
   } else if (__builtin_expect(e < -6,0)){ /* |x| < 2^-6 */
@@ -400,18 +442,18 @@ double cr_asin(double x){
        bound is exact, thus adding 12.999 cannot yield any borrow).
      */
     int ss = 63 + 2*e;
-    fi.b[0] = d<<ss;
-    fi.b[1] = (d>>(64-ss)) + (sm>>1);
+    fi.bl = d<<ss;
+    fi.bh = (d>>(64-ss)) + (sm>>1);
     /* fi.a/2^127 approximates y + 1/6*y^3 + 3/40*y^5 + ... + 63/2816*y^11 */
-    int nz = __builtin_clzll (fi.b[1]) + (rm==FE_TONEAREST);
-    /* the number of leading zeros in fi.b[1] is usually 1, but it can also
+    int nz = __builtin_clzll (fi.bh) + (rm==FE_TONEAREST);
+    /* the number of leading zeros in fi.bh is usually 1, but it can also
        be 0, for example for x=0x1.fffffffffffffp-7, thus nz is 0, 1 or 2 */
     u128_u u = fi;
     u.a += 12ll<<ss;
     /* Here fi is the 'left' approximation, and u is the 'right' approximation,
        with error bounded by 9 ulp(d). We check the last bit (or the round bit
        for FE_TONEAREST) does not change between fi and u. */
-    if( __builtin_expect(((fi.b[1]^u.b[1])>>(11-nz))&1, 0)){
+    if( __builtin_expect(((fi.bh^u.bh)>>(11-nz))&1, 0)){
       return asin_acc (x);
     }
     e += 0x3ff;
@@ -482,7 +524,7 @@ double cr_asin(double x){
     if(__builtin_expect(sc>=0, 1))
       shl(&cm2, sc);
     else
-      cm2.a >>= -sc;
+      cm2.a >>= -sc; // since sc < 0, the shift by -sc is legitimate
     /* now frac(2^50*c^2) = cm2/2^128 */
     sm2.a += cm2.a; /* now frac(2^50*(x^2+c^2)) = sm2/2^128 */
     /* since |c-sqrt(xx)| < 2^-51.41, we have:
@@ -490,9 +532,9 @@ double cr_asin(double x){
        This proves that |2^50*e| < 2^-0.41 with e = (1-x^2) - c^2.
        Thus frac(2^50*(x^2+c^2)) is enough to uniquely identify the
        value of 2^50*(x^2+c^2). */
-    i64 h = sm2.b[1];
+    i64 h = sm2.bh;
     /* h/2^64 approximates 2^50*(x^2+c^2) mod 1, with error bounded by
-       1/2^64 for the truncated part sm2.b[0]/2^128. */
+       1/2^64 for the truncated part sm2.bl/2^128. */
     u64 ixm = (ixx.u&(~0ull>>12))|(i64)1<<52; int ixe = ((i64)ixx.u>>52) - 0x3ff;
     /* ixx = ixm*2^(ixe-52) */
     /* x*cos(y[i]) - sqrt(1-x^2)*sin(y[i]) is computed as
@@ -511,7 +553,7 @@ double cr_asin(double x){
     if(__builtin_expect(sc>=0,1))
       Cmh = cm<<sc;
     else
-      Cmh = cm>>-sc;
+      Cmh = cm>>-sc; // since sc < 0, the shift by -sc is legitimate
     Cmh -= sh[indx];
     /* We now need to add
        1/2*(1-x^2-c^2)/c to c. Instead we subtract 1/2*h/2^114*ixm*2^(ixe-52),
@@ -557,8 +599,8 @@ double cr_asin(double x){
      */
 
     t.u = v;
-    fi.b[0] = 0xd313198a2e037073;
-    fi.b[1] = 0x3243f6a8885a308;
+    fi.bl = 0xd313198a2e037073;
+    fi.bh = 0x3243f6a8885a308;
     /* fi.a/2^127 approximates pi/2/64 */
     fi.a *= (u64)(64u - indx); /* multiply pi/2/64 by i=64-indx */
     /* we add v after normalization */
@@ -569,23 +611,23 @@ double cr_asin(double x){
     fi.a += V;
     /* now fi/2^127 approximates asin(|x|) */
 
-    int nz = __builtin_clzll(fi.b[1]) + (rm==FE_TONEAREST);    
+    int nz = __builtin_clzll(fi.bh) + (rm==FE_TONEAREST);    
     u128_u u = fi, d = fi;
     /* The error is bounded by 24.08*2^59 here, thus by 386*2^55.
        For reference, the original (non proven) error bounds are:
        u.a += 50l<<55 and d.a -= 27l<<55. */
     u.a += (i64)386<<55;
     d.a -= (i64)386<<55;
-    if( __builtin_expect(((d.b[1]^u.b[1])>>(11-nz))&1, 0)){
+    if( __builtin_expect(((d.bh^u.bh)>>(11-nz))&1, 0)){
       return asin_acc(x);
     }
     e = 0x3fel;
   }
 
-  int nz = __builtin_clzll(fi.b[1]);
+  int nz = __builtin_clzll(fi.bh);
   u64 rnd;
   if(__builtin_expect(rm==FE_TONEAREST, 1)){
-    rnd = (fi.b[1]>>(10-nz))&1;
+    rnd = (fi.bh>>(10-nz))&1;
   } else if(rm==FE_DOWNWARD){
     rnd =  (u64)xsign>>63;
   } else if(rm==FE_UPWARD){
@@ -594,6 +636,6 @@ double cr_asin(double x){
     rnd = 0;
   }
   volatile double k0 = 1.0, __attribute__((unused)) k = k0 + 0x1p-1022;
-  t.u = ((fi.b[1]>>(11-nz))+((u64)(e-nz)<<52|rnd))|xsign;
+  t.u = ((fi.bh>>(11-nz))+((u64)(e-nz)<<52|rnd))|xsign;
   return t.f;
 }

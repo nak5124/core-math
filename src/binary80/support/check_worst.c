@@ -137,7 +137,7 @@ is_equal (long double x, long double y)
 
 int tests = 0;
 
-static void
+static int
 check (long double x, long double y)
 {
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
@@ -162,13 +162,19 @@ check (long double x, long double y)
     printf("FAIL y=%La x=%La ref=%La z=%La\n", x, y, z1, z2);
 #endif
     fflush(stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
     exit(1);
+#endif
   }
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%La y=%La (z=%La)\n", x, y, z1);
     fflush (stdout);
-#ifndef DO_NOT_ABORT
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
     exit(1);
 #endif
   }
@@ -176,51 +182,54 @@ check (long double x, long double y)
   {
     printf ("Missing inexact exception for x=%La y=%La (z=%La)\n", x, y, z1);
     fflush (stdout);
-#ifndef DO_NOT_ABORT
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
     exit(1);
 #endif
   }
+  return 0;
 }
 
 void
 doloop(void)
 {
   ldouble2 *items;
-  int count;
+  int count, failures = 0;
 
   readstdin(&items, &count);
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for
+#pragma omp parallel for reduction(+:failures)
 #endif
   for (int i = 0; i < count; i++) {
     long double x = items[i][0], y = items[i][1];
-    check (x, y);
+    failures += check (x, y);
 #ifdef WORST_SYMMETRIC_Y
-    check (x, -y);
+    failures += check (x, -y);
 #endif
 #ifdef WORST_SYMMETRIC_X
-    check (-x, y);
+    failures += check (-x, y);
 #ifdef WORST_SYMMETRIC_Y
-    check (-x, -y);
+    failures += check (-x, -y);
 #endif
 #endif
 #ifdef WORST_SWAP
-    check (y, x);
+    failures += check (y, x);
 #ifdef WORST_SYMMETRIC_Y
-    check (-y, x);
+    failures += check (-y, x);
 #endif
 #ifdef WORST_SYMMETRIC_X
-    check (y, -x);
+    failures += check (y, -x);
 #ifdef WORST_SYMMETRIC_Y
-    check (-y, -x);
+    failures += check (-y, -x);
 #endif
 #endif
 #endif
   }
 
   free(items);
-  printf("%d tests passed\n", tests);
+  printf("%d tests passed, %d failure(s)\n", tests, failures);
 }
 
 // When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN

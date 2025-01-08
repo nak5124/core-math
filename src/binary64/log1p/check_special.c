@@ -47,6 +47,10 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd = 0;
 int verbose = 0;
 
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
+
 static inline uint64_t
 asuint64 (double f)
 {
@@ -61,17 +65,17 @@ asuint64 (double f)
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
-get_random ()
+get_random (int tid)
 {
   b64u64_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
   return v.f;
 }
 
 static void
-check_random (double x)
+check (double x)
 {
   int bug;
   double y1 = ref_log1p (x);
@@ -135,21 +139,30 @@ main (int argc, char *argv[])
   ref_init ();
   ref_fesetround (rnd);
 
-#define N 1000000000UL /* total number of tests */
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
     double x;
-    do x = get_random (); while (x <= -1.0);
-    check_random (x);
+    do x = get_random (tid); while (x <= -1.0);
+    check (x);
   }
 
   return 0;

@@ -52,6 +52,7 @@ typedef unsigned _BitInt(128) u128;
 typedef unsigned __int128 u128;
 #endif
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   u128 r;
   struct {
@@ -59,6 +60,15 @@ typedef union {
     uint64_t h;
   };
 } uint128_t;
+#else
+typedef union {
+  u128 r;
+  struct {
+    uint64_t h;
+    uint64_t l;
+  };
+} uint128_t;
+#endif
 
 // Add two 128-bit integers and return 1 if a carry occured
 static inline int addu_128 (uint128_t a, uint128_t b, uint128_t *r) {
@@ -102,6 +112,7 @@ static inline int subu128 (u128 a, u128 b, u128 *r) {
   return *r > a;
 }
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 typedef union {
   /* Use a little-endian representation.
      FIXME: adapt for big-endian processors. */
@@ -120,6 +131,24 @@ typedef union {
     uint64_t sgn;
   };
 } qint64_t;
+#else
+typedef union {
+  struct {
+    u128 rl;
+    u128 rh;
+    int64_t _ex;
+    uint64_t _sgn;
+  };
+  struct {
+    uint64_t lh; /* upper low part */
+    uint64_t ll; /* lower low part */
+    uint64_t hh; /* upper high part */
+    uint64_t hl; /* lower high part */
+    int64_t ex;
+    uint64_t sgn;
+  };
+} qint64_t;
+#endif
 
 /*
   Constants

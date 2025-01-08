@@ -24,7 +24,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* References:
+/* This code assumes "long double" corresponds to the 80-bit double extended
+   format.
+
+   References:
    [1] Note on the Veltkamp/Dekker Algorithms with Directed Roundings,
        Paul Zimmermann, https://inria.hal.science/hal-04480440, February 2024.
    [2] CR-LIBM A library of correctly rounded elementary functions in double-precision,
@@ -534,7 +537,7 @@ fast_path(long double x, int* needmoreaccuracy) {
 
 	// represent the mantissa of the low part in two's complement format,
 	// where 1l<<52 represents the implicit leading bit
-	int64_t ml = (tl.u & ~(0xfffl<<52)) | (1l<<52), sgnl = -(tl.u >> 63);
+	int64_t ml = (tl.u & ~(0xfffll<<52)) | (1ll<<52), sgnl = -(tl.u >> 63);
 	ml = (ml ^ sgnl) - sgnl;
 	int64_t mlt;
 	// we have to shift ml by 11 bits to the left to align with mh below,
@@ -552,7 +555,7 @@ fast_path(long double x, int* needmoreaccuracy) {
 	}
 
 	// construct the mantissa of the long double number
-	uint64_t mh = (th.u<<11) | (1l<<63);
+	uint64_t mh = (th.u<<11) | (1ll<<63);
 	// We use a kind of floating representation where m = mh||ml is the
 	// mantissa (whose leading 1 has weight 2^exponent) and
 	// extra_exponent is the exponent.
@@ -596,7 +599,7 @@ fast_path(long double x, int* needmoreaccuracy) {
 	float op = 1.0f + 0x1p-25f, om = 1.0f - 0x1p-25f;
 	if(op==om){ // round to nearest
 		mh += (uint64_t)ml>>63;
-		ml ^= (1ul << 63);
+		ml ^= (1ull << 63);
 	} else if(op>1.0f) { // round to +inf
 		mh += 1;
 	}

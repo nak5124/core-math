@@ -1,6 +1,6 @@
 /* Generate special cases for atan2pi testing.
 
-Copyright (c) 2022-2023 Stéphane Glondu, Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu, Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -117,7 +117,9 @@ check (double x, double y)
   mpfr_clear (Z);
 }
 
-#define N 10000000000ul // total number of tests
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000ul // total number of tests
+#endif
 
 static void
 check_random (int i, int nthreads)
@@ -128,7 +130,7 @@ check_random (int i, int nthreads)
   struct drand48_data buffer[1];
   double x, y;
   srand48_r (i, buffer);
-  for (uint64_t n = 0; n < N; n += nthreads)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n += nthreads)
   {
     x = get_random (buffer);
     y = get_random (buffer);

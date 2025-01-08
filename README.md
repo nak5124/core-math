@@ -117,3 +117,7 @@ The CORE-MATH code assumes all double-precision computations are rounded to
 double precision. On x86 processors where these computations are performed
 on the x87 FPU, the user should set up the rounding precision to double
 precision (on Linux it is set to double-extended by default).
+
+There might be some contradictions between correct rounding and some optional
+requirements of the POSIX standard. In such a case, CORE-MATH chooses to
+return the correctly rounded result.

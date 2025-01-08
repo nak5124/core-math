@@ -1,6 +1,6 @@
 /* Generate special cases for exp2 testing.
 
-Copyright (c) 2022 Stéphane Glondu and Paul Zimmermann, Inria.
+Copyright (c) 2022-2024 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -32,6 +32,9 @@ SOFTWARE.
 #include <math.h>
 #include <unistd.h>
 #include <mpfr.h>
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#include <omp.h>
+#endif
 
 int ref_fesetround (int);
 void ref_init (void);
@@ -43,6 +46,10 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
+
+#define MAX_THREADS 192
+
+static unsigned int Seed[MAX_THREADS];
 
 static inline uint64_t
 asuint64 (double f)
@@ -79,7 +86,9 @@ check (double x)
 {
   mpfr_flags_clear (MPFR_FLAGS_INEXACT);
   double y1 = ref_exp2 (x);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   double y2 = cr_exp2 (x);
@@ -118,12 +127,12 @@ check (double x)
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static double
-get_random ()
+get_random (int tid)
 {
   b64u64_u v;
-  v.u = rand ();
-  v.u |= (uint64_t) rand () << 31;
-  v.u |= (uint64_t) rand () << 62;
+  v.u = rand_r (Seed + tid);
+  v.u |= (uint64_t) rand_r (Seed + tid) << 31;
+  v.u |= (uint64_t) rand_r (Seed + tid) << 62;
   return v.f;
 }
 
@@ -183,6 +192,10 @@ main (int argc, char *argv[])
   printf ("Checking exact results\n");
   check_exact ();
 
+#ifndef CORE_MATH_TESTS
+#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#endif
+
   printf ("Checking results in subnormal range\n");
   /* check subnormal results */
   /* x0 is the smallest x such that 2^-1075 <= RN(exp2(x)) */
@@ -193,12 +206,15 @@ main (int argc, char *argv[])
      of 11 bits, thus we multiply by 2^42 to get integers */
   int64_t n0 = ldexp (x0, 42); /* n0 = -4727899999436800 */
   int64_t n1 = ldexp (x1, 42); /* n1 = -4503599627370496 */
-#define SKIP 20000
-  n0 += getpid () % SKIP;
+  int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
+  /* we multiply skip by 10 since tests in the subnormal range are more
+     expensive */
+  skip = 10 * skip + 1; // +1 to avoid skip = 0
+  n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (int64_t n = n0; n < n1; n += SKIP)
+  for (int64_t n = n0; n < n1; n += skip)
     check (ldexp ((double) n, -42));
   /* x2 is the smallest x such that 2^-1022 <= RN(exp2(x)) */
   double x2 = -1022;
@@ -206,27 +222,33 @@ main (int argc, char *argv[])
      of 10 bits, thus we multiply by 2^43 to get integers */
   n1 = ldexp (x1, 43); /* n1 = -9007199254740992, twice as large as above */
   int64_t n2 = ldexp (x2, 43); /* n2 = -8989607068696576 */
+  skip = (n2 - n1) / CORE_MATH_TESTS + 1;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (int64_t n = n1; n < n2; n += SKIP)
+  for (int64_t n = n1; n < n2; n += skip)
     check (ldexp ((double) n, -43));
 
   printf ("Checking random values\n");
-#define N 1000000000UL /* total number of tests */
 
   unsigned int seed = getpid ();
-  srand (seed);
+  for (int i = 0; i < MAX_THREADS; i++)
+    Seed[i] = seed + i;
 
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  for (uint64_t n = 0; n < N; n++)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     ref_init ();
     ref_fesetround (rnd);
-    double x;
-    x = get_random ();
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    double x = get_random (tid);
     check (x);
   }
 

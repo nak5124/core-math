@@ -41,42 +41,35 @@ typedef union {double f; uint64_t u;} b64u64_u;
 /* __builtin_roundeven was introduced in gcc 10:
    https://gcc.gnu.org/gcc-10/changes.html,
    and in clang 17 */
-#if (defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#if !defined(HAS_BUILTIN_ROUNDEVEN) && (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
-inline double __builtin_roundeven(double x){
-   double ix;
-#if defined __AVX__
-   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
-#elif __ARM_ARCH >= 8
-   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
-#else /* __SSE4_1__ */
-   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
-#endif
-   return ix;
-}
-#define HAS_BUILTIN_ROUNDEVEN
-#endif
-
-#ifndef HAS_BUILTIN_ROUNDEVEN
-#include <math.h>
+#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__))
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
 /* round x to nearest integer, breaking ties to even */
 static double
-__builtin_roundeven (double x)
+roundeven_finite (double x)
 {
-  double y = round (x); /* nearest, away from 0 */
-  if (fabs (y - x) == 0.5)
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
   {
-    /* if y is odd, we should return y-1 if x>0, and y+1 if x<0 */
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
     union { double f; uint64_t n; } u, v;
-    u.f = y;
-    v.f = (x > 0) ? y - 1.0 : y + 1.0;
+    u.f = ix;
+    v.f = ix - __builtin_copysign (1.0, x);
     if (__builtin_ctz (v.n) > __builtin_ctz (u.n))
-      y = v.f;
+      ix = v.f;
   }
-  return y;
+# endif
+  return ix;
 }
 #endif
 
@@ -101,8 +94,10 @@ float cr_exp10f(float x){
   b32u32_u t = {.f = x};
   double z = x;
   uint32_t ux = t.u<<1;
-  if (__builtin_expect(ux>0x8466d3e8u || ux<0x72adf1c6u, 0)){
-    if(__builtin_expect(ux<0x72adf1c6u, 1))
+  if (__builtin_expect(ux>0x84344134u || ux<0x72adf1c6u, 0)){
+    // ux>0x84344134u: |x| > 0x1.344134p+5
+    // ux<0x72adf1c6: |x| < 0x1.adf1c6p-13
+    if(ux < 0x72adf1c6u)
       return 1.0 + z*(0x1.26bb1bbb55516p+1 + z*(0x1.53524c73cea69p+1 + z*0x1.0470591de2ca4p+1));
     if(ux >= 0xffu<<24) { // x is inf or nan
       if(ux > 0xffu<<24) return x + x; // x = nan
@@ -113,12 +108,16 @@ float cr_exp10f(float x){
       double y = 0x1p-149 + (z + 0x1.66d3e7bd9a403p+5)*0x1.a934f0979a37p-149;
       y = __builtin_fmax(y, 0x1p-151);
       float r = y;
+#ifdef CORE_MATH_SUPPORT_ERRNO
       if(r==0.0f) errno = ERANGE;
+#endif
       return r;
     }
-    if(t.u>0x421a209au){
+    if(t.u<0x80000000u){ // x > 0x1.344134p+5
       float r = 0x1p127f * 0x1p127f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
       if(r>0x1.fffffep127f) errno = ERANGE;
+#endif
       return r;
     }
   }
@@ -129,7 +128,7 @@ float cr_exp10f(float x){
       if(bt&msk) return ex[__builtin_popcount(msk&(bt-1))];
     }
   }
-  double a = iln102*z, ia = __builtin_roundeven(a), h = a - ia;
+  double a = iln102*z, ia = roundeven_finite(a), h = a - ia;
   int64_t ja = ia;
   b64u64_u sv = {.u = tb[ja&0x1f] + ((ja>>5)<<52)};
   double h2 = h*h, r = ((b[0] + h*b[1]) + h2*(b[2] + h*(b[3])))*(sv.f);

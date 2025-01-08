@@ -78,7 +78,9 @@ inline static unsigned int _mm_getcsr()
 
 static inline int get_rounding_mode (void)
 {
-#if defined(__x86_64__) || defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+  /* Warning: on __aarch64__ (for example cfarm103), FE_UPWARD=0x400000
+     instead of 0x800. */
+#if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)
   const unsigned flagp = _mm_getcsr ();
   return (flagp&(3<<13))>>3;
 #else
@@ -153,7 +155,9 @@ double cr_rsqrt(double x){
     if(!(ix.u<<1)) return -__builtin_inf(); // x=-0
     if(ix.u > 0xfff0000000000000ull) return x + x; // nan
     if(ix.u >> 63){
+#ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
+#endif
       feraiseexcept (FE_INVALID);
       return __builtin_nan("<0");
     }
