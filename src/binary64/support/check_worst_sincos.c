@@ -180,8 +180,7 @@ check (testcase ts)
 #ifdef CORE_MATH_SUPPORT_ERRNO
   int cr_errno = errno;
 #endif
-  fexcept_t inex2;
-  fegetexceptflag (&inex2, FE_INEXACT);
+  int inex2 = fetestexcept (FE_INEXACT);
   if (is_equal (s1, s2) == 0) {
     printf("FAIL x=%la ref=%la s=%la\n", ts.x, s1, s2);
     fflush(stdout);

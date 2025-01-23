@@ -115,8 +115,7 @@ doit (uint32_t n)
   feclearexcept (FE_INEXACT | FE_UNDERFLOW);
   errno = 0;
   z = cr_function_under_test (x);
-  fexcept_t inex_z;
-  fegetexceptflag (&inex_z, FE_INEXACT);
+  int inex_z = fetestexcept (FE_INEXACT);
   /* Note: the test y != z would not distinguish +0 and -0, instead we compare
      the 32-bit encodings. */
   if (!is_equal (y, z))
@@ -218,10 +217,9 @@ static void
 check_exceptions_aux (uint32_t n)
 {
   float x = asfloat (n);
-  fexcept_t inex;
   feclearexcept (FE_INEXACT);
   float y = cr_function_under_test (x);
-  fegetexceptflag (&inex, FE_INEXACT);
+  int inex = fetestexcept (FE_INEXACT);
   // there should be no inexact exception if the result is NaN, +/-Inf or +/-0
   if (inex && (is_nan (y) || is_inf (y) || y == 0))
   {
@@ -231,7 +229,7 @@ check_exceptions_aux (uint32_t n)
   }
   feclearexcept (FE_OVERFLOW);
   y = cr_function_under_test (x);
-  fegetexceptflag (&inex, FE_OVERFLOW);
+  inex = fetestexcept (FE_OVERFLOW);
   if (inex)
   {
     fprintf (stderr, "Error, for x=%a, overflow exception set (y=%a)\n", x, y);
@@ -239,7 +237,7 @@ check_exceptions_aux (uint32_t n)
   }
   feclearexcept (FE_UNDERFLOW);
   y = cr_function_under_test (x);
-  fegetexceptflag (&inex, FE_UNDERFLOW);
+  inex = fetestexcept (FE_UNDERFLOW);
   if (inex)
   {
     fprintf (stderr, "Error, for x=%a, underflow exception set (y=%a)\n", x, y);

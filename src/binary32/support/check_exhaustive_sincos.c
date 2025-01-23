@@ -96,8 +96,7 @@ doit (uint32_t n)
   fesetround (rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   cr_function_under_test (x, &z1, &z2);
-  fexcept_t inex_z;
-  fegetexceptflag (&inex_z, FE_INEXACT);
+  int inex_z = fetestexcept (FE_INEXACT);
   if (!is_equal (y1, z1) || !is_equal (y2, z2))
   {
     printf ("FAIL x=%a ref=(%a,%a) z=(%a,%a)\n", x, y1, y2, z1, z2);

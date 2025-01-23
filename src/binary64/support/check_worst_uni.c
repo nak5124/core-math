@@ -193,8 +193,7 @@ check (testcase ts)
 #endif
   }
 #ifdef CORE_MATH_CHECK_INEXACT
-  fexcept_t inex2;
-  fegetexceptflag (&inex2, FE_INEXACT);
+  int inex2 = fetestexcept (FE_INEXACT);
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%la (y=%la)\n", ts.x, z1);
