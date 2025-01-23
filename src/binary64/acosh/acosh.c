@@ -189,7 +189,9 @@ double cr_acosh(double x){
 #endif
     return __builtin_nan("x<1");
   }
-  double x2h = x*x, z = 1/x2h, g = 0;
+  uint64_t ax = ix.u << 1;
+  // avoid spurious overflow in x*x or underflow in 1/x2h
+  double x2h = (ax > 0xbfc0000000000000) ? 0x1p1022 : x*x, z = 1/x2h, g = 0;
   int off = 0x3fe;
   b64u64_u t = ix;
   if(ix.u<0x3ff1e83e425aee63ull){
