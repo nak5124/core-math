@@ -179046,3 +179046,8 @@
 -0x1.fffffffffffffp+1023
 # errno tests
 -2,EDOM
+# the following are inputs that failed the glibc testsuite
+# (due to WORST_SYMMETRIC, we only put positive values)
+0x4p-1024
+0x4p-1076
+0x8p-972

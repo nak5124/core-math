@@ -33,6 +33,7 @@ SOFTWARE.
 #include <string.h>
 #include <inttypes.h>
 #include <fenv.h>
+#include <math.h>
 #include <mpfr.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
@@ -174,7 +175,7 @@ check (testcase ts)
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
-  feclearexcept (FE_INEXACT);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW);
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
 #endif
@@ -192,9 +193,27 @@ check (testcase ts)
     exit(1);
 #endif
   }
+
+  /* Check for spurious underflow exception. When the result is +/-0x1p-1074
+     we can't know for sure if there should be an underflow exception:
+     * for underflow after rounding, then a result of +/-0x1p-1074
+       should not signal underflow
+     * for underflow before rounding, if rounding is away from zero for
+       example, we can have underflow, but the result is in the normal range
+  */
+  if (fetestexcept (FE_UNDERFLOW) && fabs (z1) > 0x1p-1074)
+  {
+    printf ("Spurious underflow exception for x=%la (y=%la)\n", ts.x, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+
 #ifdef CORE_MATH_CHECK_INEXACT
-  fexcept_t inex2;
-  fegetexceptflag (&inex2, FE_INEXACT);
+  int inex2 = fetestexcept (FE_INEXACT);
   if ((inex1 == 0) && (inex2 != 0))
   {
     printf ("Spurious inexact exception for x=%la (y=%la)\n", ts.x, z1);

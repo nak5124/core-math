@@ -221,6 +221,11 @@ double cr_acos (double x){
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
   } else { // |x|<=0.5
+    // for |x| <= 0x1.cb3b399d747f2p-55, acos(x) rounds to pi/2 to nearest
+    // this avoids a spurious underflow exception with the code below
+    if (__builtin_expect (ax <= 0x7919676733ae8fe4, 0)) {
+      return 0x1.921fb54442d18p+0 + 0x1.1a62633145c07p-54;
+    }
     // for |x|<=0.5 we use acos(x) = pi/2 - asin(x) so the argument
     // range for asin is the same for both branches to reuse the lookup
     // tables.
