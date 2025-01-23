@@ -324,7 +324,7 @@ double cr_exp(double x){
       volatile double z = 0x1p1023;
       return z*z;
     }
-    if (aix>=0x40874910d52d3052ull) // x < -0x1.74910d52d3052p+9
+    if (aix>=0x40874910d52d3052ull) // x <= -0x1.74910d52d3052p+9
       return 0x1.5p-1022 * 0x1p-55;
   }
   const double s = 0x1.71547652b82fep+12;
