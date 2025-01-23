@@ -194,14 +194,14 @@ check (testcase ts)
 #endif
   }
 
-  /* Check for spurious underflow exception. When the result is +/-0x1p-1074
+  /* Check for spurious underflow exception. When the result is +/-0x1p-1022
      we can't know for sure if there should be an underflow exception:
-     * for underflow after rounding, then a result of +/-0x1p-1074
+     * for underflow after rounding, then a result of +/-0x1p-1022
        should not signal underflow
      * for underflow before rounding, if rounding is away from zero for
        example, we can have underflow, but the result is in the normal range
   */
-  if (fetestexcept (FE_UNDERFLOW) && fabs (z1) > 0x1p-1074)
+  if (fetestexcept (FE_UNDERFLOW) && fabs (z1) > 0x1p-1022)
   {
     printf ("Spurious underflow exception for x=%la (y=%la)\n", ts.x, z1);
     fflush (stdout);

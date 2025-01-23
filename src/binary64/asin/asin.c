@@ -25,7 +25,6 @@ SOFTWARE.
 */
 
 #include <errno.h>
-#include <math.h>
 #include <fenv.h>
 #include <stdint.h>
 
