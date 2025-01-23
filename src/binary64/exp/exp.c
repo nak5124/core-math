@@ -306,8 +306,10 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
 double cr_exp(double x){
   b64u64_u ix = {.f = x};
   u64 aix = ix.u & (~(u64)0>>1);
-  if(__builtin_expect(aix == 0, 0)) return 1.0;
-  if(__builtin_expect(aix>=0x40862e42fefa39f0ull, 0)){
+  // exp(x) rounds to 1 to nearest for |x| <= 0x1p-54
+  if(__builtin_expect(aix <= 0x3c90000000000000ull, 0)) // |x| <= 0x1p-54
+    return 1.0 + x;
+  if(__builtin_expect(aix>=0x40862e42fefa39f0ull, 0)){ // |x| >= 0x1.62e42fefa39fp+9
     if(aix>0x7ff0000000000000ull) return x + x; // nan
     if(aix==0x7ff0000000000000ull){
       if(ix.u>>63)
@@ -315,14 +317,15 @@ double cr_exp(double x){
       else
 	return x;
     }
-    if(!(ix.u>>63)){
+    if(!(ix.u>>63)){ // x >= 0x1.62e42fefa39fp+9
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;
 #endif
       volatile double z = 0x1p1023;
       return z*z;
     }
-    if(aix>=0x40874910d52d3052ull) return 0x1.5p-1022 * 0x1p-55;
+    if (aix>=0x40874910d52d3052ull) // x < -0x1.74910d52d3052p+9
+      return 0x1.5p-1022 * 0x1p-55;
   }
   const double s = 0x1.71547652b82fep+12;
   double t = roundeven_finite(x*s);
