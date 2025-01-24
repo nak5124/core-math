@@ -182,6 +182,7 @@ static double __attribute__((noinline)) as_exp_database(double x, double f){
   return f;
 }
 
+// for 0 <= i < 2^6, t0[i] is a double-double approximation of 2^(i/2^6)
 static const double t0[][2] = {
   {0x0p+0, 0x1p+0}, {-0x1.19083535b085ep-56, 0x1.02c9a3e778061p+0},
   {0x1.d73e2a475b466p-55, 0x1.059b0d3158574p+0}, {0x1.186be4bb285p-57, 0x1.0874518759bc8p+0},
@@ -216,6 +217,8 @@ static const double t0[][2] = {
   {-0x1.e9c23179c2894p-54, 0x1.ea4afa2a490dap+0}, {0x1.dc7f486a4b6bp-54, 0x1.efa1bee615a27p+0},
   {0x1.9d3e12dd8a18ap-54, 0x1.f50765b6e454p+0}, {0x1.74853f3a5931ep-55, 0x1.fa7c1819e90d8p+0}
 };
+
+// for 0 <= i < 2^6, t1[i] is a double-double approximation of 2^(i/2^12)
 static const double t1[][2] = {
   {0x0p+0, 0x1p+0}, {0x1.ae8e38c59c72ap-54, 0x1.000b175effdc7p+0},
   {-0x1.7b5d0d58ea8f4p-58, 0x1.00162f3904052p+0}, {0x1.4115cb6b16a8ep-54, 0x1.0021478e11ce6p+0},
