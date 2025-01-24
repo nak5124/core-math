@@ -311,7 +311,7 @@ double cr_exp2(double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   if(__builtin_expect(ax == 0, 0)) return 1.0;
-  if(__builtin_expect(ax >= 0x8120000000000000ull, 0)){
+  if(__builtin_expect(ax >= 0x8120000000000000ull, 0)){ // |x| >= 1024
     if(ax  > 0xffe0000000000000ull) return x + x; // nan
     if(ax == 0xffe0000000000000ull) return (ix.u>>63)?0.0:x;
     if(ix.u>>63){
@@ -329,6 +329,12 @@ double cr_exp2(double x){
       }
     }
   }
+
+  // for |x| <= 0x1.71547652b82fep-54, 2^x rounds to 1 to nearest
+  // this avoids a spurious underflow in z*z below
+  if (__builtin_expect(ax <= 0x792e2a8eca5705fcull, 0))
+    return 1.0 + __builtin_copysign (0x1p-54, x);
+
   u64 m = ix.u<<12, ex = (ax>>53) - 0x3ff, frac = ex>>63 | m<<ex;
   double sx = 4096.0*x, fx = roundeven_finite(sx), z = sx - fx, z2 = z*z;
   int64_t k = fx, i1 = k&0x3f, i0 = (k>>6)&0x3f, ie = k>>12;
@@ -339,7 +345,7 @@ double cr_exp2(double x){
     {0x1.62e42fefa39efp-13, 0x1.ebfbdff82c58fp-27, 0x1.c6b08d73b3e01p-41, 0x1.3b2ab6fdda001p-55};
   double tz = th*z, fh = th, fl = tz*((c[0] + z*c[1]) + z2*(c[2] + z*c[3])) + tl;
   double eps = 1.64e-19;
-  if(__builtin_expect(ix.u<=0xc08ff00000000000ull, 1)){
+  if(__builtin_expect(ix.u<=0xc08ff00000000000ull, 1)){ // x >= -1022
     // warning: on 32-bit machines, __builtin_expect(frac,1) does not work
     // since only the low 32 bits of frac are taken into account
     if( __builtin_expect(frac != 0, 1)){
