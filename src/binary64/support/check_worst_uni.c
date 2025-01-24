@@ -169,7 +169,7 @@ check (testcase ts)
 {
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW);
   double z1 = ref_function_under_test(ts.x);
 #ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
@@ -194,14 +194,9 @@ check (testcase ts)
 #endif
   }
 
-  /* Check for spurious underflow exception. When the result is +/-0x1p-1022
-     we can't know for sure if there should be an underflow exception:
-     * for underflow after rounding, then a result of +/-0x1p-1022
-       should not signal underflow
-     * for underflow before rounding, if rounding is away from zero for
-       example, we can have underflow, but the result is in the normal range
-  */
-  if (fetestexcept (FE_UNDERFLOW) && fabs (z1) > 0x1p-1022)
+  /* Check for spurious underflow exception, where we follow MPFR, which
+     check underflow after rounding. */
+  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%la (y=%la)\n", ts.x, z1);
     fflush (stdout);
