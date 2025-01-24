@@ -268,6 +268,8 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
   double t1h = t1[i1][1], t1l = t1[i1][0];
   double tl, th = muldd(t0h,t0l, t1h,t1l, &tl);
 
+  /* Use Cody-Waite argument reduction: since |x| < 745, we have |t| < 2^23,
+     thus since l2h is exactly representable on 29 bits, l2h*t is exact. */
   const double l2h = 0x1.62e42ffp-13, l2l = 0x1.718432a1b0e26p-47, l2ll = 0x1.9ff0342542fc3p-102;
   double dx = x - l2h*t, dxl = l2l*t, dxll = l2ll*t + __builtin_fma(l2l,t,-dxl);
   double dxh = dx + dxl; dxl = (dx - dxh) + dxl + dxll;
@@ -337,6 +339,8 @@ double cr_exp(double x){
   double t1h = t1[i1][1], t1l = t1[i1][0];
   double tl, th = muldd(t0h,t0l, t1h,t1l, &tl);
   const double l2h = 0x1.62e42ffp-13, l2l = 0x1.718432a1b0e26p-47;
+  /* Use Cody-Waite argument reduction: since |x| < 745, we have |t| < 2^23,
+     thus since l2h is exactly representable on 29 bits, l2h*t is exact. */
   double dx = (x - l2h*t) + l2l*t, dx2 = dx*dx;
   static const double ch[] = {0x1p+0, 0x1p-1, 0x1.55555557e54ffp-3, 0x1.55555553a12f4p-5};
   double p = (ch[0] + dx*ch[1]) + dx2*(ch[2] + dx*ch[3]);
