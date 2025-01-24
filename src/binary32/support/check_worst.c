@@ -137,8 +137,7 @@ check (float x, float y)
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   float z2 = cr_function_under_test(x, y);
-  fexcept_t inex2;
-  fegetexceptflag (&inex2, FE_INEXACT);
+  int inex2 = fetestexcept (FE_INEXACT);
   if (! is_equal (z1, z2)) {
     printf("FAIL x=%a y=%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
@@ -224,7 +223,6 @@ static inline int issignaling(float x) {
 static void
 check_signaling_nan (void)
 {
-  fexcept_t flag;
   float snan = asfloat (0x7f800001);
   feclearexcept (FE_INVALID);
   float y = cr_function_under_test (snan, 1.0f);
@@ -243,7 +241,7 @@ check_signaling_nan (void)
     exit (1);
   }
   // check the invalid exception was set
-  fegetexceptflag (&flag, FE_INVALID);
+  int flag = fetestexcept (FE_INVALID);
   if (!flag)
   {
     printf ("Missing invalid exception for x=%a y=%a\n", snan, 1.0f);
@@ -268,7 +266,7 @@ check_signaling_nan (void)
     exit (1);
   }
   // check the invalid exception was set
-  fegetexceptflag (&flag, FE_INVALID);
+  flag = fetestexcept (FE_INVALID);
   if (!flag)
   {
     printf ("Missing invalid exception for x=%a y=%a\n", -1.0f, snan);
@@ -294,7 +292,7 @@ check_signaling_nan (void)
     exit (1);
   }
   // check the invalid exception was set
-  fegetexceptflag (&flag, FE_INVALID);
+  flag = fetestexcept (FE_INVALID);
   if (!flag)
   {
     printf ("Missing invalid exception for x=%a y=%a\n", snan, 1.0f);
@@ -319,7 +317,7 @@ check_signaling_nan (void)
     exit (1);
   }
   // check the invalid exception was set
-  fegetexceptflag (&flag, FE_INVALID);
+  flag = fetestexcept (FE_INVALID);
   if (!flag)
   {
     printf ("Missing invalid exception for x=%a y=%a\n", -1.0f, snan);

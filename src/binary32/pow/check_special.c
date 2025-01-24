@@ -103,8 +103,7 @@ check (float x, float y)
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   z2 = cr_powf(x, y);
-  fexcept_t inex2;
-  fegetexceptflag (&inex2, FE_INEXACT);
+  int inex2 = fetestexcept (FE_INEXACT);
   if (!is_equal (z1, z2)) {
     printf("FAIL x,y=%a,%a ref=%a z=%a\n", x, y, z1, z2);
     fflush(stdout);
