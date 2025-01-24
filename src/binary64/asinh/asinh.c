@@ -176,17 +176,19 @@ static const double c[] = {-0x1p-1, 0x1.555555555553p-2, -0x1.fffffffffffap-3, 0
 double cr_asinh(double x){
   double ax = __builtin_fabs(x);
   b64u64_u ix = {.f = ax};
-  double x2h = x*x, x2l = __builtin_fma(x, x, -x2h);
   u64 u = ix.u;
-  if(__builtin_expect(u<0x3fbb000000000000, 0)){
+  if(__builtin_expect(u<0x3fbb000000000000, 0)){ // |x| < 0x1.bp-4
+    // for |x| < 0x1.7137449123ef7p-26, asinh(x) rounds to x to nearest
+    // for |x| < 0x1p-1022 we have underflow but not for 0x1p-1022 (to nearest)
+    if(__builtin_expect(u<0x3e57137449123ef7, 0)){ // |x| < 0x1.7137449123ef7p-26
+      if(__builtin_expect(!u, 0)) return x;
+      return __builtin_fma(-0x1p-60,x,x);
+    }
+    double x2h = x*x, x2l = __builtin_fma(x, x, -x2h);
     double x3h = x2h*x, sl;
-    if(__builtin_expect(u<0x3f93000000000000, 0)){
-      if(__builtin_expect(u<0x3f30000000000000, 0)){
-	if(__builtin_expect(u<0x3e5a000000000000, 0)){
-	  if(__builtin_expect(u<0x3e57137449123ef7, 0)){
-	    if(__builtin_expect(!u, 0)) return x;
-	    return __builtin_fma(-0x1p-60,x,x);
-	  }
+    if(__builtin_expect(u<0x3f93000000000000, 0)){ // |x| < 0x1.3p-6
+      if(__builtin_expect(u<0x3f30000000000000, 0)){ // |x| < 0x1p-12
+	if(__builtin_expect(u<0x3e5a000000000000, 0)){ // |x| < 0x1.ap-26
 	  static const double cl[] = {-0x1.5555555555555p-3};
 	  sl = x3h*cl[0];
 	} else {
@@ -211,6 +213,7 @@ double cr_asinh(double x){
     if(lb == ub) return lb;
     return as_asinh_zero(x,x2h,x2l);
   }
+  double x2h = x*x, x2l = __builtin_fma(x, x, -x2h);
   double ah, al;
   int off = 0x3ff;
   if(__builtin_expect(u<0x4190000000000000, 1)){
