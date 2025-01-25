@@ -169,7 +169,7 @@ check (testcase ts)
 {
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   double z1 = ref_function_under_test(ts.x);
 #ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
@@ -194,11 +194,43 @@ check (testcase ts)
 #endif
   }
 
-  /* Check for spurious underflow exception, where we follow MPFR, which
+  /* Check for spurious/missing underflow exception, where we follow MPFR, which
      check underflow after rounding. */
   if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%la (y=%la)\n", ts.x, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_UNDERFLOW) && mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
+  {
+    printf ("Missing underflow exception for x=%la (y=%la)\n", ts.x, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+
+  /* Check for spurious/missing overflow exception */
+  if (fetestexcept (FE_OVERFLOW) && !mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Spurious overflow exception for x=%la (y=%la)\n", ts.x, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return 1;
+#else
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_OVERFLOW) && mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Missing overflow exception for x=%la (y=%la)\n", ts.x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return 1;
