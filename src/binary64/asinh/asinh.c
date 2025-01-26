@@ -213,11 +213,14 @@ double cr_asinh(double x){
     if(lb == ub) return lb;
     return as_asinh_zero(x,x2h,x2l);
   }
-  double x2h = x*x, x2l = __builtin_fma(x, x, -x2h);
+  // |x| >= 0x1.bp-4
+  double x2h = 0, x2l = 0;
   double ah, al;
   int off = 0x3ff;
-  if(__builtin_expect(u<0x4190000000000000, 1)){
+  if(__builtin_expect(u<0x4190000000000000, 1)){ // x < 0x1p+26
     double th, tl;
+    x2h = x * x;
+    x2l = __builtin_fma(x, x, -x2h);
     if(__builtin_expect(u<0x3ff0000000000000, 0)){
       th = fasttwosum(1, x2h, &tl);
     } else {

@@ -288,6 +288,8 @@ double cr_log1p(double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   double ln1, ln0, eps;
+  /* logp1 is expected to be used for x near 0, where it is more accurate than
+     log(1+x), thus we expect x near 0 */
   if(__builtin_expect(ax<0x7f60000000000000ull, 1)){ // |x| < 0.0625
     double x2 = x*x;
     if(__builtin_expect(ax<0x7e60000000000000ull, 1)){ // |x| < 0x1p-12
