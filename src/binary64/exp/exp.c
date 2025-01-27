@@ -126,8 +126,6 @@ static inline double as_ldexp(double x, i64 i){
 
 // sets the exponent of a binary64 number to 0 (subnormal range)
 static inline double as_todenormal(double x){
-    // forces the underflow exception
-    __attribute__ ((unused)) volatile double t = 0x1p-1074 * 0.5;
 #ifdef __x86_64__
     __m128i sb; sb[0] = ~(u64)0>>12;
 #if defined(__clang__)
@@ -136,10 +134,14 @@ static inline double as_todenormal(double x){
     __m128d r; asm("":"=x"(r):"0"(x));
 #endif
     r = _mm_and_pd(r, (__m128d)sb);
+    // forces the underflow exception
+    _mm_setcsr (_mm_getcsr () | _MM_EXCEPT_UNDERFLOW);
     return r[0];
 #else
     b64u64_u ix = {.f = x};
     ix.u &= ~(u64)0>>12;
+    // forces the underflow exception
+    feraiseexcept (FE_UNDERFLOW);
     return ix.f;
 #endif
 }

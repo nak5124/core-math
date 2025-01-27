@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <stdint.h> /* for uint64_t */
 #include <errno.h>
+#include <fenv.h>
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -139,10 +140,14 @@ static inline double as_todenormal(double x){
   __m128d r; asm("":"=x"(r):"0"(x));
 #endif
   r = _mm_and_pd(r, (__m128d)sb);
+  // forces the underflow exception
+  _mm_setcsr (_mm_getcsr () | _MM_EXCEPT_UNDERFLOW);
   return r[0];
 #else
   b64u64_u ix = {.f = x};
   ix.u &= ~(u64)0>>12;
+  // forces the underflow exception
+  feraiseexcept (FE_UNDERFLOW);
   return ix.f;
 #endif
 }
@@ -313,14 +318,14 @@ double cr_exp2(double x){
   if(__builtin_expect(ax == 0, 0)) return 1.0;
   if(__builtin_expect(ax >= 0x8120000000000000ull, 0)){ // |x| >= 1024
     if(ax  > 0xffe0000000000000ull) return x + x; // nan
-    if(ax == 0xffe0000000000000ull) return (ix.u>>63)?0.0:x;
-    if(ix.u>>63){
-      if(ix.u >= 0xc090cc0000000000ull) {
+    if(ax == 0xffe0000000000000ull) return (ix.u>>63)?0.0:x; // +/-inf
+    if(ix.u>>63){ // x <= -1024
+      if(ix.u >= 0xc090cc0000000000ull) { // x <= -1075
 	double z = 0x1p-1022;
 	return z*z;
       }
-    } else {
-      if(ix.u >= 0x4090000000000000ull){
+    } else { // x >= 1024
+      if(ix.u >= 0x4090000000000000ull){ // x >= 1024
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = ERANGE;
 #endif
