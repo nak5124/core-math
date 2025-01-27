@@ -124,7 +124,10 @@ static inline double as_ldexp(double x, i64 i){
 #endif
 }
 
+// sets the exponent of a binary64 number to 0 (subnormal range)
 static inline double as_todenormal(double x){
+    // forces the underflow exception
+    __attribute__ ((unused)) volatile double t = 0x1p-1074 * 0.5;
 #ifdef __x86_64__
     __m128i sb; sb[0] = ~(u64)0>>12;
 #if defined(__clang__)
@@ -276,6 +279,7 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
   double fl, fh = opolydd(dxh,dxl, 7,ch, &fl);
   fh = muldd(dxh,dxl, fh,fl, &fl);
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
+    // x < -0x1.6232bdd7abcd2p+9
     ix.u = (1-ie)<<52;
     fh = muldd(fh,fl, th,tl, &fl);
     fh = fastsum(th,tl, fh,fl, &fl);
@@ -316,11 +320,11 @@ double cr_exp(double x){
     return 1.0 + x;
   if(__builtin_expect(aix>=0x40862e42fefa39f0ull, 0)){ // |x| >= 0x1.62e42fefa39fp+9
     if(aix>0x7ff0000000000000ull) return x + x; // nan
-    if(aix==0x7ff0000000000000ull){
+    if(aix==0x7ff0000000000000ull){ // |x| = inf
       if(ix.u>>63)
-	return 0.0;
+	return 0.0; // x = -inf
       else
-	return x;
+	return x; // x = inf
     }
     if(!(ix.u>>63)){ // x >= 0x1.62e42fefa39fp+9
 #ifdef CORE_MATH_SUPPORT_ERRNO
@@ -347,6 +351,7 @@ double cr_exp(double x){
   double fh = th, tx = th*dx, fl = tl + tx*p;
   double eps = 1.64e-19;
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
+    // subnormal case: x < -0x1.6232bdd7abcd2p+9
     ix.u = (1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);
