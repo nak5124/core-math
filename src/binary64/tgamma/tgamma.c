@@ -26,6 +26,11 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
+#if defined(__x86_64__)
+#include <x86intrin.h>
+#else
+#include <fenv.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -268,6 +273,17 @@ static __attribute__((noinline)) double as_tgamma_database(double x, double f){
     m = (a + b)/2;
   }
   return f;
+}
+
+// raise the underflow exception
+static void
+raise_underflow (void)
+{
+#ifdef __x86_64__
+  _mm_setcsr (_mm_getcsr () | _MM_EXCEPT_UNDERFLOW);
+#else
+  feraiseexcept (FE_UNDERFLOW);
+#endif
 }
 
 static __attribute__((noinline)) double as_tgamma_accurate(double x){
@@ -580,7 +596,7 @@ static __attribute__((noinline)) double as_tgamma_accurate(double x){
   double eps = 0x1.ep-103*fh, ub = fh + (fl + eps), lb = fh + (fl - eps);
   b64u64_u res = {.f = fh + fl};
   long re = (res.u >> 52)&0x7ff;
-  if(re + eoff <= 0){
+  if(re + eoff <= 0){ // subnormal case
     res.u -= (long)(eoff+re-1)<<52;
     res.u &= 0xffful<<52;
     double l;
@@ -588,6 +604,7 @@ static __attribute__((noinline)) double as_tgamma_accurate(double x){
     fl += l;
     res.f = fh + fl;
     res.u &= ~(0x7fful<<52);
+    raise_underflow ();
   } else {
     res.u += (long)eoff<<52;
   }
@@ -715,7 +732,7 @@ double cr_tgamma(double x){
     } else {
       th.f = rh;
       int re = (th.u>>52)&0x7ff;
-      if(re-e<=0){
+      if(re-e<=0){ // subnormal case
 	th.u += (long)(e-re+1)<<52;
 	th.u &= 0xffful<<52;
 	double l;
@@ -724,7 +741,8 @@ double cr_tgamma(double x){
 	double ub = rh + (rl + eps), lb = rh + (rl - eps);
 	if(ub != lb) return as_tgamma_accurate(x);
 	th.f = ub;
-	th.u &= ~(0x7fful<<52);
+	th.u &= ~(0x7fful<<52); // make subnormal
+        raise_underflow ();
       } else {
 	double ub = rh + (rl + eps), lb = rh + (rl - eps);
 	if(ub != lb) return as_tgamma_accurate(x);
