@@ -127,7 +127,7 @@ static inline double as_ldexp(double x, i64 i){
 // sets the exponent of a binary64 number to 0 (subnormal range)
 static inline double as_todenormal(double x){
 #ifdef __x86_64__
-    __m128i sb; sb[0] = ~(u64)0>>12;
+    __m128i sb = {~(u64)0>>12, 0};
 #if defined(__clang__)
     __m128d r = _mm_set_sd(x);
 #else
