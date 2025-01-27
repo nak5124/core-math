@@ -291,15 +291,16 @@ double cr_log1p(double x){
   /* logp1 is expected to be used for x near 0, where it is more accurate than
      log(1+x), thus we expect x near 0 */
   if(__builtin_expect(ax<0x7f60000000000000ull, 1)){ // |x| < 0.0625
+    // check case x tiny first to avoid spurious underflow in x*x
+    if(__builtin_expect(ax<0x7940000000000000ull, 0)){ // |x| < 0x1p-53
+      if(!ax) return x;
+      return __builtin_fma(__builtin_fabs(x), -0x1p-54, x);
+    }
     double x2 = x*x;
     if(__builtin_expect(ax<0x7e60000000000000ull, 1)){ // |x| < 0x1p-12
       ln1 = x;
       eps = 0x1.6p-64*x;
       if(__builtin_expect(ax<0x7d43360000000000ull, 1)){ // |x| < 0x1.19bp-21
-	if(ax<0x7940000000000000ull){ // |x| < 0x1p-53
-	  if(!ax) return x;
-	  return __builtin_fma(__builtin_fabs(x), -0x1p-54, x);
-	}
 	static const double c[] = {-0x1.00000000001d1p-1, 0x1.55555555558f7p-2};
 	ln0 = x2*(c[0] + x*c[1]);
       } else {
