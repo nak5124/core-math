@@ -194,8 +194,8 @@ check (testcase ts)
 #endif
   }
 
-  /* Check for spurious/missing underflow exception, where we follow MPFR, which
-     check underflow after rounding. */
+  /* Check for spurious/missing underflow exception, where we follow MPFR,
+     which checks underflow after rounding. */
   if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%la (y=%la)\n", ts.x, z1);

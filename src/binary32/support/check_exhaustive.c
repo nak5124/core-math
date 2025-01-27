@@ -106,14 +106,16 @@ doit (uint32_t n)
   x = asfloat (n);
   ref_init ();
   ref_fesetround (rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   y = ref_function_under_test (x);
 #ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround (rnd1[rnd]);
-  feclearexcept (FE_INEXACT | FE_UNDERFLOW);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
+#endif
   z = cr_function_under_test (x);
   int inex_z = fetestexcept (FE_INEXACT);
   /* Note: the test y != z would not distinguish +0 and -0, instead we compare
@@ -124,13 +126,36 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
-  // check spurious underflow
-  if ((y < -0x1p-126f || 0x1p-126f < y) && fetestexcept (FE_UNDERFLOW))
+
+  /* check spurious/missing underflow. where we follow MPFR,
+     which checks underflow after rounding. */
+  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
     if (!keep) exit (1);
   }
+  if (!fetestexcept (FE_UNDERFLOW) && mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
+  {
+    printf ("Missing underflow exception for x=%a (y=%a)\n", x, y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+
+  // check spurious/missing overflow
+  if (fetestexcept (FE_OVERFLOW) && !mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Spurious overflow exception for x=%a (y=%a)\n", x, y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if (!fetestexcept (FE_OVERFLOW) && mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Missing overflow exception for x=%a (y=%a)\n", x, y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+
 #ifdef CORE_MATH_CHECK_INEXACT
   if ((inex_y == 0) && (inex_z != 0))
   {
@@ -145,6 +170,7 @@ doit (uint32_t n)
     if (!keep) exit (1);
   }
 #endif
+
 #ifdef CORE_MATH_SUPPORT_ERRNO
   /* If x is a normal number and y is NaN, we should have errno = EDOM.
      If x is a normal number and y is +/-Inf, we should have errno = ERANGE.
