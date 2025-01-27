@@ -325,13 +325,10 @@ double cr_exp2(double x){
 	return z*z;
       }
     } else { // x >= 1024
-      if(ix.u >= 0x4090000000000000ull){ // x >= 1024
 #ifdef CORE_MATH_SUPPORT_ERRNO
-  errno = ERANGE;
+      errno = ERANGE;
 #endif
-	double z = 0x1p1023;
-	return z*z;
-      }
+      return 0x1p1023*x;
     }
   }
 
