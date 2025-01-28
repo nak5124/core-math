@@ -32,6 +32,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <errno.h>
 #include <mpfr.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
@@ -99,6 +100,15 @@ asfloat (uint32_t n)
   return u.f;
 }
 
+/* define our own is_inf function to avoid depending from math.h */
+static inline int
+is_inf (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) == 0;
+}
+
 /* define our own is_nan function to avoid depending from math.h */
 static inline int
 is_nan (float x)
@@ -129,13 +139,13 @@ check (float x, float y)
   tests ++;
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   float z1 = ref_function_under_test(x, y);
 #ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
-  feclearexcept (FE_INEXACT);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
   float z2 = cr_function_under_test(x, y);
   int inex2 = fetestexcept (FE_INEXACT);
   if (! is_equal (z1, z2)) {
@@ -149,6 +159,50 @@ check (float x, float y)
     exit(1);
 #endif
   }
+
+  /* When there is underflow but the result is exact, IEEE 754-2019 says the
+     underflow exception should not be signaled. However MPFR raises the underflow
+     exception in this case: we clear it to mimic IEEE 754-2019. */
+  if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
+    mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
+
+  /* check spurious/missing underflow. where we follow MPFR,
+     which checks underflow after rounding. */
+  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
+  {
+    printf ("Spurious underflow exception for x=%a y=%a (z=%a)\n", x, y, z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_UNDERFLOW) && mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
+  {
+    printf ("Missing underflow exception for x=%a y=%a (z=%a)\n", x, y, z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing overflow
+  if (fetestexcept (FE_OVERFLOW) && !mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Spurious overflow exception for x=%a y=%a (z=%a)\n", x, y, z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_OVERFLOW) && mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Missing overflow exception for x=%a y=%a (z=%a)\n", x, y, z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+
 #ifdef CORE_MATH_CHECK_INEXACT
   if ((inex1 == 0) && (inex2 != 0))
   {
@@ -167,6 +221,32 @@ check (float x, float y)
 #ifndef DO_NOT_ABORT
     exit(1);
 #endif
+  }
+#endif
+
+  // check errno
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  /* If x,y are normal numbers and z is NaN, we should have errno = EDOM.
+     If x,y are normal numbers and z is +/-Inf, we should have errno = ERANGE.
+  */
+  if (!is_nan (x) && !is_inf (x) && !is_nan (y) && !is_inf (y))
+  {
+    if (is_nan (z1) && errno != EDOM)
+    {
+      printf ("Missing errno=EDOM for x=%a y=%a (z=%a)\n", x, y, z1);
+      fflush (stdout);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
+    }
+    if (is_inf (z1) && errno != ERANGE)
+    {
+      printf ("Missing errno=ERANGE for x=%a y=%a (z=%a)\n", x, y, z1);
+      fflush (stdout);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
+    }
   }
 #endif
 }

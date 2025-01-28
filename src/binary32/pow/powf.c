@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 #ifdef __x86_64__
 #include <x86intrin.h>
 #define FLAG_T uint32_t
@@ -367,6 +368,9 @@ float cr_powf(float x0, float y0){
     if(tx.u>>63){ // x=-1
       if((ty.u<<1) > (uint64_t)0x7ff<<53) return y0 + y0; // y=nan
       if(isint(y0)) return (isodd(y0)) ? x0 : -x0;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = EDOM;
+#endif
       return __builtin_nanf(""); // (-1)^y for non-integer y
     }
     return x0; // x=1
@@ -393,14 +397,23 @@ float cr_powf(float x0, float y0){
     }
     if((tx.u<<1) > (uint64_t)0x7ff<<53) return x0 + x0; // x is NaN
     if(__builtin_expect(tx.u > (uint64_t)0x7ff<<52, 0)) // x <= 0
-      if(!isint(y0) && x != 0) return __builtin_nanf("");
+      if(!isint(y0) && x != 0) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+        errno = EDOM;
+#endif
+        return __builtin_nanf("");
+      }
   }
   if(__builtin_expect (!(tx.u<<1), 0)){ // x=+0 or -0
     if(ty.u>>63){ // y < 0
       if(isodd(y0))
 	return 1.0f/__builtin_copysignf(0.0f,x0);
-      else
+      else {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+        errno = ERANGE;
+#endif
 	return 1.0f/0.0f;
+      }
     } else { // y > 0
       if(isodd(y0))
 	return __builtin_copysignf(1.0f,x0)*0.0f;
@@ -432,8 +445,12 @@ float cr_powf(float x0, float y0){
   if(__builtin_expect(z>2048, 0)){
     if(isodd(y0))
       return __builtin_copysignf(0x1p127f, x0)*0x1p127f;
-    else
+    else {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
       return 0x1p127f*0x1p127f;
+    }
   }
   if(__builtin_expect(z<-2400, 0)){
     if(isodd(y0))

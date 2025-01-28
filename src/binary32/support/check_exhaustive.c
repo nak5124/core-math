@@ -127,8 +127,8 @@ doit (uint32_t n)
     if (!keep) exit (1);
   }
 
-  /* When there is underflow but the result is exact, IEEE 754-2019 says there
-     should be no underflow exception. However MPFR raises the underflow
+  /* When there is underflow but the result is exact, IEEE 754-2019 says the
+     underflow exception should not be signaled. However MPFR raises the underflow
      exception in this case: we clear it to mimic IEEE 754-2019. */
   if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
     mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
@@ -162,6 +162,7 @@ doit (uint32_t n)
     if (!keep) exit (1);
   }
 
+  // check inexact exception
 #ifdef CORE_MATH_CHECK_INEXACT
   if ((inex_y == 0) && (inex_z != 0))
   {
@@ -177,6 +178,7 @@ doit (uint32_t n)
   }
 #endif
 
+  // check errno
 #ifdef CORE_MATH_SUPPORT_ERRNO
   /* If x is a normal number and y is NaN, we should have errno = EDOM.
      If x is a normal number and y is +/-Inf, we should have errno = ERANGE.
