@@ -31,6 +31,7 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
+#include <errno.h>
 #include <mpfr.h>
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
@@ -81,6 +82,24 @@ is_equal (float y1, float y2)
   return asuint (y1) == asuint (y2);
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+/* define our own is_inf function to avoid depending from math.h */
+static inline int
+is_inf (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) == 0;
+}
+
 void
 doit (uint32_t n)
 {
@@ -88,13 +107,16 @@ doit (uint32_t n)
   x = asfloat (n);
   ref_init ();
   ref_fesetround (rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   ref_function_under_test (x, &y1, &y2);
 #ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround (rnd1[rnd]);
-  feclearexcept (FE_INEXACT);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  errno = 0;
+#endif
   cr_function_under_test (x, &z1, &z2);
   int inex_z = fetestexcept (FE_INEXACT);
   if (!is_equal (y1, z1) || !is_equal (y2, z2))
@@ -103,18 +125,93 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+
+  // check inexact flag
 #ifdef CORE_MATH_CHECK_INEXACT
   if ((inex_y == 0) && (inex_z != 0))
   {
-    printf ("Spurious inexact exception for x=%a\n", x);
+    printf ("Spurious inexact exception for x=%a z=(%a,%a)\n", x, z1, z2);
     fflush (stdout);
     if (!keep) exit (1);
   }
   if ((inex_y != 0) && (inex_z == 0))
   {
-    printf ("Missing inexact exception for x=%a\n", x);
+    printf ("Missing inexact exception for x=%a z=(%a,%a)\n", x, z1, z2);
     fflush (stdout);
     if (!keep) exit (1);
+  }
+#endif
+
+  /* When there is underflow but the result is exact, IEEE 754-2019 says the
+     underflow exception should not be signaled. However MPFR raises the underflow
+     exception in this case: we clear it to mimic IEEE 754-2019. */
+  if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
+    mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
+
+  /* check spurious/missing underflow. where we follow MPFR,
+     which checks underflow after rounding. */
+  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
+  {
+    printf ("Spurious underflow exception for x=%a z=(%a,%a)\n", x, z1, z2);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if (!fetestexcept (FE_UNDERFLOW) && mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
+  {
+    printf ("Missing underflow exception for x=%a z=(%a,%a)\n", x, z1, z2);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+
+  // check spurious/missing overflow
+  if (fetestexcept (FE_OVERFLOW) && !mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Spurious overflow exception for x=%a z=(%a,%a)\n", x, z1, z2);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if (!fetestexcept (FE_OVERFLOW) && mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
+  {
+    printf ("Missing overflow exception for x=%a z=(%a,%a)\n", x, z1, z2);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+
+  // check inexact exception
+#ifdef CORE_MATH_CHECK_INEXACT
+  if ((inex_y == 0) && (inex_z != 0))
+  {
+    printf ("Spurious inexact exception for x=%a z=(%a,%a)\n", x, z1, z2);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if ((inex_y != 0) && (inex_z == 0))
+  {
+    printf ("Missing inexact exception for x=%a z=(%a,%a)\n", x, z1, z2);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+#endif
+
+  // check errno
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  /* If x is a normal number and y1/y2 is NaN, we should have errno = EDOM.
+     If x is a normal number and y1/y2 is +/-Inf, we should have errno = ERANGE.
+  */
+  if (!is_nan (x) && !is_inf (x))
+  {
+    if ((is_nan (y1) || is_nan (y2)) && errno != EDOM)
+    {
+      printf ("Missing errno=EDOM for x=%a y=(%a,%a)\n", x, y1, y2);
+      fflush (stdout);
+      if (!keep) exit (1);
+    }
+    if ((is_inf (y1) || is_inf (y2)) && errno != ERANGE)
+    {
+      printf ("Missing errno=ERANGE for x=%a y=(%a,%a)\n", x, y1, y2);
+      fflush (stdout);
+      if (!keep) exit (1);
+    }
   }
 #endif
 }
@@ -124,15 +221,6 @@ static inline int issignaling(float x) {
   union_t _x = {.x = x};
 
   return !(_x.n & (1ull << 22));
-}
-
-/* define our own is_nan function to avoid depending from math.h */
-static inline int
-is_nan (float x)
-{
-  uint32_t u = asuint (x);
-  int e = u >> 23;
-  return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
 }
 
 /* check for signaling NaN input */
