@@ -357,14 +357,18 @@ check_signaling_nan (void)
   {
     fprintf (stderr, "Error, foo(sNaN,1.0) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
     fprintf (stderr, "Error, foo(sNaN,1.0) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   y = cr_function_under_test (1.0, snan);
   // check that foo(NaN) = NaN
@@ -372,14 +376,18 @@ check_signaling_nan (void)
   {
     fprintf (stderr, "Error, foo(1.0,sNaN) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
     fprintf (stderr, "Error, foo(1.0,sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   // check also sNaN with the sign bit set
   snan = asfloat64 (0xfff0000000000001ull);
@@ -389,14 +397,18 @@ check_signaling_nan (void)
   {
     fprintf (stderr, "Error, foo(sNaN,1.0) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
     fprintf (stderr, "Error, foo(sNaN,1.0) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   y = cr_function_under_test (1.0, snan);
   // check that foo(NaN) = NaN
@@ -404,14 +416,18 @@ check_signaling_nan (void)
   {
     fprintf (stderr, "Error, foo(1.0,sNaN) should be NaN, got %la=%"PRIx64"\n",
              y, asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
   // check that the signaling bit disappeared
   if (issignaling (y))
   {
     fprintf (stderr, "Error, foo(1.0,sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
              asuint64 (y));
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 }
 
