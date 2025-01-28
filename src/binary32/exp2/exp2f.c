@@ -104,13 +104,12 @@ float cr_exp2f(float x){
       int msk = (int)t.u>>31;
       int m = ((t.u&0x7fffff)|(1<<23))>>(23-k);
       m = (m^msk) - msk + 127;
-      // x = m*2^k
       if(m>0 && m<255){
 	t.u = m<<23;
 	return t.f;
       } else if(m<=0 && m>-23){
-        // we have underflow for x=-128 and x=-127
-        if (__builtin_expect (t.u == 0xc2fe0000 || t.u == 0xc3000000, 0))
+        // we have underflow for x<=-127
+        if (t.u >= 0xc2fe0000)
           raise_underflow ();
 	t.u = 1<<(22+m);
         return t.f;
