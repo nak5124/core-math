@@ -26,6 +26,11 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
+#if defined(__x86_64__)
+#include <x86intrin.h>
+#else
+#include <fenv.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -61,6 +66,17 @@ static float as_special(float x){
   return r;
 }
 
+// raise the underflow exception
+static void
+raise_underflow (void)
+{
+#ifdef __x86_64__
+  _mm_setcsr (_mm_getcsr () | _MM_EXCEPT_UNDERFLOW);
+#else
+  feraiseexcept (FE_UNDERFLOW);
+#endif
+}
+
 float cr_exp2f(float x){
   static const b64u64_u tb[] =
     {{0x1.0000000000000p+0}, {0x1.02c9a3e778061p+0}, {0x1.059b0d3158574p+0}, {0x1.0874518759bc8p+0},
@@ -81,23 +97,29 @@ float cr_exp2f(float x){
      {0x1.ea4afa2a490dap+0}, {0x1.efa1bee615a27p+0}, {0x1.f50765b6e4540p+0}, {0x1.fa7c1819e90d8p+0}};
 
   b32u32_u t = {.f = x};
-  if(__builtin_expect((t.u&0xffff)==0, 0)){
-    int k = ((t.u>>23)&0xff)-127;
+  if(__builtin_expect((t.u&0xffff)==0, 0)){ // x maybe integer
+    int k = ((t.u>>23)&0xff)-127; // 2^k <= |x| < 2^(k+1)
     if(__builtin_expect(k>=0 && k<9 && (t.u<<(9+k)) == 0, 0)){
+      // x integer, with 1 <= |x| < 2^9
       int msk = (int)t.u>>31;
       int m = ((t.u&0x7fffff)|(1<<23))>>(23-k);
       m = (m^msk) - msk + 127;
+      // x = m*2^k
       if(m>0 && m<255){
 	t.u = m<<23;
 	return t.f;
       } else if(m<=0 && m>-23){
+        // we have underflow for x=-128 and x=-127
+        if (__builtin_expect (t.u == 0xc2fe0000 || t.u == 0xc3000000, 0))
+          raise_underflow ();
 	t.u = 1<<(22+m);
-	return t.f;
+        return t.f;
       }
     }
   }
   uint32_t ux = t.u<<1;
   if (__builtin_expect(ux>=0x86000000u || ux<0x65000000u, 0)){
+    // |x| >= 128 or |x| < 0x1p-26
     if(__builtin_expect(ux<0x65000000u, 1)) return 1.0f + x;
     if(!(t.u>=0xc3000000 && t.u<0xc3150000u)) return as_special(x);
   }
