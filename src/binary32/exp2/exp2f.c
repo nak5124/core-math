@@ -66,17 +66,6 @@ static float as_special(float x){
   return r;
 }
 
-// raise the underflow exception
-static void
-raise_underflow (void)
-{
-#ifdef __x86_64__
-  _mm_setcsr (_mm_getcsr () | _MM_EXCEPT_UNDERFLOW);
-#else
-  feraiseexcept (FE_UNDERFLOW);
-#endif
-}
-
 float cr_exp2f(float x){
   static const b64u64_u tb[] =
     {{0x1.0000000000000p+0}, {0x1.02c9a3e778061p+0}, {0x1.059b0d3158574p+0}, {0x1.0874518759bc8p+0},
@@ -108,9 +97,8 @@ float cr_exp2f(float x){
 	t.u = m<<23;
 	return t.f;
       } else if(m<=0 && m>-23){
-        // we have underflow for x<=-127
-        if (t.u >= 0xc2fe0000)
-          raise_underflow ();
+        /* If f(x) underflows but is exact, no underflow exception should be
+           raised (cf IEEE 754-2019). */
 	t.u = 1<<(22+m);
         return t.f;
       }
