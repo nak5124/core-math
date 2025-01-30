@@ -898,7 +898,11 @@ erfc_asympt_fast (double *h, double *l, double x)
      (1+2^-71.804)*(1+2^-74.139)*(1+2^-97.9)*(1+2^-67.184)*(1+2^-80)-1
      < 2^-67.115
   */
-  return 0x1.d9p-68 * *h; /* 2^-67.115 < 0x1.d9p-68 */
+  // avoid a spurious underflow in 0x1.d9p-68 * h
+  if (*h >= 0x1.151b9a3fdd5c9p-955)
+    return 0x1.d9p-68 * *h; /* 2^-67.115 < 0x1.d9p-68 */
+  else
+    return 0x1p-1022; // this overestimates 0x1.d9p-68 * h
 }
 
 /* given -0x1.7744f8f74e94bp2 < x < 0x1.b39dc41e48bfdp+4,
