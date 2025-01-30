@@ -294,7 +294,8 @@ check (testcase ts)
       exit(1);
 #endif
     }
-    if (is_inf (z1) && errno != ERANGE)
+    // when x=0, we assume we have an exact infinity, thus no overflow
+    if (is_inf (z1) && errno != ERANGE && ts.x != 0)
     {
       printf ("Missing errno=ERANGE for x=%la (y=%la)\n", ts.x, z1);
       fflush (stdout);
