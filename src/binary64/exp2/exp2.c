@@ -131,7 +131,9 @@ static inline double as_ldexp(double x, i64 i){
 #endif
 }
 
-static inline double as_todenormal(double x){
+// convert x, 2^52 <= x < 2^53 to subnormal range
+// if exact <> 0, raises the underflow exception
+static inline double as_todenormal(double x, int exact){
 #ifdef __x86_64__
   __m128i sb = {~(u64)0>>12, 0};
 #if defined(__clang__)
@@ -140,14 +142,16 @@ static inline double as_todenormal(double x){
   __m128d r; asm("":"=x"(r):"0"(x));
 #endif
   r = _mm_and_pd(r, (__m128d)sb);
-  // forces the underflow exception
-  _mm_setcsr (_mm_getcsr () | _MM_EXCEPT_UNDERFLOW);
+  if (!exact)
+    // raise the underflow exception
+    _mm_setcsr (_mm_getcsr () | _MM_EXCEPT_UNDERFLOW);
   return r[0];
 #else
   b64u64_u ix = {.f = x};
   ix.u &= ~(u64)0>>12;
-  // forces the underflow exception
-  feraiseexcept (FE_UNDERFLOW);
+  if (!exact)
+    // raise the underflow exception
+    feraiseexcept (FE_UNDERFLOW);
   return ix.f;
 #endif
 }
@@ -307,7 +311,7 @@ static double __attribute__((cold,noinline)) as_exp2_accurate(double x){
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
-    fh = as_todenormal(fh + fl);
+    fh = as_todenormal(fh + fl, 0);
   }
   return fh;
 }
@@ -355,16 +359,17 @@ double cr_exp2(double x){
       if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
     }
     fh = as_ldexp(fh, ie);
-  } else {
+  } else { // subnormal case
     ix.u = ((u64)1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
     if(__builtin_expect(frac != 0, 1)){
       double ub = fh + (fl + eps); fh += fl - eps;
-      if(__builtin_expect( ub != fh, 0)) return as_exp2_accurate(x);
+      if (__builtin_expect(ub != fh, 0)) return as_exp2_accurate(x);
     }
-    fh = as_todenormal(fh);
+    // when 2^x is exact, no underflow should be raised
+    fh = as_todenormal (fh, frac == 0);
   }
   return fh;
 }
