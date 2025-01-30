@@ -153,6 +153,7 @@ is_nan (double x)
   return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
 }
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
 /* define our own is_inf function to avoid depending from math.h */
 static inline int
 is_inf (double x)
@@ -161,6 +162,7 @@ is_inf (double x)
   uint64_t e = u >> 52;
   return (e == 0x7ff || e == 0xfff) && (u << 12) == 0;
 }
+#endif
 
 static inline int
 is_equal (double x, double y)
