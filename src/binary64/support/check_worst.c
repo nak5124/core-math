@@ -263,7 +263,7 @@ check (testcase ts)
 #ifdef CORE_MATH_SUPPORT_ERRNO
   // most tests don't check for errno setting, so it's not yet possible to check when errno was set incorrectly (case when errno_ref = 0 & cr_errno != 0)
   if (ts.errno_ref != 0 && cr_errno != ts.errno_ref) {
-    printf("%s error not set for x=%la y=%la (z=%la)\n", ts.errno_ref == ERANGE ? "Range" : "Domain", ts.x, ts.y, z1);
+    printf("%s error not set for x,y=%la,%la (z=%la)\n", ts.errno_ref == ERANGE ? "Range" : "Domain", ts.x, ts.y, z1);
 #ifndef DO_NOT_ABORT
     exit(1);
 #endif
