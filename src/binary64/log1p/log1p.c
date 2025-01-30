@@ -342,12 +342,8 @@ double cr_log1p(double x){
 	} else {
 	  if(ax>0xffe0000000000000ull) return x + x; // nan
 	  if(ix.u==0x7ff0000000000000ull) return x; // +inf
-	  if(ix.u==0xbff0000000000000ull){ // -1
-#ifdef CORE_MATH_SUPPORT_ERRNO
-      errno = ERANGE;
-#endif
-      return -1./0.0;
-    }
+	  if(ix.u==0xbff0000000000000ull) // -1
+            return -1./0.0; // no ERANGE for exact infinity
 #ifdef CORE_MATH_SUPPORT_ERRNO
     errno = EDOM;
 #endif

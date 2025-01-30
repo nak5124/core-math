@@ -41,6 +41,7 @@ SOFTWARE.
        Cambridge University Press, 2011.
 */
 
+#include <errno.h>
 #include <stdint.h>
 
 // Warning: clang also defines __GNUC__
@@ -995,6 +996,9 @@ static const double Tacc[10][30] = {
 static double
 erfc_asympt_accurate (double x)
 {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  int errno_is_zero = errno == 0;
+#endif
   static const double exceptions[22][3] = {
     {0x1.4a42b163f7a7dp+3, 0x1.183d60a1f7e3cp-158, -0x1.fffffffffffffp-212},
     {0x1.a631d4bc7f56bp+3, 0x1.3f07281bb43aep-256, -0x1p-309},
@@ -1096,6 +1100,10 @@ erfc_asympt_accurate (double x)
     /* add corr*2^e */
     res += __builtin_ldexp (corr, e);
   }
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  if (errno_is_zero)
+    errno = 0;
+#endif
   return res;
 }
 

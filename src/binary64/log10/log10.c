@@ -702,9 +702,7 @@ cr_log10 (double x)
         return 0.0 / 0.0;
       }
       else {
-#ifdef CORE_MATH_SUPPORT_ERRNO
-        errno = ERANGE;
-#endif
+        // no ERANGE for exact infinity
         return 1.0 / -0.0;
       }
     }
