@@ -153,6 +153,15 @@ is_nan (double x)
   return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
 }
 
+/* define our own is_inf function to avoid depending from math.h */
+static inline int
+is_inf (double x)
+{
+  uint64_t u = asuint64 (x);
+  uint64_t e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) == 0;
+}
+
 static inline int
 is_equal (double x, double y)
 {
@@ -180,9 +189,6 @@ check (testcase ts)
   errno = 0;
 #endif
   double z2 = cr_function_under_test(ts.x);
-#ifdef CORE_MATH_SUPPORT_ERRNO
-  int cr_errno = errno;
-#endif
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%la ref=%la z=%la\n", ts.x, z1, z2);
@@ -193,6 +199,12 @@ check (testcase ts)
     exit(1);
 #endif
   }
+
+  /* When there is underflow but the result is exact, IEEE 754-2019 says the
+     underflow exception should not be signaled. However MPFR raises the
+     underflow exception in this case: we clear it to mimic IEEE 754-2019. */
+  if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
+    mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
 
   /* Check for spurious/missing underflow exception, where we follow MPFR,
      which checks underflow after rounding. */
@@ -263,13 +275,33 @@ check (testcase ts)
   }
 #endif
 
+  // check errno
 #ifdef CORE_MATH_SUPPORT_ERRNO
-  // most tests don't check for errno setting, so it's not yet possible to check when errno was set incorrectly (case when errno_ref = 0 & cr_errno != 0)
-  if (ts.errno_ref != 0 && cr_errno != ts.errno_ref) {
-    printf("%s error not set for x=%la (y=%la)\n", ts.errno_ref == ERANGE ? "Range" : "Domain", ts.x, z1);
-#ifndef DO_NOT_ABORT
-    exit(1);
+  /* If x is a normal number and y is NaN, we should have errno = EDOM.
+     If x is a normal number and y is +/-Inf, we should have errno = ERANGE.
+  */
+  if (!is_nan (ts.x) && !is_inf (ts.x))
+  {
+    if (is_nan (z1) && errno != EDOM)
+    {
+      printf ("Missing errno=EDOM for x=%la (y=%la)\n", ts.x, z1);
+      fflush (stdout);
+#ifdef DO_NOT_ABORT
+      return 1;
+#else
+      exit(1);
 #endif
+    }
+    if (is_inf (z1) && errno != ERANGE)
+    {
+      printf ("Missing errno=ERANGE for x=%la (y=%la)\n", ts.x, z1);
+      fflush (stdout);
+#ifdef DO_NOT_ABORT
+      return 1;
+#else
+      exit(1);
+#endif
+    }
   }
 #endif
   return 0;

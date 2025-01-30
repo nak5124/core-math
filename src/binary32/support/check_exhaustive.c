@@ -128,8 +128,8 @@ doit (uint32_t n)
   }
 
   /* When there is underflow but the result is exact, IEEE 754-2019 says the
-     underflow exception should not be signaled. However MPFR raises the underflow
-     exception in this case: we clear it to mimic IEEE 754-2019. */
+     underflow exception should not be signaled. However MPFR raises the
+     underflow exception in this case: we clear it to mimic IEEE 754-2019. */
   if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
     mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
 

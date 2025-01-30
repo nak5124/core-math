@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <math.h>
+#include <errno.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -1084,12 +1085,16 @@ cr_acospi (double x)
   else
     if (k==0x3ff00000 && u.i[LOW]==0) return (x>0) ? 0 : 1; // acospi_specific
   else
-    if (k>0x7ff00000 || (k == 0x7ff00000 && u.i[LOW] != 0)) return x + x; // nan
-  else {
+    if (k > 0x7ff00000 || (k == 0x7ff00000 && u.i[LOW] != 0))
+      return x + x; // case x=nan
+  else { // case x=Inf or x > 1
     u.i[HIGH]=0x7ff00000;
     v.i[HIGH]=0x7ff00000;
     u.i[LOW]=0;
     v.i[LOW]=0;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = EDOM;
+#endif
     return u.x/v.x;
   }
 }
