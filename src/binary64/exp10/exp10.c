@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -312,7 +313,12 @@ double cr_exp10(double x){
       else
 	return x;
     }
-    if(!(ix.u>>63)) return 0x1p1023*2.0; // x > 0x1.34413509f79fep+8
+    if(!(ix.u>>63)) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+      return 0x1p1023*2.0; // x > 0x1.34413509f79fep+8
+    }
     if(aix>0x407439b746e36b52ull) // x < -0x1.439b746e36b52p+8
       return 0x1.5p-1022*0x1p-55;
   }
