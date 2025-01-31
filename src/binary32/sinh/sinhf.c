@@ -94,7 +94,7 @@ float cr_sinhf(float x){
   b32u32_u t = {.f = x};
   double z = x;
   uint32_t ux = t.u<<1;
-  if(__builtin_expect(ux>0x8565a9f8u, 0)){ // |x| >~ 89.4
+  if(__builtin_expect(ux>0x8565a9f8u, 0)){ // |x| > 0x1.65a9f8p+6
     float sgn = __builtin_copysignf(2.0f, x);
     if(ux>=0xff000000u) {
       if(ux<<8) return x + x; // nan
