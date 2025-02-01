@@ -557,7 +557,7 @@ static __attribute__((noinline)) double as_tgamma_accurate(double x){
 	xpl += l;
 	xph = fasttwosum(xph,xpl, &xpl);
 	wh = muldd3(xph,xpl,wh,wl,&wl);
-	if(__builtin_fabs(wh)>0x1p918){
+	if(__builtin_fabs(wh)>0x1p518){
 	  wh *= 0x1p-500;
 	  wl *= 0x1p-500;
 	  eoff -= 500;
