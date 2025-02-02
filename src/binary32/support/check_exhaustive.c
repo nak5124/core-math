@@ -117,7 +117,9 @@ doit (uint32_t n)
   errno = 0;
 #endif
   z = cr_function_under_test (x);
+#ifdef CORE_MATH_CHECK_INEXACT
   int inex_z = fetestexcept (FE_INEXACT);
+#endif
   /* Note: the test y != z would not distinguish +0 and -0, instead we compare
      the 32-bit encodings. */
   if (!is_equal (y, z))
