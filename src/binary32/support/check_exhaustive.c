@@ -104,14 +104,15 @@ is_equal (float y1, float y2)
 static int
 underflow_before (void)
 {
-  static int initialized = 0, ret;
+  static int initialized = 0, ret = 0;
 
   if (!initialized) {
     fesetround (FE_TONEAREST);
     feclearexcept (FE_UNDERFLOW);
     float x = 0x1p-126f;
-    float y __attribute__((unused)) = __builtin_fmaf (-x, x, x);
-    ret = fetestexcept (FE_UNDERFLOW);
+    float y = __builtin_fmaf (-x, x, x);
+    if (y == x)
+      ret = fetestexcept (FE_UNDERFLOW);
     initialized = 1;
   }
   return ret;
