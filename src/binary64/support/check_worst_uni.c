@@ -439,7 +439,7 @@ main (int argc, char *argv[])
         }
     }
 
-  check_signaling_nan ();
-
   doloop();
+
+  check_signaling_nan ();
 }
