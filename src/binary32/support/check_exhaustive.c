@@ -40,6 +40,7 @@ SOFTWARE.
 
 float cr_function_under_test (float);
 float ref_function_under_test (float);
+int mpfr_function_under_test (mpfr_ptr, mpfr_srcptr, mpfr_rnd_t);
 int ref_fesetround (int);
 void ref_init (void);
 
@@ -99,7 +100,7 @@ is_equal (float y1, float y2)
   return asuint (y1) == asuint (y2);
 }
 
-// return non-zero if underflow is raised before rounding (aarch64)
+// return non-zero if the processor raises underflow before rounding (e.g., aarch64)
 static int
 underflow_before (void)
 {
@@ -116,47 +117,22 @@ underflow_before (void)
   return ret;
 }
 
-/* Return non-zero if there is a spurious underflow, i.e.,
-   |y| > 2^-126, libm signals underflow and MPFR does not.
-   For |y| = 2^-126 we can decide only for a rounding like RNDZ, due to
-   underflow before/after rounding (MPFR check underflow after rounding,
-   but the processor might check before rounding). */
-static int
-spurious_underflow (float x, float y)
+/* In case of underflow before rounding and |y| = 2^-126, raises the MPFR underflow
+   exception if |f(x)| < 2^-126. */
+static void
+fix_spurious_underflow (float x, float y)
 {
-  int spurious = fetestexcept (FE_UNDERFLOW) &&
-    !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW);
-  if (!spurious)
-    return 0;
-  if (!underflow_before ()) // processor raises underflow after rounding
-    return 1;
-  if (__builtin_fabs (y) > 0x1p-126f)
-    return 1;
-  if (__builtin_fabs (y) < 0x1p-126f) {
-    fprintf (stderr, "Error, MPFR does not raise underflow for x=%a [y=%a]\n",
-             x, y);
-    exit (1);
-  }
-  /* now |y| = 2^-126 and the processor raises underflow before rounding:
-   - if the rounding is RNDN, we can't know if the exact result is smaller
-     than 2^-126 in absolute value
-   - if the rounding is like RNDZ (RNDZ, RNDD with y > 0, RNDU with y < 0),
-     then we know the exact result is >= 2^-126 in absolute value, thus there
-     is a spurious underflow
-   - if the rounding is like RNDA (RNDU with y > 0, RNDD with y < 0),
-     and y is exact, there should be no underflow
-   - if the rounding is like RNDA (RNDU with y > 0, RNDD with y < 0),
-     and y is inexact, there should be underflow */
-  if (rnd1[rnd] == FE_TONEAREST)
-    return 0; // can't decide
-  if (rnd1[rnd] == FE_TOWARDZERO || (y > 0 && rnd1[rnd] == FE_DOWNWARD)
-      || (y < 0 && rnd1[rnd] == FE_UPWARD)) // round toward zero
-    return 1;
-  // now we round away from zero
-  if (mpfr_flags_test (MPFR_FLAGS_INEXACT))
-    return 0; // ok, there should be underflow
-  else
-    return 1; // exact case, there should be no underflow
+  if (!underflow_before () || __builtin_fabs (y) != 0x1p-126f)
+    return;
+  // the processor raises underflow before rounding, and |y| = 2^-126
+  mpfr_t t;
+  mpfr_init2 (t, 24);
+  mpfr_set_flt (t, x, MPFR_RNDN); // exact
+  mpfr_function_under_test (t, t, MPFR_RNDZ);
+  mpfr_abs (t, t, MPFR_RNDN); // exact
+  if (mpfr_cmp_d (t, 0x1p-126) < 0) // |f(x)| < 2^-126
+    mpfr_set_underflow ();
+  mpfr_clear (t);
 }
 
 void
@@ -195,9 +171,10 @@ doit (uint32_t n)
   if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
     mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
 
-  /* check spurious/missing underflow. where we follow MPFR,
-     which checks underflow after rounding. */
-  if (spurious_underflow (x, y))
+  fix_spurious_underflow (x, y);
+
+  // check spurious/missing underflow
+  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
