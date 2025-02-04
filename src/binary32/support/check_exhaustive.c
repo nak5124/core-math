@@ -122,7 +122,7 @@ underflow_before (void)
    underflow before/after rounding (MPFR check underflow after rounding,
    but the processor might check before rounding). */
 static int
-spurious_underflow (float y)
+spurious_underflow (float x, float y)
 {
   int spurious = fetestexcept (FE_UNDERFLOW) &&
     !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW);
@@ -132,12 +132,31 @@ spurious_underflow (float y)
     return 1;
   if (__builtin_fabs (y) > 0x1p-126f)
     return 1;
-  if (__builtin_fabs (y) < 0x1p-126f)
-    return 0;
+  if (__builtin_fabs (y) < 0x1p-126f) {
+    fprintf (stderr, "Error, MPFR does not raise underflow for x=%a [y=%a]\n",
+             x, y);
+    exit (1);
+  }
+  /* now |y| = 2^-126 and the processor raises underflow before rounding:
+   - if the rounding is RNDN, we can't know if the exact result is smaller
+     than 2^-126 in absolute value
+   - if the rounding is like RNDZ (RNDZ, RNDD with y > 0, RNDU with y < 0),
+     then we know the exact result is >= 2^-126 in absolute value, thus there
+     is a spurious underflow
+   - if the rounding is like RNDA (RNDU with y > 0, RNDD with y < 0),
+     and y is exact, there should be no underflow
+   - if the rounding is like RNDA (RNDU with y > 0, RNDD with y < 0),
+     and y is inexact, there should be underflow */
+  if (rnd1[rnd] == FE_TONEAREST)
+    return 0; // can't decide
   if (rnd1[rnd] == FE_TOWARDZERO || (y > 0 && rnd1[rnd] == FE_DOWNWARD)
       || (y < 0 && rnd1[rnd] == FE_UPWARD)) // round toward zero
     return 1;
-  return 0; // can't be sure
+  // now we round away from zero
+  if (mpfr_flags_test (MPFR_FLAGS_INEXACT))
+    return 0; // ok, there should be underflow
+  else
+    return 1; // exact case, there should be no underflow
 }
 
 void
@@ -178,7 +197,7 @@ doit (uint32_t n)
 
   /* check spurious/missing underflow. where we follow MPFR,
      which checks underflow after rounding. */
-  if (spurious_underflow (y))
+  if (spurious_underflow (x, y))
   {
     printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
