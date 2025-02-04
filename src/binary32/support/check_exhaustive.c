@@ -99,6 +99,23 @@ is_equal (float y1, float y2)
   return asuint (y1) == asuint (y2);
 }
 
+// return non-zero if underflow is raised before rounding (aarch64)
+static int
+underflow_before (void)
+{
+  static int initialized = 0, ret;
+
+  if (!initialized) {
+    fesetround (FE_TONEAREST);
+    feclearexcept (FE_UNDERFLOW);
+    float x = 0x1p-126f;
+    float y __attribute__((unused)) = __builtin_fmaf (-x, x, x);
+    ret = fetestexcept (FE_UNDERFLOW);
+    initialized = 1;
+  }
+  return ret;
+}
+
 /* Return non-zero if there is a spurious underflow, i.e.,
    |y| > 2^-126, libm signals underflow and MPFR does not.
    For |y| = 2^-126 we can decide only for a rounding like RNDZ, due to
@@ -111,6 +128,8 @@ spurious_underflow (float y)
     !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW);
   if (!spurious)
     return 0;
+  if (!underflow_before ()) // processor raises underflow after rounding
+    return 1;
   if (__builtin_fabs (y) > 0x1p-126f)
     return 1;
   if (__builtin_fabs (y) < 0x1p-126f)
