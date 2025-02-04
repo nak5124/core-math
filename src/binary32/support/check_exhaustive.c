@@ -99,6 +99,28 @@ is_equal (float y1, float y2)
   return asuint (y1) == asuint (y2);
 }
 
+/* Return non-zero if there is a spurious underflow, i.e.,
+   |y| > 2^-126, libm signals underflow and MPFR does not.
+   For |y| = 2^-126 we can decide only for a rounding like RNDZ, due to
+   underflow before/after rounding (MPFR check underflow after rounding,
+   but the processor might check before rounding). */
+static int
+spurious_underflow (float y)
+{
+  int spurious = fetestexcept (FE_UNDERFLOW) &&
+    !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW);
+  if (!spurious)
+    return 0;
+  if (__builtin_fabs (y) > 0x1p-126f)
+    return 1;
+  if (__builtin_fabs (y) < 0x1p-126f)
+    return 0;
+  if (rnd1[rnd] == FE_TOWARDZERO || (y > 0 && rnd1[rnd] == FE_DOWNWARD)
+      || (y < 0 && rnd1[rnd] == FE_UPWARD)) // round toward zero
+    return 1;
+  return 0; // can't be sure
+}
+
 void
 doit (uint32_t n)
 {
@@ -137,7 +159,7 @@ doit (uint32_t n)
 
   /* check spurious/missing underflow. where we follow MPFR,
      which checks underflow after rounding. */
-  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
+  if (spurious_underflow (y))
   {
     printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);
