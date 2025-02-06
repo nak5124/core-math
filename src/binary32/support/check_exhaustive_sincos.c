@@ -102,6 +102,48 @@ is_inf (float x)
 }
 #endif
 
+// return non-zero if the processor raises underflow before rounding
+// (e.g., aarch64)
+static int
+underflow_before (void)
+{
+  static int initialized = 0, ret = 0;
+
+  if (!initialized) {
+    fesetround (FE_TONEAREST);
+    feclearexcept (FE_UNDERFLOW);
+    float x = 0x1p-126f;
+    float y = __builtin_fmaf (-x, x, x);
+    if (y == x)
+      ret = fetestexcept (FE_UNDERFLOW);
+    initialized = 1;
+  }
+  return ret;
+}
+
+/* In case of underflow before rounding and |y| = 2^-126 or |z| = 2^-126,
+   raises the MPFR underflow if |f1(x)| < 2^-126 or |f2(x)| < 2^-126 */
+static void
+fix_spurious_underflow (float x, float y, float z)
+{
+  if (!underflow_before () ||
+      (__builtin_fabs (y) != 0x1p-126f && __builtin_fabs (z) != 0x1p-126f))
+    return;
+  // the processor raises underflow before rounding, and |y| = 2^-126
+  // or |z| = 2^-126
+  mpfr_t t, u;
+  mpfr_init2 (t, 24);
+  mpfr_init2 (u, 24);
+  mpfr_set_flt (t, x, MPFR_RNDN); // exact
+  mpfr_function_under_test (t, u, t, MPFR_RNDZ);
+  mpfr_abs (t, t, MPFR_RNDN); // exact
+  if (mpfr_cmp_d (t, 0x1p-126) < 0 || mpfr_cmp_d (u, 0x1p-126) < 0)
+    // |f1(x)| < 2^-126 or |f2(x)| < 2^-126
+    mpfr_set_underflow ();
+  mpfr_clear (t);
+  mpfr_clear (u);
+}
+
 void
 doit (uint32_t n)
 {
@@ -149,6 +191,8 @@ doit (uint32_t n)
      exception in this case: we clear it to mimic IEEE 754-2019. */
   if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
     mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
+
+  fix_spurious_underflow (x, z1, z2);
 
   /* check spurious/missing underflow. where we follow MPFR,
      which checks underflow after rounding. */

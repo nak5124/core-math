@@ -1,4 +1,4 @@
-/* Check correctness of binary32 function by exhaustive search.
+/* Check correctness of univariate binary32 function by exhaustive search.
 
 Copyright (c) 2022 Alexei Sibidanov.
 Copyright (c) 2022 Paul Zimmermann, INRIA.
@@ -100,7 +100,8 @@ is_equal (float y1, float y2)
   return asuint (y1) == asuint (y2);
 }
 
-// return non-zero if the processor raises underflow before rounding (e.g., aarch64)
+// return non-zero if the processor raises underflow before rounding
+// (e.g., aarch64)
 static int
 underflow_before (void)
 {
@@ -118,8 +119,8 @@ underflow_before (void)
   return ret;
 }
 
-/* In case of underflow before rounding and |y| = 2^-126, raises the MPFR underflow
-   exception if |f(x)| < 2^-126. */
+/* In case of underflow before rounding and |y| = 2^-126, raises the MPFR
+   underflow exception if |f(x)| < 2^-126. */
 static void
 fix_spurious_underflow (float x, float y)
 {

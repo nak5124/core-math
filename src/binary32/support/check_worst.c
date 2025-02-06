@@ -1,6 +1,6 @@
 /* Check correctness of bivariate binary32 function on worst cases.
 
-Copyright (c) 2024 Stéphane Glondu and Paul Zimmermann, Inria.
+Copyright (c) 2024-2025 Stéphane Glondu and Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -130,6 +130,46 @@ is_equal (float x, float y)
   return asuint (x) == asuint (y);
 }
 
+// return non-zero if the processor raises underflow before rounding
+// (e.g., aarch64)
+static int
+underflow_before (void)
+{
+  static int initialized = 0, ret = 0;
+
+  if (!initialized) {
+    fesetround (FE_TONEAREST);
+    feclearexcept (FE_UNDERFLOW);
+    float x = 0x1p-126f;
+    float y = __builtin_fmaf (-x, x, x);
+    if (y == x)
+      ret = fetestexcept (FE_UNDERFLOW);
+    initialized = 1;
+  }
+  return ret;
+}
+
+/* In case of underflow before rounding and |z| = 2^-126, raises the MPFR
+   underflow exception if |f(x,y)| < 2^-126. */
+static void
+fix_spurious_underflow (float x, float y, float z)
+{
+  if (!underflow_before () || __builtin_fabs (z) != 0x1p-126f)
+    return;
+  // the processor raises underflow before rounding, and |z| = 2^-126
+  mpfr_t t, u;
+  mpfr_init2 (t, 24);
+  mpfr_init2 (u, 24);
+  mpfr_set_flt (t, x, MPFR_RNDN); // exact
+  mpfr_set_flt (u, y, MPFR_RNDN); // exact
+  mpfr_function_under_test (t, t, u, MPFR_RNDZ);
+  mpfr_abs (t, t, MPFR_RNDN); // exact
+  if (mpfr_cmp_d (t, 0x1p-126) < 0) // |f(x,y)| < 2^-126
+    mpfr_set_underflow ();
+  mpfr_clear (t);
+  mpfr_clear (u);
+}
+
 int tests = 0, failures = 0;
 
 static void
@@ -169,6 +209,8 @@ check (float x, float y)
      exception in this case: we clear it to mimic IEEE 754-2019. */
   if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_INEXACT))
     mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
+
+  fix_spurious_underflow (x, y, z1);
 
   /* check spurious/missing underflow. where we follow MPFR,
      which checks underflow after rounding. */
