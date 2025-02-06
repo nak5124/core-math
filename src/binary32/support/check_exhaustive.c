@@ -114,6 +114,7 @@ underflow_before (void)
     float y = __builtin_fmaf (-x, x, x);
     if (y == x)
       ret = fetestexcept (FE_UNDERFLOW);
+    feclearexcept (FE_UNDERFLOW);
     initialized = 1;
   }
   return ret;
@@ -124,7 +125,7 @@ underflow_before (void)
 static void
 fix_spurious_underflow (float x, float y)
 {
-  if (!underflow_before () || __builtin_fabs (y) != 0x1p-126f)
+  if (!underflow_before () || __builtin_fabsf (y) != 0x1p-126f)
     return;
   // the processor raises underflow before rounding, and |y| = 2^-126
   mpfr_t t;
