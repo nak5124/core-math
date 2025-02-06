@@ -138,13 +138,15 @@ underflow_before (void)
   static int initialized = 0, ret = 0;
 
   if (!initialized) {
+    fexcept_t flag;
+    fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
     fesetround (FE_TONEAREST);
     feclearexcept (FE_UNDERFLOW);
     float x = 0x1p-126f;
     float y = __builtin_fmaf (-x, x, x);
     if (y == x)
       ret = fetestexcept (FE_UNDERFLOW);
-    feclearexcept (FE_UNDERFLOW);
+    fesetexceptflag (&flag, FE_ALL_EXCEPT); //restore flags
     initialized = 1;
   }
   return ret;
