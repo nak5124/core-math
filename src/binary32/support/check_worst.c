@@ -355,7 +355,7 @@ check_signaling_nan (void)
   // check that foo(NaN,x) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%x\n",
+    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %a=%x\n",
              y, asuint (y));
     exit (1);
   }
@@ -380,7 +380,7 @@ check_signaling_nan (void)
   // check that foo(x,NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%x\n",
+    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %a=%x\n",
              y, asuint (y));
     exit (1);
   }
@@ -406,7 +406,7 @@ check_signaling_nan (void)
   // check that foo(NaN,x) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %la=%x\n",
+    fprintf (stderr, "Error, foo(sNaN,x) should be NaN, got %a=%x\n",
              y, asuint (y));
     exit (1);
   }
@@ -431,7 +431,7 @@ check_signaling_nan (void)
   // check that foo(x,NaN) = NaN
   if (!is_nan (y))
   {
-    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %la=%x\n",
+    fprintf (stderr, "Error, foo(x,sNaN) should be NaN, got %a=%x\n",
              y, asuint (y));
     exit (1);
   }
