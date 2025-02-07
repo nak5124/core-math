@@ -130,26 +130,22 @@ is_equal (float x, float y)
   return asuint (x) == asuint (y);
 }
 
+int underflow_before; // non-zero if processor raises underflow before rounding
+
 // return non-zero if the processor raises underflow before rounding
 // (e.g., aarch64)
-static int
-underflow_before (void)
+static void
+check_underflow_before (void)
 {
-  static int initialized = 0, ret = 0;
-
-  if (!initialized) {
-    fexcept_t flag;
-    fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
-    fesetround (FE_TONEAREST);
-    feclearexcept (FE_UNDERFLOW);
-    float x = 0x1p-126f;
-    float y = __builtin_fmaf (-x, x, x);
-    if (y == x)
-      ret = fetestexcept (FE_UNDERFLOW);
-    fesetexceptflag (&flag, FE_ALL_EXCEPT); //restore flags
-    initialized = 1;
-  }
-  return ret;
+  fexcept_t flag;
+  fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
+  fesetround (FE_TONEAREST);
+  feclearexcept (FE_UNDERFLOW);
+  float x = 0x1p-126f;
+  float y = __builtin_fmaf (-x, x, x);
+  if (x == y) // this is needed otherwise the compiler says y is unused
+    underflow_before = fetestexcept (FE_UNDERFLOW);
+  fesetexceptflag (&flag, FE_ALL_EXCEPT); //restore flags
 }
 
 /* In case of underflow before rounding and |z| = 2^-126, raises the MPFR
@@ -157,7 +153,7 @@ underflow_before (void)
 static void
 fix_spurious_underflow (float x, float y, float z)
 {
-  if (!underflow_before () || __builtin_fabsf (z) != 0x1p-126f)
+  if (!underflow_before || __builtin_fabsf (z) != 0x1p-126f)
     return;
   // the processor raises underflow before rounding, and |z| = 2^-126
   mpfr_t t, u;
@@ -489,6 +485,8 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  check_underflow_before ();
 
   doloop();
 
