@@ -136,6 +136,7 @@ fix_spurious_underflow (float x, float y, float z)
   mpfr_set_flt (t, x, MPFR_RNDN); // exact
   mpfr_function_under_test (t, u, t, MPFR_RNDZ);
   mpfr_abs (t, t, MPFR_RNDN); // exact
+  mpfr_abs (u, u, MPFR_RNDN); // exact
   if (mpfr_cmp_d (t, 0x1p-126) < 0 || mpfr_cmp_d (u, 0x1p-126) < 0)
     // |f1(x)| < 2^-126 or |f2(x)| < 2^-126
     mpfr_set_underflow ();
@@ -193,8 +194,7 @@ doit (uint32_t n)
 
   fix_spurious_underflow (x, z1, z2);
 
-  /* check spurious/missing underflow. where we follow MPFR,
-     which checks underflow after rounding. */
+  // check spurious/missing underflow
   if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%a z=(%a,%a)\n", x, z1, z2);

@@ -211,8 +211,7 @@ check (float x, float y)
 
   fix_spurious_underflow (x, y, z1);
 
-  /* check spurious/missing underflow. where we follow MPFR,
-     which checks underflow after rounding. */
+  // check spurious/missing underflow
   if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%a y=%a (z=%a)\n", x, y, z1);
