@@ -232,7 +232,7 @@ double cr_hypot(double x, double y){
     /* Either x or y is NaN or Inf */
     u64 wx = xi.u<<1, wy = yi.u<<1, wm = emsk<<1;
     int ninf = (wx==wm) ^ (wy==wm);
-    int nqnn = ((wx>>52)==0xfff) ^ ((wy>>52)==0xfff);
+    int nqnn = (wx==(0xfffull<<52)) ^ (wy==(0xfffull<<52));
     /* ninf is 1 when only one of x and y is +/-Inf
        nqnn is 1 when only one of x and y is qNaN
        IEEE 754 says that hypot(+/-Inf,qNaN)=hypot(qNaN,+/-Inf)=+Inf. */
