@@ -201,8 +201,13 @@ atan2_accurate (double y, double x)
   double t = y / x;
   /* If t underflows, then atan(y/x) rounds to t for x > 0, to pi for y > 0 and x < 0,
      and to -pi for x, y < 0. */
+  /* FIXME: when t=0 and x < 0, we have a spurious underflow.
+     Also when t=0 and x > 0 but t underflows but is exact, we have a missing
+     underflow.
+   */
   if (t == 0)
     return (x > 0) ? t : (y > 0) ? PI_H + PI_L : -PI_H - PI_L;
+  // FIXME: the computation of corr might raise a spurious underflow
   double corr = __builtin_fma (t, x, -y);
   if (corr == 0 && x > 0) // t is exact
     if (__builtin_fabs (t) <= 0x1.d12ed0af1a27fp-27)
