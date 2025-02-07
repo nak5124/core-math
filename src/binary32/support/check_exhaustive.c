@@ -175,8 +175,7 @@ doit (uint32_t n)
   fix_spurious_underflow (x, y);
 
   // check spurious/missing underflow
-  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW)
-      && !is_nan (y))
+  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%a (y=%a)\n", x, y);
     fflush (stdout);

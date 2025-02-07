@@ -237,13 +237,13 @@ check (testcase ts)
   tests ++;
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   double z1 = ref_function_under_test(ts.x, ts.y);
 #ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
-  feclearexcept (FE_INEXACT);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
 #endif
@@ -283,8 +283,7 @@ check (testcase ts)
   fix_spurious_underflow (ts.x, ts.y, z1);
 
   // Check for spurious/missing underflow exception
-  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW)
-      && !is_nan (z1))
+  if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x,y=%la,%la (z=%la)\n",
             ts.x, ts.y, z1);
@@ -308,8 +307,7 @@ check (testcase ts)
   }
 
   /* Check for spurious/missing overflow exception */
-  if (fetestexcept (FE_OVERFLOW) && !mpfr_flags_test (MPFR_FLAGS_OVERFLOW)
-      && !is_nan (z1))
+  if (fetestexcept (FE_OVERFLOW) && !mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
   {
     printf ("Spurious overflow exception for x,y=%la,%la (z=%la)\n",
             ts.x, ts.y, z1);
