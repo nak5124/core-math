@@ -1,6 +1,6 @@
 /* Correctly-rounded Euclidean distance function (hypot) for binary64 values.
 
-Copyright (c) 2022 Alexei Sibidanov.
+Copyright (c) 2022-2025 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -144,6 +144,7 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
     }
   }
   b64u64_u xi = {.u = rm};
+  // FIXME: we should raise underflow if needed
   return xi.f;
 }
 
