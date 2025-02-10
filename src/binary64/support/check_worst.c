@@ -208,10 +208,15 @@ check_underflow_before (void)
 }
 
 /* In case of underflow before rounding and |z| = 2^-1022, raises the MPFR
-   underflow exception if |f(x,y)| < 2^-1022. */
+   underflow exception if |f(x,y)| < 2^-1022.
+
+   Also for |z| = 2^-1022, clear the MPFR underflow exception (might be
+   present due to a bug in MPFR <= 4.2.1). */
 static void
-fix_spurious_underflow (double x, double y, double z)
+fix_underflow (double x, double y, double z)
 {
+  if (__builtin_fabs (z) == 0x1p-1022)
+    mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
   if (!underflow_before || __builtin_fabs (z) != 0x1p-1022)
     return;
   // the processor raises underflow before rounding, and |z| = 2^-1022
@@ -280,7 +285,7 @@ check (testcase ts)
 #endif
   }
 
-  fix_spurious_underflow (ts.x, ts.y, z1);
+  fix_underflow (ts.x, ts.y, z1);
 
   // Check for spurious/missing underflow exception
   if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
@@ -559,7 +564,7 @@ main (int argc, char *argv[])
 
   check_underflow_before ();
 
-  check_signaling_nan ();
-
   doloop();
+
+  check_signaling_nan ();
 }
