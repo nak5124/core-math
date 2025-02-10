@@ -187,6 +187,7 @@ check (float x, float y)
 #endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
+  errno = 0;
   float z2 = cr_function_under_test(x, y);
 #ifdef CORE_MATH_CHECK_INEXACT
   int inex2 = fetestexcept (FE_INEXACT);

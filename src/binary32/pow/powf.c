@@ -128,6 +128,12 @@ static inline int issignalingf(float x) {
   return (u.u & 0x7fffffff) > 0x7fc00000;
 }
 
+// assume x is not NaN
+static inline int is_inf (float x) {
+  b32u32_u u = {.f = x};
+  return (u.u << 1) >= 0xff000000ull;
+}
+
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
@@ -502,6 +508,10 @@ float cr_powf(float x0, float y0){
   uint64_t kk = ty.u<<(11+et);
   if(!(kk<<1)&&kk) rr.f = __builtin_copysign(rr.f,x);
   float res = rr.f;
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  if (is_inf (res))
+    errno = ERANGE;
+#endif
   return res;
 }
 
