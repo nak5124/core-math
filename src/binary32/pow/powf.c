@@ -117,6 +117,17 @@ inline static unsigned int _mm_getcsr()
 }
 #endif  // defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
 
+static inline int issignalingf(float x) {
+  b32u32_u u = {.f = x};
+  /* To keep the following comparison simple, toggle the quiet/signaling bit,
+   so that it is set for sNaNs.  This is inverse to IEEE 754-2008 (as well as
+   common practice for IEEE 754-1985).  */
+  u.u ^= 0x00400000;
+  /* We have to compare for greater (instead of greater or equal), because x's
+     significand being all-zero designates infinity not NaN.  */
+  return (u.u & 0x7fffffff) > 0x7fc00000;
+}
+
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
@@ -371,11 +382,12 @@ float cr_powf(float x0, float y0){
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
 #endif
-      return __builtin_nanf(""); // (-1)^y for non-integer y
+      return (x - x) / (x - x);  // NaN /  (-1)^y for non-integer y, should raise 'Invalid operation' exception.
     }
-    return x0; // x=1
+    return issignalingf (y0) ? x0 + y0 : x; // 1^y = 1 except for y = sNaN
   }
-  if(__builtin_expect (ty.u<<1 == 0, 0)) return 1.0f;              // y=0
+  if(__builtin_expect (ty.u<<1 == 0, 0))
+    return issignalingf (x0) ? x0 + y0 : 1.0f; // x^0 = 1 except for x = sNaN
   if(__builtin_expect ((ty.u<<1) >= (uint64_t)0x7ff<<53, 0)){ // y=Inf/NaN
     if((tx.u<<1) == (uint64_t)0x3ff<<53) // |x|=1
       return (x0 == 1.0f || (ty.u<<1) == (uint64_t)0x7ff<<53)
@@ -388,7 +400,7 @@ float cr_powf(float x0, float y0){
 	return __builtin_inf();
       }
     }
-    return y0;
+    return x0 + y0;
   }
   if(__builtin_expect (tx.u >= (uint64_t)0x7ff<<52, 0)){ // x is Inf, NaN or less than 0
     if((tx.u<<1) == (uint64_t)0x7ff<<53){ // x is +Inf or -Inf
@@ -401,17 +413,17 @@ float cr_powf(float x0, float y0){
 #ifdef CORE_MATH_SUPPORT_ERRNO
         errno = EDOM;
 #endif
-        return __builtin_nanf("");
+	return (x - x) / (x - x);  // NaN, should raise 'Invalid operation' exception.
       }
   }
   if(__builtin_expect (!(tx.u<<1), 0)){ // x=+0 or -0
     if(ty.u>>63){ // y < 0
-      if(isodd(y0))
-	return 1.0f/__builtin_copysignf(0.0f,x0);
-      else {
 #ifdef CORE_MATH_SUPPORT_ERRNO
-        errno = ERANGE;
+      errno = ERANGE;
 #endif
+      if(isodd(y0)) {
+	return 1.0f/__builtin_copysignf(0.0f,x0);
+      }  else {
 	return 1.0f/0.0f;
       }
     } else { // y > 0
@@ -443,16 +455,19 @@ float cr_powf(float x0, float y0){
   double zt = (e - lix[j][0])*y;
   z = l*y + zt;
   if(__builtin_expect(z>2048, 0)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     if(isodd(y0))
       return __builtin_copysignf(0x1p127f, x0)*0x1p127f;
     else {
-#ifdef CORE_MATH_SUPPORT_ERRNO
-      errno = ERANGE;
-#endif
       return 0x1p127f*0x1p127f;
     }
   }
   if(__builtin_expect(z<-2400, 0)){
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE;
+#endif
     if(isodd(y0))
       return __builtin_copysignf(0x1p-126f, x0)*0x1p-126f;
     else

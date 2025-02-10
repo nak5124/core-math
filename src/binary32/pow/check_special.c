@@ -57,6 +57,13 @@ asuint (float f)
   return v.u;
 }
 
+static inline float
+asfloat (uint32_t u)
+{
+  b32u32_u v = {.u = u};
+  return v.f;
+}
+
 static float
 get_random (void)
 {
@@ -77,6 +84,14 @@ is_nan (float x)
   uint32_t u = asuint (x);
   int e = u >> 23;
   return (e == 0xff || e == 0x1ff) && (u << 9) != 0;
+}
+
+static inline int
+is_qnan (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u & 0x400000) != 0;
 }
 
 static inline int
@@ -207,6 +222,34 @@ check_exact_or_midpoint (void)
   }
 }
 
+static void
+check_signaling (void)
+{
+  float x, y, z;
+
+  // check 1^sNaN gives qNaN
+  x = 1.0f;
+  y = asfloat ((0xff << 23) + 1);
+  z = cr_powf (x, y);
+  if (!is_qnan (z))
+  {
+    fprintf (stderr, "Error for 1^sNaN, expected qNaN, got %a [%x]\n",
+             z, asuint (z));
+    exit (1);
+  }
+
+  // check sNaN^0 gives qNaN
+  x = asfloat ((0xff << 23) + 1);
+  y = 0.0f;
+  z = cr_powf (x, y);
+  if (!is_qnan (z))
+  {
+    fprintf (stderr, "Error for sNaN^0, expected qNaN, got %a [%x]\n",
+             z, asuint (z));
+    exit (1);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -248,6 +291,9 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+  printf ("Checking signaling NaN\n");
+  check_signaling ();
 
   printf ("Checking random values\n");
   check_random_all ();
