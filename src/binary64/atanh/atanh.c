@@ -126,7 +126,9 @@ double cr_atanh(double x){
   u64 aix = ix.u;
   if(__builtin_expect(aix>=0x3ff0000000000000ull,0)){ // |x| >= 1
     if(aix==0x3ff0000000000000ull){ // |x| = 1
-      // no ERANGE for exact infinity
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE; // pole error
+#endif
       return __builtin_copysign(1, x) / 0.0;
     }
     if(aix>0x7ff0000000000000ull) return x + x; // nan

@@ -661,7 +661,9 @@ cr_log (double x)
         return 0.0 / 0.0;
       }
       else {
-        // no ERANGE for exact infinity
+#ifdef CORE_MATH_SUPPORT_ERRNO
+        errno = ERANGE; // pole error
+#endif
         return 1.0 / -0.0;
       }
     }

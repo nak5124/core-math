@@ -341,6 +341,9 @@ check (testcase ts)
       exit(1);
 #endif
     }
+    // if z1=Inf, we have overflow, but MPFR might not raise overflow
+    if (is_inf (z1))
+      mpfr_flags_set (MPFR_FLAGS_OVERFLOW);
     if (mpfr_flags_test (MPFR_FLAGS_OVERFLOW) && errno != ERANGE)
     {
       printf ("Missing errno=ERANGE for x=%la (y=%la)\n", ts.x, z1);
