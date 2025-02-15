@@ -51,6 +51,29 @@ int rnd = 0;
 
 typedef float float2[2];
 
+typedef union { float f; uint32_t i; } d32u32;
+
+/* scanf %a from buf, allowing snan, +snan and -snan */
+static int
+sscanf_snan (char *buf, float *x)
+{
+  if (sscanf(buf, "%a", x) == 1)
+    return 1;
+  else if (strncmp (buf, "snan", 4) == 0 || strncmp (buf, "+snan", 5) == 0)
+  {
+    d32u32 u = {.i = 0x7f800001};
+    *x = u.f;
+    return 1;
+  }
+  else if (strncmp (buf, "-snan", 5) == 0)
+  {
+    d32u32 u = {.i = 0xff800001};
+    *x = u.f;
+    return 1;
+  }
+  return 0;
+}
+
 static void
 readstdin(float2 **result, int *count)
 {
@@ -78,8 +101,14 @@ readstdin(float2 **result, int *count)
       *result = newresult;
     }
     float2 *item = *result + *count;
-    if (sscanf(buf, "%a,%a", &(*item)[0], &(*item)[1]) == 2) {
+    if (sscanf(buf, "%a,%a", &(*item)[0], &(*item)[1]) == 2)
       (*count)++;
+    else if (sscanf_snan (buf, &(*item)[0]) == 1)
+    {
+      char *tbuf = buf;
+      while (*tbuf++ != ',');
+      if (sscanf_snan (tbuf, &(*item)[1]) == 1)
+        (*count)++;
     }
   }
 }
