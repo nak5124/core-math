@@ -24,7 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
 #include <fenv.h>
@@ -238,7 +237,6 @@ double cr_hypot(double x, double y){
   if(__builtin_expect(ex==emsk||ey==emsk, 0)){
     /* Either x or y is NaN or Inf */
     u64 wx = xi.u<<1, wy = yi.u<<1, wm = emsk<<1;
-    printf ("wx=0x%lx wy=0x%lx wm=0x%lx\n", wx, wy, wm);
     int ninf = (wx==wm) ^ (wy==wm);
     int nqnn = ((wx>>52)==0xfff) ^ ((wy>>52)==0xfff);
     /* ninf is 1 when only one of x and y is +/-Inf
