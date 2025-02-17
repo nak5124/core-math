@@ -52,7 +52,7 @@ static __attribute__((noinline)) float as_special(float x){
   uint32_t ux = t.u;
   if(ux == 0x7f800000u) return x; // +inf
   uint32_t ax = ux<<1;
-  if(ax == 0x17fu<<24) { // x+1 = 0.0
+  if(ux == 0xbf800000u) { // x = -1
 #ifdef CORE_MATH_SUPPORT_ERRNO
     errno = ERANGE;
 #endif
