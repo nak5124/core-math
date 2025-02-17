@@ -733,7 +733,7 @@ double cr_tgamma(double x){
       th.f = rh;
       int re = (th.u>>52)&0x7ff;
       if(re-e<=0){ // subnormal case
-	th.u += (long)(e-re+1)<<52;
+	th.u += (long)(e-re+1)<<52; // 1 <= e-re+1 <= 53
 	th.u &= 0xffful<<52;
 	double l;
 	rh = fasttwosum(th.f, rh, &l);
