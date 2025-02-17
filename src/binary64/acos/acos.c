@@ -287,6 +287,7 @@ double as_acos_refine(double x, double phi){
     {0x0p+0, 0x1p+0}
   };    
 
+  // 0 <= jf <= 32
   double Ch = s[32-jf][1], Cl = s[32-jf][0], Sh = s[jf][1], Sl = s[jf][0];
 
   double ax = __builtin_fabs(x);
@@ -303,6 +304,7 @@ double as_acos_refine(double x, double phi){
   double dv =  (Ch*dsl + Cl*dsh) - (Sh*dcl + Sl*dch) - (dSc - dCs);
   v = fasttwosum(v,dv,&dv);
   double sgn = __builtin_copysign(1.0, x), jt = 32 - jf*sgn;
+  // 0 <= jt <= 64
   static const double c[][2] = {
     {0x1p+0, -0x1.fc2c76456515bp-108}, {0x1.5555555555555p-3, 0x1.5555555623513p-57},
     {0x1.3333333333333p-4, 0x1.9997e3427441bp-59}, {0x1.6db6db6db6db7p-5, -0x1.cb95ff08658e6p-62},
@@ -315,6 +317,7 @@ double as_acos_refine(double x, double phi){
   fh = muldd(v,dv, fh,fl, &fl);
 
   double ph = jt * 0x1.921fb54442dp-5, pl = 0x1.8469898cc518p-53*jt, ps = -0x1.fc8f8cbb5bf6cp-102*jt;
+  // since 0 <= jt <= 64, ph and pl are exact
   pl = sum(fh,fl, pl,ps, &ps);
   ph = fasttwosum(ph,pl, &pl);
   pl = fasttwosum(pl,ps, &ps);
