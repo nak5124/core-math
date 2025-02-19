@@ -284,6 +284,11 @@ raise_underflow (void)
 #else
   feraiseexcept (FE_UNDERFLOW);
 #endif
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  /* The C standard says that if the function underflows,
+     errno is set to ERANGE. */
+  errno = ERANGE;
+#endif
 }
 
 static __attribute__((noinline)) double as_tgamma_accurate(double x){
@@ -632,12 +637,28 @@ double cr_tgamma(double x){
   double z = x;
   if(__builtin_expect(__builtin_fabs(x)<0.25, 0)){ /* |x| < 0x1p-2 */
     if(ax<0x71e0000000000000ul){ // |x| < 0x1p-112
-      double r = 1/x;
-      /* gamma(x) ~ 1/x - euler_gamma near x=0, thus we should raise the
-         inexact exception even for x = 2^k */
-      if (__builtin_expect(__builtin_fma (r, x, -1.0) == 0, 0)) r -= 0.5;
+      double r;
+      // deal separately with x=2^-1024 to avoid a spurious overflow in 1/x
+      if (x == 0x1p-1024) {
+        r = 0x1.fffffffffffffp+1023 + 0x1p+970;
 #ifdef CORE_MATH_SUPPORT_ERRNO
-      if(__builtin_fabs(r)>0x1.fffffffffffffp+1023) errno = ERANGE;
+        if (r > 0x1.fffffffffffffp+1023)
+          errno = ERANGE;
+#endif
+        return r;
+      }
+      r = 1/x;
+      // the following raises the inexact flag in case x=2^k
+      if (__builtin_expect(__builtin_fma (r, x, -1.0) == 0, 0)) r -= 0.5;
+      /* gamma(x) ~ 1/x - euler_gamma near x=0, thus we should raise the
+         inexact exception even for x = 2^k.
+         More precisely gamma(x) overflows:
+         * for |x| < 2^-1024 and all rounding modes
+         * for x=-2^-1024 and all rounding modes
+         (the case x=2^-1024 was treated separately above) */
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      if (__builtin_fabs (x) < 0x1p-1024 || x == -0x1p-1024)
+        errno = ERANGE;
 #endif
       return r;
     }

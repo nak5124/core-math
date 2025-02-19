@@ -341,9 +341,10 @@ check (testcase ts)
     }
 
     /* If x is a normal number and a pole error (y exact infinity) or an
-       overflow occurs, we should have errno = ERANGE. */
+       overflow/underflow occurs, we should have errno = ERANGE. */
     int expected_erange = (is_inf (z1) && inex1 == 0) ||
-      mpfr_flags_test (MPFR_FLAGS_OVERFLOW);
+      mpfr_flags_test (MPFR_FLAGS_OVERFLOW) ||
+      mpfr_flags_test (MPFR_FLAGS_UNDERFLOW);
     if (expected_erange && errno != ERANGE)
     {
       printf ("Missing errno=ERANGE for x=%la (y=%la)\n", ts.x, z1);
