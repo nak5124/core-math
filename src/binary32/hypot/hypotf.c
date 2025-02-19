@@ -50,13 +50,20 @@ float cr_hypotf(float x, float y){
     if(ty.u == (0xffu<<23)) return ay;
     return ax + ay;
   }
-  float at = __builtin_fmaxf(ax, ay);
+  float at = __builtin_fmaxf(ax, ay), c;
   ay = __builtin_fminf(ax, ay);
   double xd = at, yd = ay, x2 = xd*xd, y2 = yd*yd, r2 = x2 + y2;
-  if(__builtin_expect(yd < xd*0x1.fffffep-13, 0)) return __builtin_fmaf(0x1p-13f, ay, at);
+  if(__builtin_expect(yd < xd*0x1.fffffep-13, 0))
+  {
+    c = __builtin_fmaf(0x1p-13f, ay, at);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    if(c>0x1.fffffep127f) errno = ERANGE;
+#endif
+    return c;
+  }
   double r = __builtin_sqrt(r2);
   b64u64_u t = {.f = r};
-  float c = r;
+  c = r;
   if(t.u>(uint64_t)0x47efffffe0000000ull){
 #ifdef CORE_MATH_SUPPORT_ERRNO
     if(c>0x1.fffffep127f) errno = ERANGE;
