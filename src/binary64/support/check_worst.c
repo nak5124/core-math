@@ -160,6 +160,15 @@ is_nan (double x)
   return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
 }
 
+/* define our own is_inf function to avoid depending from math.h */
+static inline int
+is_inf (double x)
+{
+  uint64_t u = asuint64 (x);
+  uint64_t e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) == 0;
+}
+
 static inline int
 is_equal (double x, double y)
 {
@@ -244,7 +253,7 @@ check (testcase ts)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   double z1 = ref_function_under_test(ts.x, ts.y);
-#ifdef CORE_MATH_CHECK_INEXACT
+#if defined(CORE_MATH_CHECK_INEXACT) || defined(CORE_MATH_SUPPORT_ERRNO)
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
@@ -253,9 +262,6 @@ check (testcase ts)
   errno = 0;
 #endif
   double z2 = cr_function_under_test(ts.x, ts.y);
-#ifdef CORE_MATH_SUPPORT_ERRNO
-  int cr_errno = errno;
-#endif
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
 #ifndef EXCHANGE_X_Y
@@ -356,12 +362,28 @@ check (testcase ts)
 #endif
 
 #ifdef CORE_MATH_SUPPORT_ERRNO
-  // most tests don't check for errno setting, so it's not yet possible to check when errno was set incorrectly (case when errno_ref = 0 & cr_errno != 0)
-  if (ts.errno_ref != 0 && cr_errno != ts.errno_ref) {
-    printf("%s error not set for x,y=%la,%la (z=%la)\n", ts.errno_ref == ERANGE ? "Range" : "Domain", ts.x, ts.y, z1);
+  /* If x,y are normal numbers and z is NaN, we should have errno = EDOM.
+     If x,y are normal numbers and z is an exact infinity,
+     we should have errno = ERANGE.
+  */
+  if (!is_nan (ts.x) && !is_inf (ts.x) && !is_nan (ts.y) && !is_inf (ts.y))
+  {
+    if (is_nan (z1) && errno != EDOM)
+    {
+      printf ("Missing errno=EDOM for x=%la y=%la (z=%la)\n", ts.x, ts.y, z1);
+      fflush (stdout);
 #ifndef DO_NOT_ABORT
-    exit(1);
+      exit(1);
 #endif
+    }
+    if (is_inf (z1) && errno != ERANGE && inex1 == 0)
+    {
+      printf ("Missing errno=ERANGE for x=%la y=%la (z=%la)\n", ts.x, ts.y, z1);
+      fflush (stdout);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
+    }
   }
 #endif
 }
