@@ -212,7 +212,9 @@ check (testcase ts)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   ref_function_under_test(ts.x, &s1, &c1);
+#ifdef CORE_MATH_CHECK_INEXACT
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
+#endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
 #ifdef CORE_MATH_SUPPORT_ERRNO
@@ -222,7 +224,9 @@ check (testcase ts)
 #ifdef CORE_MATH_SUPPORT_ERRNO
   int cr_errno = errno;
 #endif
+#ifdef CORE_MATH_CHECK_INEXACT
   int inex2 = fetestexcept (FE_INEXACT);
+#endif
   if (is_equal (s1, s2) == 0) {
     printf("FAIL x=%la ref=%la s=%la\n", ts.x, s1, s2);
     fflush(stdout);
