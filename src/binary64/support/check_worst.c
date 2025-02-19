@@ -364,10 +364,7 @@ check (testcase ts)
 #endif
 
 #ifdef CORE_MATH_SUPPORT_ERRNO
-  /* If x,y are normal numbers and z is NaN, we should have errno = EDOM.
-     If x,y are normal numbers and z is an exact infinity,
-     we should have errno = ERANGE.
-  */
+  // If x,y are normal numbers and z is NaN, we should have errno = EDOM.
   if (!is_nan (ts.x) && !is_inf (ts.x) && !is_nan (ts.y) && !is_inf (ts.y))
   {
     if (is_nan (z1) && errno != EDOM)
@@ -378,9 +375,30 @@ check (testcase ts)
       exit(1);
 #endif
     }
-    if (is_inf (z1) && errno != ERANGE && inex1 == 0)
+    if (!is_nan (z1) && errno == EDOM)
+    {
+      printf ("Spurious errno=EDOM for x=%la y=%la (z=%la)\n", ts.x, ts.y, z1);
+      fflush (stdout);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
+    }
+
+    /* If x,y are normal numbers and z is an exact infinity, or if there is
+       an overflow, we should have errno=ERANGE. */
+    int expected_erange = (is_inf (z1) && inex1 == 0) ||
+      mpfr_flags_test (MPFR_FLAGS_OVERFLOW);
+    if (expected_erange && errno != ERANGE)
     {
       printf ("Missing errno=ERANGE for x=%la y=%la (z=%la)\n", ts.x, ts.y, z1);
+      fflush (stdout);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
+    }
+    if (!expected_erange && errno == ERANGE)
+    {
+      printf ("Spurious errno=ERANGE for x=%la y=%la (z=%la)\n", ts.x, ts.y, z1);
       fflush (stdout);
 #ifndef DO_NOT_ABORT
       exit(1);

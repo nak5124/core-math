@@ -218,7 +218,7 @@ check (testcase ts)
   ref_fesetround(rnd);
   mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
   double z1 = ref_function_under_test(ts.x);
-#ifdef CORE_MATH_CHECK_INEXACT
+#if defined(CORE_MATH_CHECK_INEXACT) || defined(CORE_MATH_SUPPORT_ERRNO)
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
@@ -316,9 +316,7 @@ check (testcase ts)
 
   // check errno
 #ifdef CORE_MATH_SUPPORT_ERRNO
-  /* If x is a normal number and y is NaN, we should have errno = EDOM.
-     If x is a normal number and overflow, we should have errno = ERANGE.
-  */
+  // If x is a normal number and y is NaN, we should have errno = EDOM.
   if (!is_nan (ts.x) && !is_inf (ts.x))
   {
     if (is_nan (z1) && errno != EDOM)
@@ -341,10 +339,12 @@ check (testcase ts)
       exit(1);
 #endif
     }
-    // if z1=Inf, we have overflow, but MPFR might not raise overflow
-    if (is_inf (z1))
-      mpfr_flags_set (MPFR_FLAGS_OVERFLOW);
-    if (mpfr_flags_test (MPFR_FLAGS_OVERFLOW) && errno != ERANGE)
+
+    /* If x is a normal number and a pole error (y exact infinity) or an
+       overflow occurs, we should have errno = ERANGE. */
+    int expected_erange = (is_inf (z1) && inex1 == 0) ||
+      mpfr_flags_test (MPFR_FLAGS_OVERFLOW);
+    if (expected_erange && errno != ERANGE)
     {
       printf ("Missing errno=ERANGE for x=%la (y=%la)\n", ts.x, z1);
       fflush (stdout);
@@ -354,7 +354,7 @@ check (testcase ts)
       exit(1);
 #endif
     }
-    if (!mpfr_flags_test (MPFR_FLAGS_OVERFLOW) && errno == ERANGE)
+    if (!expected_erange && errno == ERANGE)
     {
       printf ("Spurious errno=ERANGE for x=%la (y=%la)\n", ts.x, z1);
       fflush (stdout);

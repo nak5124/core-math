@@ -135,7 +135,9 @@ check (long double x)
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT);
   long double z2 = cr_function_under_test(x);
+#ifdef CORE_MATH_CHECK_INEXACT
   int inex2 = fetestexcept (FE_INEXACT);
+#endif
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
 	if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%La ref=%La z=%La\n", x, z1, z2);
