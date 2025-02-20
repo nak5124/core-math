@@ -47,6 +47,7 @@ int ref_fesetround (int);
 void ref_init (void);
 
 int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
+static int rnd2[] = { MPFR_RNDN, MPFR_RNDZ, MPFR_RNDU, MPFR_RNDD };
 
 int rnd;
 
@@ -221,25 +222,37 @@ check_underflow_before (void)
 /* In case of underflow before rounding and |z| = 2^-1022, raises the MPFR
    underflow exception if |f(x,y)| < 2^-1022.
 
-   Also for |z| = 2^-1022, clear the MPFR underflow exception (might be
-   present due to a bug in MPFR <= 4.2.1). */
+   Also for |z| = 2^-1022 and underflow after rounding, clear the MPFR
+   underflow exception when the rounded result equals +/-2^-1022
+   (might be set due to a bug in MPFR <= 4.2.1). */
 static void
 fix_underflow (double x, double y, double z)
 {
-  if (__builtin_fabs (z) == 0x1p-1022)
-    mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
-  if (!underflow_before || __builtin_fabs (z) != 0x1p-1022)
+  if (__builtin_fabs (z) != 0x1p-1022)
     return;
-  // the processor raises underflow before rounding, and |z| = 2^-1022
+  fexcept_t underflow = fetestexcept (FE_UNDERFLOW);
+  fexcept_t overflow = fetestexcept (FE_OVERFLOW);
   mpfr_t t, u;
   mpfr_init2 (t, 53);
   mpfr_init2 (u, 53);
   mpfr_set_d (t, x, MPFR_RNDN); // exact
   mpfr_set_d (u, y, MPFR_RNDN); // exact
-  mpfr_function_under_test (t, t, u, MPFR_RNDZ);
-  mpfr_abs (t, t, MPFR_RNDN); // exact
-  if (mpfr_cmp_d (t, 0x1p-1022) < 0) // |f(x,y)| < 2^-1022
-    mpfr_set_underflow ();
+  if (!underflow_before) { // underflow after rounding
+    mpfr_function_under_test (t, t, u, rnd2[rnd]);
+    mpfr_abs (t, t, MPFR_RNDN); // exact
+    if (mpfr_cmp_d (t, 0x1p-1022) == 0) // |o(f(x,y))| = 2^-1022
+      mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
+  } else {
+    // the processor raises underflow before rounding, and |z| = 2^-1022
+    mpfr_function_under_test (t, t, u, MPFR_RNDZ);
+    mpfr_abs (t, t, MPFR_RNDN); // exact
+    if (mpfr_cmp_d (t, 0x1p-1022) < 0) // |f(x,y)| < 2^-1022
+      mpfr_set_underflow ();
+  }
+  /* mpfr_cmp_d/mpfr_set_d might raise the processor underflow/overflow flags
+     (https://gitlab.inria.fr/mpfr/mpfr/-/issues/2) */
+  if (!underflow) feclearexcept (FE_UNDERFLOW);
+  if (!overflow) feclearexcept (FE_OVERFLOW);
   mpfr_clear (t);
   mpfr_clear (u);
 }

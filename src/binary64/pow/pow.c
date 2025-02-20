@@ -991,7 +991,12 @@ static inline void
 exp_1 (double *eh, double *el, double rh, double rl, double s) {
 
 #define RHO0 -0x1.74910ee4e8a27p+9
-#define RHO1 -0x1.577453f1799a6p+9
+// #define RHO1 -0x1.577453f1799a6p+9
+/* We increase the initial value of RHO1 to avoid spurious underflow in
+   the result value el. However, it is not possible to obtain a lower
+   bound on |el| from the input value rh, thus this modified value of RHO1
+   is obtained experimentally. */
+#define RHO1 -0x1.483b8cca421afp+9
 #define RHO2 0x1.62e42e709a95bp+9
 #define RHO3 0x1.62e4316ea5df9p+9
 
@@ -1731,6 +1736,17 @@ double cr_pow (double x, double y) {
   // approximate log(x)
   int cancel = log_1 (&lh, &ll, x);
 
+  /* We should avoid a spurious underflow/overflow in y*log(x).
+     Underflow: for x<>1, the smallest absolute value of log(x) is obtained
+     for x=1-2^-53, with |log(x)| ~ 2^-53. Thus to avoid a spurious underflow
+     we require |y| >= 2^-969.
+     Overflow: the largest absolute value of log(x) is obtained for x=2^-1074,
+     with |log(x)| < 745. Thus to avoid a spurious overflow we require
+     |y| < 2^1014. */
+  int ey = (_y.u >> 52) & 0x7ff;
+  if (__builtin_expect (ey < 0x36 || ey >= 0x7f5, 0))
+    lh = ll = NAN;
+
   // approximate y * log(x)
   double rh, rl;
   s_mul (&rh, &rl, y, lh, ll);
@@ -1759,7 +1775,8 @@ double cr_pow (double x, double y) {
   /* if res_h < 0, we have res_max < res_min, but since we only check
      equality between res_min and res_max, it does not matter */
 
-  if (is_exact (x, y))
+  int exact = is_exact (x, y);
+  if (exact)
     // restore inexact flag
     set_flag (flag);
 
@@ -1833,6 +1850,9 @@ double cr_pow (double x, double y) {
   }
 
   if (R.ex < -1022) { /* subnormal case */
+    // for x^y = 2^-1022, we can have R < 2^-1022 here
+    if (!exact)
+      feraiseexcept (FE_UNDERFLOW); // raise underflow
     /* -1075 <= R.ex <= -1023 thus 2^-1075 <= R < 2^-1022 */
     uint64_t ex = -(1022 + R.ex); /* 1 <= ex <= 53 */
     // the significand has to be shifted right by ex bits
