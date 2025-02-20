@@ -230,29 +230,28 @@ fix_underflow (double x, double y, double z)
 {
   if (__builtin_fabs (z) != 0x1p-1022)
     return;
-  fexcept_t underflow = fetestexcept (FE_UNDERFLOW);
-  fexcept_t overflow = fetestexcept (FE_OVERFLOW);
   mpfr_t t, u;
   mpfr_init2 (t, 53);
   mpfr_init2 (u, 53);
+  fexcept_t flag;
+  fegetexceptflag (&flag, FE_ALL_EXCEPT);
   mpfr_set_d (t, x, MPFR_RNDN); // exact
   mpfr_set_d (u, y, MPFR_RNDN); // exact
+  /* mpfr_set_d might raise the processor underflow/overflow/inexact flags
+     (https://gitlab.inria.fr/mpfr/mpfr/-/issues/2) */
+  fesetexceptflag (&flag, FE_ALL_EXCEPT);
   if (!underflow_before) { // underflow after rounding
     mpfr_function_under_test (t, t, u, rnd2[rnd]);
     mpfr_abs (t, t, MPFR_RNDN); // exact
-    if (mpfr_cmp_d (t, 0x1p-1022) == 0) // |o(f(x,y))| = 2^-1022
+    if (mpfr_cmp_ui_2exp (t, 1, -1022) == 0) // |o(f(x,y))| = 2^-1022
       mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
   } else {
     // the processor raises underflow before rounding, and |z| = 2^-1022
     mpfr_function_under_test (t, t, u, MPFR_RNDZ);
     mpfr_abs (t, t, MPFR_RNDN); // exact
-    if (mpfr_cmp_d (t, 0x1p-1022) < 0) // |f(x,y)| < 2^-1022
+    if (mpfr_cmp_ui_2exp (t, 1, -1022) < 0) // |f(x,y)| < 2^-1022
       mpfr_set_underflow ();
   }
-  /* mpfr_cmp_d/mpfr_set_d might raise the processor underflow/overflow flags
-     (https://gitlab.inria.fr/mpfr/mpfr/-/issues/2) */
-  if (!underflow) feclearexcept (FE_UNDERFLOW);
-  if (!overflow) feclearexcept (FE_OVERFLOW);
   mpfr_clear (t);
   mpfr_clear (u);
 }
