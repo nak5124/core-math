@@ -140,9 +140,17 @@ double cr_atanh(double x){
 
   if(__builtin_expect(aix<0x3fd0000000000000ull,0)){ // |x| < 0x1p-2
     // atanh(x) rounds to x to nearest for |x| < 0x1.d12ed0af1a27fp-27
-    if(__builtin_expect(aix<0x3e4d12ed0af1a27full,0))
+    if(__builtin_expect(aix<0x3e4d12ed0af1a27full,0)) {
       // |x| < 0x1.d12ed0af1a27fp-27
+      /* We have underflow exactly when 0 < |x| < 2^-1022:
+         for RNDU, atanh(2^-1022-2^-1074) would round to 2^-1022-2^-1075
+         with unbounded exponent range */
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      if (x != 0 && __builtin_fabs (x) < 0x1p-1022)
+        errno = ERANGE; // underflow
+#endif
       return __builtin_fma(x,0x1p-55,x);
+    }
     double x2 = x * x;
     static const double c[] = 
       {0x1.999999999999ap-3, 0x1.2492492492244p-3, 0x1.c71c71c79715fp-4, 0x1.745d16f777723p-4,
