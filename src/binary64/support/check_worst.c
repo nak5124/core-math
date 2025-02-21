@@ -201,30 +201,9 @@ print_binary64 (double x)
   }
 }
 
-int underflow_before; // non-zero if processor raises underflow before rounding
-
-// return non-zero if the processor raises underflow before rounding
-// (e.g., aarch64)
-static void
-check_underflow_before (void)
-{
-  fexcept_t flag;
-  fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
-  fesetround (FE_TONEAREST);
-  feclearexcept (FE_UNDERFLOW);
-  float x = 0x1p-126f;
-  float y = __builtin_fmaf (-x, x, x);
-  if (x == y) // this is needed otherwise the compiler says y is unused
-    underflow_before = fetestexcept (FE_UNDERFLOW);
-  fesetexceptflag (&flag, FE_ALL_EXCEPT); //restore flags
-}
-
-/* In case of underflow before rounding and |z| = 2^-1022, raises the MPFR
-   underflow exception if |f(x,y)| < 2^-1022.
-
-   Also for |z| = 2^-1022 and underflow after rounding, clear the MPFR
-   underflow exception when the rounded result equals +/-2^-1022
-   (might be set due to a bug in MPFR <= 4.2.1). */
+/* For |z| = 2^-1022 and underflow after rounding, clear the MPFR
+   underflow exception when the rounded result (with unbounded exponent)
+   equals +/-2^-1022 (might be set due to a bug in MPFR <= 4.2.1). */
 static void
 fix_underflow (double x, double y, double z)
 {
@@ -234,24 +213,16 @@ fix_underflow (double x, double y, double z)
   mpfr_init2 (t, 53);
   mpfr_init2 (u, 53);
   fexcept_t flag;
-  fegetexceptflag (&flag, FE_ALL_EXCEPT);
+  fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
   mpfr_set_d (t, x, MPFR_RNDN); // exact
   mpfr_set_d (u, y, MPFR_RNDN); // exact
   /* mpfr_set_d might raise the processor underflow/overflow/inexact flags
      (https://gitlab.inria.fr/mpfr/mpfr/-/issues/2) */
-  fesetexceptflag (&flag, FE_ALL_EXCEPT);
-  if (!underflow_before) { // underflow after rounding
-    mpfr_function_under_test (t, t, u, rnd2[rnd]);
-    mpfr_abs (t, t, MPFR_RNDN); // exact
-    if (mpfr_cmp_ui_2exp (t, 1, -1022) == 0) // |o(f(x,y))| = 2^-1022
-      mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
-  } else {
-    // the processor raises underflow before rounding, and |z| = 2^-1022
-    mpfr_function_under_test (t, t, u, MPFR_RNDZ);
-    mpfr_abs (t, t, MPFR_RNDN); // exact
-    if (mpfr_cmp_ui_2exp (t, 1, -1022) < 0) // |f(x,y)| < 2^-1022
-      mpfr_set_underflow ();
-  }
+  fesetexceptflag (&flag, FE_ALL_EXCEPT); // restore flags
+  mpfr_function_under_test (t, t, u, rnd2[rnd]);
+  mpfr_abs (t, t, MPFR_RNDN); // exact
+  if (mpfr_cmp_ui_2exp (t, 1, -1022) == 0) // |o(f(x,y))| = 2^-1022
+    mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
   mpfr_clear (t);
   mpfr_clear (u);
 }
@@ -615,8 +586,6 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
-
-  check_underflow_before ();
 
   doloop();
 
