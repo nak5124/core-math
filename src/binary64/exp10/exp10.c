@@ -1,6 +1,6 @@
 /* Correctly rounded 10^x exponential function for binary64 values.
 
-Copyright (c) 2023 Alexei Sibidanov.
+Copyright (c) 2023-2025 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -319,8 +319,12 @@ double cr_exp10(double x){
 #endif
       return 0x1p1023*2.0; // x > 0x1.34413509f79fep+8
     }
-    if(aix>0x407439b746e36b52ull) // x < -0x1.439b746e36b52p+8
-      return 0x1.5p-1022*0x1p-55;
+    if(aix>0x407439b746e36b52ull) { // x < -0x1.439b746e36b52p+8
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE; // underflow
+#endif
+      return 0x1.8p-1022*0x1p-55;
+    }
   }
   // check x integer to avoid a spurious inexact exception
   if(__builtin_expect(!(ix.u<<16), 0)){
@@ -353,10 +357,14 @@ double cr_exp10(double x){
   double fh = th, fx = th*dx, fl = tl + fx*p;
   double eps = 1.63e-19;
   if(__builtin_expect(ix.u<0xc0733a7146f72a42ull, 0)){
+    // x > -0x1.33a7146f72a42p+8
     double ub = fh + (fl + eps), lb = fh + (fl - eps);
     if(__builtin_expect( lb != ub, 0)) return as_exp10_accurate(x);
     fh = as_ldexp(fh + fl, ie);
-  } else {
+  } else { // x <= -0x1.33a7146f72a42p+8: exp10(x) < 2^-1022
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE; // underflow
+#endif
     ix.u = (1-ie)<<52;
     fh = fasttwosum(ix.f, fh, &tl);
     fl += tl;
