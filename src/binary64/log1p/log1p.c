@@ -1,6 +1,6 @@
 /* Correctly rounded log(1+x) for binary64 values.
 
-Copyright (c) 2024 Alexei Sibidanov.
+Copyright (c) 2024-2025 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -294,7 +294,14 @@ double cr_log1p(double x){
     // check case x tiny first to avoid spurious underflow in x*x
     if(__builtin_expect(ax<0x7940000000000000ull, 0)){ // |x| < 0x1p-53
       if(!ax) return x;
-      return __builtin_fma(__builtin_fabs(x), -0x1p-54, x);
+      /* we have underflow when |x| < 2^-1022, or when |x| = 2^-1022 and
+         the result is smaller than 2^-1022 in absolute value */
+      double res = __builtin_fma(__builtin_fabs(x), -0x1p-54, x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      if (__builtin_fabs (x) < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
+        errno = ERANGE; // underflow
+#endif
+      return res;
     }
     double x2 = x*x;
     if(__builtin_expect(ax<0x7e60000000000000ull, 1)){ // |x| < 0x1p-12
