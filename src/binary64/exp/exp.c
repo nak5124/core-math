@@ -1,6 +1,6 @@
 /* Correctly rounded exponential function for binary64 values.
 
-Copyright (c) 2022-2023 Alexei Sibidanov.
+Copyright (c) 2022-2025 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -335,8 +335,12 @@ double cr_exp(double x){
       volatile double z = 0x1p1023;
       return z*z;
     }
-    if (aix>=0x40874910d52d3052ull) // x <= -0x1.74910d52d3052p+9
+    if (aix>=0x40874910d52d3052ull) { // x <= -0x1.74910d52d3052p+9
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE; // underflow
+#endif
       return 0x1.5p-1022 * 0x1p-55;
+    }
   }
   const double s = 0x1.71547652b82fep+12;
   double t = roundeven_finite(x*s);
@@ -354,12 +358,15 @@ double cr_exp(double x){
   double eps = 1.64e-19;
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     // subnormal case: x < -0x1.6232bdd7abcd2p+9
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE; // underflow
+#endif
     ix.u = (1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
     double ub = fh + (fl + eps), lb = fh + (fl - eps);
-    if(__builtin_expect( ub != lb, 0)) return as_exp_accurate(x);
+    if (__builtin_expect(ub != lb, 0)) return as_exp_accurate(x);
     fh = as_todenormal(lb);
   } else {
     double ub = fh + (fl + eps), lb = fh + (fl - eps);
