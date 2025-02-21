@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#include <errno.h>
 #if defined(__x86_64__)
 #include <x86intrin.h>
 #endif
@@ -268,11 +269,19 @@ double cr_tanh(double x){
   static const double ch[] = {0x1p+1, 0x1p+1, 0x1.55555557e54ffp+0, 0x1.55555553a12f4p-1};
   double t0h = t0[i0][1], t1h = t1[i1][1], th = t0h*t1h, tl;
   if(aix<0x400d76c8b4395810ull){ // |x| ~< 3.683
-    if(__builtin_expect(aix<0x3fd0000000000000ull, 0)){
-      if(__builtin_expect(aix<0x3e10000000000000ull, 0)){
-	if(__builtin_expect(aix<0x3df0000000000000ull, 0)){
+    if(__builtin_expect(aix<0x3fd0000000000000ull, 0)){ // |x| < 0x1p-2
+      if(__builtin_expect(aix<0x3e10000000000000ull, 0)){ // |x| < 0x1p-30
+	if(__builtin_expect(aix<0x3df0000000000000ull, 0)){ // |x| < 0x1p-32
 	  if(__builtin_expect(!aix, 0)) return x;
-	  return __builtin_fma(x,-0x1p-55,x);
+          /* We have underflow when 0 < |x| < 2^-1022 or when |x| = 2^-1022
+             and rounding towards zero. */
+          double res = __builtin_fma (x, -0x1p-55, x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+          if (__builtin_fabs (x) < 0x1p-1022 ||
+              __builtin_fabs (res) < 0x1p-1022)
+            errno = ERANGE; // underflow
+#endif
+          return res;
 	}
 	double x3 = x*x*x;
 	return x - x3/3;
