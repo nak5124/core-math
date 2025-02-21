@@ -1,6 +1,6 @@
 /* Correctly rounded exp2 function for binary64 values.
 
-Copyright (c) 2023 Alexei Sibidanov.
+Copyright (c) 2023-2025 Alexei Sibidanov.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -325,12 +325,15 @@ double cr_exp2(double x){
     if(ax == 0xffe0000000000000ull) return (ix.u>>63)?0.0:x; // +/-inf
     if(ix.u>>63){ // x <= -1024
       if(ix.u >= 0xc090cc0000000000ull) { // x <= -1075
+#ifdef CORE_MATH_SUPPORT_ERRNO
+        errno = ERANGE; // underflow
+#endif
 	double z = 0x1p-1022;
 	return z*z;
       }
     } else { // x >= 1024
 #ifdef CORE_MATH_SUPPORT_ERRNO
-      errno = ERANGE;
+      errno = ERANGE; // overflow
 #endif
       return 0x1p1023*x;
     }
@@ -360,6 +363,10 @@ double cr_exp2(double x){
     }
     fh = as_ldexp(fh, ie);
   } else { // subnormal case
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    if (frac != 0)
+      errno = ERANGE; // underflow (no underflow when 2^x is exact)
+#endif
     ix.u = ((u64)1-ie)<<52;
     double e;
     fh = fasttwosum(ix.f, fh, &e);
