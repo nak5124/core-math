@@ -600,9 +600,9 @@ static __attribute__((noinline)) double as_tgamma_accurate(double x){
 
   double eps = 0x1.ep-103*fh, ub = fh + (fl + eps), lb = fh + (fl - eps);
   b64u64_u res = {.f = fh + fl};
-  long re = (res.u >> 52)&0x7ff;
+  int64_t re = (res.u >> 52)&0x7ff;
   if(re + eoff <= 0){ // subnormal case
-    res.u -= (long)(eoff+re-1)<<52;
+    res.u -= (int64_t)(eoff+re-1)<<52;
     res.u &= 0xffful<<52;
     double l;
     fh = fasttwosum(res.f, fh, &l);
@@ -611,7 +611,7 @@ static __attribute__((noinline)) double as_tgamma_accurate(double x){
     res.u &= ~(0x7fful<<52);
     raise_underflow ();
   } else {
-    res.u += (long)eoff<<52;
+    res.u += (int64_t)eoff<<52;
   }
   if(ub!=lb) return as_tgamma_database(x, res.f);
   return res.f;
@@ -749,12 +749,12 @@ double cr_tgamma(double x){
       double ub = rh + (rl + eps), lb = rh + (rl - eps);
       if(ub != lb) return as_tgamma_accurate(x);
       th.f = ub;
-      th.u -= (long)e<<52;
+      th.u -= (int64_t)e<<52;
     } else {
       th.f = rh;
       int re = (th.u>>52)&0x7ff;
       if(re-e<=0){ // subnormal case
-	th.u += (long)(e-re+1)<<52; // 1 <= e-re+1 <= 53
+	th.u += (int64_t)(e-re+1)<<52; // 1 <= e-re+1 <= 53
 	th.u &= 0xffful<<52;
 	double l;
 	rh = fasttwosum(th.f, rh, &l);
@@ -768,7 +768,7 @@ double cr_tgamma(double x){
 	double ub = rh + (rl + eps), lb = rh + (rl - eps);
 	if(ub != lb) return as_tgamma_accurate(x);
 	th.f = ub;
-	th.u -= (long)e<<52;
+	th.u -= (int64_t)e<<52;
       }
     }
     return th.f;
@@ -781,7 +781,7 @@ double cr_tgamma(double x){
     double ub = lh + (ll + eps), lb = lh + (ll - eps);
     if(ub != lb) return as_tgamma_accurate(x);
     b64u64_u th = {.f = ub};
-    th.u += (long)e<<52;    
+    th.u += (int64_t)e<<52;    
     return th.f;
   }
 
