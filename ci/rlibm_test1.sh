@@ -4,7 +4,7 @@
 L=/tmp/The-RLIBM-Project/libm/rlibm.a
 # it seems RLIBM does not set errno:
 # https://gitlab.inria.fr/core-math/core-math/-/jobs/6605002
-for f in log2; do
+for f in log10 log2 log; do
    echo Testing $f
    CORE_MATH_CHECK_STD=true LIBM=$L EXTRA_CFLAGS="-DCORE_MATH_CHECK_INEXACT" ./check.sh ${f}f
 done
