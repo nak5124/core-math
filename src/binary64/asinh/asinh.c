@@ -282,12 +282,17 @@ as_asinh_database(double x, double f){
     {0x1.389ef683f3aa7p-2, 0x1.33f52db6df1afp-2, 0x1p-56},
     {0x1.3b07e0c779ddap-2, 0x1.364303e1ad8f6p-2, 0x1p-56},
     {0x1.48441df33b6d3p-2, 0x1.42e385800f0a4p-2, 0x1p-56},
+    {0x1.4c6f0d20ed3a1p-2, 0x1.46daec752c849p-2, 0x1p-56},
+    {0x1.6388861ccfafep-2, 0x1.5cc07e94523bbp-2, -0x1p-56},
     {0x1.687bd068c1c1ep-2, 0x1.616cc75d49226p-2, -0x1p-56},
     {0x1.8740c4453a056p-2, 0x1.7e4f2ad132a1dp-2, 0x1p-56},
     {0x1.891acda11167ep-2, 0x1.8009d924a3ffdp-2, 0x1p-56},
+    {0x1.9ea683db42916p-2, 0x1.9414d64d1632dp-2, -0x1p-56},
     {0x1.bafc3479fc9ccp-2, 0x1.ae3773250e7d2p-2, 0x1p-56},
+    {0x1.c1479cd117d7ap-2, 0x1.b3fcbd40a1499p-2, 0x1p-56},
     {0x1.c59869f17b483p-2, 0x1.b7efa91915c95p-2, 0x1p-56},
     {0x1.c8be879787986p-2, 0x1.bad0485e0fe0ap-2, -0x1p-56},
+    {0x1.cd01b4592e89dp-2, 0x1.beb40c1c5e48bp-2, 0x1p-56},
     {0x1.e73b46abb01e1p-2, 0x1.d68039861ab53p-2, 0x1p-56},
     {0x1.ed6236da268bp-2, 0x1.dc0cb8f638126p-2, 0x1p-56},
     {0x1.f399ebafc1951p-2, 0x1.e1a4f519fab77p-2, -0x1p-56},
@@ -303,14 +308,20 @@ as_asinh_database(double x, double f){
     {0x1.a16d9cc06011ap-1, 0x1.7d3755d851062p-1, -0x1p-55},
     {0x1.bb635be2213d1p-1, 0x1.91167cae3cfa9p-1, 0x1p-55},
     {0x1.d4b21ebf542fp-1, 0x1.a3fc7e4dd47d1p-1, -0x1p-55},
+    {0x1.e373b687485c2p-1, 0x1.aecaf83c75175p-1, 0x1p-54},
+    {0x1.4e0e1a230a522p+0, 0x1.14d909c2ae1dbp+0, 0x1p-54},
     {0x1.7b8516ffd2406p+0, 0x1.2f5d3b178914ap+0, 0x1p-54},
     {0x1.9295b9116e2e2p+0, 0x1.3bffa8863976p+0, 0x1p-54},
     {0x1.fedc65e32714p+0, 0x1.710f91e844f9bp+0, 0x1p-54},
+    {0x1.01e9cfa77b855p+1, 0x1.7346e3c591a14p+0, -0x1p-54},
     {0x1.57e377b3f0b4bp+1, 0x1.b6e2c73f41415p+0, 0x1p-54},
+    {0x1.fd2634ca3c97cp+1, 0x1.0b6e130c428a0p+1, 0x1p-54},
+    {0x1.5e40df3f985bep+2, 0x1.3359640329982p+1, -0x1p-54},
     {0x1.6056b06a21918p+3, 0x1.8c0a26d055288p+1, 0x1p-53},
     {0x1.843e1b5e5979cp+4, 0x1.f0f978201eb84p+1, 0x1p-53},
     {0x1.fee8f69c4cd25p+10, 0x1.0a19aebb51e9p+3, -0x1p-51},
     {0x1.0fbc6c02b1c9p+24, 0x1.16369cd53bb69p+4, 0x1p-50},
+    {0x1.08b8abba28abcp+25, 0x1.20e29ea8b51e2p+4, -0x1p-50},
   };
   double ax = __builtin_fabs(x);
   int a = 0, b = sizeof(db)/sizeof(db[0]) - 1, m = (a + b)/2;
@@ -472,8 +483,8 @@ static double as_asinh_refine(double x, double zh, double zl, double a){
     v1 = t.f;
   }
   b64u64_u t0 = {.f = v0};
-  uint64_t er = ((t.u + 33) & (~(u64)0>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
+  uint64_t er = ((t.u + 40) & (~(u64)0>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
   double res = v0 + v1;
-  if(__builtin_expect(de>99 || er<66, 0)) return as_asinh_database(x,res);
+  if(__builtin_expect(de>99 || er<80, 0)) return as_asinh_database(x,res);
   return res;
 }
