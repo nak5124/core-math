@@ -174,10 +174,7 @@ static void scan_consecutive_aux(int64_t n, double x){
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
-  if (n < 0) {
-    n = -n;
-    x = asfloat64 (asuint64 (x) - n);
-  }
+  assert (n > 0);
   while (n) {
     double h, l, d, dd;
     dd_acosh (&h, &l, x);

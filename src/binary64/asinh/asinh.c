@@ -221,6 +221,8 @@ double cr_asinh(double x){
     return as_asinh_zero(x,x2h,x2l);
   }
   // |x| >= 0x1.bp-4
+  // rev. e714d20: checked exhaustively 0x1.bp-4 <= x < 0x1p-3 both with/without FMA
+  // also check up to 0x1p+3
   double x2h = 0, x2l = 0;
   double ah, al;
   int off = 0x3ff;
