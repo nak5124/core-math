@@ -178,15 +178,23 @@ static void scan_consecutive_aux(int64_t n, double x){
   fesetround(rnd1[rnd]);
   assert (n > 0);
   while (n) {
-    double h, l, d, dd;
+    double h, l, d, dd, ax = fabs (x);
     dd_asinh (&h, &l, x);
-    d = 1.0 / sqrt (x * x + 1.0); // derivative of asinh(x)
-    dd = d * fabs (x) / (x * x + 1.0); // absolute value of 2nd derivative
     int e;
     frexp (x, &e);
-    /* 2^(e-1) <= |x| < 2^e thus ulp(x) = 2^(e-53) */
-    d = ldexp (d, e - 53); // multiply d by ulp(x)
-    dd = ldexp (dd, 2 * (e - 53)); // multiply dd by ulp(x)^2
+    if (ax < 0x1p512) {
+      d = 1.0 / sqrt (x * x + 1.0); // derivative of asinh(x)
+      dd = d * ax / (x * x + 1.0); // absolute value of 2nd derivative
+      /* 2^(e-1) <= |x| < 2^e thus ulp(x) = 2^(e-53) */
+      d = ldexp (d, e - 53); // multiply d by ulp(x)
+      dd = ldexp (dd, 2 * (e - 53)); // multiply dd by ulp(x)^2
+    } else {
+      /* |x| >= 2^512, then the derivative of asinh(x) is about 1/x,
+         and the 2nd derivative is about 1/x^2, thus we should have
+         d = 1/x * 2^(e-53) and dd = d^2. */
+      d = ldexp (1.0 / ax, e - 53);
+      dd = d * d;
+    }
     /* we want j^2*dd < 2^-11 ulp(h) so that the 2nd-order term
        produces an error bounded by 2^-11 ulp(h), to that MPFR
        will be called with probability about 2^-11.
