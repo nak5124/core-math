@@ -81,6 +81,9 @@ float sinpif (float x) {
   return (float) temp;
 }
 
+/* sinf/cosf are already defined in RLIBM, but simply call rlibm_sinf/rlibm_cosf,
+   without setting the rounding mode to nearest */
+#if 0
 float sinf (float x) {
   int rnd = fegetround ();
   fesetround (FE_TONEAREST);
@@ -96,6 +99,7 @@ float cosf (float x) {
   fesetround (rnd);
   return (float) temp;
 }
+#endif
 
 float tanf (float x) {
   int rnd = fegetround ();
