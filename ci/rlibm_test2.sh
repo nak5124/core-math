@@ -1,7 +1,9 @@
 #!/bin/bash
 # updated 16 Dec 2025 (revision be69161 of RLIBM)
-for f in cospi sinpi sin cos tan atan asin acos; do
+L=/tmp/The-RLIBM-Project/libm/rlibm.a
+# it seems RLIBM does not set errno:
+# https://gitlab.inria.fr/core-math/core-math/-/jobs/6605002
+for f in exp10 exp2 exp; do
    echo Testing $f
-   gcc -DSTR=$f -O3 -march=native ci/rlibm_test.c -lmpfr -lm /tmp/The-RLIBM-Project/libm/rlibm.a -fopenmp
-   ./a.out
+   CORE_MATH_CHECK_STD=true LIBM=$L EXTRA_CFLAGS="-DCORE_MATH_CHECK_INEXACT" ./check.sh ${f}f
 done

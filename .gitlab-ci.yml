@@ -172,3 +172,43 @@ check_rlibm2:
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
     - ci/rlibm_test2.sh
+
+check_rlibm3:
+  stage: test
+  image: debian:testing
+  before_script:
+    - ci/00-prepare-docker.sh
+    - ci/02-prepare-rlibm.sh
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - ci/rlibm_test3.sh
+
+check_rlibm4:
+  stage: test
+  image: debian:testing
+  before_script:
+    - ci/00-prepare-docker.sh
+    - ci/02-prepare-rlibm.sh
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - ci/rlibm_test4.sh
+
+check_rlibm5:
+  stage: test
+  image: debian:testing
+  before_script:
+    - ci/00-prepare-docker.sh
+    - ci/02-prepare-rlibm.sh
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - ci/rlibm_test5.sh
+
+check_rlibm6:
+  stage: test
+  image: debian:testing
+  before_script:
+    - ci/00-prepare-docker.sh
+    - ci/02-prepare-rlibm.sh
+  script:
+    - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
+    - ci/rlibm_test6.sh
