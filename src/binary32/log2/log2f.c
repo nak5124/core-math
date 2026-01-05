@@ -74,39 +74,39 @@ float cr_log2f(float x) {
 
   static const double lix[] = {
     0x0p+0,
-    -0x1.fe02a6b146789p-8, -0x1.fc0a8b0fa03e4p-7, -0x1.7b91b07de311bp-6, -0x1.f829b0e7c33p-6,
-    -0x1.39e87b9fd7d6p-5, -0x1.77458f63edcfcp-5, -0x1.b42dd7117b1bfp-5, -0x1.f0a30c01362a6p-5,
-    -0x1.16536eea7fae1p-4, -0x1.341d7961791d1p-4, -0x1.51b073f07983fp-4, -0x1.6f0d28ae3eb4cp-4,
-    -0x1.8c345d6383b21p-4, -0x1.a926d3a475563p-4, -0x1.c5e548f63a743p-4, -0x1.e27076e28f2e6p-4,
-    -0x1.fec9131dbaabbp-4, -0x1.0d77e7ccf6e59p-3, -0x1.1b72ad52f87ap-3, -0x1.29552f81eb523p-3,
-    -0x1.371fc201f7f74p-3, -0x1.44d2b6ccbfd1ep-3, -0x1.526e5e3a41438p-3, -0x1.5ff3070a613d4p-3,
-    -0x1.6d60fe717221dp-3, -0x1.7ab890212b909p-3, -0x1.87fa065214911p-3, -0x1.9525a9cf296b4p-3,
-    -0x1.a23bc1fe42563p-3, -0x1.af3c94e81bff3p-3, -0x1.bc2867430acd6p-3, -0x1.c8ff7c7989a22p-3,
-    -0x1.d5c216b535b91p-3, -0x1.e27076e2f92e6p-3, -0x1.ef0adcbe0d936p-3, -0x1.fb9186d5ebe2bp-3,
-    -0x1.0402594b51041p-2, -0x1.0a324e27370e3p-2, -0x1.1058bf9ad7ad5p-2, -0x1.1675cabaa660ep-2,
-    -0x1.1c898c16b91fbp-2, -0x1.22941fbcfb966p-2, -0x1.2895a13dd2ea3p-2, -0x1.2e8e2bade7d31p-2,
-    -0x1.347dd9a9afd55p-2, -0x1.3a64c556b05eap-2, -0x1.40430868877e4p-2, -0x1.4618bc219dec2p-2,
-    -0x1.4be5f9579e0a1p-2, -0x1.51aad872c982dp-2, -0x1.5767717432a6cp-2, -0x1.5d1bdbf5669cap-2,
-    -0x1.62c82f2b83795p-2, 0x1.5d5bddf5b0f3p-2, 0x1.57bf753cb49fbp-2, 0x1.522ae073b23d8p-2,
-    0x1.4c9e09e18f43cp-2, 0x1.4718dc271841bp-2, 0x1.419b423d5a8c7p-2, 0x1.3c2527735f184p-2,
-    0x1.36b6776bff917p-2, 0x1.314f1e1d54ce4p-2, 0x1.2bef07cdb5354p-2, 0x1.269621136db92p-2,
-    0x1.214456d0e88d4p-2, 0x1.1bf9963577b95p-2, 0x1.16b5ccbaf1373p-2, 0x1.1178e822ae47cp-2,
-    0x1.0c42d67625ae3p-2, 0x1.07138604b0862p-2, 0x1.01eae56243e91p-2, 0x1.f991c6cb33379p-3,
-    0x1.ef5ade4de2fe6p-3, 0x1.e530effe1b012p-3, 0x1.db13db0da194p-3, 0x1.d1037f264de7bp-3,
-    0x1.c6ffbc6ef8f71p-3, 0x1.bd087383798adp-3, 0x1.b31d8575dee3dp-3, 0x1.a93ed3c8fd9e3p-3,
-    0x1.9f6c407055664p-3, 0x1.95a5adcfc217fp-3, 0x1.8beafeb38ce8cp-3, 0x1.823c1655523c2p-3,
-    0x1.7898d85460c73p-3, 0x1.6f0128b7baabcp-3, 0x1.6574ebe86933ap-3, 0x1.5bf406b59bdb2p-3,
-    0x1.527e5e4a5158dp-3, 0x1.4913d83395561p-3, 0x1.3fb45a59ed8ccp-3, 0x1.365fcb0151016p-3,
-    0x1.2d1610c81c13ap-3, 0x1.23d712a4fa202p-3, 0x1.1aa2b7e1ff72ap-3, 0x1.1178e822de47cp-3,
-    0x1.08598b5990a07p-3, 0x1.fe89139dc1566p-4, 0x1.ec739830d912p-4, 0x1.da7276390c6a2p-4,
-    0x1.c885801c04b23p-4, 0x1.b6ac88da61b1cp-4, 0x1.a4e7640a45c38p-4, 0x1.9335e5d524989p-4,
-    0x1.8197e2f37a3fp-4, 0x1.700d30af800e1p-4, 0x1.5e95a4d90f1cbp-4, 0x1.4d3115d2cfeacp-4,
-    0x1.3bdf5a7c60e64p-4, 0x1.2aa04a44a57a5p-4, 0x1.1973bd1527567p-4, 0x1.08598b5ac3a07p-4,
-    0x1.eea31bfea787cp-5, 0x1.ccb73cdcb32ccp-5, 0x1.aaef2d11110fcp-5, 0x1.894aa1485b343p-5,
-    0x1.67c94f2e07b58p-5, 0x1.466aed42be3eap-5, 0x1.252f32faad83fp-5, 0x1.0415d89e54444p-5,
-    0x1.c63d2ec16aaf2p-6, 0x1.8492528ddcabfp-6, 0x1.432a925ca0cc1p-6, 0x1.0205658d15847p-6,
-    0x1.82448a3d8a2aap-7, 0x1.010157586de71p-7, 0x1.0080559488b35p-8, 0x0p+0 };
-
+    -0x1.6fe50b6f1eafap-7, -0x1.6e79685c160d5p-6, -0x1.11cd1d51955bap-5, -0x1.6bad37591e03p-5,
+    -0x1.c4dfab908ddb6p-5, -0x1.0eb389fab4795p-4, -0x1.3aa2fdd26ae99p-4, -0x1.663f6faca846bp-4,
+    -0x1.918a16e4cb157p-4, -0x1.bc84240a78a14p-4, -0x1.e72ec1181cfbp-4, -0x1.08c588cd964e4p-3,
+    -0x1.1dcd19759f2e3p-3, -0x1.32ae9e27627c6p-3, -0x1.476a9f989a58ap-3, -0x1.5c01a39fa6533p-3,
+    -0x1.70742d4eed455p-3, -0x1.84c2bd02d6433p-3, -0x1.98edd077e9f09p-3, -0x1.acf5e2db31eeap-3,
+    -0x1.c0db6cddaa82dp-3, -0x1.d49ee4c331219p-3, -0x1.e840be751d776p-3, -0x1.fbc16b9003e0cp-3,
+    -0x1.0790adbae3fcp-2, -0x1.11307dad465b5p-2, -0x1.1ac05b2924cc6p-2, -0x1.24407ab0cc40fp-2,
+    -0x1.2db10fc4ea424p-2, -0x1.37124cea58697p-2, -0x1.406463b1d455dp-2, -0x1.49a784bcbaa37p-2,
+    -0x1.52dbdfc4f341cp-2, -0x1.5c01a39ff2c9bp-2, -0x1.6518fe46abaa5p-2, -0x1.6e221cd9d6934p-2,
+    -0x1.771d2ba7f5791p-2, -0x1.800a56315ee29p-2, -0x1.88e9c72df8611p-2, -0x1.91bba891d495fp-2,
+    -0x1.9a8023920fa4dp-2, -0x1.a33760a7fbca6p-2, -0x1.abe18797d2effp-2, -0x1.b47ebf734b923p-2,
+    -0x1.bd0f2e9eb2b84p-2, -0x1.c592fad2be1abp-2, -0x1.ce0a4923cf5e6p-2, -0x1.d6753e02f4ebbp-2,
+    -0x1.ded3fd445afp-2, -0x1.e726aa1e558fep-2, -0x1.ef6d67325ba37p-2, -0x1.f7a8568c8aea5p-2,
+    -0x1.ffd799a81be86p-2, 0x1.f804ae8d33c41p-2, 0x1.efec61b04af4ep-2, 0x1.e7df5fe572607p-2,
+    0x1.dfdd89d5b0009p-2, 0x1.d7e6c0abbd923p-2, 0x1.cffae611a74d6p-2, 0x1.c819dc2d8578dp-2,
+    0x1.c043859e5bdbcp-2, 0x1.b877c57b47c04p-2, 0x1.b0b67f4f29a67p-2, 0x1.a8ff97183ed06p-2,
+    0x1.a152f14293c74p-2, 0x1.99b072a9289cap-2, 0x1.921800927e284p-2, 0x1.8a8980ac4113p-2,
+    0x1.8304d90c2859dp-2, 0x1.7b89f02cbd499p-2, 0x1.7418aceb84ab1p-2, 0x1.6cb0f68656c94p-2,
+    0x1.6552b49993dc2p-2, 0x1.5dfdcf1eacd7bp-2, 0x1.56b22e6b97c17p-2, 0x1.4f6fbb2ce6943p-2,
+    0x1.48365e6957b42p-2, 0x1.4106017c0dbcfp-2, 0x1.39de8e15727d9p-2, 0x1.32bfee37489bbp-2,
+    0x1.2baa0c34989c3p-2, 0x1.249cd2b177fd5p-2, 0x1.1d982c9d50468p-2, 0x1.169c0536677acp-2,
+    0x1.0fa848045f67bp-2, 0x1.08bce0d9a7c6p-2, 0x1.01d9bbcf66a2cp-2, 0x1.f5fd8a90e2d85p-3,
+    0x1.e857d3d3af1e5p-3, 0x1.dac22d3ec5f4ep-3, 0x1.cd3c712db459ap-3, 0x1.bfc67a7ff3c21p-3,
+    0x1.b2602497678f4p-3, 0x1.a5094b555a1f9p-3, 0x1.97c1cb136b96fp-3, 0x1.8a8980ac8652dp-3,
+    0x1.7d60496c83f67p-3, 0x1.7046031c7cdbp-3, 0x1.633a8bf460335p-3, 0x1.563dc2a08b102p-3,
+    0x1.494f863bbc1ddp-3, 0x1.3c6fb6507a37ep-3, 0x1.2f9e32d5257ecp-3, 0x1.22dadc2a627efp-3,
+    0x1.1625931802e49p-3, 0x1.097e38cef9519p-3, 0x1.f9c95dc138295p-4, 0x1.e0b1ae90505f6p-4,
+    0x1.c7b528b5fcffap-4, 0x1.aed391abb17a1p-4, 0x1.960caf9bd35eap-4, 0x1.7d60496e3edebp-4,
+    0x1.64ce26bf2108ep-4, 0x1.4c560fe5b573bp-4, 0x1.33f7cde24adfbp-4, 0x1.1bb32a5ed9353p-4,
+    0x1.0387efbd3006ep-4, 0x1.d6ebd1f1d0956p-5, 0x1.a6f9c37a8beacp-5, 0x1.77394c9d6762cp-5,
+    0x1.47aa07358e1a4p-5, 0x1.184b8e4d490efp-5, 0x1.d23afc4d95c78p-6, 0x1.743ee8678a7cap-6,
+    0x1.16a21e243bf77p-6, 0x1.72c7ba20c907ep-7, 0x1.720d9c0536e16p-8, 0x0p+0};
+    
   b32u32_u t = {.f = x};
   uint32_t ux = t.u;
   uint64_t m = ux&(~0u>>9); m <<= 52-23;
@@ -137,13 +137,14 @@ float cr_log2f(float x) {
   e += k;
   b64u64_u xd = {.u = m | (uint64_t)0x3ff<<52};
   double z = __builtin_fma(xd.f, ix[j], -1.0); // z is exact
+  // the coefficients of c are pre-multiplied by 1/log(2)
   static const double c[] =
-    {0x1p+0, -0x1p-1, 0x1.55555555030bcp-2, -0x1.ffffffff2b4e5p-3, 0x1.999b5076a42f2p-3, -0x1.55570c45a647dp-3};
+    {0x1.71547652b82fep+0, -0x1.71547652b82fep-1, 0x1.ec709dc32988ap-2,
+     -0x1.715476521ec2cp-2, 0x1.277801a1ad904p-2, -0x1.ec731704d6a88p-3};
   double z2 = z*z;
   double c0 = c[0] + z*c[1];
   double c2 = c[2] + z*c[3];
   double c4 = c[4] + z*c[5];
   c0 += z2*(c2 + z2*c4);
-  const double iln2 = 0x1.71547652b82fep+0;
-  return  (z*iln2)*c0 + (e - lix[j]*iln2);
+  return  z*c0 + (e - lix[j]);
 }
