@@ -203,9 +203,9 @@ double cr_asinh(double x){
     } else { // 0x1.3p-6 <= |x| < 0x1.bp-4
       /* p = x + cl[0]*x^3 + ... + cl[6]*x^15 is a minimax polynomial
          with relative error < 2^-63.091 on [0x1.3p-6, 0x1.bp-4].
-         However a Sollya finds a better degree-15 polynomial with
-         error < 2^-68.708, or a degree-13 polynomial with error < 2^-64.493
-         (cf asinh.sollya). */
+         This branch (0x1.3p-6 <= x < 0x1.bp-4) was tested exhaustively
+         by Vincenzo Innocente (both with/without FMA).
+         All found failures were added to asinh.wc. */
       static const double cl[] = {-0x1.5555555555555p-3, 0x1.333333333331p-4, -0x1.6db6db6da466cp-5, 0x1.f1c71c2ea7be4p-6,
 				 -0x1.6e8b651b09d72p-6, 0x1.1c309fc0e69c2p-6, -0x1.bab7833c1ep-7};
       double c1 = cl[1] + x2h*cl[2];
@@ -221,8 +221,11 @@ double cr_asinh(double x){
     return as_asinh_zero(x,x2h,x2l);
   }
   // |x| >= 0x1.bp-4
-  // rev. e714d20: checked exhaustively 0x1.bp-4 <= x < 0x1p-3 both with/without FMA
-  // also check up to 0x1p+3
+  /* revision e714d20: checked exhaustively both with/without FMA:
+   * 0x1.bp-4 <= x < 0x1p+3
+   * 0x1p+25 <= x < 0x1p+26
+   * 0x1p+1023 <= x < 0x1p+1024
+   */
   double x2h = 0, x2l = 0;
   double ah, al;
   int off = 0x3ff;
