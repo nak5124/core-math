@@ -159,12 +159,12 @@ void split(double* rh, double* rl, long double x) {
 
 	// Keep low 31 bits of x's mantissa. Since the lowest bit should have
 	// weight 2^-63, the exponent should be set to -11 (that is, 0x3f4)
-	cvt_w.u = (0x3f4ul << (64 - 12)) | (cvt_x.m & ((1ul << 31) - 1ul));
+	cvt_w.u = (0x3f4ull << (64 - 12)) | (cvt_x.m & ((1ull << 31) - 1ull));
 	*rl = cvt_w.f - 0x1p-11;
 
 	// Lowest bit here has weight 2^(-63 + 31) = 2^-32, so exponent should be
 	// -32 + 52, i.e. 20, or 0x413. Note how the explicit 1 bit of x helps here.
-	cvt_w.u =  (0x413ul << (64 - 12)) | (cvt_x.m >> 31);
+	cvt_w.u =  (0x413ull << (64 - 12)) | (cvt_x.m >> 31);
 	*rh = cvt_w.f - 0x1p20;
 }
 
@@ -743,18 +743,18 @@ void compute_log2pow(double* rh, double* rl, long double x, long double y) {
 	   is a normal number.
 	*/
 
-	cvt_w.u = ((cvt_y.e&0x8000ul) << (63 - 15)) | (((cvt_y.e&0x7ffful) + (1023ul - 16383ul)) << (64 - 12)) |
-		((cvt_y.m >> 11) & ~(1ul << 52)); // Explicitely remove leading 1 bit
+	cvt_w.u = ((cvt_y.e&0x8000ull) << (63 - 15)) | (((cvt_y.e&0x7fffull) + (1023ull - 16383ull)) << (64 - 12)) |
+		((cvt_y.m >> 11) & ~(1ull << 52)); // Explicitely remove leading 1 bit
 	double yh = cvt_w.f;
 
 	/* The bottom bit of y's mantissa has weight e - 63, were e is y's exponent.
 	   Therefore, the exponent of yl should (at first) be e - 63 + 52 = e - 11
 	*/
-	cvt_w.u = ((cvt_y.e&0x8000ul) << (63 - 15)) | (((cvt_y.e&0x7ffful) + (1023ul - 16383ul - 11)) << (64 - 12)) |
-		(cvt_y.m & ((1ul << 11) - 1ul));
+	cvt_w.u = ((cvt_y.e&0x8000ull) << (63 - 15)) | (((cvt_y.e&0x7fffull) + (1023ull - 16383ull - 11)) << (64 - 12)) |
+		(cvt_y.m & ((1ull << 11) - 1ull));
 
 	// Replicate parasitic implicit leading bit
-	cvt_aux.u = ((cvt_y.e&0x8000ul) << (63 - 15)) | (((cvt_y.e&0x7ffful) + (1023ul - 16383ul - 11)) << (64 - 12));
+	cvt_aux.u = ((cvt_y.e&0x8000ull) << (63 - 15)) | (((cvt_y.e&0x7fffull) + (1023ull - 16383ull - 11)) << (64 - 12));
 	double yl = cvt_w.f - cvt_aux.f; // Remove implicit one introduced before
 
 
@@ -1028,7 +1028,7 @@ long double fastpath_roundtest(double rh, double rl, int extra_exp,
 	long eh = th.u>>52, el = (tl.u>>52)&0x3ff, de = eh - el;
 	// the high part is always positive, the low part can be positive or negative
 	// represent the mantissa of the low part in two's complement format
-	long ml = (tl.u&~(0xffful<<52))|1l<<52, sgnl = -(tl.u>>63);
+	long ml = (tl.u&~(0xfffull<<52))|1ll<<52, sgnl = -(tl.u>>63);
 	ml = (ml^sgnl) - sgnl;
 	int64_t mlt;
 	long sh = de-11;

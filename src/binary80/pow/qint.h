@@ -184,7 +184,7 @@ static inline void fast_extract (int64_t *e, uint64_t *m, double x) {
   f64_u _x = {.f = x};
 
   *e = (_x.u >> 52) & 0x7ff;
-  *m = (_x.u & (~0ul >> 12)) + (*e ? (1ul << 52) : 0);
+  *m = (_x.u & (~0ull >> 12)) + (*e ? (1ull << 52) : 0);
   *e = *e - 0x3ff;
 }
 
@@ -234,9 +234,9 @@ static inline void qint_fromdd(qint64_t* a, double h, double l) {
 	a->sgn = u.u >> 63;
 	a->rl = 0;
 
-	uint64_t ax = u.u & (-1l ^ (1ul<<63));
+	uint64_t ax = u.u & (-1ll ^ (1ull<<63));
 	u.f = l;
-	uint64_t bx = u.u & (-1l ^ (1ul<<63));
+	uint64_t bx = u.u & (-1ll ^ (1ull<<63));
 
 	if(__builtin_expect(ax == 0, 0)) {
 		qint_fromd(a, l);
@@ -245,13 +245,13 @@ static inline void qint_fromdd(qint64_t* a, double h, double l) {
 
 	int64_t exp = (ax >> 52) - 1023;
 	a->ex = exp;
-	unsigned __int128 mantissa = (1ul << 63) | (ax << 11);
+	unsigned __int128 mantissa = (1ull << 63) | (ax << 11);
 	mantissa <<= 64;
 	a->rh = mantissa;
 
 	if(__builtin_expect(bx >> 52 != 0, 1)) { // bx != 0
 		int de = (ax >> 52) - (bx >> 52);
-		unsigned __int128 mantissa_b = (1ul << 52) | (bx & ((1ul<<52)-1));
+		unsigned __int128 mantissa_b = (1ull << 52) | (bx & ((1ull<<52)-1));
 		mantissa_b <<= 75 - de;
 
 		unsigned __int128 new_mantissa;
