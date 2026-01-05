@@ -38,21 +38,14 @@ typedef union {float f; uint32_t u;} b32u32_u;
 typedef union {double f; uint64_t u;} b64u64_u;
 static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};
-  uint32_t ux = t.u;
-  if(ux == 0u){// +0.0
+  uint32_t ux = t.u, ax = ux<<1;
+  if(ax == 0u){ // +/-0.0
 #ifdef CORE_MATH_SUPPORT_ERRNO
     errno = ERANGE;
 #endif
     return -1.0f/0.0f; // to raise FE_DIVBYZERO
   }
   if(ux == 0x7f800000u) return x; // +inf
-  uint32_t ax = ux<<1;
-  if(ax == 0u) { // -0.0
-#ifdef CORE_MATH_SUPPORT_ERRNO
-    errno = ERANGE;
-#endif
-    return -1.0f/0.0f; // to raise FE_DIVBYZERO
-  }
   if(ax > 0xff000000u) return x + x; // nan
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
