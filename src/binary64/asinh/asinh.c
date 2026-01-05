@@ -204,7 +204,7 @@ double cr_asinh(double x){
       /* p = x + cl[0]*x^3 + ... + cl[6]*x^15 is a minimax polynomial
          with relative error < 2^-63.091 on [0x1.3p-6, 0x1.bp-4].
          This branch (0x1.3p-6 <= x < 0x1.bp-4) was tested exhaustively
-         by Vincenzo Innocente (both with/without FMA).
+         by Vincenzo Innocente (both with/without FMA) with revision 702a447.
          All found failures were added to asinh.wc. */
       static const double cl[] = {-0x1.5555555555555p-3, 0x1.333333333331p-4, -0x1.6db6db6da466cp-5, 0x1.f1c71c2ea7be4p-6,
 				 -0x1.6e8b651b09d72p-6, 0x1.1c309fc0e69c2p-6, -0x1.bab7833c1ep-7};
