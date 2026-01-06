@@ -1,6 +1,6 @@
 /* Correctly-rounded logarithm function for binary32 value.
 
-Copyright (c) 2023-2024 Alexei Sibidanov and Paul Zimmermann.
+Copyright (c) 2023-2026 Alexei Sibidanov and Paul Zimmermann.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
