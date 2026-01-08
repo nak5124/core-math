@@ -51,15 +51,19 @@ static inline double adddd(double xh, double xl, double ch, double cl, double *l
 }
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
-  double h = ch*xh;
-  *l = __builtin_fma(ch,xh, -h) + xh*cl + ch*xl;
-  return h;
+  double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
+  ahhl += alhh + ahlh;
+  ch = ahhh + ahhl;
+  *l = (ahhh - ch) + ahhl;
+  return ch;
 }
 
 static inline double mulddd(double xh, double xl, double ch, double *l){
-  double h = ch*xh;
-  *l = __builtin_fma(ch,xh, -h) + ch*xl;
-  return h;
+  double ahlh = ch*xl, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
+  ahhl += ahlh;
+  ch = ahhh + ahhl;
+  *l = (ahhh - ch) + ahhl;
+  return ch;
 }
 
 static inline double polydd(double xh, double xl, int n, const double c[][2], double *l){
