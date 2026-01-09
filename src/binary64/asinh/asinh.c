@@ -478,7 +478,6 @@ static double as_asinh_refine(double x, double zh, double zl, double a){
   b64u64_u t0 = {.f = v0};
   uint64_t er = ((t.u + 41) & (~(u64)0>>12)), de = ((t0.u>>52)&0x7ff) - ((t.u>>52)&0x7ff);
   double res = v0 + v1;
-  // for |x|=0x1.389ef683f3aa7p-2 and rndz we have de=53 and er=2^52-1
   if(__builtin_expect(de>99 || er<80, 0)) return as_asinh_database(x,res);
   return res;
 }
