@@ -50,7 +50,7 @@ static inline double adddd(double xh, double xl, double ch, double cl, double *l
   return s;
 }
 
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
   ch = ahhh + ahhl;
@@ -70,7 +70,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   int i = n-1;
   double ch = c[i][0] + *l, cl = ((c[i][0] - ch) + *l) + c[i][1];
   while(--i>=0){
-    ch = muldd(xh, xl, ch, cl, &cl);
+    ch = muldd_acc(xh, xl, ch, cl, &cl);
     double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
     ch = th;
     cl += tl + c[i][1];
@@ -93,7 +93,7 @@ static double __attribute__((noinline)) as_asinh_zero(double x, double x2h, doub
   double y2 = x2h * (cl[0] + x2h * (cl[1] + x2h * (cl[2] + x2h * (cl[3] + x2h * (cl[4])))));
   double y1 = polydd(x2h, x2l, 12, ch, &y2);
 
-  y1 = muldd(y1,y2, x2h,x2l, &y2);
+  y1 = muldd_acc(y1,y2, x2h,x2l, &y2);
   y1 = mulddd(y1,y2, x, &y2);
   double y0 = fasttwosum(x, y1, &y1);
   y1 = fasttwosum(y1,y2,&y2);
@@ -456,7 +456,7 @@ static double as_asinh_refine(double x, double zh, double zl, double a){
   xh = adddd(xh, xl, sh, sl, &xl);
   sl = xh*(cl[0] + xh*(cl[1] + xh*cl[2]));
   sh = polydd(xh, xl, 3, ch, &sl);
-  sh = muldd(xh, xl, sh, sl, &sl);
+  sh = muldd_acc(xh, xl, sh, sl, &sl);
   sh = adddd(sh, sl, el1, el2, &sl);
   sh = adddd(sh, sl, L[1], L[2], &sl);
   double v2, v0 = fasttwosum(L[0], sh, &v2);
