@@ -73,7 +73,7 @@ static inline double adddd(double xh, double xl, double ch, double cl, double *l
    z = RU(x-s) = 28 and e = RU(z + y) = 0, thus s + e = -20. In this case,
    the second variant is closer to the sum x + y = -21.
 */
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
  ahhl += alhh + ahlh;
  return fasttwosum (ahhh, ahhl, l);
@@ -91,7 +91,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   ch = fasttwosum(c[i][0], *l, &cl);
   cl += c[i][1];
   while(--i>=0){
-    ch = muldd(xh, xl, ch, cl, &cl);
+    ch = muldd_acc(xh, xl, ch, cl, &cl);
     double th, tl;
     th = fasttwosum(c[i][0], ch, &tl);
     ch = th;
@@ -129,7 +129,7 @@ static double __attribute__((noinline)) as_atanh_zero(double x){
   double y2 = x2 * (cl[0] + x2 * (cl[1] + x2 * (cl[2] + x2 * (cl[3] + x2 * (cl[4])))));
   double y1 = polydd(x2, x2l, 13, ch, &y2);
   y1 = mulddd(y1, y2, x, &y2);
-  y1 = muldd(x2, x2l, y1, y2, &y2);
+  y1 = muldd_acc(x2, x2l, y1, y2, &y2);
   double y0 = fasttwosum(x, y1, &y1);
   y1 = fasttwosum(y1, y2, &y2);
   /* We have 22 failures (only for RNDN, 11 up to sign) if we disable this
@@ -196,7 +196,7 @@ double cr_atanh(double x){
     double p = (c[0] + x2*c[1]) + x4*(c[2] + x2*c[3]) + x8*((c[4] + x2*c[5]) + x4*(c[6] + x2*c[7]) + x8*c[8]);
     double t = __builtin_fma (x2, p, 0x1.5555555555555p-56);
     double pl, ph = fasttwosum(0x1.5555555555555p-2, t, &pl);
-    ph = muldd(ph, pl,  x3, dx3, &pl);
+    ph = muldd_acc(ph, pl,  x3, dx3, &pl);
     double tl;
     ph = fasttwosum(x,ph,&tl);
     pl += tl;
@@ -443,7 +443,7 @@ static double as_atanh_refine(double x, double zh, double zl, double a){
   xh = adddd(xh, xl, sh, sl, &xl);
   sl = xh*(cl[0] + xh*(cl[1] + xh*cl[2]));
   sh = polydd(xh, xl, 3, ch, &sl);
-  sh = muldd(xh, xl, sh, sl, &sl);
+  sh = muldd_acc(xh, xl, sh, sl, &sl);
   sh = adddd(sh, sl, el1, el2, &sl);
   sh = adddd(sh, sl, L[1], L[2], &sl);
   double v2, v0 = fasttwosum(L[0], sh, &v2), v1 = fasttwosum(v2, sl, &v2);

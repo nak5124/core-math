@@ -54,7 +54,7 @@ static inline double fasttwosub(double x, double y, double *e){
   return s;
 }
 
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
   return fasttwosum (ahhh, ahhl, l);
@@ -72,7 +72,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   int i = n-1;
   double ch = c[i][0] + *l, cl = ((c[i][0] - ch) + *l) + c[i][1];
   while(--i>=0){
-    ch = muldd(xh, xl, ch, cl, &cl);
+    ch = muldd_acc(xh, xl, ch, cl, &cl);
     double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
     ch = th;
     cl += tl + c[i][1];
@@ -90,8 +90,8 @@ static double __attribute__((noinline)) as_exp_accurate(double x, double t, doub
   double dxh = dx + dxl; dxl = ((dx - dxh) + dxl) + dxll;
   double fl = dxh*(0x1.5555555555555p-5 + dxh *(0x1.11111113e93e9p-7 + dxh *0x1.6c16c169400a7p-10));
   double fh = polydd(dxh,dxl,3,ch, &fl);
-  fh = muldd(dxh,dxl,fh,fl,&fl);
-  fh = muldd(th,tl,fh,fl,&fl);
+  fh = muldd_acc(dxh,dxl,fh,fl,&fl);
+  fh = muldd_acc(th,tl,fh,fl,&fl);
   double zh = th + fh, zl = (th-zh) + fh;
   double uh = zh + tl, ul = ((zh-uh) + tl) + zl;
   double vh = uh + fl, vl = ((uh-vh) + fl) + ul;
@@ -114,7 +114,7 @@ static double __attribute__((noinline)) as_tanh_zero(double x){ // |x|<0.25
   double y2 = x2 * (cl[0] + x2 * (cl[1] + x2 * (cl[2] + x2 * (cl[3] + x2 * (cl[4] + x2 * (cl[5]))))));
   double y1 = polydd(x2, x2l, 10, ch, &y2);
   y1 = mulddd(y1, y2, x, &y2);
-  y1 = muldd(y1, y2, x2, x2l, &y2);
+  y1 = muldd_acc(y1, y2, x2, x2l, &y2);
   double y0 = fasttwosum(x, y1, &y1);
   y1 = fasttwosum(y1, y2, &y2);
   b64u64_u t = {.f = y1};
@@ -313,7 +313,7 @@ double cr_tanh(double x){
     qh = fasttwosum(1, qh, &qd); ql += qd;
 
     double rqh = 1/qh, rql = (ql*rqh + __builtin_fma(rqh,qh,-1))*-rqh;
-    ph = muldd(ph,pl, rqh,rql, &pl);
+    ph = muldd_acc(ph,pl, rqh,rql, &pl);
 
     double e = rh*0x1p-62;
     rh = fasttwosub(0.5, ph, &rl); rl -= pl;
@@ -343,7 +343,7 @@ double cr_tanh(double x){
   double qd, qh = fasttwosum(1, rh, &qd), ql = rl + qd;
   qh = fasttwosum(qh, ql, &ql);
   double rqh = 1/qh, rql = (ql*rqh + __builtin_fma(rqh,qh,-1))*-rqh;
-  double pl, ph = muldd(rh,rl, rqh,rql, &pl);
+  double pl, ph = muldd_acc(rh,rl, rqh,rql, &pl);
   rh = fasttwosub(0.5, ph, &rl); rl -= pl;
   rh = fasttwosum(rh, rl, &rl);
   double res = __builtin_copysign(2,x)*rh + __builtin_copysign(2,x)*rl;

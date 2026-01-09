@@ -66,7 +66,7 @@ static inline double adddd(double xh, double xl, double ch, double cl, double *l
    (Theorem 2.6 of [2]), where u = 2^-53 for double precision,
    assuming xh = RN(xh + xl), which implies |xl| <= 1/2 ulp(xh),
    and similarly for ch, cl. */
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
   ch = ahhh + ahhl;
@@ -86,7 +86,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   int i = n-1;
   double ch = c[i][0] + *l, cl = ((c[i][0] - ch) + *l) + c[i][1];
   while(--i>=0){
-    ch = muldd(xh, xl, ch, cl, &cl);
+    ch = muldd_acc(xh, xl, ch, cl, &cl);
     double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
     ch = th;
     cl += tl + c[i][1];
@@ -113,7 +113,7 @@ static double __attribute__((noinline)) as_acosh_one(double x, double sh, double
   y1 = mulddd(y1, y2, x, &y2);
   double y0 = fasttwosum(1, y1, &y1);
   y1 += y2;
-  y0 = muldd(y0, y1, sh, sl, &y1);
+  y0 = muldd_acc(y0, y1, sh, sl, &y1);
   return y0 + y1;
 }
 
@@ -425,7 +425,7 @@ static double as_acosh_refine(double x, double a){
   xh = adddd(xh, xl, sh, sl, &xl);
   sl = xh*(cl[0] + xh*(cl[1] + xh*cl[2]));
   sh = polydd(xh, xl, 3, ch, &sl);
-  sh = muldd(xh, xl, sh, sl, &sl);
+  sh = muldd_acc(xh, xl, sh, sl, &sl);
   sh = adddd(sh, sl, el1, el2, &sl);
   sh = adddd(sh, sl, L[1], L[2], &sl);
   double v2, v0 = fasttwosum(L[0], sh, &v2), v1 = fasttwosum(v2, sl, &v2);

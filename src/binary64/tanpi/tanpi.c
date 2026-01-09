@@ -50,7 +50,7 @@ static inline double fasttwosub(double x, double y, double *e){
   return s;
 }
 
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
   return fasttwosum (ahhh, ahhl, l);
@@ -74,7 +74,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   int i = n-1;
   double ch = c[i][0] + *l, cl = ((c[i][0] - ch) + *l) + c[i][1];
   while(--i>=0){
-    ch = muldd(xh, xl, ch, cl, &cl);
+    ch = muldd_acc(xh, xl, ch, cl, &cl);
     double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
     ch = th;
     cl += tl + c[i][1];
@@ -288,7 +288,7 @@ double cr_tanpi(double x){
       static const double s2[2] = {-1, 1};
       nh *= s2[ms+1];
       nl *= s2[ms+1];
-      double ml, mh = muldd(th,tl,nh,nl, &ml), dm, dn;
+      double ml, mh = muldd_acc(th,tl,nh,nl, &ml), dm, dn;
       mh = fasttwosub(1.0, mh, &dm);
       ml = dm - ml;
       nh = fasttwosum(nh, th, &dn);
@@ -320,7 +320,7 @@ double cr_tanpi(double x){
       static const double s2[2] = {-1, 1};
       nh *= s2[ms+1];
       nl *= s2[ms+1];
-      double ml, mh = muldd(th,tl,nh,nl, &ml), dm, dn;
+      double ml, mh = muldd_acc(th,tl,nh,nl, &ml), dm, dn;
       mh = fasttwosub(1.0, mh, &dm);
       ml = dm - ml;
       nh = fasttwosum(nh, th, &dn);
@@ -377,7 +377,7 @@ double cr_tanpi(double x){
       double dx2 = __builtin_fma(x,x,-x2), dx3 = __builtin_fma(x2,x,-x3) + dx2*x, dv;
       tl = x2 * (cl[0] + x2 * cl[1]);
       th = polydd(x2, dx2, 3, ch, &tl);
-      th = muldd(x3, dx3, th, tl, &tl);
+      th = muldd_acc(x3, dx3, th, tl, &tl);
       th = fasttwosum(px0, th, &dv);
       tl = tl + px1 + dv;
       th = fasttwosum(th, tl, &tl);

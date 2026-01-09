@@ -48,7 +48,7 @@ static inline double fasttwosum(double x, double y, double *e){
   return s;
 }
 
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
   return fasttwosum (ahhh, ahhl, l);
@@ -66,7 +66,7 @@ static inline double polydd(double xh, double xl, int n, const double c[][2], do
   int i = n-1;
   double ch = c[i][0] + *l, cl = ((c[i][0] - ch) + *l) + c[i][1];
   while(--i>=0){
-    ch = muldd(xh, xl, ch, cl, &cl);
+    ch = muldd_acc(xh, xl, ch, cl, &cl);
     double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
     ch = th;
     cl += tl + c[i][1];
@@ -82,7 +82,7 @@ static double as_cospi_zero(double x){
   static const double cl[3] = {-0x1.55d3c7e3cbff9p+0, 0x1.e1f50604fa0ffp-3};
   double fl = x2*(cl[0] + x2*(cl[1]));
   double fh = polydd(x2, dx2, 2, ch, &fl);
-  fh = muldd(x2, dx2, fh, fl, &fl);
+  fh = muldd_acc(x2, dx2, fh, fl, &fl);
   double y2, y1, y0 = fasttwosum(1, fh, &y1);
   y1 = fasttwosum(y1, fl, &y2);
   b64u64_u t = {.f = y1};
@@ -109,10 +109,10 @@ static double as_sinpi_refine(int iq, double z){
   slh = mulddd(slh, sll, x*0x1p-12, &sll);
   double cll = x2*(-0x1.55d3c7e3cbff9p-72 + 0x1.e1f50604fa0ffp-99*x2);
   double clh = polydd(x2, dx2, 2, ch, &cll);
-  clh = muldd(clh, cll, x2, dx2, &cll);
+  clh = muldd_acc(clh, cll, x2, dx2, &cll);
   double sbh,sbl,cbh,cbl; sincosn2(iq,&sbh,&sbl,&cbh,&cbl);
-  double csl, csh = muldd(clh,cll, sbh,sbl, &csl);
-  double scl, sch = muldd(slh,sll, cbh,cbl, &scl);
+  double csl, csh = muldd_acc(clh,cll, sbh,sbl, &csl);
+  double scl, sch = muldd_acc(slh,sll, cbh,cbl, &scl);
   double tsl, tsh = fasttwosum(sch, csh, &tsl); tsl += csl + scl;
   double tsl2; tsh = fasttwosum(sbh, tsh, &tsl2); tsl = sbl + tsl + tsl2;
   b64u64_u t = {.f = tsl};
@@ -333,10 +333,10 @@ void sincosn2(int s, double *sh, double *sl, double *ch, double *cl){
   double slh = Sm[jm][0], sll = Sm[jm][1];
   double clh = Cm[jm][0], cll = Cm[jm][1];
 
-  double ccl, cch = muldd(clh,cll, cbh,cbl, &ccl);
-  double ssl, ssh = muldd(slh,sll, sbh,sbl, &ssl);
-  double csl, csh = muldd(clh,cll, sbh,sbl, &csl);
-  double scl, sch = muldd(slh,sll, cbh,cbl, &scl);
+  double ccl, cch = muldd_acc(clh,cll, cbh,cbl, &ccl);
+  double ssl, ssh = muldd_acc(slh,sll, sbh,sbl, &ssl);
+  double csl, csh = muldd_acc(clh,cll, sbh,sbl, &csl);
+  double scl, sch = muldd_acc(slh,sll, cbh,cbl, &scl);
 
   double tcl, tch = fasttwosum(ssh, cch, &tcl);
   tcl += ccl + ssl;

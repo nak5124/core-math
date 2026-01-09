@@ -64,7 +64,7 @@ static inline double adddd(double xh, double xl, double ch, double cl, double *l
   return s;
 }
 
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
   double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
   ahhl += alhh + ahlh;
   return fasttwosum (ahhh, ahhl, l);
@@ -74,7 +74,7 @@ static double polydd(double xh, double xl, int n, const double c[][2], double *l
   int i = n-1;
   double ch = c[i][0] + *l, cl = (c[i][0] - ch) + *l + c[i][1];
   while(--i>=0){
-    ch = muldd(xh,xl,ch,cl,&cl);
+    ch = muldd_acc(xh,xl,ch,cl,&cl);
     double th = ch + c[i][0], tl = (c[i][0] - th) + ch;
     ch = th;
     cl += tl + c[i][1];
@@ -175,7 +175,7 @@ static double atanpi_asympt (double x)
   yh = 1.0 / x;
   // Newton's iteration for the inverse is y = y + y*(1-x*y)
   yl = yh * __builtin_fma (yh, -x, 1.0);
-  m = muldd (yh, yl, ONE_OVER_PIH, ONE_OVER_PIL, &l);
+  m = muldd_acc (yh, yl, ONE_OVER_PIH, ONE_OVER_PIL, &l);
   // m + l ~ 1/pi * 1/x
   m = -m;
   l = __builtin_fma (ONE_OVER_3PI * yh, yh * yh, - l);
@@ -323,10 +323,10 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
     h = r*zmta;
     hl = __builtin_fma(r,zmta,-h) + rl*zmta;
   }
-  double h2l, h2 = muldd(h, hl, h, hl, &h2l), h4 = h2*h2;
-  double h3l, h3 = muldd(h, hl, h2, h2l, &h3l);
+  double h2l, h2 = muldd_acc(h, hl, h, hl, &h2l), h4 = h2*h2;
+  double h3l, h3 = muldd_acc(h, hl, h2, h2l, &h3l);
   double fl = h2*((cl[0] + h2*cl[1]) + h4*(cl[2] + h2*cl[3])), f = polydd(h2, h2l, 3, ch, &fl);
-  f = muldd(h3,h3l,f,fl,&fl);
+  f = muldd_acc(h3,h3l,f,fl,&fl);
   double ah, al, at;
   if(i==0){
     ah = h;
@@ -344,7 +344,7 @@ static double __attribute__((noinline)) as_atan_refine2(double x, double a){
   double v2, v0 = fasttwosum(ah, al, &v2), v1 = fasttwosum(v2, at, &v2);
   // now v0 + v1 approximates atan(x)
   // atanpi_begin
-  v0 = muldd (v0, v1, ONE_OVER_PIH, ONE_OVER_PIL, &v1);
+  v0 = muldd_acc (v0, v1, ONE_OVER_PIH, ONE_OVER_PIL, &v1);
   // atanpi_end
   return v1 + v0;
 }
@@ -412,8 +412,8 @@ double cr_atanpi (double x){
        0x1.6fp-52*2^-16*|x| < 0x1.6fp-68. */
     // multiply x + f by 1/pi
     double h, l;
-    h = muldd (x, f, ONE_OVER_PIH, ONE_OVER_PIL, &l);
-    /* The rounding error in muldd and the approximation error between
+    h = muldd_acc (x, f, ONE_OVER_PIH, ONE_OVER_PIL, &l);
+    /* The rounding error in muldd_acc and the approximation error between
        1/pi and ONE_OVER_PIH + ONE_OVER_PIL are covered by the difference
        between 0x4.8p-52*pi and 0x1.6fp-52, which is > 2^-61.8. */
     double ub = h + __builtin_fma (0x1.6fp-68, x, l);
@@ -460,13 +460,13 @@ double cr_atanpi (double x){
   // begin_atanpi
   /* Now ah + al approximates atan(x) with error bounded by 0x3.fp-52*h
      (see atan.c), thus by 0x1.41p-52*h after multiplication by 1/pi.
-     We normalize ah+al so that the rounding error in muldd is negligible
+     We normalize ah+al so that the rounding error in muldd_acc is negligible
      below. */
   double e0 = h*0x3.fp-52;    // original value in atan.c
   double ub0 = (al + e0) + ah; // original value in atan.c
   ah = fasttwosum (ah, al, &al);
-  ah = muldd (ah, al, ONE_OVER_PIH, ONE_OVER_PIL, &al);
-  /* The rounding error in muldd() and the approximation error between 1/pi
+  ah = muldd_acc (ah, al, ONE_OVER_PIH, ONE_OVER_PIL, &al);
+  /* The rounding error in muldd_acc() and the approximation error between 1/pi
      and ONE_OVER_PIH+ONE_OVER_PIL are absorbed when rounding up 0x3.fp-52*pi
      to 0x1.41p-52. */
   double e = h * 0x1.41p-52; // atanpi_specific
