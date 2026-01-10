@@ -208,15 +208,15 @@ static void scan_consecutive_aux(int64_t n, double x){
 }
 
 static void scan_consecutive (int64_t n, double x){
-  int nthreads;
+  int nthreads = 1;
   if (n < 0) {
     n = -n;
     x = asfloat64 (asuint64 (x) - n);
   }
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel
-#endif
   nthreads = omp_get_num_threads ();
+#endif
   int64_t h = (n - 1) / nthreads + 1; // ceil(n/nthreads)
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(static,1)
