@@ -353,7 +353,12 @@ double cr_exp(double x){
   /* Use Cody-Waite argument reduction: since |x| < 745, we have |t| < 2^23,
      thus since l2h is exactly representable on 29 bits, l2h*t is exact. */
   double dx = (x - l2h*t) + l2l*t, dx2 = dx*dx;
-  static const double ch[] = {0x1p+0, 0x1p-1, 0x1.55555557e54ffp-3, 0x1.55555553a12f4p-5};
+  // |dx| < log(2)/2^13 (experimentally)
+  /* 1 + x*(c0 + c1*x + ... + c3*x^3) is a degree-4 approximation of exp(x)
+     on [-log(2)/2^13,log(2)/2^13] with absolute error bounded by 2^-76.173
+     according to Sollya */
+  static const double ch[] = {0x1p+0, 0x1p-1, 0x1.55555557e54ffp-3,
+                              0x1.55555553a12f4p-5};
   double p = (ch[0] + dx*ch[1]) + dx2*(ch[2] + dx*ch[3]);
   double fh = th, tx = th*dx, fl = tl + tx*p;
   double eps = 1.64e-19;
