@@ -166,7 +166,7 @@ double cr_tanh(double x){
     |x|<0.25.  For other values we use this identity tanh(|x|) = 1 -
     2*exp(-2*|x|)/(1 + exp(-2*|x|)).  For large |x|>3.683 the term
     2*exp(-2*|x|)/(1 + exp(-2*|x|)) becomes small and we can use less
-    precise formula for exponent.
+    precise formula for exponential.
   */
   static const double t0[][2] = {
     {0x0p+0, 0x1p+0}, {-0x1.19083535b085ep-56, 0x1.02c9a3e778061p+0},
