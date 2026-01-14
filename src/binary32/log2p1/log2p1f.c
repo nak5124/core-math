@@ -114,16 +114,23 @@ float cr_log2p1f(float x) {
   uint32_t ax = ux&(~0u>>1);
   if(__builtin_expect(ax >= 0x7f800000u, 0)) return as_special(x); // x=+inf, x=+nan
   if(__builtin_expect(ax <  0x3cc00000u, 0)){ // |x|<0.0234375
-    if(ax==0) return x; // log2p1(-0.0) = -0.0 and log2p1(+0.0) = +0.0
-    double z2 = z*z, z4 = z2*z2;
-    double f = z*((g[0] + z*g[1]) + z2*(g[2] + z*g[3]) + z4*((g[4] + z*g[5]) + z2*(g[6] + z*g[7])));
-    f += z*0x1.715476p+0; // the product is exact
-    return f;
+    if(__builtin_expect(ax <= 0x58b90bu, 0)){ // |x|<=0x1-126*ln(2)
+      if(ax==0) return x; // log2p1(-0.0) = -0.0 and log2p1(+0.0) = +0.0
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      errno = ERANGE;
+#endif
+      return z*0x1.71547652b82fep+0;
+    } else {
+      double z2 = z*z, z4 = z2*z2;
+      double f = z*((g[0] + z*g[1]) + z2*(g[2] + z*g[3]) + z4*((g[4] + z*g[5]) + z2*(g[6] + z*g[7])));
+      f += z*0x1.715476p+0; // the product is exact
+      return f;
+    }
   }
   b64u64_u tp = {.f = z + 1.0};
   int e = (tp.u>>52) - 0x3ffull;
   uint64_t m = tp.u&(~0ul>>12);
-  if(__builtin_expect(e>0 && e<24 && !m, 0)) return e;  // do not raise the inexact exception for 1+x = 2^n
+  if(__builtin_expect(!m, 0)) return e;  // do not raise the inexact exception for 1+x = 2^n
   int32_t j = (m + (1ull<<(52-7)))>>(52-6);
   b64u64_u xd = {.u = m | 0x3ffull<<52};
   double d = xd.f*ix[j] - 1.0, d2 = d*d, el = e - lix[j]; // d is exact for x < 0x1.04p+29
