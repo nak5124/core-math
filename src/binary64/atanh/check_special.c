@@ -202,6 +202,8 @@ static void scan_consecutive(int64_t n, double x){
     int64_t jmax = 0x1p-32 * sqrt (h / dd);
     if (jmax > n) jmax = n; // cap to n
     if (jmax == 0) jmax = 1; // avoid infinite loop
+#define JMAX 100000000
+    if (jmax > JMAX) jmax = JMAX;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
