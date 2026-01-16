@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <math.h> // needed to define compoundf since it is not in glibc
 #include <fenv.h> // for fegetexceptflag, fesetexceptflag
