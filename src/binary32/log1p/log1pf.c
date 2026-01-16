@@ -127,10 +127,10 @@ float cr_log1pf(float x) {
       Ll += z;
       double rh = Lh + lj, rl = ((Lh - rh) + lj) + (Ll + f);
       float fh = rh + rl;
-      double Fl = (rh - fh) + rl;
+      double Fl = (rh - (double)fh) + rl;
       float fl = Fl, tfl = fl*2.0f;
       if((fh + tfl)-fh == tfl)
-	fl += __builtin_copysignf(0.5f,(float)(Fl-fl))*__builtin_fabsf(fl);
+	fl += __builtin_copysignf(0.5f,(float)(Fl-(double)fl))*__builtin_fabsf(fl);
       ub = fh + fl;
     }
     return ub;
