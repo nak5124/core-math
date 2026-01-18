@@ -180,7 +180,7 @@ double cr_atanh(double x){
       return __builtin_fma(x,0x1p-55,x);
     }
     /* checked exhautively this branch (with and without FMA):
-     * for 0x1.d12ed0af1a27fp-27 <= x < 2^-25
+     * for 0x1.d12ed0af1a27fp-27 <= x < 2^-24
      */
     double x2 = x * x;
     /* the polynomial c(x) = c[0]+c[1]*x^2+...+c[8]*x^16 is a minimax

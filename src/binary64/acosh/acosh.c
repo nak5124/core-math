@@ -209,7 +209,8 @@ double cr_acosh(double x){
     if(lb == ub) return lb;
     return as_acosh_one(z, sh, sl);
   } else if(__builtin_expect(ix.u<0x405bf00000000000ull, 1)){
-    // 0x1.1e83e425aee63p+0 <= x < 0x1.bfp+6
+    /* 0x1.1e83e425aee63p+0 <= x < 0x1.bfp+6: this branch was checked
+       exhaustively (revision 1bd85b8) with/without FMA */
     off = 0x3ff;
     double x2h = x*x, wh = x2h - 1, wl = __builtin_fma(x,x,-x2h);
     double sh = __builtin_sqrt(wh), ish = 0.5/wh, sl = (wl - __builtin_fma(sh,sh,-wh))*(sh*ish);
