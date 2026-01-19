@@ -243,6 +243,8 @@ double cr_asinh(double x){
     ah = fasttwosum(ah, ax, &tl);
     al += tl;
   } else if(u<0x4330000000000000ull){ // |x| < 0x1p+52
+    /* this branch was tested exhaustively with FMA by Vincenzo Innocente
+       from 2^51 to 2^52 (commit 1bd85b8) */
     ah = 2*ax;
     al = 0.5/ax;
   } else { // |x| >= 0x1p+52
