@@ -45,7 +45,8 @@ static __attribute__((noinline)) float as_special(float x){
     errno = ERANGE;
 #endif
     feraiseexcept(FE_DIVBYZERO);
-    return -__builtin_inff();
+    t.u = 0x1ff<<23;
+    return t.f;
   }
   if(t.u == 0x7f800000u) return x; // +inf
   uint32_t ax = t.u<<1;
@@ -54,7 +55,8 @@ static __attribute__((noinline)) float as_special(float x){
   errno = EDOM;
 #endif
   feraiseexcept(FE_INVALID);
-  return __builtin_nanf(""); // x < -1
+  t.u = 0x1ff8<<19;
+  return t.f; // x<0
 }
 
 float cr_log10p1f(float x){
