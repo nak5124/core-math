@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
+#include <fenv.h>
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -39,11 +40,12 @@ typedef union {double f; uint64_t u;} b64u64_u;
 
 static __attribute__((noinline)) float as_special(float x){
   b32u32_u t = {.f = x};
-  if(t.u==0xbf800000u){// +0.0
+  if(t.u==0xbf800000u){// -1.0
 #ifdef CORE_MATH_SUPPORT_ERRNO
     errno = ERANGE;
 #endif
-    return -1.0f/0.0f; // to raise FE_DIVBYZERO
+    feraiseexcept(FE_DIVBYZERO);
+    return -__builtin_inff();
   }
   if(t.u == 0x7f800000u) return x; // +inf
   uint32_t ax = t.u<<1;
@@ -51,7 +53,8 @@ static __attribute__((noinline)) float as_special(float x){
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
 #endif
-  return 0.0f/0.0f; // to raise FE_INVALID
+  feraiseexcept(FE_INVALID);
+  return __builtin_nanf(""); // x < -1
 }
 
 float cr_log10p1f(float x){
