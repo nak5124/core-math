@@ -46,7 +46,7 @@ static __attribute__((noinline)) float as_special(float x){
     errno = ERANGE;
 #endif
     feraiseexcept(FE_DIVBYZERO);
-    t.u = 0x1ff<<23;
+    t.u = 0x1ffu<<23;
     return t.f;
   }
   if(ux == 0x7f800000u) return x; // x=+inf
@@ -55,7 +55,7 @@ static __attribute__((noinline)) float as_special(float x){
   errno = EDOM;
 #endif
   feraiseexcept(FE_INVALID);
-  t.u = 0x1ff8<<19;
+  t.u = 0x1ff8u<<19;
   return t.f; // x<0
 }
 
