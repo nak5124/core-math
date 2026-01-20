@@ -175,15 +175,10 @@ dd_atanh (double *h, double *l, double x)
   mpfr_clear (t);
 }
 
-static void scan_consecutive(int64_t n, double x){
+static void scan_consecutive_aux(int64_t n, double x){
   ref_init();
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
-  if (n < 0) {
-    n = -n;
-    x = asfloat64 (asuint64 (x) - n);
-  }
-  int64_t n0 = n;
   while (n) {
     double h, l, d, dd;
     dd_atanh (&h, &l, x);
@@ -204,6 +199,14 @@ static void scan_consecutive(int64_t n, double x){
     if (jmax == 0) jmax = 1; // avoid infinite loop
 #define JMAX 100000000
     if (jmax > JMAX) jmax = JMAX;
+    // the Taylor expansion with explicit remainder an error term j^2*dd/2
+    double eps = (double) jmax * (double) jmax * 0.5 * dd;
+    /* add the error term from h+l, which is bounded by
+       ulp_107(h) <= 2^-106 |h| */
+    eps += 0x1p-106 * fabs (h);
+    /* add the error term from j*d, which is bounded by
+       jmax*ulp(d) <= jmax * 2^-52 |d| */
+    eps += (double) jmax * 0x1p-52 * fabs (d);
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
@@ -211,15 +214,41 @@ static void scan_consecutive(int64_t n, double x){
       b64u64_u v = {.f = x};
       v.u += j;
       double t = tfun (v.f);
-      // atanh(x+j*u) is approximated by h + l + j*d
-      double w = h + __builtin_fma (j, d, l);
-      if (t != w) // expensive test
+      /* atanh(x+j*u) is approximated by h + l + j*d,
+         we compute lower and upper bounds taking into
+         account the maximal error 'eps' */
+      double low = __builtin_fma (j, d, l);
+      double wl = h + (low - eps);
+      double wu = h + (low + eps);
+      if (wl != wu || t != wl) // expensive test
         check(v.f);
     }
     n -= jmax;
     x += jmax * ldexp (1.0, e - 53);
   }
-  printf ("checked %lu values, expensive checks %lu\n", n0, tested);
+}
+
+static void scan_consecutive (int64_t n, double x){
+  int nthreads = 1;
+  if (n < 0) {
+    n = -n;
+    x = asfloat64 (asuint64 (x) - n);
+  }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#endif
+  int64_t h = (n - 1) / nthreads + 1; // ceil(n/nthreads)
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for schedule(static,1)
+#endif
+  for (int i = 0; i < nthreads; i++) {
+    int64_t ni = i * h;
+    double xi = asfloat64 (asuint64 (x) + ni);
+    int64_t hi = (ni + h > n) ? n - ni : h;
+    scan_consecutive_aux (hi, xi);
+  }
+  printf ("checked %lu values, expensive checks %lu\n", n, tested);
 }
 
 static void check_val(double x){
