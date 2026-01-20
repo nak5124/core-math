@@ -193,7 +193,7 @@ get_flag (void)
 {
   /* Warning: on __aarch64__ (for example cfarm103), FE_UPWARD=0x400000
      instead of 0x800. */
-#if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)
+#if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64) && !defined(__aarch64__)
   return _mm_getcsr ();
 #else
   fexcept_t flag;
