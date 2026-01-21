@@ -92,10 +92,7 @@ float cr_coshf(float x){
   double z = x;
   uint32_t ax = t.u<<1;
   if(__builtin_expect(ax>0x8565a9f8u, 0)){ // |x| >~ 89.4
-    if(ax>=0xff000000u) {
-      if(ax<<8) return x + x; // nan
-      return 1.0f/0.0f; // +-inf
-    }
+    if(ax>=0xff000000u) return x * x; // inf or nan
     float r = 2.0f*0x1.fffffep127f;
 #ifdef CORE_MATH_SUPPORT_ERRNO
     errno = ERANGE;
