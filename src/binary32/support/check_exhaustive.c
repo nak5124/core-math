@@ -239,14 +239,16 @@ doit (uint32_t n)
   // check spurious/missing invalid exception
   if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN))
   {
-    printf ("Spurious divbyzero exception for x=%a (y=%a)\n",
+    printf ("Spurious invalid exception for x=%a (y=%a)\n",
             (double) x, (double) y);
     fflush (stdout);
     if (!keep) exit (1);
   }
-  if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN))
+  // the invalid exception is not raised for NaN input
+  if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN)
+      && !is_nan (x))
   {
-    printf ("Missing divbyzero exception for x=%a (y=%a)\n",
+    printf ("Missing invalid exception for x=%a (y=%a)\n",
             (double) x, (double) y);
     fflush (stdout);
     if (!keep) exit (1);
