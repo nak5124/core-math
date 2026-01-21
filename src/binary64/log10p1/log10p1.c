@@ -1412,7 +1412,7 @@ cr_log10p1 (double x)
   if (__builtin_expect (e == 0x400 || x == 0 || x <= -1.0, 0))
     /* case NaN/Inf, +/-0 or x <= -1 */
   {
-    static const d64u64 minf = {.u = 0xffful << 52};
+    static const d64u64 minf = {.u = 0xfffull << 52};
     if (e == 0x400 && x != minf.f){ /* NaN or + Inf*/
       return x + x;
     }
