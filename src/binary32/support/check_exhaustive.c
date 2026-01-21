@@ -155,13 +155,13 @@ doit (uint32_t n)
   x = asfloat (n);
   ref_init ();
   ref_fesetround (rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW | MPFR_FLAGS_DIVBY0 | MPFR_FLAGS_NAN);
   y = ref_function_under_test (x);
 #if defined(CORE_MATH_CHECK_INEXACT) || defined(CORE_MATH_SUPPORT_ERRNO)
   mpfr_flags_t inex_y = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround (rnd1[rnd]);
-  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
 #endif
@@ -215,6 +215,38 @@ doit (uint32_t n)
   if (!fetestexcept (FE_OVERFLOW) && mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
   {
     printf ("Missing overflow exception for x=%a (y=%a)\n",
+            (double) x, (double) y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+
+  // check spurious/missing divby0 exception
+  if (fetestexcept (FE_DIVBYZERO) && !mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Spurious divbyzero exception for x=%a (y=%a)\n",
+            (double) x, (double) y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if (!fetestexcept (FE_DIVBYZERO) && mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Missing divbyzero exception for x=%a (y=%a)\n",
+            (double) x, (double) y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+
+  // check spurious/missing invalid exception
+  if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN))
+  {
+    printf ("Spurious divbyzero exception for x=%a (y=%a)\n",
+            (double) x, (double) y);
+    fflush (stdout);
+    if (!keep) exit (1);
+  }
+  if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN))
+  {
+    printf ("Missing divbyzero exception for x=%a (y=%a)\n",
             (double) x, (double) y);
     fflush (stdout);
     if (!keep) exit (1);
