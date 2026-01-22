@@ -257,13 +257,13 @@ check (testcase ts)
   tests ++;
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW | MPFR_FLAGS_DIVBY0 | MPFR_FLAGS_NAN);
   double z1 = ref_function_under_test(ts.x, ts.y);
 #if defined(CORE_MATH_CHECK_INEXACT) || defined(CORE_MATH_SUPPORT_ERRNO)
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
-  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
 #endif
@@ -360,6 +360,56 @@ check (testcase ts)
 #endif
   }
 #endif
+
+  // check spurious/missing divby0 exception
+  if (fetestexcept (FE_DIVBYZERO) && !mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Spurious divbyzero exception for x,y=%la,%la (z=%la)\n",
+            ts.x, ts.y, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_DIVBYZERO) && mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Missing divbyzero exception for x,y=%la,%la (z=%la)\n",
+            ts.x, ts.y, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing invalid exception
+  if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN))
+  {
+    printf ("Spurious invalid exception for x,y=%la,%la (z=%la)\n",
+            ts.x, ts.y, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+  // the invalid exception is not raised for NaN input
+  if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN)
+      && !is_nan (ts.x))
+  {
+    printf ("Missing invalid exception for x,y=%la,%la (z=%la)\n",
+            ts.x, ts.y, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
 
 #ifdef CORE_MATH_CHECK_INEXACT
   int inex2 = fetestexcept (FE_INEXACT);

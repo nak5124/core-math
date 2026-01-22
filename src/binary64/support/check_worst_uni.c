@@ -202,13 +202,20 @@ fix_underflow (double x, double y)
   mpfr_clear (t);
 }
 
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int is_signaling(double x) {
+  d64u64 _x = {.f = x};
+
+  return !(_x.i & (1ull << 51));
+}
+
 // return 1 if failure, 0 otherwise
 static int
 check (double x)
 {
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW | MPFR_FLAGS_DIVBY0 | MPFR_FLAGS_NAN);
   double z1 = ref_function_under_test(x);
 #if defined(CORE_MATH_CHECK_INEXACT) || defined(CORE_MATH_SUPPORT_ERRNO)
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
@@ -277,6 +284,56 @@ check (double x)
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return 1;
+#else
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing divby0 exception
+  if (fetestexcept (FE_DIVBYZERO) && !mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Spurious divbyzero exception for x=%la (y=%la)\n", x, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_DIVBYZERO) && mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Missing divbyzero exception for x=%la (y=%la)\n", x, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing invalid exception
+  /* Warning: MPFR does not distinguish quiet/signaling NaNs. When x is a
+     signaling NaN, an invalid exception should be raised. */
+  if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN) &&
+      !(is_nan (x) && is_signaling (x)))
+  {
+    printf ("Spurious invalid exception for x=%la[%lx] (y=%la)\n",
+            x, asuint64 (x), z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+  // the invalid exception is not raised for NaN input
+  if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN)
+      && !is_nan (x))
+  {
+    printf ("Missing invalid exception for x=%la (y=%la)\n", x, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
 #else
     exit(1);
 #endif
@@ -447,13 +504,6 @@ doloop(void)
 
   free(items);
   printf("%d tests passed, %d failure(s)\n", tests, failures);
-}
-
-// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
-static inline int is_signaling(double x) {
-  d64u64 _x = {.f = x};
-
-  return !(_x.i & (1ull << 51));
 }
 
 /* check for signaling NaN input */
