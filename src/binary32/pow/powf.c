@@ -205,7 +205,7 @@ get_flag (void)
 static void
 set_flag (FLAG_T flag)
 {
-#if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)
+#if (defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)) && !defined(__aarch64__)
   _mm_setcsr (flag);
 #else
   fesetexceptflag (&flag, FE_INEXACT);
