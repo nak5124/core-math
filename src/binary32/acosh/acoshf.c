@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <errno.h>
+#include <fenv.h> // for feraiseexcept, FE_INVALID
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)
@@ -45,6 +46,7 @@ static __attribute__((noinline)) float as_special(float x){
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
 #endif
+  feraiseexcept(FE_INVALID);
   return __builtin_nanf("<1");
 }
 
