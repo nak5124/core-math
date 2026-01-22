@@ -317,8 +317,7 @@ check (double x)
   if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN) &&
       !(is_nan (x) && is_signaling (x)))
   {
-    printf ("Spurious invalid exception for x=%la[%lx] (y=%la)\n",
-            x, asuint64 (x), z1);
+    printf ("Spurious invalid exception for x=%la (y=%la)\n", x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return;

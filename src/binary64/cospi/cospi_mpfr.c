@@ -30,7 +30,8 @@ SOFTWARE.
 
 double ref_cospi(double x){
   if(isnan(x)) return x;
-  if(isinf(x)) return __builtin_nan("");
+  /* don't override MPFR for x=inf since IEEE 754-2019 requires the
+     invalid exception to be set */
   mpfr_t y;
   mpfr_init2(y, 53);
   mpfr_set_d(y, x, MPFR_RNDN);
