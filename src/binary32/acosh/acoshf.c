@@ -46,6 +46,10 @@ static __attribute__((noinline)) float as_special(float x){
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = EDOM;
 #endif
+  /* We could return 0.0f/0.0f here, which will return NaN and raise the
+     invalid exception, without any dependency on __builtin_nanf() nor
+     on fenv.h, but we prefer to do the following, so that the code can
+     be compiled with -ffinite-math-only (for which 0/0 would give 1). */
   feraiseexcept(FE_INVALID);
   return __builtin_nanf("<1");
 }
