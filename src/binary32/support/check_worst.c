@@ -232,13 +232,13 @@ check (float x, float y)
   tests ++;
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW | MPFR_FLAGS_DIVBY0 | MPFR_FLAGS_NAN);
   float z1 = ref_function_under_test(x, y);
 #if defined(CORE_MATH_CHECK_INEXACT) || defined(CORE_MATH_SUPPORT_ERRNO)
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
-  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);
   errno = 0;
   float z2 = cr_function_under_test(x, y);
 #ifdef CORE_MATH_CHECK_INEXACT
@@ -298,6 +298,48 @@ check (float x, float y)
   if (!fetestexcept (FE_OVERFLOW) && mpfr_flags_test (MPFR_FLAGS_OVERFLOW))
   {
     printf ("Missing overflow exception for x,y=%a,%a (z=%a)\n",
+            (double) x, (double) y, (double) z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing divby0 exception
+  if (fetestexcept (FE_DIVBYZERO) && !mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Spurious divbyzero exception for x=%a y=%a (z=%a)\n",
+            (double) x, (double) y, (double) z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_DIVBYZERO) && mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Missing divbyzero exception for x=%a y=%a (z=%a)\n",
+            (double) x, (double) y, (double) z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing invalid exception
+  if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN))
+  {
+    printf ("Spurious invalid exception for x=%a y=%a (z=%a)\n",
+            (double) x, (double) y, (double) z1);
+    fflush (stdout);
+#ifndef DO_NOT_ABORT
+    exit(1);
+#endif
+  }
+  // the invalid exception is not raised for NaN input
+  if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN)
+      && !is_nan (x) && !is_nan (y))
+  {
+    printf ("Missing invalid exception for x=%a y=%a (z=%a)\n",
             (double) x, (double) y, (double) z1);
     fflush (stdout);
 #ifndef DO_NOT_ABORT
