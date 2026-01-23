@@ -30,7 +30,7 @@ SOFTWARE.
 
 double ref_sinpi(double x){
   if(isnan(x)) return x;
-  if(isinf(x)) return __builtin_nan("");
+  // for x=inf, let MPFR do the job, since an invalid exception should be raised
   mpfr_t y;
   mpfr_init2(y, 53);
   mpfr_set_d(y, x, MPFR_RNDN);
