@@ -32,9 +32,12 @@ double
 ref_rsqrt (double x)
 {
   /* mpfr_rec_sqrt differs from IEEE 754-2019: IEEE 754-2019 says that
-     rsqrt(-0) should give -Inf, whereas mpfr_rec_sqrt(-0) gives +Inf */
-  if (x == 0.0 && 1.0 / x < 0)
+     rsqrt(-0) should give -Inf, whereas mpfr_rec_sqrt(-0) gives +Inf.
+     Also IEEE 754-2019 says rsqrt(-0) raises divbyzero. */
+  if (x == 0.0 && 1.0 / x < 0) {
+    mpfr_set_divby0 ();
     return 1.0 / x;
+  }
   mpfr_t y;
   mpfr_init2 (y, 53);
   mpfr_set_d (y, x, MPFR_RNDN);
