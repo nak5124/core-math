@@ -41,9 +41,11 @@ float
 ref_pow (float x, float y)
 {
   // since MPFR does not distinguish between qNaN and sNaN, we have to
-  // deal with signaling NaNs separately
-  if (is_snan (x) || is_snan (y))
+  // deal with signaling NaNs separately, and raise invalid
+  if (is_snan (x) || is_snan (y)) {
+    mpfr_set_nanflag ();
     return x + y;
+  }
 
   mpfr_t xm, ym, zm;
   mpfr_init2 (xm, 24);

@@ -223,6 +223,20 @@ fix_underflow (float x, float y, float z)
 
 int tests = 0, failures = 0;
 
+// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
+static inline int is_signaling(float x) {
+  b32u32_u u = {.f = x};
+
+  return !(u.u & (1ull << 22));
+}
+
+// same as %a, but distinguish snan and qnan
+static void
+print_float (float x) {
+  if (!is_nan (x)) printf ("%a", (double) x);
+  if (is_signaling (x)) printf ("snan"); else printf ("qnan");
+}
+
 static void
 check (float x, float y)
 {
@@ -328,8 +342,9 @@ check (float x, float y)
   // check spurious/missing invalid exception
   if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN))
   {
-    printf ("Spurious invalid exception for x=%a y=%a (z=%a)\n",
-            (double) x, (double) y, (double) z1);
+    printf ("Spurious invalid exception for x="); print_float (x);
+    printf (" y="); print_float (y); printf (" (z="); print_float (z1);
+    printf (")\n");
     fflush (stdout);
 #ifndef DO_NOT_ABORT
     exit(1);
@@ -518,13 +533,6 @@ doloop(void)
 
   free(items);
   printf("%d tests passed, %d failure(s)\n", tests, failures);
-}
-
-// When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
-static inline int is_signaling(float x) {
-  b32u32_u u = {.f = x};
-
-  return !(u.u & (1ull << 22));
 }
 
 /* check for signaling NaN input */
