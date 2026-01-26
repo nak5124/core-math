@@ -233,7 +233,7 @@ static inline int is_signaling(float x) {
 // same as %a, but distinguish snan and qnan
 static void
 print_float (float x) {
-  if (!is_nan (x)) printf ("%a", (double) x);
+  if (!is_nan (x)) { printf ("%a", (double) x); return; }
   if (is_signaling (x)) printf ("snan"); else printf ("qnan");
 }
 
