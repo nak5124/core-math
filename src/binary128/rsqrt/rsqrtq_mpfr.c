@@ -43,9 +43,13 @@ __float128 ref_rsqrtq(__float128 x){
   b128u128_u u = {.f = x};
 
   /* mpfr_rec_sqrt differs from IEEE 754-2019: IEEE 754-2019 says that
-     rsqrt(-0) should give -Inf, whereas mpfr_rec_sqrt(-0) gives +Inf */
+     rsqrt(-0) should give -Inf, whereas mpfr_rec_sqrt(-0) gives +Inf.
+     Also IEEE 754-2019 says rsqrt(-0) raises divbyzero. */
   if(!(u.a<<1)){ // case x = 0
-    if(u.a>>127) return -__builtin_inff128(); // x=-0
+    if(u.a>>127) {
+      mpfr_set_divby0 ();
+      return -__builtin_inff128(); // x=-0
+    }
     return __builtin_inff128(); // x=+0
   }
 

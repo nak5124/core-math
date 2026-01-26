@@ -45,14 +45,17 @@ static int issnan(long double x) {
 
 /* reference code using MPFR */
 long double ref_powl(long double x, long double y) {
-	if(issnan(x) || issnan(y)) {
+  if (issnan(x) || issnan(y)) {
+    // since MPFR does not raise invalid, we do it
+    mpfr_set_nanflag ();
+    return x + y;
 		b80u80_t v;
 		v.m = 0x8000000000000001ul;
 		v.e = 0x7fff;
 		return v.f;
-	}
-	mpfr_t z, _x, _y;
-	mpfr_exp_t emin = mpfr_get_emin ();
+  }
+  mpfr_t z, _x, _y;
+  mpfr_exp_t emin = mpfr_get_emin ();
   mpfr_set_emin (-16444);
   
 	mpfr_inits2(64, z, _x, _y, NULL);

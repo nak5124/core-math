@@ -197,6 +197,32 @@ fix_underflow (long double x, long double y, long double z)
   mpfr_clear (u);
 }
 
+/* When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN.
+   According to https://en.wikipedia.org/wiki/Extended_precision,
+   sNaN's have bits 63-62 equal to 10 (and bits 61-0 non-zero),
+   while qNaN's have bits 63-62 equal to 11. */
+static inline int is_signaling(long double x) {
+  b80u80_t u = {.f = x};
+
+  return ((u.m >> 62) & 1) == 0;
+}
+
+// prints snan/qnan when x is NaN
+static void
+print_binary80 (long double x)
+{
+  if (!is_nan (x)) // not NaN
+    printf ("%La", x);
+  else
+  {
+    // if bit 51 is 1, this is a qNaN, otherwise a sNaN
+    if (!is_signaling (x))
+      printf ("qnan");
+    else
+      printf ("snan");
+  }
+}
+
 static int
 check (long double x, long double y)
 {
@@ -206,13 +232,13 @@ check (long double x, long double y)
   tests ++;
   ref_init();
   ref_fesetround(rnd);
-  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW);
+  mpfr_flags_clear (MPFR_FLAGS_INEXACT | MPFR_FLAGS_UNDERFLOW | MPFR_FLAGS_OVERFLOW | MPFR_FLAGS_DIVBY0 | MPFR_FLAGS_NAN);
   long double z1 = ref_function_under_test(x, y);
 #if defined(CORE_MATH_CHECK_INEXACT) || defined(CORE_MATH_SUPPORT_ERRNO)
   mpfr_flags_t inex1 = mpfr_flags_test (MPFR_FLAGS_INEXACT);
 #endif
   fesetround(rnd1[rnd]);
-  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW);
+  feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
 #endif
@@ -286,6 +312,54 @@ check (long double x, long double y)
     fflush (stdout);
 #ifdef DO_NOT_ABORT
     return 1;
+#else
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing divby0 exception
+  if (fetestexcept (FE_DIVBYZERO) && !mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Spurious divbyzero exception for x,y=%La,%La (z=%La)\n", x, y, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+  if (!fetestexcept (FE_DIVBYZERO) && mpfr_flags_test (MPFR_FLAGS_DIVBY0))
+  {
+    printf ("Missing divbyzero exception for x,y=%La,%La (z=%La)\n", x, y, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+
+  // check spurious/missing invalid exception
+  if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN))
+  {
+    printf ("Spurious invalid exception for x,y="); print_binary80 (x);
+    printf (","); print_binary80 (y); printf (" (z="); print_binary80 (z1);
+    printf (")\n");
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
+#else
+    exit(1);
+#endif
+  }
+  // the invalid exception is not raised for NaN input
+  if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN)
+      && !is_nan (x) && !is_nan (y))
+  {
+    printf ("Missing invalid exception for x,y=%La,%La (z=%La)\n", x, y, z1);
+    fflush (stdout);
+#ifdef DO_NOT_ABORT
+    return;
 #else
     exit(1);
 #endif
@@ -401,16 +475,6 @@ doloop(void)
 
   free(items);
   printf("%d tests passed, %d failure(s)\n", tests, failures);
-}
-
-/* When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN.
-   According to https://en.wikipedia.org/wiki/Extended_precision,
-   sNaN's have bits 63-62 equal to 10 (and bits 61-0 non-zero),
-   while qNaN's have bits 63-62 equal to 11. */
-static inline int is_signaling(long double x) {
-  b80u80_t u = {.f = x};
-
-  return ((u.m >> 62) & 1) == 0;
 }
 
 /* check for signaling NaN input */
