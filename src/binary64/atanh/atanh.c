@@ -79,6 +79,13 @@ static inline double muldd_acc(double xh, double xl, double ch, double cl, doubl
  return fasttwosum (ahhh, ahhl, l);
 }
 
+// same as muldd_acc, but without the fasttwosum() normalization
+static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+  double ahlh = ch*xl, alhh = cl*xh, ahhh = ch*xh, ahhl = __builtin_fma(ch, xh, -ahhh);
+ *l = ahhl + (alhh + ahlh);
+ return ahhh;
+}
+
 static inline double mulddd(double xh, double xl, double ch, double *l){
   double hh = xh*ch;
   *l = __builtin_fma(ch, xh, -hh) + xl*ch;
@@ -199,7 +206,7 @@ double cr_atanh(double x){
     double p = (c[0] + x2*c[1]) + x4*(c[2] + x2*c[3]) + x8*((c[4] + x2*c[5]) + x4*(c[6] + x2*c[7]) + x8*c[8]);
     double t = __builtin_fma (x2, p, 0x1.5555555555555p-56);
     double pl, ph = fasttwosum(0x1.5555555555555p-2, t, &pl);
-    ph = muldd_acc(ph, pl,  x3, dx3, &pl);
+    ph = muldd(ph, pl,  x3, dx3, &pl);
     double tl;
     ph = fasttwosum(x,ph,&tl);
     pl += tl;
