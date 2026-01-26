@@ -226,7 +226,7 @@ static void scan_consecutive(int64_t n, double x){
     n -= jmax;
     if( (count += jmax) > nreport){
       nreport += reportstride;
-      printf("n_tested = %ld x_current = %a\n", count, x);
+      printf("n_tested = %ld x_current = %a\n", (long) count, x);
     }
   }
 }

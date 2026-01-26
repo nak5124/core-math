@@ -231,7 +231,8 @@ static void scan_consecutive (int64_t n, double x){
     int64_t hi = (ni + h > n) ? n - ni : h;
     scan_consecutive_aux (hi, xi);
   }
-  printf ("checked %lu values, expensive checks %lu\n", n, tested);
+  printf ("checked %lu values, expensive checks %lu\n",
+          (unsigned long) n, tested);
 }
 
 int
