@@ -129,7 +129,7 @@ float cr_log2p1f(float x) {
   }
   b64u64_u tp = {.f = z + 1.0};
   int e = (tp.u>>52) - 0x3ffull;
-  uint64_t m = tp.u&(~0ul>>12);
+  uint64_t m = tp.u&(~0ull>>12);
   if(__builtin_expect(!m, 0)) return e;  // do not raise the inexact exception for 1+x = 2^n
   int32_t j = (m + (1ull<<(52-7)))>>(52-6);
   b64u64_u xd = {.u = m | 0x3ffull<<52};
