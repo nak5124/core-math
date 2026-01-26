@@ -42,8 +42,10 @@ static inline int is_snan(double x) {
 double ref_pow(double x, double y) {
   // since MPFR does not distinguish between qNaN and sNaN, we have to
   // deal with signaling NaNs separately
-  if (is_snan (x) || is_snan (y))
+  if (is_snan (x) || is_snan (y)) {
+    mpfr_set_nanflag ();
     return x + y;
+  }
 
   mpfr_t z, _x, _y;
   int underflow = mpfr_flags_test (MPFR_FLAGS_UNDERFLOW);

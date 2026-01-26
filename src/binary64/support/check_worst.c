@@ -399,7 +399,7 @@ check (testcase ts)
   }
   // the invalid exception is not raised for NaN input
   if (!fetestexcept (FE_INVALID) && mpfr_flags_test (MPFR_FLAGS_NAN)
-      && !is_nan (ts.x))
+      && !is_nan (ts.x) && !is_nan (ts.y))
   {
     printf ("Missing invalid exception for x,y=%la,%la (z=%la)\n",
             ts.x, ts.y, z1);
