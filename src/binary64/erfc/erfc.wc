@@ -118635,4 +118635,7 @@
 0x1.00ec085626c64p+62
 0x1.00ec048053e66p+62
 0x1.00ec043c0bc5cp+62
+# the following is a bug found by John Mather on Apple Silicon
+# it seems due to an issue in ldexp, reported at FB21774989
+# and FB21774410 (https://feedbackassistant.apple.com/feedback)
 0x1.aad8f3dbd3cadp+4
