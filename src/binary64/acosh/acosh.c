@@ -218,6 +218,7 @@ double cr_acosh(double x){
     t.f = th;
     g = tl/th;
   } else if(ix.u<0x4087100000000000ull){ // 0x1.bfp+6 <= x < 0x1.71p+9
+    /* this branch was tested exhaustively (revision 28faf30) with/without FMA */
     static const double cl[] = {0x1.5c4b6148816e2p-66, -0x1.000000000005cp-2, -0x1.7fffffebf3e6cp-4, -0x1.aab6691f2bae7p-5};
     double z = 1/(x*x);
     g = cl[0] + z*(cl[1] + z*(cl[2] + z*cl[3]));
