@@ -341,7 +341,7 @@ static void scan_consecutive(int64_t n, double x){
     x += jmax * ldexp (1.0, e - 53);
   }
   printf ("checked %lu values, expensive checks %lu\n",
-          (unsigned long), n0, tested);
+          (unsigned long) n0, tested);
 }
 
 int
