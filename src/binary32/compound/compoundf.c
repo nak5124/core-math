@@ -955,7 +955,7 @@ accurate_path (float x, float y, int exact, FLAG_T flag)
   return exp2_2 (h, l, x, y, exact, flag);
 }
 
-/* this routine is called with x <= -1
+/* this routine is called with x <= -1,
    or with x = 0, Inf, NaN or with y = 0, Inf, NaN */
 __attribute__((noinline)) float as_compoundf_special(float x, float y){
   b32u32_u nx = {.f = x}, ny = {.f = y};
@@ -989,19 +989,19 @@ __attribute__((noinline)) float as_compoundf_special(float x, float y){
 	if(sy == 0)
 	  return 0.0f; // Rule (c)
 	else
-	  return 1.0f/0.0f; // Rule (b)
+	  return -y; // Rule (b), y=-inf
       }
       if (x < 0.0f){
 	if(sy == 0)
-	  return 0.0f;
+	  return 0.0f; // y=+inf
 	else
-	  return 1.0f/0.0f;
+	  return -y; // y=-inf
       }
       if (x > 0.0f){
 	if(sy != 0)
 	  return 0.0f;
 	else
-	  return 1.0f/0.0f;
+          return y; // y=+inf
       }
       return 1.0f;
     }
