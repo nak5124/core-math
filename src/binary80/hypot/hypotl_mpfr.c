@@ -35,7 +35,7 @@ inline static int
 is_nan (long double x)
 {
   b80u80_t v = {.f = x};
-  return ((v.e&0x7fff) == 0x7fff && (v.m != (1ul << 63)));
+  return ((v.e&0x7fff) == 0x7fff && (v.m != (1ull << 63)));
 }
 
 // return non-zero iff x is a sNaN 
