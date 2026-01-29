@@ -516,11 +516,11 @@ static void check_signgam (void) {
     signgam = -17;
     cr_function_under_test (X[i]);
     if (signgam == -17) {
-      fprintf (stderr, "Error, signgam unset for x=%a\n", X[i]);
+      fprintf (stderr, "Error, signgam unset for x=%a\n", (double) X[i]);
       exit (1);
     }
     if (signgam != S[i]) {
-      fprintf (stderr, "Error, signgam wrong for x=%a\n", X[i]);
+      fprintf (stderr, "Error, signgam wrong for x=%a\n", (double) X[i]);
       fprintf (stderr, "expected %d, got %d\n", S[i], signgam);
       exit (1);
     }
