@@ -111,8 +111,8 @@ float cr_lgammaf(float x){
   float fx = __builtin_floor(x), ax = __builtin_fabsf(x);
   b32u32_u t = {.f = ax};
   if(__builtin_expect(t.u>=(0xffu<<23), 0)){ // NaN or Inf
+    signgam = 1; // for nan we set signgam arbitrarily to 1
     if(t.u==(0xffu<<23)){ // +-inf
-      signgam = 1;
       return x * x;
     }
     return x + x; // nan
@@ -124,7 +124,8 @@ float cr_lgammaf(float x){
 #endif
       t.f = x;
       // gamma(+0) = +Inf, gamma(-0) = -Inf
-      if(!(t.u<<1)) signgam = 1 - 2*(t.u >> 31);
+      // for negative integer we set signgam arbitrarily to 1
+      signgam = (!(t.u<<1)) ? 1 - 2*(t.u >> 31) : 1;
       return 1.0f/0.0f;
     }
     if(x==1.0f || x==2.0f) {

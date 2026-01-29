@@ -505,6 +505,29 @@ static int doloop (void)
   return 0;
 }
 
+#ifdef HAVE_SIGNGAM
+extern int signgam;
+
+// check signgam is correctly set
+static void check_signgam (void) {
+  float X[] = { 0.0f/0.0f, -123.0f, -2.5f, -2.0f, 2.0f, 2.5f, 123.0f };
+  int S[] = { 1, 1, -1, 1, 1, 1, 1 };
+  for (unsigned long i = 0; i < sizeof(X)/sizeof(X[0]); i++) {
+    signgam = -17;
+    cr_function_under_test (X[i]);
+    if (signgam == -17) {
+      fprintf (stderr, "Error, signgam unset for x=%a\n", X[i]);
+      exit (1);
+    }
+    if (signgam != S[i]) {
+      fprintf (stderr, "Error, signgam wrong for x=%a\n", X[i]);
+      fprintf (stderr, "expected %d, got %d\n", S[i], signgam);
+      exit (1);
+    }
+  }
+}
+#endif
+
 int
 main (int argc, char *argv[])
 {
@@ -546,6 +569,10 @@ main (int argc, char *argv[])
           exit (1);
         }
     }
+
+#ifdef HAVE_SIGNGAM
+  check_signgam ();
+#endif
 
   check_underflow_before ();
 
