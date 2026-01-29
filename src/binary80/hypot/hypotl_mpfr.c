@@ -50,8 +50,10 @@ is_snan (long double x)
 long double
 ref_hypotl (long double x, long double y)
 {
-  if (is_snan (x) || is_snan (y))
+  if (is_snan (x) || is_snan (y)) {
+    mpfr_set_nanflag (); // raise invalid flag
     return x + y;
+  }
 
   mpfr_t z, _x, _y;
   mpfr_exp_t emin = mpfr_get_emin ();
