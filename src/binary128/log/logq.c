@@ -559,7 +559,7 @@ static __float128 as_logq_nearone(b128u128_u x, unsigned flagp){
   unsigned oflagp = flagp, rm = flagp&_MM_ROUND_MASK;
   u64 tr = rm == _MM_ROUND_NEAREST, crnd = 0;
   i64 e, neg;
-  b128u128_u u = x, res, one = {.b = {0, 0x3ffful<<48}};
+  b128u128_u u = x, res, one = {.b = {0, 0x3fffull<<48}};
   if(u.b[1]>=one.b[1]){ // x>=1
     neg = 0;
     u.b[1] -= one.b[1];
@@ -783,7 +783,7 @@ __float128 cr_logq(__float128 x) {
       flagp |= FE_DIVBYZERO;
       if(__builtin_expect(oflagp!=flagp, 0)) _mm_setcsr(flagp);
       res.b[0] = 0;
-      res.b[1] = 0xfffful<<48;
+      res.b[1] = 0xffffull<<48;
       return res.f; // x = -0
     }
 #ifdef CORE_MATH_SUPPORT_ERRNO
@@ -792,7 +792,7 @@ __float128 cr_logq(__float128 x) {
     flagp |= FE_INVALID;
     if(__builtin_expect(oflagp!=flagp, 0)) _mm_setcsr(flagp);
     res.b[0] = 11;
-    res.b[1] = 0xffff8ul<<44;
+    res.b[1] = 0xffff8ull<<44;
     return res.f; // x<0
   }
 
@@ -801,7 +801,7 @@ __float128 cr_logq(__float128 x) {
   }
 
   m = u;
-  u64 e = u.b[1]&(0xfffful<<48);
+  u64 e = u.b[1]&(0xffffull<<48);
   if(__builtin_expect(e==0,0)){ // denormal argument
     if(u.a==0){
 #ifdef CORE_MATH_SUPPORT_ERRNO
@@ -810,14 +810,14 @@ __float128 cr_logq(__float128 x) {
       flagp |= FE_DIVBYZERO;
       if(__builtin_expect(oflagp!=flagp, 0)) _mm_setcsr(flagp);
       res.b[0] = 0;
-      res.b[1] = 0xfffful<<48;
+      res.b[1] = 0xffffull<<48;
       return res.f; // x = +0
     }
     int nz = __builtin_clzl(u.b[1]) + __builtin_clzl(u.b[0])*!u.b[1];
     m.a <<= nz-15;
     e -= (nz-16ul)<<48;
   }
-  e += 112ul<<48;
+  e += 112ull<<48;
 
   u64 l = as_log2(m.b[1]); // crude approximation
   int j0 = l>>59, j1 = (l>>54)&31, j2 = (l>>49)&31, j3 = (l>>44)&31;

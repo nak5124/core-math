@@ -220,7 +220,7 @@ fast_path(long double x, int* needmoreaccuracy) {
 
 	cvt_w.u = ((cvt_x.e&0x8000ul) << (63 - 15)) |
 		(((cvt_x.e&0x7ffful) + (1023ul - 16383ul)) << (64 - 12)) |
-		((cvt_x.m >> 11) & ~(1ul << 52)); // Explicitely remove leading 1 bit
+		((cvt_x.m >> 11) & ~(1ull << 52)); // Explicitely remove leading 1 bit
 	double xh = cvt_w.f;
 
 	/* The bottom bit of x's mantissa has weight e - 63, were e is y's exponent.

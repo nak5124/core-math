@@ -119,14 +119,14 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 	   |xl0| <= ulp(2^13) = 2^-39
 	*/
 
-	cvt_w.u = ((cvt_x.e&0x8000ul) << (63 - 15)) | (((cvt_x.e&0x7ffful) + (1023ul - 16383ul)) << (64 - 12)) |
-		((cvt_x.m >> 11) & ~(1ul << 52)); // Explicitely remove leading 1 bit
+	cvt_w.u = ((cvt_x.e&0x8000ull) << (63 - 15)) | (((cvt_x.e&0x7ffful) + (1023ul - 16383ul)) << (64 - 12)) |
+		((cvt_x.m >> 11) & ~(1ull << 52)); // Explicitely remove leading 1 bit
 	double xh0 = cvt_w.f;
 
 	/* The bottom bit of x's mantissa has weight e - 63, were e is y's exponent.
 	   Therefore, the exponent of xl should (at first) be e - 63 + 52 = e - 11
 	*/
-	cvt_w.u = ((cvt_x.e&0x8000ul) << (63 - 15)) | (((cvt_x.e&0x7ffful) + (1023ul - 16383ul - 11)) << (64 - 12)) |
+	cvt_w.u = ((cvt_x.e&0x8000ull) << (63 - 15)) | (((cvt_x.e&0x7ffful) + (1023ul - 16383ul - 11)) << (64 - 12)) |
 		(cvt_x.m & ((1ul << 11) - 1ul));
 
 	// Replicate parasitic implicit leading bit
@@ -539,7 +539,7 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 
 	// represent the mantissa of the low part in two's complement format,
 	// where 1l<<52 represents the implicit leading bit
-	int64_t ml = (tl.u & ~(0xfffull<<52)) | (1l<<52), sgnl = -(tl.u >> 63);
+	int64_t ml = (tl.u & ~(0xfffull<<52)) | (1ll<<52), sgnl = -(tl.u >> 63);
 	ml = (ml ^ sgnl) - sgnl;
 	int64_t mlt;
 	// we have to shift ml by 11 bits to the left to align with mh below,
@@ -708,7 +708,7 @@ load_dd (tint_t *a, const dd* toload) {
 	a->l = 0;
 	if(__builtin_expect(bx >> 52 != 0, 1)) { // toload->l != 0
 		int de = (ax >> 52) - (bx >> 52);
-		unsigned __int128 mantissa_b =  (1ul << 52) | (bx & ((1ul << 52) - 1));
+		unsigned __int128 mantissa_b =  (1ull << 52) | (bx & ((1ull << 52) - 1));
 		mantissa_b <<= 75 - de; // If de was 0, we would shift 12+63
 
 		if((u.u>>63) ^ a->sgn) { // We do *not* handle underflows/overflows
@@ -803,9 +803,9 @@ compute_reducted(tint_t *xred,
 	   since |xs| <= 2^15, this introduces an error of at most 2^-178.
 	*/
 	static const tint_t logeff2 = {
-		.h = 0xb17217f7d1cf79abUL,
-		.m = 0xc9e3b39803f2f6afUL,
-		.l = 0x40f343267298b62eUL,
+		.h = 0xb17217f7d1cf79abULL,
+		.m = 0xc9e3b39803f2f6afULL,
+		.l = 0x40f343267298b62eULL,
 		.ex = 0, .sgn = 0};
 
 	tint_t t_xs;
@@ -872,13 +872,13 @@ evaluate_polynomial(tint_t *y, const tint_t* x) {
 	   Therefore, we have |x4 - x^4| <= 2^-267.6 + 2^-268.6 <= 2^-267.015
 	*/
 
-	static const tint_t c2 = {.h = 0x8000000000000000ul,
-	                          .m = 0x0000000000000000ul,
-	                          .l = 0x0000000000000000ul,
+	static const tint_t c2 = {.h = 0x8000000000000000ull,
+	                          .m = 0x0000000000000000ull,
+	                          .l = 0x0000000000000000ull,
 	                          .ex = 0, .sgn = 0};
-	static const tint_t c3 = {.h = 0xaaaaaaaaaaaaaaaaul,
-	                          .m = 0xaaaaaaaaaaaaaaaaul,
-	                          .l = 0xaaaaaaaaaaaaaaabul,
+	static const tint_t c3 = {.h = 0xaaaaaaaaaaaaaaaaull,
+	                          .m = 0xaaaaaaaaaaaaaaaaull,
+	                          .l = 0xaaaaaaaaaaaaaaabull,
 	                          .ex = -2, .sgn = 0};
 
 	tint_t order23[1];
@@ -906,24 +906,24 @@ evaluate_polynomial(tint_t *y, const tint_t* x) {
 	   therefore at most 2^-229.136 + 2^-228.678 <= 2^-227.888.
 	*/
 
-	static const tint_t c4 = {.h = 0xaaaaaaaaaaaaaaaaul,
-	                          .m = 0xaaaaaaaaaaaaaaaaul,
-	                          .l = 0xaaaaaaaaaaaaaaabul,
+	static const tint_t c4 = {.h = 0xaaaaaaaaaaaaaaaaull,
+	                          .m = 0xaaaaaaaaaaaaaaaaull,
+	                          .l = 0xaaaaaaaaaaaaaaabull,
 	                          .ex = -4, .sgn = 0};
 
-	static const tint_t c5 = {.h = 0x8888888888888888ul,
-	                          .m = 0x8888888888888888ul,
-	                          .l = 0x8888888888888889ul,
+	static const tint_t c5 = {.h = 0x8888888888888888ull,
+	                          .m = 0x8888888888888888ull,
+	                          .l = 0x8888888888888889ull,
 	                          .ex = -6, .sgn = 0};
 
-	static const tint_t c6 = {.h = 0xb60b60b60b60b60bul,
-	                          .m = 0x60b60b60b60b60b6ul,
-	                          .l = 0x0b60b60b60b60b61ul,
+	static const tint_t c6 = {.h = 0xb60b60b60b60b60bull,
+	                          .m = 0x60b60b60b60b60b6ull,
+	                          .l = 0x0b60b60b60b60b61ull,
 	                          .ex = -9, .sgn = 0};
 
-	static const tint_t c7 = {.h = 0xd00d00d00d00d00dul,
-	                          .m = 0x00d00d00d00d00d0ul,
-	                          .l = 0x0d00d00d00d00d01ul,
+	static const tint_t c7 = {.h = 0xd00d00d00d00d00dull,
+	                          .m = 0x00d00d00d00d00d0ull,
+	                          .l = 0x0d00d00d00d00d01ull,
 	                          .ex = -12, .sgn = 0};
 
 	tint_t order45[1];
@@ -1215,7 +1215,7 @@ long double cr_expl(long double x) {
 
 	if (__builtin_expect(e >= 14 + 16383, 0)) { // |x| >= 2^14
 		if(__builtin_expect(e == 0x7fff, 0)) {
-			if (cvt_x.e == 0xffff && cvt_x.m == 0x8000000000000000ul) // -Inf
+			if (cvt_x.e == 0xffff && cvt_x.m == 0x8000000000000000ull) // -Inf
 				return 0x0p0L;
 			return x+x; // Nan or +Inf.
 			/* Makes signalling NaNs raise the invalid exception

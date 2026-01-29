@@ -931,7 +931,7 @@ search_binade_quadratic (uint32_t m0, uint32_t m1, int e, float y)
       break;
     a += b;
     b += c;
-    if (ea > (1ul << 53))
+    if (ea > (1ull << 53))
     {
     recompute:
       ret = init_quadratic (m, m1, e, y, &a, &b, &c, &ea, &eb, &ec, &ed);
@@ -983,7 +983,7 @@ search_binade_quadratic_z (uint32_t m0, uint32_t m1, int e, float y)
       break;
     a += b;
     b += c;
-    if (ea > (1ul << 53))
+    if (ea > (1ull << 53))
     {
     recompute:
       my = init_quadratic_z (m, m1, e, y, &a, &b, &c, &ea, &eb, &ec, &ed, iy);

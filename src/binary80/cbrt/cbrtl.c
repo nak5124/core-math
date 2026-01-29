@@ -459,7 +459,7 @@ cr_cbrtl (long double x)
 
 	// represent the mantissa of the low part in two's complement format,
 	// where 1l<<52 represents the implicit leading bit
-	int64_t ml = (tl.u & ~(0xfffull<<52)) | (1l<<52), sgnl = -(tl.u >> 63);
+	int64_t ml = (tl.u & ~(0xfffull<<52)) | (1ll<<52), sgnl = -(tl.u >> 63);
 	ml = (ml ^ sgnl) - sgnl;
 	int64_t mlt;
 	// we have to shift ml by 11 bits to the left to align with mh below,

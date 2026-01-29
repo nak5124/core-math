@@ -99,5 +99,5 @@ void exactify(qint64_t* a) {
 			a->ex++;
 		}
 	}
-	a->hl &= 1ul<<63; a->lh = a->ll = 0;
+	a->hl &= 1ull<<63; a->lh = a->ll = 0;
 }

@@ -776,7 +776,7 @@ __float128 cr_exp2q(__float128 x) {
     if(__builtin_expect(er>0, 1)){
       res.b[1] = er<<48;
     } else {
-      res.b[1] = 1ul<<47;
+      res.b[1] = 1ull<<47;
       res.a >>= -er;
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE;

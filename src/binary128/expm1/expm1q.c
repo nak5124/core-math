@@ -1011,7 +1011,7 @@ __float128 cr_expm1q(__float128 x) {
 	fh = __builtin_addcl(fh, m0.b[1], k, &k);
 	if(k){ // this addition can cause overflow
 	  res.b[0] = fh<<63|fl>>1;
-	  res.b[1] = 1ul<<63|fh>>1;
+	  res.b[1] = 1ull<<63|fh>>1;
 	  eout++;
 	} else {
 	  res.b[0] = fl;
