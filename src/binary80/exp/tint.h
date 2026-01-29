@@ -352,7 +352,7 @@ static inline void tint_fromd (tint_t *a, double x)
   if (__builtin_expect (e, 1)) { // normal
     // 1 has e=0x3ff
     a->ex = e - 0x3fe;
-    a->h = (1ul << 63) | (ax << 11);
+    a->h = (1ull << 63) | (ax << 11);
   }
   else { // subnormal
     // 2^-1074 has ax=1
@@ -378,7 +378,7 @@ tint_tod (const tint_t *a, uint64_t err)
     if (a->ex < -1074) // |a| < 2^-1075
       return (a->sgn ? -0x1p-1074 : 0x1p-1074) * 0.5;
     // 2^-1075 <= |a| < 2^-1074
-    int mid = a->h == (1ul << 63) && a->m == 0 && a->l == 0;
+    int mid = a->h == (1ull << 63) && a->m == 0 && a->l == 0;
     // if mid, |a| = 2^-1075
     return (a->sgn ? -0x1p-1074 : 0x1p-1074) * (mid ? 0.5 : 0.75);
   }

@@ -499,7 +499,7 @@ cr_cbrtl (long double x)
 	float op = sign + sign*0x1p-25f, om = sign - sign*0x1p-25f;
 	if(op==om){ // round to nearest
 		mh += (uint64_t)ml>>63;
-		ml ^= (1ul << 63);
+		ml ^= (1ull << 63);
 	} else if(sign*op>1.0f) { // round away from zero for numbers with sign sign. 
 		mh += 1;
 	}

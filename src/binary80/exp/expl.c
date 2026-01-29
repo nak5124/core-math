@@ -603,7 +603,7 @@ fastpath(long double x, redinfo* ri, bool* need_accurate) {
 	float op = 1.0f + 0x1p-25f, om = 1.0f - 0x1p-25f;
 	if(op==om){ // round to nearest
 		mh += (uint64_t)ml>>63;
-		ml ^= (1ul << 63);
+		ml ^= (1ull << 63);
 	} else if(op>1.0f) { // round to +inf
 		mh += 1;
 	}
@@ -692,16 +692,16 @@ static inline void
 load_dd (tint_t *a, const dd* toload) {
 	b64u64_u u = {.f = toload->h};
 	a->sgn = u.u >> 63;
-	uint64_t ax = u.u & (-1l ^ (1ul << 63));
+	uint64_t ax = u.u & (-1l ^ (1ull << 63));
 
 	u.f = toload->l;
-	uint64_t bx = u.u & (-1l ^ (1ul << 63));
+	uint64_t bx = u.u & (-1l ^ (1ull << 63));
 
 	// We assume toload->h is not 0
 	int64_t exp = (ax >> 52) - 1023;
 
 	a->ex = exp + 1;
-	unsigned __int128 mantissa  = (1ul << 63) | (ax << 11);
+	unsigned __int128 mantissa  = (1ull << 63) | (ax << 11);
 	mantissa <<= 64;
 
 	a->_h = mantissa;
@@ -1096,13 +1096,13 @@ long double accurate_path(long double x, const redinfo* ri) {
 	float op = 1.0f + 0x1p-25f, om = 1.0f - 0x1p-25f;
 	if(op == om) {
 		final->h += final->m >> 63;
-		final->m ^= 1ul << 63;
+		final->m ^= 1ull << 63;
 	} else if(op > 1.0f) {
 		final->h += 1;
 	}
 
 	if(__builtin_expect(!final->h, 0)) {
-		final->h = 1ul << 63;
+		final->h = 1ull << 63;
 
 		final->l >>= 1;
 		final->l |= (final->m & 1) << 63;
