@@ -245,8 +245,8 @@ int
 main (int argc, char *argv[])
 {
   int conseq = 0;  // scan consecutive values
-  double a;        // starting value for scan_consecutive
-  unsigned long C; // length for scan_consecutive
+  double a = 1.0;        // starting value for scan_consecutive
+  unsigned long C = 1000000; // length for scan_consecutive
   while (argc >= 2)
     {
       if (strcmp (argv[1], "--rndn") == 0)
