@@ -140,7 +140,11 @@ static inline int get_rounding_mode (void)
   /* Warning: on __aarch64__ (for example cfarm103), FE_UPWARD=0x400000
      instead of 0x800. */
 #if defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)
-  return _MM_GET_ROUNDING_MODE()>>3;
+  #if defined(__WIN32__) || defined(__WIN64__)
+    return _MM_GET_ROUNDING_MODE()>>5;
+  #else
+    return _MM_GET_ROUNDING_MODE()>>3;
+  #endif
 #else
   return fegetround ();
 #endif
