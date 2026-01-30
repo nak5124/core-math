@@ -148,7 +148,7 @@ static __attribute__((noinline)) double as_cosh_database(double x, double f){
 
 double cr_cosh(double x){
   /*
-    The function sinh(x) is approximated by a minimax polynomial
+    The function cosh(x) is approximated by a minimax polynomial
     cosh(x)~1+x^2*P(x^2) for |x|<0.125. For other arguments the
     identity cosh(x)=(exp(|x|)+exp(-|x|))/2 is used. For |x|<5 both
     exponents are calculated with slightly higher precision than
