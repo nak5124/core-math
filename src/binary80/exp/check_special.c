@@ -173,6 +173,7 @@ main (int argc, char *argv[])
   long double ulp = 0x1p-50L; // ulp = ulp(x0) = ulp(x1)
   long double dx = (x1 - x0) / (long double) CORE_MATH_TESTS; // total numbers in [x0,x1]
   unsigned long skip = dx / ulp; // distance between two checked numbers
+  if (skip == 0) skip = 1; // ensure skip >= 1
   int n0 = seed % skip;
   x0 += (long double) n0 * ulp;  // we start at a random x0
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
