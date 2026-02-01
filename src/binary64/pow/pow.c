@@ -989,8 +989,8 @@ static void log_3 (qint64_t *r, qint64_t *x) {
    where s=-1 can only happen when x < 0 and y is an integer.
 */
 static inline void
-exp_1 (double *eh, double *el, double rh, double rl, double s) {
-
+exp_1 (double *eh, double *el, double rh, double rl, double s, int bug) {
+  if (bug) printf ("993 invalid=%d rh=%la rl=%la\n", fetestexcept (FE_INVALID), rh, rl);
 #define RHO0 -0x1.74910ee4e8a27p+9
 // #define RHO1 -0x1.577453f1799a6p+9
 /* We increase the initial value of RHO1 to avoid spurious underflow in
@@ -1003,7 +1003,9 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
 
   // use !(rh <= RHO2) instead of rh < RHO2 to catch rh = NaN too
   if (__builtin_expect(!(rh <= RHO2), 0)) {
+    if (bug) printf ("1006 invalid=%d\n", fetestexcept (FE_INVALID));
     if (rh > RHO3) {
+      if (bug) printf ("1008 invalid=%d\n", fetestexcept (FE_INVALID));
       /* If rh > RHO3, we are sure there is overflow,
          For s=1 we return eh = el = DBL_MAX, which yields
          res_min = res_max = +Inf for rounding up or to nearest,
@@ -1019,12 +1021,14 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
       *eh = 0x1.fffffffffffffp+1023 * s;
       *el = 0x1.fffffffffffffp+1023 * s;
     }
-    else
+    else {
+      if (bug) printf ("1025 invalid=%d\n", fetestexcept (FE_INVALID));
       /* If RHO2 < rh <= RHO3, we are in the intermediate region
          where there might be overflow or not, thus we set eh = el = NaN,
          which will set res_min = res_max = NaN, the comparison
          res_min == res_max will fail: we defer to the 2nd phase. */
       *eh = *el = NAN;
+    }
     return;
   }
 
@@ -1775,7 +1779,7 @@ double cr_pow (double x, double y) {
      and  emul = 2^-57.580 if 1/sqrt(2) < x < sqrt(2)
   */
 
-  exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
+  exp_1 (&res_h, &res_l, rh, rl, s, bug); /* 1 <= res_h < 2 */
   if (bug) printf ("1779 invalid=%d\n", fetestexcept (FE_INVALID));
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
