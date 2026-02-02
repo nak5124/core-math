@@ -157,3 +157,9 @@ The Apple ldexp() function has a bug in the subnormal range (Darwin 25.1.0).
 For example ldexp(0x1.9192d74f53405p-6, -1027) gives 0x1.9192d74f53p-1033
 instead of 0x1.9192d74f538p-1033. This was reported at FB21774989 and FB21774410.
 This yields a failure in CORE-MATH erfc.
+
+For efficiency, some CORE-MATH routines directly play with the fenv.h macros
+(FE_TONEAREST, FE_UPWARD, FE_DOWNWARD). However, these macros might have
+different values under different operating systems, or even between different
+versions of the same operating system (for example, Windows 10 version 14393
+swapped the values of FE_UPWARD and FE_DOWNWARD). This might yield failures.
