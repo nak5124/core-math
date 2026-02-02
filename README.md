@@ -150,3 +150,10 @@ precision (on Linux it is set to double-extended by default).
 There might be some contradictions between correct rounding and some optional
 requirements of the POSIX standard. In such a case, CORE-MATH chooses to
 return the correctly rounded result.
+
+## Known issues
+
+The Apple ldexp() function has a bug in the subnormal range (Darwin 25.1.0).
+For example ldexp(0x1.9192d74f53405p-6, -1027) gives 0x1.9192d74f53p-1033
+instead of 0x1.9192d74f538p-1033. This was reported at FB21774989 and FB21774410.
+This yields a failure in CORE-MATH erfc.
