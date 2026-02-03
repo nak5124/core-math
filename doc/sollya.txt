@@ -14,15 +14,17 @@ $ sollya expm1.sollya
 Display mode is hexadecimal numbers.
 0x1.a01dc40888fcdp-16 * x^0x1.cp2 + 0x1.a02526febbea6p-13 * x^0x1.8p2 + 0x1.6c16c17639e82p-10 * x^0x1.4p2 + 0x1.111110f70f2a4p-7 * x^0x1p2 + 0x1.55555555551a7p-5 * x^0x1.8p1 + 0x1.55555555559abp-3 * x^0x1p1 + 0x1p-1 * x + 0x1p0
 
+By default, Sollya minimizes the relative error.
+
 Here is a more complex example, where one approximates the function 2^x on
-[0.21, 1] with a degree-10 polynomial with 53-bit coefficients, and one
-wants to minimize the relative error. In addition, the program outputs an
-estimation of the absolute value of the base-2 logarithm of the relative error,
-i.e., the approximate number of correct bits:
+[0.21, 1] with a degree-10 polynomial with 53-bit coefficients (to minimize
+the absolute error, replace "relative" by "absolute" below). In addition,
+the program outputs an estimation of the absolute value of the base-2
+logarithm of the relative error, i.e., the approximate number of correct bits.
+The notation [|D...|] means that all coefficients are doubles (53 bits).
 
 $ cat exp2.sollya
 n = 10; /* polynomial degree */
-P = 53; /* precision of the coefficients */
 
 pretty = proc(u) {
   return ~(floor(u*1000)/1000);
@@ -32,7 +34,7 @@ d = [0.21, 1];
 f = 1;
 w = 1/2^x;
 p =  remez(f, n, d, w);
-pf = fpminimax(2^x, n, [|P...|], d, relative, floating, 0, p);
+pf = fpminimax(2^x, n, [|D...|], d, relative, floating, 0, p);
 err_p = -log2(dirtyinfnorm(pf*w-f, d));
 print (pf, pretty(err_p));
 
