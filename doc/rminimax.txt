@@ -38,3 +38,11 @@ Another example, where we search a rational approximation of atan(x) on
 $ ./ratapprox --function="atan(x)" --dom=[0.000425,1.0] --type=[29,29] --output=x1p.sollya --log --numF=[192] --denF=[192] --prec=1024
 ...
 fpminimax approximation error                    = 2.1867e-58
+
+If a function is not known to rminimax:
+
+* with the command-line interface, you can try to define it with a combination
+  of known functions and elementary operations, like erfc(x)*exp(x^2) above.
+
+* or you can define it with the library interface. See the example in
+  tests/test_atan.cpp from the rminimax git.
