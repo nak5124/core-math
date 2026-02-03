@@ -48,4 +48,16 @@ Useful things in the CORE-MATH context:
   for a function which is c0*x + O(x^2) at x=0, you get an error. One
   workaround is to slightly modify the interval, say [0.000001,1].
 
+To add a new function unknown to Sollya, say j0:
+
+* first write a function int my_j0 (mpfi_t result, mpfi_t op, int n)
+  that, given an interval op, and an integer n, puts in result an
+  interval enclosing the values of the nth derivative of j0 for x in op.
+  You mainly have to implement n=0,1,2.
+
+* then compile this file and load it within Sollya with the "library"
+  function (see Section 8.98 from the Sollya 7.0 documentation)
+
+For an example, see the file my_j0.c and the comments at the top of it.
+
 
