@@ -148,12 +148,6 @@ static __attribute__((noinline)) double as_tanpi_database(double x, double f){
   }
   double sgn = 1;
   if(p^(ix.u>>63)) sgn = -1; // select proper sign
-  if(e<-54) { // arguments near zero have worst cases scaled by 2^n
-    b64u64_u a = {.u = (uint64_t)((int64_t)1023 - (54 + e))<<52},
-            ia = {.u = (uint64_t)((int64_t)1023 + (54 + e))<<52};
-    ax *= a.f;
-    sgn *= ia.f;
-  }
   int a = 0, b = sizeof(db)/sizeof(db[0]) - 1, m = (a + b)/2;
   while (a <= b) { // binary search
     if (db[m][0] < ax)
@@ -335,7 +329,7 @@ double cr_tanpi(double x){
     if(__builtin_expect(ax==0, 0)) return x;
     const double pi0 = 0x1.921fb54442d18p+1, pi1 = 0x1.1a62633145c07p-53;
     if(__builtin_expect(ax<((uint64_t)0x3ca<<52), 0)) { // |x| < 0x1p-53
-      if(__builtin_expect(ax<((uint64_t)0x36<<52), 0)) { // |x| < 0x1p-969
+      if(__builtin_expect(ax<((uint64_t)0x6b<<52), 0)) { // |x| < 0x1p-916
 	int32_t e = ax>>52;
 	b64u64_u sc = {.u = (uint64_t)((int64_t)2045-e)<<52},
                 isc = {.u = (uint64_t)((int64_t)1+e)<<52};
@@ -356,7 +350,7 @@ double cr_tanpi(double x){
 	  v0b += tl;
 	  return v0b*isc.f - o;
 	}
-      } else { // 0x1p-969 <= |x| < 0x1p-53
+      } else { // 0x1p-916 <= |x| < 0x1p-53
 	th = mulddd(pi0, pi1, x, &tl);
 	res = th;
       }
