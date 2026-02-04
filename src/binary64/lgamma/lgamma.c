@@ -905,7 +905,8 @@ double cr_lgamma(double x){
   unsigned au = nx>>38;
   double fh, fl, eps;
   if(au < ubrd[0]){ // |x|<0.5
-    signgam = 1 - 2*(t.u>>63);
+
+    signgam = 1 - 2*(int)(t.u>>63);
     double ll, lh = as_logd(__builtin_fabs(x), &ll);
     if(au<0x1da0000){ // |x|<0x1p-75
       fh = -lh;

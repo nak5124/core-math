@@ -149,8 +149,8 @@ static __attribute__((noinline)) double as_tanpi_database(double x, double f){
   double sgn = 1;
   if(p^(ix.u>>63)) sgn = -1; // select proper sign
   if(e<-54) { // arguments near zero have worst cases scaled by 2^n
-    b64u64_u a = {.f = ((int64_t)1023 - (54 + e))<<52},
-            ia = {.f = ((int64_t)1023 + (54 + e))<<52};
+    b64u64_u a = {.u = (uint64_t)((int64_t)1023 - (54 + e))<<52},
+            ia = {.u = (uint64_t)((int64_t)1023 + (54 + e))<<52};
     ax *= a.f;
     sgn *= ia.f;
   }
@@ -337,8 +337,8 @@ double cr_tanpi(double x){
     if(__builtin_expect(ax<((uint64_t)0x3ca<<52), 0)) { // |x| < 0x1p-53
       if(__builtin_expect(ax<((uint64_t)0x36<<52), 0)) { // |x| < 0x1p-969
 	int32_t e = ax>>52;
-	b64u64_u sc = {.u = ((int64_t)2045-e)<<52},
-                isc = {.u = ((int64_t)1+e)<<52};
+	b64u64_u sc = {.u = (uint64_t)((int64_t)2045-e)<<52},
+                isc = {.u = (uint64_t)((int64_t)1+e)<<52};
 	double z = x * sc.f;
 	th = mulddd(pi0, pi1, z, &tl);
 	res = th * isc.f;
