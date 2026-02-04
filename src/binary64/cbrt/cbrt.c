@@ -42,7 +42,7 @@ SOFTWARE.
 // fegetexceptflag accesses the FPSR register, which seems to be much slower
 // than accessing FPCR, so it should be avoided if possible.
 // Adapted from sse2neon: https://github.com/DLTcollab/sse2neon
-#if (defined(__arm64__) || defined(_M_ARM64)) && !defined(__aarch64__)
+#if defined(__arm64__) || defined(_M_ARM64) || defined(__aarch64__)
 #if defined(_MSC_VER)
 #include <arm64intr.h>
 #endif
@@ -58,7 +58,7 @@ typedef struct
   uint32_t res3;
 } fpcr_bitfield;
 
-inline static unsigned int _mm_getcsr(void)
+inline static unsigned int get_arm_rounding_mode(void)
 {
   union
   {
@@ -71,21 +71,29 @@ inline static unsigned int _mm_getcsr(void)
 #else
   __asm__ __volatile__("mrs %0, FPCR" : "=r"(r.value));
 #endif
-  static const unsigned int lut[2][2] = {{0x0000, 0x2000}, {0x4000, 0x6000}};
-  return lut[r.field.bit22][r.field.bit23];
+  static const unsigned int lut[2][2] = {{FE_TONEAREST, FE_UPWARD}, {FE_DOWNWARD, FE_TOWARDZERO}};
+  return lut[r.field.bit23][r.field.bit22];
 }
-#endif  // (defined(__arm64__) || defined(_M_ARM64)) && !defined(__aarch64__)
+#endif  // defined(__arm64__) || defined(_M_ARM64)) || defined(__aarch64__)
 
 static inline int get_rounding_mode (fexcept_t *flagp)
 {
-  /* Warning: on __aarch64__ (for example cfarm103), FE_UPWARD=0x400000
-     instead of 0x800. */
-#if (defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)) && !defined(__aarch64__)
+  unsigned int mode;
+#if defined(__x86_64__)
   *flagp = _mm_getcsr ();
-  return ((*flagp)>>13) & 3;
+  #if defined(__WIN32__) || defined(__WIN64__)
+    mode = (*flagp & _MM_ROUND_MASK)>>5;
+  #else
+    mode = (*flagp & _MM_ROUND_MASK)>>3;
+  #endif
+#elif defined(__arm64__) || defined(_M_ARM64) || defined(__aarch64__)
+  fegetexceptflag (flagp, FE_ALL_EXCEPT);
+  mode = get_arm_rounding_mode();
 #else
   fegetexceptflag (flagp, FE_ALL_EXCEPT);
-  switch (fegetround ())
+  mode = fegetround ();
+#endif
+  switch (mode)
   {
   case FE_TONEAREST:
     return 0;
@@ -96,12 +104,11 @@ static inline int get_rounding_mode (fexcept_t *flagp)
   }
   // case FE_TOWARDZERO:
   return 3;
-#endif
 }
 
 static inline void set_flags (const fexcept_t *flagp)
 {
-#if (defined(__x86_64__) || defined(__arm64__) || defined(_M_ARM64)) && !defined(__aarch64__)
+#if defined(__x86_64__)
   _mm_setcsr (*flagp);
 #else
   fesetexceptflag (flagp, FE_ALL_EXCEPT);
