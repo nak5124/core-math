@@ -295,7 +295,7 @@ check (double x)
     printf ("Spurious divbyzero exception for x=%la (y=%la)\n", x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
@@ -305,7 +305,7 @@ check (double x)
     printf ("Missing divbyzero exception for x=%la (y=%la)\n", x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
@@ -320,7 +320,7 @@ check (double x)
     printf ("Spurious invalid exception for x=%la (y=%la)\n", x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
@@ -332,7 +332,7 @@ check (double x)
     printf ("Missing invalid exception for x=%la (y=%la)\n", x, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
@@ -478,7 +478,7 @@ check (double x)
 }
 
 void
-doloop(void)
+doloop(int rescale)
 {
   double *items;
   int count, tests = 0, failures = 0;
@@ -495,10 +495,24 @@ doloop(void)
       failures ++;
 #ifdef WORST_SYMMETRIC
     tests ++;
-    x = -x;
-    if (check (x))
+    if (check (-x))
       failures ++;
 #endif
+    if(rescale){
+      d64u64 t = {.f = x};
+      if( (int)(((t.i>>52)&0x7ff)-1023) == rescale){
+	while ( (x*=0.5) != 0.0) {
+	  tests ++;
+	  if (check (x))
+	    failures ++;
+#ifdef WORST_SYMMETRIC
+	  tests ++;
+	  if (check (-x))
+	    failures ++;
+#endif
+	}
+      }
+    }
   }
 
   free(items);
@@ -621,6 +635,7 @@ check_signaling_nan (void)
 int
 main (int argc, char *argv[])
 {
+  int rescale = 0;
   while (argc >= 2)
     {
       if (strcmp (argv[1], "--rndn") == 0)
@@ -647,6 +662,15 @@ main (int argc, char *argv[])
           argc --;
           argv ++;
         }
+      else if (strcmp (argv[1], "--rescale") == 0)
+        {
+          argc --;
+          argv ++;
+
+	  rescale = atoi(argv[1]); // scale the selected binade to zero
+          argc --;
+          argv ++;
+        }
       else
         {
           fprintf (stderr, "Error, unknown option %s\n", argv[1]);
@@ -656,7 +680,7 @@ main (int argc, char *argv[])
 
   check_underflow_before ();
 
-  doloop();
+  doloop(rescale);
 
   check_signaling_nan ();
 }
