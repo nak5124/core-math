@@ -1002,10 +1002,10 @@ exp_1 (double *eh, double *el, double rh, double rl, double s, int bug) {
 #define RHO3 0x1.62e4316ea5df9p+9
 
   // use !(rh <= RHO2) instead of rh < RHO2 to catch rh = NaN too
-  /* Section 7.12.17 from the C standard (N3220) says: "Relational operators
-     may raise the "invalid" floating-point exception when argument
-     values are NaNs" */
-  if (__builtin_expect(!(rh <= RHO2), 0)) {
+  if (__builtin_expect(rh != rh || rh > RHO2, 0)) {
+    /* Section 7.12.17 from the C standard (N3220) says: "Relational operators
+       may raise the "invalid" floating-point exception when argument
+       values are NaNs" */
     if (bug) printf ("1006 invalid=%d\n", fetestexcept (FE_INVALID));
     if (rh > RHO3) {
       if (bug) printf ("1008 invalid=%d\n", fetestexcept (FE_INVALID));
