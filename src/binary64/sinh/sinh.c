@@ -303,6 +303,10 @@ double cr_sinh(double x){
 #endif
 	return __builtin_copysign(0x1p1023, x)*2.0;
       }
+  // now 0.25 <= |x| < 710.47586
+  /* checked exhaustively with/without FMA:
+   * 0.25 <= |x| < 0.5
+   */
   int64_t il = ((u64)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
   int64_t j1 = jl&0x3f, j0 = (jl>>6)&0x3f, je = jl>>12;
