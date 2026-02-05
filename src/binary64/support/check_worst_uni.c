@@ -501,7 +501,7 @@ doloop(int rescale)
     if(rescale){
       d64u64 t = {.f = x};
       if( (int)(((t.i>>52)&0x7ff)-1023) == rescale){
-	while ( (x*=0.5) != 0.0) {
+	while ( (x*=0.5) > 0x0.0000000000001p-1022) {
 	  tests ++;
 	  if (check (x))
 	    failures ++;
