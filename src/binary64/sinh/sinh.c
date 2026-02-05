@@ -342,6 +342,7 @@ double cr_sinh(double x){
       if(ml<=16 || eh-el>103) return as_sinh_database(x, th);
       return th;
     }
+    // now 5 < |x| < 36.736801
     double q0h = t0[j0][1], q1h = t1[j1][1], qh = q0h*q1h;
     th *= sp.f;
     tl *= sp.f;
@@ -358,9 +359,9 @@ double cr_sinh(double x){
     if(lb == ub) return lb;
 
     th = as_exp_accurate( ax, t, th, tl, &tl);
-    if(__builtin_expect(aix>0x403f666666666666ull, 0)){
+    if(__builtin_expect(aix>0x403f666666666666ull, 0)){ // |x| > 31.4
       rh = th - qh; rl = ((th - rh) - qh) + tl;
-    } else {
+    } else { // 5 < |x| <= 31.4
       qh = q0h*q1h;
       double q0l = t0[j0][0], q1l = t1[j1][0];
       double ql = q0h*q1l + q1h*q0l + __builtin_fma(q0h,q1h,-qh);
@@ -369,7 +370,7 @@ double cr_sinh(double x){
       qh = as_exp_accurate(-ax,-t, qh, ql, &ql);
       rh = th - qh; rl = (((th - rh) - qh) - ql) + tl;
     }
-  } else {
+  } else { // 0.25 <= |x| <= 5
     double q0h = t0[j0][1], q0l = t0[j0][0];
     double q1h = t1[j1][1], q1l = t1[j1][0];
     double qh = q0h*q1h, ql = q0h*q1l + q1h*q0l + __builtin_fma(q0h,q1h,-qh);
@@ -398,6 +399,7 @@ double cr_sinh(double x){
   rh *= __builtin_copysign(1, x);
   rl *= __builtin_copysign(1, x);
   rh += rl;
+  // fails with ml<=14 and ul.u + 7 above with x=0x1.c13876341b62ep-1 and rndz
   if(__builtin_expect(ml<=16 || eh-el>103, 0)) return as_sinh_database(x, rh);
   return rh;
 }
