@@ -961,7 +961,7 @@ exp_1 (double *eh, double *el, double rh, double rl, double s) {
 #define RHO2 0x1.62e42e709a95bp+9
 #define RHO3 0x1.62e4316ea5df9p+9
 
-  // use !(rh <= RHO2) instead of rh < RHO2 to catch rh = NaN too
+  // use !(rh <= RHO2) instead of rh > RHO2 to catch rh = NaN too
   if (__builtin_expect(!(rh <= RHO2), 0)) {
     if (rh > RHO3) {
       /* If rh > RHO3, we are sure there is overflow,
