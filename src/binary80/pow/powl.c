@@ -108,7 +108,9 @@ static inline int get_rounding_mode (void)
     #if FE_UPWARD == 0x0200
       return _MM_GET_ROUNDING_MODE()>>5;
     #elif FE_UPWARD == 0x0100
-      return _MM_GET_ROUNDING_MODE()>>3;
+      // Lookup table used to eliminate branches.
+      static const unsigned lut[4] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
+      return lut[_MM_GET_ROUNDING_MODE()>>13];
     #else
       #warning The floating point rounding constants have an unknown value. A slower path will be taken.
       return fegetround();
