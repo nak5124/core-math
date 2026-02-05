@@ -101,7 +101,18 @@ static inline int get_rounding_mode (void)
 {
 #if defined(__x86_64__)
   #if defined(__WIN32__) || defined(__WIN64__)
-    return _MM_GET_ROUNDING_MODE()>>5;
+    // Windows 10 14393 swapped FE_UPWARD and FE_DOWNWARD.
+    // Before: FE_UPWARD = 0x0100, FE_DOWNWARD = 0x0200
+    // After:  FE_UPWARD = 0x0200, FE_DOWNWARD = 0x0100
+    // The amount we need to shift changes depending on the value.
+    #if FE_UPWARD == 0x0200
+      return _MM_GET_ROUNDING_MODE()>>5;
+    #elif FE_UPWARD == 0x0100
+      return _MM_GET_ROUNDING_MODE()>>3;
+    #else
+      #warning The floating point rounding constants have an unknown value. A slower path will be taken.
+      return fegetround();
+    #endif
   #else
     return _MM_GET_ROUNDING_MODE()>>3;
   #endif
