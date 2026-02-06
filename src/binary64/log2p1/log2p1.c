@@ -37,7 +37,6 @@ SOFTWARE.
 #include <errno.h>
 #include "dint_log2p1.h"
 
-
 /*
   Approximation tables
 */
@@ -1872,12 +1871,15 @@ cr_log2p1_fast (double *h, double *l, double x, int e, d64u64 v)
   if (e < -5) /* e <= -6 thus |x| < 2^-5 */
   {
     double lo;
-    if (e <= -969)
+    if (e <= -962)
     {
-      /* then |x| might be as small as 2^-969, thus h=x/log(2) might in the
-         binade [2^-969,2^-968), with ulp(h) = 2^-1021, and if |l| < ulp(h),
-         then l.ulp() might be smaller than 2^-1074. We defer that case to
-         the accurate path. */
+      /* For e <= -969, |x| might be as small as 2^-969, thus h=x/log(2) might
+         be in the binade [2^-969,2^-968), with ulp(h) = 2^-1021, and if
+         |l| < ulp(h), then l.ulp() might be smaller than 2^-1074. We defer
+         that case to the accurate path.
+         Moreover, for e <= -962, the computation 0x1.d4p-62 * *h of the
+         error term below might produce a spurious underflow. We also defer
+         that case to the accurate path. */
       *h = *l = 0;
       return 1;
     }
