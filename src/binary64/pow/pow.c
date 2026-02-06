@@ -1243,7 +1243,7 @@ exact_pow (double *r, double x, double y, const dint64_t *z,
       int64_t g = (int64_t) G;
       pow2(r, g);
 #ifdef CORE_MATH_SUPPORT_ERRNO
-      if (g >= 1024)
+      if (g >= 1024 || g <= -1075)
         errno = ERANGE;
 #endif
       return 1;
@@ -1489,6 +1489,7 @@ is_exact (double x, double y)
 // Correctly rounded power function
 double cr_pow (double x, double y) {
   double s = 1.0; /* sign of the result */
+  double x0 = x; // original value of x
 
   f64_u _x = {.f = x};
   f64_u _y = {.f = y};
@@ -1873,7 +1874,7 @@ double cr_pow (double x, double y) {
   // Detect rounding boundary cases
   double e;
 
-  if (exact_pow (&e, x, y, &R, exact))
+  if (exact_pow (&e, x0, y, &R, exact))
     return e;
 #endif /* ENABLE_EXACT */
 #endif /* ENABLE_ZIV2 */
