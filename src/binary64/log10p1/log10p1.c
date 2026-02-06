@@ -1292,7 +1292,7 @@ cr_log10p1_fast (double *h, double *l, double x, int e, d64u64 v)
   if (e < -5) /* e <= -6 thus |x| < 2^-5 */
   {
     double lo;
-    if (e <= -957)
+    if (e <= -953)
     {
       /* for e <= -968, |x| might be as small as 2^-968, thus h=x/log(10)
          might be in the binade [2^-970,2^-969), with ulp(h) = 2^-1022, and
@@ -1303,7 +1303,7 @@ cr_log10p1_fast (double *h, double *l, double x, int e, d64u64 v)
          might yield a spurious underflow. We also defer this case
          to the accurate path.
          In addition some spurious underflow might happen in the d_mul()
-         call for e<=-957. */
+         call for e <= -953. */
       *h = *l = 0;
       return 1;
     }
