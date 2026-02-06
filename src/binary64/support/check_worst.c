@@ -385,7 +385,6 @@ check (testcase ts)
 #endif
   }
 
-#if 0
   // check spurious/missing invalid exception
   if (fetestexcept (FE_INVALID) && !mpfr_flags_test (MPFR_FLAGS_NAN))
   {
@@ -536,7 +535,6 @@ check (testcase ts)
     exit(1);
 #endif
   }
-#endif
 }
 
 void

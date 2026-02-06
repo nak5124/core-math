@@ -989,8 +989,7 @@ static void log_3 (qint64_t *r, qint64_t *x) {
    where s=-1 can only happen when x < 0 and y is an integer.
 */
 static inline void
-exp_1 (double *eh, double *el, double rh, double rl, double s, int bug) {
-  if (bug) printf ("993 invalid=%d rh=%la rl=%la\n", fetestexcept (FE_INVALID), rh, rl);
+exp_1 (double *eh, double *el, double rh, double rl, double s) {
 #define RHO0 -0x1.74910ee4e8a27p+9
 // #define RHO1 -0x1.577453f1799a6p+9
 /* We increase the initial value of RHO1 to avoid spurious underflow in
@@ -1006,10 +1005,8 @@ exp_1 (double *eh, double *el, double rh, double rl, double s, int bug) {
      values are NaNs". We thus first check rh != rh to detect NaNs,
      hoping this will not raise invalid. */
   if (__builtin_expect(rh != rh || rh > RHO2, 0)) {
-    if (bug) printf ("1006 invalid=%d\n", fetestexcept (FE_INVALID));
     // again, first check rh == rh to detect NaNs
     if (rh == rh && rh > RHO3) {
-      if (bug) printf ("1008 invalid=%d\n", fetestexcept (FE_INVALID));
       /* If rh > RHO3, we are sure there is overflow,
          For s=1 we return eh = el = DBL_MAX, which yields
          res_min = res_max = +Inf for rounding up or to nearest,
@@ -1025,14 +1022,12 @@ exp_1 (double *eh, double *el, double rh, double rl, double s, int bug) {
       *eh = 0x1.fffffffffffffp+1023 * s;
       *el = 0x1.fffffffffffffp+1023 * s;
     }
-    else {
-      if (bug) printf ("1025 invalid=%d\n", fetestexcept (FE_INVALID));
+    else
       /* If RHO2 < rh <= RHO3, we are in the intermediate region
          where there might be overflow or not, thus we set eh = el = NaN,
          which will set res_min = res_max = NaN, the comparison
          res_min == res_max will fail: we defer to the 2nd phase. */
       *eh = *el = NAN;
-    }
     return;
   }
 
@@ -1536,8 +1531,6 @@ is_exact (double x, double y)
 
 // Correctly rounded power function
 double cr_pow (double x, double y) {
-  int bug = x == 0x1.fffffffffffffp-1 && y == 0x0.0000000000001p-1022;
-  if (bug) printf ("enter cr_pow invalid=%d\n", fetestexcept (FE_INVALID));
   double s = 1.0; /* sign of the result */
 
   f64_u _x = {.f = x};
@@ -1755,7 +1748,6 @@ double cr_pow (double x, double y) {
 
   // approximate log(x)
   int cancel = log_1 (&lh, &ll, x);
-  if (bug) printf ("1750 invalid=%d\n", fetestexcept (FE_INVALID));
 
   /* We should avoid a spurious underflow/overflow in y*log(x).
      Underflow: for x<>1, the smallest absolute value of log(x) is obtained
@@ -1771,7 +1763,6 @@ double cr_pow (double x, double y) {
   // approximate y * log(x)
   double rh, rl;
   s_mul (&rh, &rl, y, lh, ll);
-  if (bug) printf ("1766 invalid=%d\n", fetestexcept (FE_INVALID));
 
   /* We prove in Lemma 5 from reference [5] that if the exact product y*lh
      satisfies 2^-969 <= |y*lh| <= 709.7827, then 2^-970 <= |rh| <= 709.79,
@@ -1783,8 +1774,7 @@ double cr_pow (double x, double y) {
      and  emul = 2^-57.580 if 1/sqrt(2) < x < sqrt(2)
   */
 
-  exp_1 (&res_h, &res_l, rh, rl, s, bug); /* 1 <= res_h < 2 */
-  if (bug) printf ("1779 invalid=%d\n", fetestexcept (FE_INVALID));
+  exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
   /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
@@ -1842,8 +1832,6 @@ double cr_pow (double x, double y) {
 
   uint64_t rd; // used in the 2nd and 3rd phases
 
-  if (bug) printf ("line 1837 invalid=%d\n", fetestexcept (FE_INVALID));
-
 // Second iteration of rounding
 #if ENABLE_ZIV2 > 0
   dint64_t X, Y;
@@ -1878,8 +1866,6 @@ double cr_pow (double x, double y) {
   // Rounding test
 
   // 2^R.ex <= R < 2^(R.ex+1)
-
-  if (bug) printf ("line 1874 invalid=%d\n", fetestexcept (FE_INVALID));
 
   /* case R < 2^-1075: underflow case */
   if (R.ex < -1075) {
@@ -1922,12 +1908,9 @@ double cr_pow (double x, double y) {
 
   R.sgn = s == -1.0;
 
-  if (rd) {
+  if (rd)
     // dint_tod should deal with underflow/overflow/errno issues
-    if (bug) printf ("line 1919 invalid=%d\n", fetestexcept (FE_INVALID));
     return dint_tod (&R, exact);
-  }
-  if (bug) printf ("line 1922 invalid=%d\n", fetestexcept (FE_INVALID));
 
 #if ENABLE_EXACT > 0
   // Detect rounding boundary cases
@@ -1971,8 +1954,6 @@ double cr_pow (double x, double y) {
      exp(eps3)*(1+eps2)-1 < 2^-240.07.
      This corresponds to an error of at most 2^-240.07*2^256 < 62433 ulps. */
 
-  if (bug) printf ("line 1966 invalid=%d\n", fetestexcept (FE_INVALID));
-
   /* extra rounding test */
 #define ERR_BND_3 60 /* floor(62433/2^10) */
   uint64_t r1 = qZ.hh << 54 | qZ.hl >> 10;
@@ -1986,18 +1967,15 @@ double cr_pow (double x, double y) {
     qZ.sgn = s == -1.0;
     qZ.ll = qZ.ll & (~0ull << 10);
 
-    if (bug) printf ("line 1981 invalid=%d\n", fetestexcept (FE_INVALID));
     return qint_tod (&qZ);
   }
 
   /* We can end up here for x^y very close to 1. For |qR| < 2^-55,
      we have 1-2^-54 < exp(qR) < 1+2^-53, thus exp(qR) rounds either
      to nextbelow(1), to 1 or to nextabove(1). */
-  if (qR.ex < -56) { /* the upper limb h of qR encodes h/2^63, thus a number
+  if (qR.ex < -56) /* the upper limb h of qR encodes h/2^63, thus a number
                       in [1, 2) */
-    if (bug) printf ("line 1990 invalid=%d\n", fetestexcept (FE_INVALID));
     return (qR.sgn == 0x0) ? 1.0 + 0x1p-100 : 1.0 - 0x1p-100;
-  }
 
   printf ("Unexpected worst-case found.\n");
   printf ("Please report to core-math@inria.fr:\n");
