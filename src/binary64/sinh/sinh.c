@@ -299,13 +299,13 @@ double cr_sinh(double x){
   if(__builtin_expect(aix>0x408633ce8fb9f87dull, 0)){ // |x| >~ 710.47586
     if(aix>=0x7ff0000000000000ull) return x + x; // nan Inf
 #ifdef CORE_MATH_SUPPORT_ERRNO
-  errno = ERANGE;
+    errno = ERANGE;
 #endif
-	return __builtin_copysign(0x1p1023, x)*2.0;
-      }
+    return __builtin_copysign(0x1p1023, x)*2.0;
+  }
   // now 0.25 <= |x| < 710.47586
   /* checked exhaustively with/without FMA:
-   * 0.25 <= |x| < 0.5
+   * 0.25 <= x < 0.5
    */
   int64_t il = ((u64)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
