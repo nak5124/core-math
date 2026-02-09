@@ -565,7 +565,7 @@ is_exact_or_midpoint (float x, float y, int *midpoint)
       m |= 0x10000000000000ull;
     else // subnormal numbers
       e++;
-    int t = __builtin_ctzl (m);
+    int t = __builtin_ctzll (m);
     m = m >> t;
     e += t;
     /* For normal numbers, we have 1+x = m*2^e. */
@@ -588,7 +588,7 @@ is_exact_or_midpoint (float x, float y, int *midpoint)
     for (int i = 2; i < y_int; i++)
       my = my * m;
     // my = m^y
-    t = 64 - __builtin_clzl (my);
+    t = 64 - __builtin_clzll (my);
     // 2^(t-1) <= m^y < 2^t thus 2^(e*y + t - 1) <= |(1+x)^y| < 2^(e*y + t)
     int32_t ez = e * y_int + t;
     if (ez <= -149 || 128 < ez)
@@ -614,7 +614,7 @@ is_exact_or_midpoint (float x, float y, int *midpoint)
     m |= 0x10000000000000ull;
   else // subnormal numbers
     e++;
-  t = __builtin_ctzl (m);
+  t = __builtin_ctzll (m);
   m = m >> t;
   e += t;
   // |1+x| = m*2^e with m odd
