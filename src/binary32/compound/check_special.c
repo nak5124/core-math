@@ -242,7 +242,6 @@ check (float x, float y)
   {
     printf ("Spurious inexact exception for x,y=%a,%a\n", x, y);
     fflush (stdout);
-    failures ++;
 #ifndef DO_NOT_ABORT
     exit(1);
 #endif
@@ -251,7 +250,6 @@ check (float x, float y)
   {
     printf ("Missing inexact exception for x,y=%a,%a\n", x, y);
     fflush (stdout);
-    failures ++;
 #ifndef DO_NOT_ABORT
     exit(1);
 #endif
