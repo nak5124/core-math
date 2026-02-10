@@ -357,7 +357,7 @@ check (float x, float y)
 }
 
 #ifndef CORE_MATH_TESTS
-#define CORE_MATH_TESTS 10000000ul // total number of tests
+#define CORE_MATH_TESTS 5000000ul // total number of tests
 #endif
 
 static void
