@@ -80,6 +80,17 @@ get_random (void)
   return v.f;
 }
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
+/* define our own is_inf function to avoid depending from math.h */
+static inline int
+is_inf (float x)
+{
+  uint32_t u = asuint (x);
+  int e = u >> 23;
+  return (e == 0xff || e == 0x1ff) && (u << 9) == 0;
+}
+#endif
+
 /* define our own is_nan function to avoid depending from math.h */
 static inline int
 is_nan (float x)
