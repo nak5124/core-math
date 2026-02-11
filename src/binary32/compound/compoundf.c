@@ -802,6 +802,13 @@ static float exp2_2 (double h, double l, float x, float y, int exact,
       || (res == 0x1p-126f && v.f <= 0x1.fffffep-127) // RNDN or RNDU
       || (res == 0x1p-126f && v.f < 0x1.ffffffp-127 && 1.0 - tiny == 1.0 + tiny))
     errno = ERANGE; // underflow
+  /* we have overflow:
+   * for RNDZ/RNDD when v.f >= 0x1p128 (then res = 0x1.fffffep+127)
+   * for RNDN when v.f >= 0x1.ffffffp+127 (then res = Inf)
+   * for RNDU when v.f > 0x1.fffffep+127 (then res = Inf)
+   */
+  if (res > 0x1.fffffep+127f || v.f >= 0x1p128)
+    errno = ERANGE; // overflow
 #endif
   return res; // convert to float
 }
