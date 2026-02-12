@@ -370,7 +370,12 @@ double cr_log1p(double x){
     } else {
       rs.u -= (i64)1021<<52;
       static const double sc[] = {0x1p-1, 0x1p-2, 0x1p-3};
-      rs.f *= sc[je-1022];
+      /* Erik Enikeev suggested to replace rs.f *= sc[je-1022], which causes
+         issues on platforms with FTZ (flush-to-zero) but without DAZ
+         (denormals are zero) */
+      // rs.f *= sc[je-1022];
+      t.f *= sc[je-1022];
+      dt.f *= sc[je-1022];
     }
     double dh = rs.f*t.f, dl = __builtin_fma(rs.f,t.f,-dh) + rs.f*dt.f;
     double xl, xh = fasttwosum(dh-1.0, dl, &xl), x2 = xh*xh;
