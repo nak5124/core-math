@@ -200,6 +200,11 @@ static double poly3(double d, unsigned imax, const double ch[], unsigned jmax, c
 
 static __attribute__((noinline)) double as_tgamma_database(double x, double f){
   static const double db[][3] = {
+    // NOTE: The first entry of the db table contains a subnormal value.
+    // This can lead to incorrect computations on non-IEEE-754-compliant
+    // platforms with DAZ (denormals are zero), as the value will be flushed
+    // to zero before the addition. Therefore, this case must be handled
+    // separately on such platforms.
     {-0x1.48ba8e27d09adp+7, -0x1.0b34f909c5c92p-976, 0x0.01p-1022},
     {-0x1.1fe464bbe8b7ap+7, 0x1.f6e94380a86bfp-826, 0x1p-880},
     {-0x1.dfe438a574b34p+6, 0x1.e0efc1ffa409ep-656, 0x1p-710},
