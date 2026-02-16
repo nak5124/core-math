@@ -279,7 +279,7 @@ double cr_sinh(double x){
   u64 aix = ix.u;
   if(__builtin_expect(aix<0x3fd0000000000000ull, 0)){ // |x| < 0x1p-2
     if(__builtin_expect(aix<0x3e57137449123ef7ull, 0)) {
-      // |x| < 0x1.7137449123ef7p-26
+      // |x| < x0 = 0x1.7137449123ef7p-26
       /* We have underflow exactly when 0 < |x| < 2^-1022:
          for RNDU, sinh(2^-1022-2^-1074) would round to 2^-1022-2^-1075
          with unbounded exponent range */
@@ -289,10 +289,16 @@ double cr_sinh(double x){
 #endif
       return __builtin_fma(x,0x1p-55,x);
     }
+    /* x + p where p = c[0]*x^3 + c[1]*x^5 + c[2]*x^7 + c[3]*x^9 + c[4]*x^11
+       is a minimax approximation of sinh(x) on [x0,1/4] with relative error
+       less than 2^-60.509 */
     static const double c[] =
-      {0x1.5555555555555p-3, 0x1.1111111111087p-7, 0x1.a01a01a12e1c3p-13, 0x1.71de2e415aa36p-19, 0x1.aed2bff4269e6p-26};
-    double x2 = x*x, x3 = x2*x, x4 = x2*x2, p = x3*((c[0] + x2*c[1]) + x4*((c[2] + x2*c[3]) + x4*c[4]));
-    double e = x3*0x1.9p-53, lb = x + (p - e), ub = x + (p + e);
+      {0x1.5555555555555p-3, 0x1.1111111111087p-7, 0x1.a01a01a12e1c3p-13,
+       0x1.71de2e415aa36p-19, 0x1.aed2bff4269e6p-26};
+    double x2 = x*x, x3 = x2*x, x4 = x2*x2,
+      p = x3*((c[0] + x2*c[1]) + x4*((c[2] + x2*c[3]) + x4*c[4]));
+    // fails with e = x3*0x1.5p-53 and x=0x1.71c5b3515d069p-8 (rndz, no fma)
+    double e = x3*0x1.ep-53, lb = x + (p - e), ub = x + (p + e);
     if(lb == ub) return lb;
     return as_sinh_zero(x);
   }
@@ -305,7 +311,7 @@ double cr_sinh(double x){
   }
   // now 0.25 <= |x| < 710.47586
   /* checked exhaustively with/without FMA:
-   * 0.25 <= x < 1
+   * 0.25 <= x < 4
    */
   int64_t il = ((u64)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
