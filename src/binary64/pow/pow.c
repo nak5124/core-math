@@ -1785,7 +1785,7 @@ double cr_pow (double x, double y) {
   }
 
   if (y == 0.5)
-    return sqrt (x);
+    return __builtin_sqrt (x);
 
   if (y == 0.0)
     return 1.0;

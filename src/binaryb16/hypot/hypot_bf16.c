@@ -43,7 +43,7 @@ __bf16 cr_hypot_bf16(__bf16 x, __bf16 y){
   /* we cast the inputs to double precision, since float is not enough,
      for example with x,y=nan,0x1p-133 we would get a spurious inexact
      exception */
-  double z = sqrt (tx.f * tx.f + ty.f * ty.f);
+  double z = __builtin_sqrt (tx.f * tx.f + ty.f * ty.f);
   __bf16 ret = z;
 #ifdef CORE_MATH_SUPPORT_ERRNO
   /* there is underflow for z < 0x1p-126 for rndz/rndd,

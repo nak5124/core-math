@@ -42,7 +42,7 @@ typedef union {double f; uint64_t u;} b64u64_u;
 _Float16 cr_hypotf16(_Float16 x, _Float16 y){
   b64u64_u tx = {.f = x};
   b64u64_u ty = {.f = y};
-  double ret = sqrt(tx.f * tx.f + ty.f * ty.f);
+  double ret = __builtin_sqrt(tx.f * tx.f + ty.f * ty.f);
 #ifdef CORE_MATH_SUPPORT_ERRNO
   int rnd = fegetround();
   if (rnd == FE_TONEAREST) { // rounding mode is rndn
