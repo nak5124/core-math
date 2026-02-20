@@ -519,116 +519,126 @@ doloop(int rescale)
   printf("%d tests passed, %d failure(s)\n", tests, failures);
 }
 
-/* check for signaling NaN input */
+/* check for NaN input */
 static void
 check_signaling_nan (void)
 {
+  uint64_t s[] = {0x7ff0000000000001ull, 0x7ff8000000000001ull};
   feclearexcept (FE_INVALID);
-  double snan = asfloat64 (0x7ff0000000000001ull);
-  double y = cr_function_under_test (snan);
-  // check that foo(NaN) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%"PRIx64"\n",
-             y, asuint64 (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (is_signaling (y))
-  {
-    fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
-             asuint64 (y));
-    exit (1);
-  }
-  // check the invalid exception was set
-  int flag = fetestexcept (FE_INVALID);
-  if(!flag)
-  {
-    printf ("Missing invalid exception for x=sNaN\n");
+  double y;
+  int flag;
+
+  // check signaling NaN
+  for (unsigned long i = 0; i < sizeof(s)/sizeof(uint64_t); i++) {
+    double snan = asfloat64 (s[i]);
+    y = cr_function_under_test (snan);
+    // check that foo(NaN) = NaN
+    if (!is_nan (y))
+    {
+      fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%"PRIx64"\n",
+               y, asuint64 (y));
+      exit (1);
+    }
+    // check that the signaling bit disappeared
+    if (is_signaling (y))
+    {
+      fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
+               asuint64 (y));
+      exit (1);
+    }
+    // check the invalid exception was set
+    flag = fetestexcept (FE_INVALID);
+    if(!flag)
+    {
+      printf ("Missing invalid exception for x=sNaN\n");
 #ifndef DO_NOT_ABORT
-    exit (1);
+      exit (1);
 #endif
-  }
-  feclearexcept (FE_INVALID);
-  // check also sNaN with the sign bit set
-  snan = asfloat64 (0xfff0000000000001ull);
-  y = cr_function_under_test (snan);
-  // check that foo(NaN) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(-sNaN) should be NaN, got %la=%"PRIx64"\n",
-             y, asuint64 (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (is_signaling (y))
-  {
-    fprintf (stderr, "Error, foo(-sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
-             asuint64 (y));
-    exit (1);
-  }
-  // check the invalid exception was set
-  flag = fetestexcept (FE_INVALID);
-  if(!flag)
-  {
-    printf ("Missing invalid exception for x=-sNaN\n");
+    }
+    feclearexcept (FE_INVALID);
+    // check also sNaN with the sign bit set
+    snan = asfloat64 (0xfff0000000000001ull);
+    y = cr_function_under_test (snan);
+    // check that foo(NaN) = NaN
+    if (!is_nan (y))
+    {
+      fprintf (stderr, "Error, foo(-sNaN) should be NaN, got %la=%"PRIx64"\n",
+               y, asuint64 (y));
+      exit (1);
+    }
+    // check that the signaling bit disappeared
+    if (is_signaling (y))
+    {
+      fprintf (stderr, "Error, foo(-sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
+               asuint64 (y));
+      exit (1);
+    }
+    // check the invalid exception was set
+    flag = fetestexcept (FE_INVALID);
+    if(!flag)
+    {
+      printf ("Missing invalid exception for x=-sNaN\n");
 #ifndef DO_NOT_ABORT
-    exit (1);
+      exit (1);
 #endif
+    }
   }
 
-  feclearexcept (FE_INVALID);
-  double qnan = asfloat64 (0x7ff8000000000000ull);
-  y = cr_function_under_test (qnan);
-  // check that foo(NaN) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(qNaN) should be NaN, got %la=%"PRIx64"\n",
-             y, asuint64 (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (is_signaling (y))
-  {
-    fprintf (stderr, "Error, foo(qNaN) should be qNaN, got sNaN=%"PRIx64"\n",
-             asuint64 (y));
-    exit (1);
-  }
-  // check the invalid exception was not set
-  flag = fetestexcept (FE_INVALID);
-  if(flag)
-  {
-    printf ("Spurious invalid exception for x=qNaN\n");
+ uint64_t t[] = {0x7ff8000000000000ull, 0x7ff8000000000001ull};
+  for (unsigned long i = 0; i < sizeof(s)/sizeof(uint64_t); i++) {
+    feclearexcept (FE_INVALID);
+    double qnan = asfloat64 (t[i]);
+    y = cr_function_under_test (qnan);
+    // check that foo(NaN) = NaN
+    if (!is_nan (y))
+    {
+      fprintf (stderr, "Error, foo(qNaN) should be NaN, got %la=%"PRIx64"\n",
+               y, asuint64 (y));
+      exit (1);
+    }
+    // check that the signaling bit disappeared
+    if (is_signaling (y))
+    {
+      fprintf (stderr, "Error, foo(qNaN) should be qNaN, got sNaN=%"PRIx64"\n",
+               asuint64 (y));
+      exit (1);
+    }
+    // check the invalid exception was not set
+    flag = fetestexcept (FE_INVALID);
+    if(flag)
+    {
+      printf ("Spurious invalid exception for x=qNaN[0x%lx]\n", t[i]);
 #ifndef DO_NOT_ABORT
-    exit (1);
+      exit (1);
 #endif
-  }
-  feclearexcept (FE_INVALID);
-  // check also qNaN with the sign bit set
-  qnan = asfloat64 (0xfff8000000000000ull);
-  y = cr_function_under_test (qnan);
-  // check that foo(NaN) = NaN
-  if (!is_nan (y))
-  {
-    fprintf (stderr, "Error, foo(-qNaN) should be NaN, got %la=%"PRIx64"\n",
-             y, asuint64 (y));
-    exit (1);
-  }
-  // check that the signaling bit disappeared
-  if (is_signaling (y))
-  {
-    fprintf (stderr, "Error, foo(-qNaN) should be qNaN, got sNaN=%"PRIx64"\n",
-             asuint64 (y));
-    exit (1);
-  }
-  // check the invalid exception was not set
-  flag = fetestexcept (FE_INVALID);
-  if(flag)
-  {
-    printf ("Spurious invalid exception for x=qNaN\n");
+    }
+    feclearexcept (FE_INVALID);
+    // check also qNaN with the sign bit set
+    qnan = asfloat64 (0xfff8000000000000ull);
+    y = cr_function_under_test (qnan);
+    // check that foo(NaN) = NaN
+    if (!is_nan (y))
+    {
+      fprintf (stderr, "Error, foo(-qNaN) should be NaN, got %la=%"PRIx64"\n",
+               y, asuint64 (y));
+      exit (1);
+    }
+    // check that the signaling bit disappeared
+    if (is_signaling (y))
+    {
+      fprintf (stderr, "Error, foo(-qNaN) should be qNaN, got sNaN=%"PRIx64"\n",
+               asuint64 (y));
+      exit (1);
+    }
+    // check the invalid exception was not set
+    flag = fetestexcept (FE_INVALID);
+    if(flag)
+    {
+      printf ("Spurious invalid exception for x=qNaN\n");
 #ifndef DO_NOT_ABORT
-    exit (1);
+      exit (1);
 #endif
+    }
   }
 }
 
