@@ -340,7 +340,8 @@ double cr_exp(double x){
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE; // underflow
 #endif
-      return 0x1.8p-1022 * 0x1p-55;
+      volatile double z = 0x1p-1022;
+      return z * z;
     }
   }
   const double s = 0x1.71547652b82fep+12;
