@@ -2038,7 +2038,7 @@ cr_sin (double x)
 #ifdef CORE_MATH_SUPPORT_ERRNO
         errno = EDOM;
 #endif
-        return 0.0 / 0.0;
+        return x - x; // raises invalid
       }
       return x + x;
     }
