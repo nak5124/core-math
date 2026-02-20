@@ -414708,3 +414708,6 @@ inf,-0x1.000002p+125
 0x1.030f1p+0,0x1.c7ce78p+12
 0x1.02d018p+0,-0x1.bc0e3ap+12
 0x1.02e224p+0,0x1.eb03e2p+12
+# added test for spurious divbyzero exception
+# https://sympa.inria.fr/sympa/arc/core-math/2026-02/msg00032.html
+2,inf
