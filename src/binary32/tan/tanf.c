@@ -26,7 +26,9 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <fenv.h> // for feraiseexcept, FE_INVALID
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 
 // Warning: clang also defines __GNUC__
 #if defined(__GNUC__) && !defined(__clang__)

@@ -44,7 +44,9 @@ SOFTWARE.
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include "function_under_test.h"
 
 #ifndef CORE_MATH_TESTS

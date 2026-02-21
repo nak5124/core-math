@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <fenv.h> // for fexcept_t, fegetexceptflag, FE_INEXACT
 #include <math.h> // only used during performance tests
 

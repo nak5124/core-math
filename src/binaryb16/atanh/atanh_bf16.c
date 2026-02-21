@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <math.h> // only used to define atanh_bf16()
 
 // Warning: clang also defines __GNUC__

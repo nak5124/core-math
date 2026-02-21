@@ -24,7 +24,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <fenv.h> // for FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, feraiseexcept...
 #include <stdint.h>
 

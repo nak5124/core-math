@@ -25,7 +25,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <fenv.h> // for fegetround, FE_UPWARD, FE_TONEAREST
 
 // Warning: clang also defines __GNUC__

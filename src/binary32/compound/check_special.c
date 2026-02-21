@@ -33,7 +33,9 @@ SOFTWARE.
 #include <mpfr.h>
 #include <math.h>
 #include <assert.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif

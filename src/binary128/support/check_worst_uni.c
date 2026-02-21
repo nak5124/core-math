@@ -34,7 +34,9 @@ SOFTWARE.
 #include <string.h>
 #include <fenv.h>
 #include <getopt.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <math.h>
 #include <ctype.h>
 #include <quadmath.h>

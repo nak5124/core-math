@@ -37,7 +37,9 @@ SOFTWARE.
 
 #include <stdint.h>
 #include <stdbool.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 
 #include "expl_tables.h"
 #include "tint.h"

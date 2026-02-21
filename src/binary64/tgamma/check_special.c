@@ -35,7 +35,9 @@ SOFTWARE.
 #include <assert.h>
 #include <mpfr.h>
 #include <inttypes.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <omp.h>
 #include "function_under_test.h"
 

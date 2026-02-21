@@ -32,7 +32,9 @@ SOFTWARE.
    "specific tgamma_bf16". */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <math.h> // only used in performance test
 
 // Warning: clang also defines __GNUC__

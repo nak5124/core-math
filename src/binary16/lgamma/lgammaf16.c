@@ -32,7 +32,9 @@ SOFTWARE.
    "specific lgammaf16". */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <math.h> // for signgam
 #include <limits.h>
 

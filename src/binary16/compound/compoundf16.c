@@ -41,7 +41,9 @@ SOFTWARE.
 */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <math.h> // needed to define compoundf since it is not in glibc
 #include <fenv.h> // for fexcept_t, fegetexceptflag, FE_INEXACT, ...
 #define FLAG_T fexcept_t

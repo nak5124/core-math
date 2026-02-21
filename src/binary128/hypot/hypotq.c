@@ -26,7 +26,9 @@ SOFTWARE.
 
 #define _GNU_SOURCE /* to define ...f128 functions */
 
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <fenv.h> // for FE_INVALID, FE_INEXACT, FE_OVERFLOW, FE_UNDERFLOW
 #include <stdint.h>
 #include <math.h>

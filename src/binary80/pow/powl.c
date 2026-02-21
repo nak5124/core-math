@@ -38,7 +38,9 @@ SOFTWARE.
 #include <stdint.h>
 #include <fenv.h> // for FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, ...
 #include <stdbool.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 
 #ifndef CORE_MATH_FAIL_QUIET
 #include <stdio.h> // needed in case of unexpected worst case

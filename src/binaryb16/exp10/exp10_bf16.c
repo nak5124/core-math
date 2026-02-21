@@ -26,7 +26,9 @@ SOFTWARE.
 
 #define _GNU_SOURCE // needed to define exp10f
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <math.h> // only used during performance tests
 
 // Warning: clang also defines __GNUC__

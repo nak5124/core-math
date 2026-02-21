@@ -32,7 +32,9 @@ SOFTWARE.
    "specific erfcf16". */
 
 #include <stdint.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #include <math.h> // only used for performance tests
 
 // Warning: clang also defines __GNUC__

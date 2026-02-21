@@ -33,7 +33,9 @@ SOFTWARE.
 #include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
+#ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
+#endif
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
