@@ -255,7 +255,9 @@ check (float x, float y)
 #endif
   fesetround(rnd1[rnd]);
   feclearexcept (FE_INEXACT | FE_UNDERFLOW | FE_OVERFLOW | FE_DIVBYZERO | FE_INVALID);
+#ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
+#endif
   float z2 = cr_function_under_test(x, y);
 #ifdef CORE_MATH_CHECK_INEXACT
   int inex2 = fetestexcept (FE_INEXACT);
