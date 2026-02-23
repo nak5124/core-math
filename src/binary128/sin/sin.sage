@@ -1,6 +1,6 @@
 # generate worst cases with sin(x) near +1/-1
 def wc(out):
-   prec = 64
+   prec = 113
    f = open(out,"w")
    R = RealField(prec)
    for e in [0..16384]:
@@ -12,7 +12,7 @@ def wc(out):
          # q*u ~ p*pi/2
          if q.nbits()>prec:
             break
-         if is_even(p): # if p is even, then cos(q*u) is near 1 or -1
+         if is_odd(p): # if p is odd, then sin(q*u) is near 1 or -1
             bestq = q
       if bestq != 0:
          x = R(bestq*u)

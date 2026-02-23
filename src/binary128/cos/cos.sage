@@ -1,6 +1,6 @@
 # generate worst cases with sin(x) near +1/-1
 def wc(out):
-   prec = 64
+   prec = 113
    f = open(out,"w")
    R = RealField(prec)
    for e in [0..16384]:
