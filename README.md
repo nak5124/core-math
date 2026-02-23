@@ -163,3 +163,11 @@ For efficiency, some CORE-MATH routines directly play with the fenv.h macros
 different values under different operating systems, or even between different
 versions of the same operating system (for example, Windows 10 version 14393
 swapped the values of FE_UPWARD and FE_DOWNWARD). This might yield failures.
+
+CORE-MATH assumes all floating-point operations are done with the target
+precision (FLT_EVAL_METHOD=0 in the C standard).
+On x86 32-bit platforms, you might have FLT_EVAL_METHOD=2 by default,
+with computations done in double-extended precision using the x87 coprocessor.
+To disable this, you might have to add -fexcess-precision=standard
+(for gcc) to ensure the compiler performs internal computations in double
+precision (and not in extended double precision).
