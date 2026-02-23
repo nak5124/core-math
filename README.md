@@ -171,3 +171,7 @@ with computations done in double-extended precision using the x87 coprocessor.
 To disable this, you might have to add -fexcess-precision=standard
 (for gcc) to ensure the compiler performs internal computations in double
 precision (and not in extended double precision).
+
+Another issue with 32-bit platforms is that some of them miss support
+for __uint128_t or _BitInt(128). The functions using these types are
+thus not available.
