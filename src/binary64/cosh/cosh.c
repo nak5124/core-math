@@ -268,6 +268,7 @@ double cr_cosh(double x){
   }
 
   // now 0.125 <= |x| <= 0x1.633ce8fb9f87dp+9
+  // exhaustive test: Vincenzo on [0.125, 0.25)
   int64_t il = ((uint64_t)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
   int64_t j1 = jl&0x3f, j0 = (jl>>6)&0x3f, je = jl>>12;
