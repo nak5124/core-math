@@ -78,7 +78,7 @@ double rand_arg(double s){
 static int check (double x){
   b64u64_u yr = {.f = rfun(x)}, yt = {.f = tfun(x)};
   if (yr.u != yt.u) {
-    printf ("test_fun and ref_fun differ for x=%a\n", x);
+    printf ("FAIL: test_fun and ref_fun differ for x=%a\n", x);
     printf ("test_fun gives %a\n", yt.f);
     printf (" ref_fun gives %a\n", yr.f);
     return -1;

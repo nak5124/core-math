@@ -114,7 +114,7 @@ static int check (double x){
 #pragma omp atomic update
   tested ++;
   if (yr.u != yt.u) {
-    printf("test_fun and ref_fun differ for x=%a\n", x);
+    printf("FAIL: test_fun and ref_fun differ for x=%a\n", x);
     printf("test_fun gives %a\n", yt.f);
     printf(" ref_fun gives %a\n", yr.f);
     return -1;
