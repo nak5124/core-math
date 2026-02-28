@@ -290,7 +290,7 @@ double cr_cosh(double x){
       sp.u = (1021 + ie)<<52;
       rh = th;
       rl = tl + th*pp;
-      double e = 0.11e-18*th, lb = rh + (rl - e), ub = rh + (rl + e);
+      double e = 0.12e-18*th, lb = rh + (rl - e), ub = rh + (rl + e);
       if(lb == ub) return (lb*sp.f)*2;
 
       th = as_exp_accurate(ax, t, th, tl, &tl);
@@ -315,7 +315,7 @@ double cr_cosh(double x){
     rh = th;
     rl = (tl + em) + th*pp;
 
-    double e = 0.117e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
+    double e = 0.122e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
     // fails with e = 0.091e-18*rh and x=0x1.4173941572a71p+2 (rndz)
     if(lb == ub) return lb;
 
@@ -346,7 +346,7 @@ double cr_cosh(double x){
 
     rh = fph + fmh;
     rl = ((fph - rh) + fmh) + fml + fpl;
-    double e = 0.33e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
+    double e = 0.38e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
     // fails with e = 0.076e-18*rh and x=0x1.c334ce55f09f7p+1 (rndu)
     if(lb == ub) return lb;
     th = as_exp_accurate( ax, t, th, tl, &tl);
