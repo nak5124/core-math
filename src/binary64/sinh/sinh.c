@@ -313,9 +313,9 @@ double cr_sinh(double x){
   }
   // now 0.25 <= |x| < 710.47586
   /* checked exhaustively with/without FMA:
-   * 0.25 <= x < 32
-   * 32 <= x < 64: explor
-   * 64 <= x < 128: done
+   * 0.25 <= x < 256
+   * 256 <= x < 512: nancy
+   * 512 <= x < asinh(2^1024): explor
    */
   int64_t il = ((u64)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;

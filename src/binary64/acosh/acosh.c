@@ -230,7 +230,9 @@ double cr_acosh(double x){
     double z = 1/(x*x);
     g = cl[0] + z*(cl[1] + z*cl[2]);
   } else if(ix.u<0x41ea000000000000ull){ // 0x1.01p+15 <= x < 0x1.ap+31
-    // 0x1.01p+15 <= x < 2^16: nancy
+    /* tested exhaustively (revision d764c73) with/without FMA:
+       0x1.01p+15 <= x < 2^16
+    */
     static const double cl[] = {0x1.7a0ed2effdd1p-67, -0x1.000000017d048p-2};
     double z = 1/(x*x);
     g = cl[0] + z*cl[1];
