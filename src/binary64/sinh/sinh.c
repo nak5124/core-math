@@ -291,16 +291,16 @@ double cr_sinh(double x){
 #endif
       return __builtin_fma(x,0x1p-55,x);
     }
-    /* x + p where p = c[0]*x^3 + c[1]*x^5 + c[2]*x^7 + c[3]*x^9 + c[4]*x^11
-       is a minimax approximation of sinh(x) on [x0,1/4] with relative error
-       less than 2^-60.509 */
+    /* With p = c[0]*x^3 + c[1]*x^5 + c[2]*x^7 + c[3]*x^9 + c[4]*x^11,
+       q = x + p is a minimax approximation of sinh(x) on [x0,1/4] such that
+       |q - sinh(x)|/x^3 < 2^-56.5839 */
     static const double c[] =
-      {0x1.5555555555555p-3, 0x1.1111111111087p-7, 0x1.a01a01a12e1c3p-13,
-       0x1.71de2e415aa36p-19, 0x1.aed2bff4269e6p-26};
+      {0x1.5555555555555p-3, 0x1.111111111151ep-7, 0x1.a01a019d0c767p-13,
+       0x1.71de444a96e11p-19, 0x1.ae8465375242p-26};
     double x2 = x*x, x3 = x2*x, x4 = x2*x2,
       p = x3*((c[0] + x2*c[1]) + x4*((c[2] + x2*c[3]) + x4*c[4]));
     // fails with e = x3*0x1.5p-53 and x=0x1.71c5b3515d069p-8 (rndz, no fma)
-    double e = x3*0x1.ep-53, lb = x + (p - e), ub = x + (p + e);
+    double e = x3*0x2.1p-53, lb = x + (p - e), ub = x + (p + e);
     if(lb == ub) return lb;
     return as_sinh_zero(x);
   }
@@ -312,11 +312,7 @@ double cr_sinh(double x){
     return __builtin_copysign(0x1p1023, x)*2.0;
   }
   // now 0.25 <= |x| < 710.47586
-  /* checked exhaustively with/without FMA:
-   * 0.25 <= x < 256
-   * 256 <= x < 512: nancy
-   * 512 <= x < asinh(2^1024): explor
-   */
+  // this branch was checked exhaustively with/without FMA
   int64_t il = ((u64)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
   int64_t j1 = jl&0x3f, j0 = (jl>>6)&0x3f, je = jl>>12;

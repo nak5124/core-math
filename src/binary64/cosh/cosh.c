@@ -271,6 +271,7 @@ double cr_cosh(double x){
   /* exhaustive tests:
      Vincenzo on [0.125, 0.25) (done with FMA, done up to 0x1.7d8p-3 without FMA)
      0.25 <= x < 0.5: nancy
+     0.5 <= x < 1: explor
   */
   int64_t il = ((uint64_t)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
