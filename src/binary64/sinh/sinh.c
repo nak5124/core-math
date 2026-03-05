@@ -50,13 +50,13 @@ static inline double fasttwosum(double x, double y, double *e){
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double h = xh*ch;
-  *l = __builtin_fma(xh,ch, -h) + xh*cl + ch*xl;
+  *l = __builtin_fma(xh,ch, -h) + xh*cl + xl*ch;
   return h;
 }
 
 static inline double mulddd(double xh, double xl, double ch, double *l){
   double h = xh*ch;
-  *l = __builtin_fma(xh,ch, -h) + ch*xl;
+  *l = __builtin_fma(xh,ch, -h) + xl*ch;
   return h;
 }
 
