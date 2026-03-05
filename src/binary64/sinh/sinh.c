@@ -1,6 +1,6 @@
 /* Correctly rounded hyperbolic sine for binary64 values.
 
-Copyright (c) 2023-2025 Alexei Sibidanov <sibid@uvic.ca>.
+Copyright (c) 2023-2026 Alexei Sibidanov and Paul Zimmermann.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
