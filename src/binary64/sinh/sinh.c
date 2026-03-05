@@ -49,14 +49,14 @@ static inline double fasttwosum(double x, double y, double *e){
 }
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
-  double h = ch*xh;
-  *l = __builtin_fma(ch,xh, -h) + xh*cl + ch*xl;
+  double h = xh*ch;
+  *l = __builtin_fma(xh,ch, -h) + xh*cl + ch*xl;
   return h;
 }
 
 static inline double mulddd(double xh, double xl, double ch, double *l){
-  double h = ch*xh;
-  *l = __builtin_fma(ch,xh, -h) + ch*xl;
+  double h = xh*ch;
+  *l = __builtin_fma(xh,ch, -h) + ch*xl;
   return h;
 }
 
