@@ -1,9 +1,10 @@
 #!/bin/bash
 # https://libc.llvm.org/headers/math/index.html#higher-math-functions
 # update 10 Dec 2025
+# asinpif acospif added 9 Mar 2026
 
 if [ "$FORCE" != "" ]; then
-   FLOAT_FUNS=(acos acosh asin asinh atan atan2 atanh cbrt cos cosh cospi erf exp exp10 exp10m1 exp2 exp2m1 expm1 hypot log log10 log1p log2 pow rsqrt sin sincos sinh sinpi tan tanh tanpi)
+   FLOAT_FUNS=(acos acosh asin asinh atan atan2 atanh cbrt cos cosh cospi erf exp exp10 exp10m1 exp2 exp2m1 expm1 hypot log log10 log1p log2 pow rsqrt sin sincos sinh sinpi tan tanh tanpi asinpi acospi)
 else
    # disable by default binary32 functions since exhaustive test is long
    FLOAT_FUNS=""
