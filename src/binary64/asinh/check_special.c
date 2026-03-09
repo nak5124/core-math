@@ -45,7 +45,7 @@ SOFTWARE.
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <errno.h> // always needed due to strtoll call
+#include <errno.h> // always needed for strtoll call
 #include <mpfr.h>
 #include "function_under_test.h"
 
