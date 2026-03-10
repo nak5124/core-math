@@ -21,6 +21,11 @@ else
 fi
 
 FUN="${!#}"
+FUN_LIBM=$FUN
+# CORE_MATH_STD_NAME=... overrides the LIBM name
+if ! [[ -z $CORE_MATH_STD_NAME ]]; then
+   FUN_LIBM=$CORE_MATH_STD_NAME
+fi
 ARGS=("${@:1:$#-1}")
 
 MODES=()
@@ -101,7 +106,7 @@ fi
 
 
 has_symbol () {
-    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$FUN" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
+    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$FUN_LIBM" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
 }
 
 if [[ -n "$LIBM" ]] && ! has_symbol; then
