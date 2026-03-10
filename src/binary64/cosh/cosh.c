@@ -154,7 +154,7 @@ double cr_cosh(double x){
     cosh(x)~1+x^2*P(x^2) for |x|<0.125. For other arguments the
     identity cosh(x)=(exp(|x|)+exp(-|x|))/2 is used. For |x|<5 both
     exponents are calculated with slightly higher precision than
-    double. For 5<|x|<36.736801 the exp(-|x|) is rather small and is
+    double. For 5<|x|<36.736801, exp(-|x|) is rather small and is
     calculated with double precision but exp(|x|) is calculated with
     higher than double precision. For 36.736801<|x|<710.47586
     exp(-|x|) becomes too small and only exp(|x|) is calculated.
@@ -247,11 +247,20 @@ double cr_cosh(double x){
   if(__builtin_expect(aix<0x3fc0000000000000ull, 0)){ // |x| < 0.125
     if(__builtin_expect(aix<0x3e50000000000000ull, 0)) // |x| < 0x1p-26
       return __builtin_fma(ax,0x1p-55,1);
+    /* q(x) = 1 + c0*x^2 + c1*x^4 + c2*x^6 + c3*x^8 + c4*x^10 is a degree-10
+       polynomial approximating cosh(x) on [2^-26, 0.125] such that:
+       |q(x) - cosh(x)| < 2^-67.518 * x^2.
+       This polynomial was generated with the following Sollya command:
+       d = [2^-26,0.125];
+       q=1+x^2*fpminimax((cosh(x)-1)/x^2, [|0,2,4,6,8|], [|53...|], d, absolute);
+    */
     static const double c[] = {
-      0x1p-1, 0x1.555555555554ep-5, 0x1.6c16c16c26737p-10, 0x1.a019ffbbcdbdap-16, 0x1.27ffe2df106cbp-22};
-    double x2 = x*x, x4 = x2*x2, p = x2*((c[0] + x2*c[1]) + x4*((c[2] + x2*c[3]) + x4*c[4]));
-    // failure with e = x2*(2.82*0x1p-53) and x=0x1.02f8f4ed3ecbp-12 (RNDU)
-    double e = x2*(4*0x1p-53), lb = 1 + (p - e), ub = 1 + (p + e);
+      0x1p-1, 0x1.5555555555554p-5, 0x1.6c16c16c1d0cp-10,
+      0x1.a01a0075066b4p-16, 0x1.27faff8dcc1c8p-22};
+    double x2 = x*x, x4 = x2*x2, p = x2*((c[0] + x2*c[1])
+                                         + x4*((c[2] + x2*c[3]) + x4*c[4]));
+    // fails with e = x2*(0x1.c8p-52), x=0x1.0f0a7d6ea89ep-14 (rndu, no FMA)
+    double e = x2*(0x2.00p-52), lb = 1 + (p - e), ub = 1 + (p + e);
     if(lb == ub) return lb;
     return as_cosh_zero(x);
   }
@@ -270,8 +279,9 @@ double cr_cosh(double x){
   // now 0.125 <= |x| <= 0x1.633ce8fb9f87dp+9
   /* exhaustive tests:
      Vincenzo on [0.125, 0.25) (done with FMA, done up to 0x1.7d8p-3 without FMA)
-     0.25 <= x < 0.5: nancy
+     0.25 <= x < 0.5: done
      0.5 <= x < 1: explor
+     1 <= x <= 2: nancy
   */
   int64_t il = ((uint64_t)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
