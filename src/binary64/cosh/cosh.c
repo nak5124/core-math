@@ -57,7 +57,9 @@ static inline double muldd(double xh, double xl, double ch, double cl, double *l
 
 static inline double polydd(double xh, double xl, int n, const double c[][2], double *l){
   int i = n-1;
-  double ch = c[i][0] + *l, cl = ((c[i][0] - ch) + *l) + c[i][1], e;
+  double ch, cl, e;
+  ch = fasttwosum (c[i][0], *l, &cl);
+  cl += c[i][1];
   while(--i>=0){
     ch = muldd(xh, xl, ch, cl, &cl);
     ch = fasttwosum(c[i][0], ch, &e);
@@ -87,11 +89,16 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x, double t,
 
 static double __attribute__((noinline)) as_cosh_zero(double x){
   static const double ch[][2] = {
-    {0x1p-1, -0x1.c7e8db669f624p-111}, {0x1.5555555555555p-5, 0x1.5555555556135p-59},
-    {0x1.6c16c16c16c17p-10, -0x1.f49f4a6e838f2p-65}, {0x1.a01a01a01a01ap-16, 0x1.a4ffbe15316aap-76}};
-  static const double cl[] = {0x1.27e4fb7789f5cp-22, 0x1.1eed8eff9089cp-29, 0x1.939749ce13dadp-37, 0x1.ae9891efb6691p-45};
+    {0x1p-1, -0x1.c7e8db669f624p-111},               // degree 2
+    {0x1.5555555555555p-5, 0x1.5555555556135p-59},   // degree 4
+    {0x1.6c16c16c16c17p-10, -0x1.f49f4a6e838f2p-65}, // degree 6
+    {0x1.a01a01a01a01ap-16, 0x1.a4ffbe15316aap-76}}; // degree 8
+  static const double cl[] = {0x1.27e4fb7789f5cp-22, // degree 10
+                              0x1.1eed8eff9089cp-29, // degree 12
+                              0x1.939749ce13dadp-37, // degree 14
+                              0x1.ae9891efb6691p-45}; // degree 16
   double x2 = x*x , x2l = __builtin_fma(x, x,-x2);
-  double y2 = x2 * (cl[0] + x2 * (cl[1] + x2 * (cl[2] + x2 * (cl[3]))));
+  double y2 = x2 * (cl[0] + x2 * (cl[1] + x2 * (cl[2] + x2 * cl[3])));
   double y1 = polydd(x2, x2l, 4, ch, &y2);
   y1 = muldd(y1, y2, x2, x2l, &y2);
   double y0 = fasttwosum(1.0, y1, &y1);
@@ -260,7 +267,7 @@ double cr_cosh(double x){
     double x2 = x*x, x4 = x2*x2, p = x2*((c[0] + x2*c[1])
                                          + x4*((c[2] + x2*c[3]) + x4*c[4]));
     // fails with e = x2*(0x1.c8p-52), x=0x1.0f0a7d6ea89ep-14 (rndu, no FMA)
-    double e = x2*(0x2.00p-52), lb = 1 + (p - e), ub = 1 + (p + e);
+    double e = x2*0x1.84p-51, lb = 1 + (p - e), ub = 1 + (p + e);
     if(lb == ub) return lb;
     return as_cosh_zero(x);
   }
