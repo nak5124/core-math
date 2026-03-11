@@ -286,9 +286,10 @@ double cr_cosh(double x){
   // now 0.125 <= |x| <= 0x1.633ce8fb9f87dp+9
   /* exhaustive tests:
      Vincenzo on [0.125, 0.25) (done with FMA, done up to 0x1.7d8p-3 without FMA)
-     0.25 <= x < 0.5: done
-     0.5 <= x < 1: explor
-     1 <= x <= 2: nancy
+     0.25 <= x < 2: done
+     2 <= x < 4: nancy (gr10)
+     4 <= x < 8: nancy
+     8 <= x < 16: explor
   */
   int64_t il = ((uint64_t)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
@@ -333,8 +334,8 @@ double cr_cosh(double x){
     rh = th;
     rl = (tl + em) + th*pp;
 
-    double e = 0.122e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
-    // fails with e = 0.091e-18*rh and x=0x1.4173941572a71p+2 (rndz)
+    double e = 0x1.202p-63*rh, lb = rh + (rl - e), ub = rh + (rl + e);
+    // fails with e = 0x1.afbp-64*rh and x=0x1.4173941572a71p+2 (rndz)
     if(lb == ub) return lb;
 
     th = as_exp_accurate( ax, t, th, tl, &tl);
@@ -364,8 +365,8 @@ double cr_cosh(double x){
 
     rh = fph + fmh;
     rl = ((fph - rh) + fmh) + fml + fpl;
-    double e = 0.38e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
-    // fails with e = 0.076e-18*rh and x=0x1.c334ce55f09f7p+1 (rndu)
+    double e = 0x1.c0ap-62*rh, lb = rh + (rl - e), ub = rh + (rl + e);
+    // fails with e = 0x1.855p-64*rh and x=0x1.dbf464fbc8795p+0 (rndz, no fma)
     if(lb == ub) return lb;
     th = as_exp_accurate( ax, t, th, tl, &tl);
     qh = as_exp_accurate(-ax,-t, qh, ql, &ql);
