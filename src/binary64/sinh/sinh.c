@@ -335,7 +335,7 @@ double cr_sinh(double x){
       rl = tl + th*pp;
       rh *= __builtin_copysign(1, x);
       rl *= __builtin_copysign(1, x);
-      double e = 0.12e-18*th, lb = rh + (rl - e), ub = rh + (rl + e);
+      double e = 0x1.1b6p-63*th, lb = rh + (rl - e), ub = rh + (rl + e);
       if(lb == ub) return (lb*sp.f)*2;
 
       th = as_exp_accurate(ax, t, th, tl, &tl);
@@ -362,8 +362,8 @@ double cr_sinh(double x){
 
     rh *= __builtin_copysign(1, x);
     rl *= __builtin_copysign(1, x);
-    // fails with e = 0.1162e-18*rh and x=0x1.4059050000564p+2 (rndz, no fma)
-    double e = 0.122e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
+    // fails with e = 0x1.1dbp-63*rh and x=0x1.4971fd7b64137p+2 (rndz, no fma)
+    double e = 0x1.202p-63*rh, lb = rh + (rl - e), ub = rh + (rl + e);
     if(lb == ub) return lb;
 
     th = as_exp_accurate( ax, t, th, tl, &tl);
@@ -394,7 +394,7 @@ double cr_sinh(double x){
     rl = ((fph - rh) - fmh) - fml + fpl;
     rh *= __builtin_copysign(1, x);
     rl *= __builtin_copysign(1, x);
-    double e = 0.38e-18*rh, lb = rh + (rl - e), ub = rh + (rl + e);
+    double e = 0x1.c0ap-62*rh, lb = rh + (rl - e), ub = rh + (rl + e);
     if(lb == ub) return lb;
     th = as_exp_accurate( ax, t, th, tl, &tl);
     qh = as_exp_accurate(-ax,-t, qh, ql, &ql);
