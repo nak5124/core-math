@@ -127,7 +127,9 @@ if [ "$CFLAGS" == "" ]; then
       export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -fhonor-nans -ftrapping-math"
    elif [ "$CC" == "icx" ]; then
       # icx needs -fp-model=precise and doesn't like -fsignaling-nans
-      export CFLAGS="-fp-model=precise -O3 -march=native -Wshadow -fno-finite-math-only -frounding-math"
+      # icx supports #pragma STDC FENV_ACCESS ON thus -frounding-math
+      # is not needed
+      export CFLAGS="-fp-model=precise -O3 -march=native -Wshadow -fno-finite-math-only"
    elif [[ $MACHINE == ppc64* ]]; then
       # -march=native is not supported by gcc 14 on ppc64le
       export CFLAGS="-O3 -mcpu=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans"
