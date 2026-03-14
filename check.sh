@@ -122,7 +122,9 @@ if [ "$CFLAGS" == "" ]; then
       # -fhonor-nans is needed to disable warnings about __builtin_nan()
       # (https://clang.llvm.org/docs/DiagnosticsReference.html#wnan-infinity-disabled)
       # clang does not define trapping-math by default
-      export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -fhonor-nans -ftrapping-math"
+      # clang supports #pragma STDC FENV_ACCESS ON thus -frounding-math
+      # is not needed
+      export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -fhonor-nans -ftrapping-math"
    elif [ "$CC" == "icx" ]; then
       # icx needs -fp-model=precise and doesn't like -fsignaling-nans
       export CFLAGS="-fp-model=precise -O3 -march=native -Wshadow -fno-finite-math-only -frounding-math"
@@ -131,6 +133,8 @@ if [ "$CFLAGS" == "" ]; then
       export CFLAGS="-O3 -mcpu=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans"
    else
       # gcc defines trapping-math by default
+      # we need -frounding-math because #pragma STDC FENV_ACCESS ON is not
+      # supported: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
       export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans"
    fi
    unset MACHINE
