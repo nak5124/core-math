@@ -139,9 +139,10 @@ if [ "$CFLAGS" == "" ]; then
    CFLAGS="-O3 -march=native"
    ROUNDING_MATH="-frounding-math"
    if [ "$CC" == "icx" ]; then
-      # for icx we need to add -fp-model=strict for full IEEE 754 support
-      # and we don't need -frounding-math (which does slow down acoshf for example)
-      CFLAGS="-O3 -fp-model=strict"
+      # for icx we add -fp-model=precise for full IEEE 754 support
+      # we don't need -frounding-math (which does slow down acoshf for example)
+      # see check.sh for more details about CFLAGS
+      CFLAGS="-O3 -fp-model=precise"
       ROUNDING_MATH=
    fi
 fi
