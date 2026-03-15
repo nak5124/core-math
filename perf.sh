@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Usage: ./perf.sh acos
+# To link statically to GNU libc, say installed in /tmp:
+# EXTRA_CFLAGS=-I/tmp/include LDFLAGS="-L/tmp/lib -static" ./perf.sh acosf
 
 set -e
 
