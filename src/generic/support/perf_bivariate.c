@@ -68,4 +68,6 @@ function_type_under_test function_under_test;
 #endif
 #define CALL_THROUGHPUT(i) (p_function_under_test(randoms[2 * i], randoms[2 * i + 1]))
 
+#define CORE_MATH_BIVARIATE
+
 #include "perf_common.h"

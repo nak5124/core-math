@@ -1,5 +1,3 @@
-#define CORE_MATH_BIVARIATE
-
 static inline TYPE_UNDER_TEST random_under_test_0 (void)
 {
   /* 
