@@ -494,9 +494,9 @@ static int doloop (void)
   // check regular numbers
   uint32_t nmin = asuint (0x0p0f), nmax = asuint (0x1.fffffep+127f);
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-  /* Use a static schedule with small chunks, since the function might be
+  /* Use a dynamic schedule with small chunks, since the function might be
      very easy to evaluate in some ranges, for example log of x < 0. */
-#pragma omp parallel for schedule(static,1024)
+#pragma omp parallel for schedule(dynamic,4096)
 #endif
   for (uint32_t n = nmin; n <= nmax; n++)
   {
