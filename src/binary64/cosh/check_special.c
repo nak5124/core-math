@@ -202,8 +202,9 @@ static void scan_consecutive_aux(int64_t n, double x){
   while (n) {
     double h, l, d, dd;
     dd_cosh (&h, &l, x);
-    d = sqrt (h * h - 1); // derivative sinh(x) = sqrt(cosh(x)^2-1)
     dd = fabs (h); // absolute value of 2nd derivative
+    // derivative sinh(x) = sqrt(cosh(x)^2-1)
+    d = dd > 0x1p53 ? h : sqrt (h * h - 1);
     int e;
     frexp (x, &e);
     /* 2^(e-1) <= |x| < 2^e thus ulp(x) = 2^(e-53) */

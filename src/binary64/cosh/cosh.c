@@ -286,11 +286,9 @@ double cr_cosh(double x){
   // now 0.125 <= |x| <= 0x1.633ce8fb9f87dp+9
   /* exhaustive tests:
      Vincenzo on [0.125, 0.25) (done with FMA, done up to 0x1.7d8p-3 without FMA)
-     0.25 <= x < 4: done
-     4 <= x < 8: nancy
-     8 <= x < 16: explor
-     16 <= x < 32: done
-     32 <= x < 64: nancy (gr10)
+     0.25 <= x < 256: done
+     256 <= x < 512: explor
+     512 <= x < 710.475860073944: nancy
   */
   int64_t il = ((uint64_t)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
