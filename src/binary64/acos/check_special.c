@@ -33,6 +33,9 @@ SOFTWARE.
 #include <float.h> // for DBL_MAX
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
+#include <mpfr.h>
+#include "function_under_test.h"
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
 #endif
@@ -47,22 +50,30 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 
 int rnd = 0;
 int verbose = 0;
+unsigned long tested = 0;
 
 #define MAX_THREADS 192
 
 static unsigned int Seed[MAX_THREADS];
+
+static inline double tfun(double x){
+  return cr_function_under_test(x);
+}
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static inline uint64_t
 asuint64 (double f)
 {
-  union
-  {
-    double f;
-    uint64_t i;
-  } u = {f};
-  return u.i;
+  b64u64_u u = {.f = f};
+  return u.u;
+}
+
+static inline double
+asfloat64 (uint64_t i)
+{
+  b64u64_u u = {.u = i};
+  return u.f;
 }
 
 static double
@@ -78,6 +89,8 @@ get_random (int tid)
 static void
 check (double x)
 {
+#pragma omp atomic update
+  tested ++;
   double y1 = ref_acos (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_acos (x);
@@ -110,9 +123,87 @@ check_near (double x)
   }
 }
 
+// put in h+l a double-double approximation of acos(x)
+static void
+dd_acos (double *h, double *l, double x)
+{
+  mpfr_t t;
+  mpfr_init2 (t, 107);
+  mpfr_set_d (t, x, MPFR_RNDN);
+  mpfr_acos (t, t, MPFR_RNDN);
+  *h = mpfr_get_d (t, MPFR_RNDN);
+  mpfr_sub_d (t, t, *h, MPFR_RNDN);
+  *l = mpfr_get_d (t, MPFR_RNDN);
+  mpfr_clear (t);
+}
+
+static void scan_consecutive_aux(int64_t n, double x){
+  ref_init();
+  ref_fesetround(rnd);
+  fesetround(rnd1[rnd]);
+  assert (n > 0);
+  while (n) {
+    double h, l, d, dd;
+    dd_acos (&h, &l, x);
+    d = -1.0 / sqrt (1.0 - x * x); // derivative of acos(x)
+    dd = fabs (d * x / (1.0 - x * x)); // absolute value of 2nd derivative
+    int e;
+    frexp (x, &e);
+    /* 2^(e-1) <= |x| < 2^e thus ulp(x) = 2^(e-53) */
+    d = ldexp (d, e - 53); // multiply d by ulp(x)
+    dd = ldexp (dd, 2 * (e - 53)); // multiply dd by ulp(x)^2
+    /* we want j^2*dd < 2^-11 ulp(h) so that the 2nd-order term
+       produces an error bounded by 2^-11 ulp(h), to that MPFR
+       will be called with probability about 2^-11.
+       Thus approximately j^2*dd < 2^-64 h,
+       or j < 2^-32 sqrt(h/dd) */
+    int64_t jmax = 0x1p-32 * sqrt (h / dd);
+    if (jmax > n) jmax = n; // cap to n
+    assert (jmax > 0); // ensure progress
+    for(int64_t j=0;j<jmax;j++){
+      b64u64_u v = {.f = x};
+      v.u += j;
+      double t = tfun (v.f);
+      // acosh(x+j*u) is approximated by h + l + j*d
+      double w = h + __builtin_fma (j, d, l);
+      if (t != w) // expensive test
+        check(v.f);
+    }
+    n -= jmax;
+    x += jmax * ldexp (1.0, e - 53);
+  }
+}
+
+static void scan_consecutive (int64_t n, double x){
+  int nthreads = 1;
+  if (n < 0) {
+    n = -n;
+    x = asfloat64 (asuint64 (x) - n);
+  }
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel
+  nthreads = omp_get_num_threads ();
+#endif
+  int64_t h = (n - 1) / nthreads + 1; // ceil(n/nthreads)
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for schedule(static,1)
+#endif
+  for (int i = 0; i < nthreads; i++) {
+    int64_t ni = i * h;
+    double xi = asfloat64 (asuint64 (x) + ni);
+    int64_t hi = (ni + h > n) ? n - ni : h;
+    scan_consecutive_aux (hi, xi);
+  }
+  printf ("checked %lu values, expensive checks %lu\n",
+          (unsigned long) n, tested);
+}
+
 int
 main (int argc, char *argv[])
 {
+  int conseq = 0;      // scan consecutive values
+  double a = 0;        // starting value for scan_consecutive
+  unsigned long C = 0; // length for scan_consecutive
   while (argc >= 2)
     {
       if (strcmp (argv[1], "--rndn") == 0)
@@ -139,6 +230,20 @@ main (int argc, char *argv[])
           argc --;
           argv ++;
         }
+      else if (strcmp (argv[1], "-C") == 0)
+        {
+          conseq = 1;
+          C = strtoul (argv[2], NULL, 0);
+          argc -= 2;
+          argv += 2;
+        }
+      else if (strcmp (argv[1], "-a") == 0)
+        {
+          conseq = 1;
+          a = strtod (argv[2], NULL);
+          argc -= 2;
+          argv += 2;
+        }
       else if (strcmp (argv[1], "--verbose") == 0)
         {
           verbose = 1;
@@ -153,6 +258,11 @@ main (int argc, char *argv[])
     }
   ref_init ();
   ref_fesetround (rnd);
+
+  if (conseq) {
+    scan_consecutive (C, a);
+    return 0;
+  }
 
   printf ("Checking near code thresholds\n");
   check_near (0.75);
