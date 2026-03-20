@@ -512,7 +512,7 @@ extern int signgam;
 
 // check signgam is correctly set
 static void check_signgam (void) {
-  float X[] = { 0.0f/0.0f, -123.0f, -2.5f, -2.0f, 2.0f, 2.5f, 123.0f };
+  float X[] = { 0.0f/0.0f, -123.5f, -2.5f, -1.5f, 2.0f, 2.5f, 123.0f };
   int S[] = { 1, 1, -1, 1, 1, 1, 1 };
   for (unsigned long i = 0; i < sizeof(X)/sizeof(X[0]); i++) {
     signgam = -17;
