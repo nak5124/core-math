@@ -102,6 +102,7 @@ check (double x)
   else
     bug = asuint64 (y1) != asuint64 (y2);
   if (bug)
+#pragma omp critical
   {
     printf ("FAIL x=%la ref=%la z=%la\n", x, y1, y2);
     fflush (stdout);
@@ -159,7 +160,7 @@ static void scan_consecutive_aux(int64_t n, double x){
        or j < 2^-32 sqrt(h/dd) */
     int64_t jmax = 0x1p-32 * sqrt (h / dd);
     if (jmax > n) jmax = n; // cap to n
-    assert (jmax > 0); // ensure progress
+    if (jmax == 0) jmax = 1; // ensure progress
     for(int64_t j=0;j<jmax;j++){
       b64u64_u v = {.f = x};
       v.u += j;
@@ -190,7 +191,9 @@ static void scan_consecutive (int64_t n, double x){
 #endif
   for (int i = 0; i < nthreads; i++) {
     int64_t ni = i * h;
-    double xi = asfloat64 (asuint64 (x) + ni);
+    // Warning: if x < 0, we should subtract ni
+    double xi = (x > 0) ? asfloat64 (asuint64 (x) + ni)
+      : asfloat64 (asuint64 (x) - ni);
     int64_t hi = (ni + h > n) ? n - ni : h;
     scan_consecutive_aux (hi, xi);
   }
