@@ -143,13 +143,22 @@ static void scan_consecutive_aux(int64_t n, double x){
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
   assert (n > 0);
+  /* check that all checked numbers are in the same binade,
+     otherwise the value of ulp() varies */
+  int e, e1;
+  frexp (x, &e);
+  b64u64_u v = {.f = x};
+  v.u = (x > 0) ? v.u + (n - 1) : v.u - (n - 1);
+  frexp (v.f, &e1);
+  if (e1 != e) {
+    fprintf (stderr, "Error, different binades in scan_consecutive\n");
+    exit (1);
+  }
   while (n) {
     double h, l, d, dd;
     dd_acos (&h, &l, x);
     d = -1.0 / sqrt (1.0 - x * x); // derivative of acos(x)
     dd = fabs (d * x / (1.0 - x * x)); // absolute value of 2nd derivative
-    int e;
-    frexp (x, &e);
     /* 2^(e-1) <= |x| < 2^e thus ulp(x) = 2^(e-53) */
     d = ldexp (d, e - 53); // multiply d by ulp(x)
     dd = ldexp (dd, 2 * (e - 53)); // multiply dd by ulp(x)^2
@@ -162,8 +171,9 @@ static void scan_consecutive_aux(int64_t n, double x){
     if (jmax > n) jmax = n; // cap to n
     if (jmax == 0) jmax = 1; // ensure progress
     for(int64_t j=0;j<jmax;j++){
-      b64u64_u v = {.f = x};
-      v.u += j;
+      v.f = x;
+      // for negative numbers, we have to subtract j
+      v.u = (x > 0) ? v.u + j : v.u - j;
       double t = tfun (v.f);
       // acosh(x+j*u) is approximated by h + l + j*d
       double w = h + __builtin_fma (j, d, l);
