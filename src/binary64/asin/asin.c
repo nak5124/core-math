@@ -210,8 +210,8 @@ double cr_asin(double x){
       return 0./0.; // |x|>1
     }
     // for x>0.5 we use range reduction for double angle formula
-    // asin(x) = pi/2 - 2*asin(sqrt((1-x)/2)) and for x<-0.5 acos(x) = pi/2 -
-    // 2*asin(sqrt((1-x)/2))
+    // asin(x) = pi/2 - 2*asin(sqrt((1-x)/2)) and for x<-0.5 acos(x) = -pi/2 +
+    // 2*asin(sqrt((1-|x|)/2))
     t = 2 - 2*__builtin_fabs(x);
     jd = roundeven_finite(t*0x1p5);
     z = __builtin_copysign(__builtin_sqrt(t), -x);
