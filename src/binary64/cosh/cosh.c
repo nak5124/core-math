@@ -288,7 +288,7 @@ double cr_cosh(double x){
      Vincenzo on [0.125, 0.25) (done with FMA, done up to 0x1.7d8p-3 without FMA)
      0.25 <= x < 256: done
      256 <= x < 512: explor
-     512 <= x < 710.475860073944: nancy
+     512 <= x < 710.475860073944: done
   */
   int64_t il = ((uint64_t)jt.u<<14)>>40, jl = -il;
   int64_t i1 = il&0x3f, i0 = (il>>6)&0x3f, ie = il>>12;
