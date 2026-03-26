@@ -168,7 +168,7 @@ main (int argc, char *argv[])
       perror("ftruncate");
       exit(3);
     }
-    TYPE_UNDER_TEST *randoms = mmap(NULL, count * SAMPLE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    TYPE_UNDER_TEST *randoms = mmap(NULL, count * SAMPLE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (randoms == MAP_FAILED) {
       perror("mmap");
       exit(3);
@@ -192,7 +192,7 @@ main (int argc, char *argv[])
       perror("open");
       exit(3);
     }
-    TYPE_UNDER_TEST *mmaped_randoms = mmap(NULL, count * SAMPLE_SIZE, PROT_READ, MAP_SHARED, fd, 0);
+    TYPE_UNDER_TEST *mmaped_randoms = mmap(NULL, count * SAMPLE_SIZE, PROT_READ, MAP_PRIVATE, fd, 0);
     if (mmaped_randoms == MAP_FAILED) {
       perror("mmap");
       exit(3);
