@@ -175,6 +175,9 @@ make -s perf
 # prepare random arguments for performance test
 ./perf --file ${RANDOMS_FILE} --count ${N} --reference
 
+# to check the file is really random
+# hexdump -C ${RANDOMS_FILE}
+
 PERF_ARGS="${PERF_ARGS} --file ${RANDOMS_FILE} --count ${N} --repeat ${M}"
 
 if [ "$CORE_MATH_PERF_MODE" = perf ]; then
