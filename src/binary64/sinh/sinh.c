@@ -295,7 +295,7 @@ double cr_sinh(double x){
     }
     /* With p = c[0]*x^3 + c[1]*x^5 + c[2]*x^7 + c[3]*x^9 + c[4]*x^11,
        q = x + p is a minimax approximation of sinh(x) on [x0,1/4] such that
-       |q - sinh(x)|/x^3 < 2^-56.5839 */
+       |q - sinh(x)|/x^3 < 2^-56.584 */
     static const double c[] =
       {0x1.5555555555555p-3, 0x1.111111111151ep-7, 0x1.a01a019d0c767p-13,
        0x1.71de444a96e11p-19, 0x1.ae8465375242p-26};
