@@ -302,7 +302,7 @@ double cr_sinh(double x){
     double x2 = x*x, x3 = x2*x, x4 = x2*x2,
       p = x3*((c[0] + x2*c[1]) + x4*((c[2] + x2*c[3]) + x4*c[4]));
     // fails with e = x3*0x1.5p-53 and x=0x1.71c5b3515d069p-8 (rndz, no fma)
-    double e = x3*0x2.1p-53, lb = x + (p - e), ub = x + (p + e);
+    double e = x3*0x1.cp-53, lb = x + (p - e), ub = x + (p + e);
     if(lb == ub) return lb;
     return as_sinh_zero(x);
   }
