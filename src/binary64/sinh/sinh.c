@@ -24,6 +24,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* The correctness of this code is proven in this document:
+   The CORE-MATH sinh is correctly rounded,
+   Guillaume Melquiond and Paul Zimmermann,
+   https://core-math.gitlabpages.inria.fr/sinh.pdf, March 2026 */
+
 #include <stdint.h>
 #ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
