@@ -107,8 +107,8 @@ static inline double sum(double xh, double xl, double ch, double cl, double *l){
 }
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
-  double ahhh = ch*xh;
-  *l = (cl*xh + ch*xl) + __builtin_fma(ch, xh, -ahhh);
+  double ahhh = xh*ch;
+  *l = (xh*cl + xl*ch) + __builtin_fma(xh, ch, -ahhh);
   return ahhh;
 }
 
@@ -248,8 +248,8 @@ double cr_acos (double x){
   double fh = c[0], fl = c[1] + d;
   fh = muldd(z,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l, fh,fl, &fl);
-  // fails with 0x1.8bp-52 -> 0x1.7bp-52 for x=0x1.025fa00276153p-1 (no FMA)
-  double eps = __builtin_fabs(z*t)*0x1.7cp-52 + 0x1p-105; // all arguments in [-0x1.1a93e5d11dac2p-1, -0x1.1a86cd0e3b2c2p-1] were checked
+  // fails with 0x1.8bp-52 for x=-0x1.3e827a2cd6d51p-1 (no FMA)
+  double eps = __builtin_fabs(z*t)*0x1.8cp-52 + 0x1p-105; // all arguments in [-0x1.1a93e5d11dac2p-1, -0x1.1a86cd0e3b2c2p-1] were checked
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
   return lb;
