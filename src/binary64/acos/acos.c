@@ -217,7 +217,6 @@ double cr_acos (double x){
     // for x>0.5 we use range reduction for double angle formula
     // acos(x) = 2*asin((1-x)/2) and for x<-0.5 acos(x) = pi -
     // 2*asin((1-x)/2)
-    // exhaustive search in progress: nancy (gr10)
     t = 2 - 2*__builtin_fabs(x);
     jd = roundeven_finite(t*0x1p5);
     z = __builtin_copysign(__builtin_sqrt(t), x);
@@ -240,6 +239,10 @@ double cr_acos (double x){
     z = -x;
     zl = 0;
   }
+  /* exhaustive search:
+     [0.5,1] in progress: nancy (gr10)
+     [-1,-0.5] done (nancy gr20)
+  */
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
   int64_t j = jd;
@@ -250,6 +253,9 @@ double cr_acos (double x){
   fh = fastsum(f0h,f0l, fh,fl, &fl);
   // fails with 0x1.8bp-52 for x=-0x1.3e827a2cd6d51p-1 (no FMA)
   double eps = __builtin_fabs(z*t)*0x1.8cp-52 + 0x1p-105; // all arguments in [-0x1.1a93e5d11dac2p-1, -0x1.1a86cd0e3b2c2p-1] were checked
+  /* 0.25 <= |x| < 0.5: fails with 0x1.3ep-52 and x=-0x1.e4b9d7600a28p-2 */
+  if (0x1p-4 <= __builtin_fabs(x) && __builtin_fabs(x) <= 0.5)
+    eps = __builtin_fabs(z*t)*0x1.3fp-52;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
   return lb;
