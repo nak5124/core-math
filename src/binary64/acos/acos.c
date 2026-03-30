@@ -248,7 +248,8 @@ double cr_acos (double x){
     t = __builtin_fma(x,x,-0x1p-7*jd);
     z = -x;
     zl = 0;
-    eps = __builtin_fabs(z*t)*0x1.8cp-52;
+    // eps < 0 for x > 0, but the rounding test is still correct
+    eps = (z*t)*0x1.8cp-52;
   }
   /* exhaustive search:
      [0.5,1] in progress: nancy (gr10)
