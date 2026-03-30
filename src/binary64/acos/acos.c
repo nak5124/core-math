@@ -222,6 +222,7 @@ double cr_acos (double x){
     z = __builtin_copysign(__builtin_sqrt(t), x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
+    // fails with 0x1.8bp-52 for x=-0x1.3e827a2cd6d51p-1 (no FMA)
     eps = __builtin_fabs(z*t)*0x1.8cp-52 + 0x1p-105;
   } else { // |x|<=0.5
     f0h = 0x1.921fb54442d18p+0;
@@ -249,7 +250,11 @@ double cr_acos (double x){
     z = -x;
     zl = 0;
     // eps < 0 for x > 0, but the rounding test is still correct
-    eps = (z*t)*0x1.8cp-52;
+    /* for |x| < 2^-4 (case j=0), fails with 0x1.d3p-53 and
+       x=0x1.7cb54339263fbp-12;
+       for 2^-4 <= x < 0.5, fails with 0x1.49p-52 and x=0x1.14e4006c1fccdp-2
+       (no FMA) */
+    eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.4ap-52);
   }
   /* exhaustive search:
      [0.5,1] in progress: nancy (gr10)
@@ -263,10 +268,7 @@ double cr_acos (double x){
   double fh = c[0], fl = c[1] + d;
   fh = muldd(z,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l, fh,fl, &fl);
-  // fails with 0x1.8bp-52 for x=-0x1.3e827a2cd6d51p-1 (no FMA)
   /* 0.25 <= |x| < 0.5: fails with 0x1.49p-52 and x=0x1.14e4006c1fccdp-2 */
-  if (0x1p-4 <= __builtin_fabs(x) && __builtin_fabs(x) <= 0.5)
-    eps = __builtin_fabs(z*t)*0x1.4ap-52;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
   return lb;
