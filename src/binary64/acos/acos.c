@@ -200,7 +200,7 @@ double cr_acos (double x){
 
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
-  double t,z,zl,jd,f0h,f0l;
+  double t,z,zl,jd,f0h,f0l,eps;
   if(ax>0x7fc0000000000000ull){ // |x|>0.5
     static const double off[][2] = {{0,0}, {0x1.921fb54442d18p+1, 0x1.1a62633145c07p-53}};
     i64 k = ix.u>>63;
@@ -222,15 +222,25 @@ double cr_acos (double x){
     z = __builtin_copysign(__builtin_sqrt(t), x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
+    eps = __builtin_fabs(z*t)*0x1.8cp-52 + 0x1p-105;
   } else { // |x|<=0.5
     f0h = 0x1.921fb54442d18p+0;
     f0l = 0x1.1a62633145c07p-54;
-    // |f0h+f0l - pi/2| < 2^-109
-    // for |x| <= 0x1.cb3b399d747f2p-55, acos(x) rounds to pi/2 to nearest
-    // this avoids a spurious underflow exception with the code below
-    if(__builtin_expect(ax <= 0x7919676733ae8fe4, 0)) return f0h + f0l;
 
-    // for |x|<=0.5 we use acos(x) = pi/2 - asin(x) so the argument
+    if (__builtin_expect(ax <= 0x7e00000000000000ull, 0)) { // |x| < 2^-15
+      static const double c = -0x1.5555555555555p-3;
+      // avoid a spurious underflow for x very small
+      double v = (ax <= 0x7919676733ae8fe4ull) ? 0 : (x * x) * (c * x);
+      double h, w;
+      h = fasttwosum (f0h, -x, &w);
+      double l = v + (w + f0l);
+      static const double eps1 = 0x1.34p-79;
+      double lb = h + (l - eps1), ub = h + (l + eps1);
+      if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
+      return lb;
+    }
+
+    // for 2^-15 <= |x|<=0.5 we use acos(x) = pi/2 - asin(x) so the argument
     // range for asin is the same for both branches to reuse the lookup
     // tables.
     t = x*x;
@@ -238,6 +248,7 @@ double cr_acos (double x){
     t = __builtin_fma(x,x,-0x1p-7*jd);
     z = -x;
     zl = 0;
+    eps = __builtin_fabs(z*t)*0x1.8cp-52;
   }
   /* exhaustive search:
      [0.5,1] in progress: nancy (gr10)
@@ -252,10 +263,11 @@ double cr_acos (double x){
   fh = muldd(z,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l, fh,fl, &fl);
   // fails with 0x1.8bp-52 for x=-0x1.3e827a2cd6d51p-1 (no FMA)
-  double eps = __builtin_fabs(z*t)*0x1.8cp-52 + 0x1p-105; // all arguments in [-0x1.1a93e5d11dac2p-1, -0x1.1a86cd0e3b2c2p-1] were checked
   /* 0.25 <= |x| < 0.5: fails with 0x1.49p-52 and x=0x1.14e4006c1fccdp-2 */
+#if 0
   if (0x1p-4 <= __builtin_fabs(x) && __builtin_fabs(x) <= 0.5)
     eps = __builtin_fabs(z*t)*0x1.4ap-52;
+#endif
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
   return lb;

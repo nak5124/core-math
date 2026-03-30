@@ -1,5 +1,14 @@
+/* acos is defined over [-1,1] */
+
+#ifndef XMIN
+#define XMIN -1
+#endif
+
+#ifndef XMAX
+#define XMAX 1
+#endif
+
 static inline TYPE_UNDER_TEST random_under_test (void)
 {
-  /* acos is defined over [-1,1] */
-  return 2 * ((double) rand() / (double) RAND_MAX) - 1;
+  return XMIN + (XMAX - XMIN) * ((double) rand() / (double) RAND_MAX);
 }
