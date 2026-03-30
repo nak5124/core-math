@@ -264,10 +264,8 @@ double cr_acos (double x){
   fh = fastsum(f0h,f0l, fh,fl, &fl);
   // fails with 0x1.8bp-52 for x=-0x1.3e827a2cd6d51p-1 (no FMA)
   /* 0.25 <= |x| < 0.5: fails with 0x1.49p-52 and x=0x1.14e4006c1fccdp-2 */
-#if 0
   if (0x1p-4 <= __builtin_fabs(x) && __builtin_fabs(x) <= 0.5)
     eps = __builtin_fabs(z*t)*0x1.4ap-52;
-#endif
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_acos_refine(x, lb);
   return lb;
