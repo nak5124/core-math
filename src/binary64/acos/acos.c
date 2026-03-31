@@ -94,12 +94,6 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
   return sh;
 }
 
-static inline double fasttwosub(double x, double y, double *e){
-  double s = x - y;
-  *e = (x - s) - y;
-  return s;
-}
-
 static inline double sum(double xh, double xl, double ch, double cl, double *l){
   double sl, sh = twosum(xh,ch, &sl);
   *l = (xl + cl) + sl;
@@ -284,7 +278,7 @@ double as_acos_refine(double x, double phi){
   // acos(x) = pi+asin(-sqrt(1-x^2)) for x < 0
   double s2 = x*x, dx2 = __builtin_fma(x,x,-s2);
   // s2+dx2 = x^2
-  double c2l, c2h = fasttwosub(1.0,s2,&c2l);
+  double c2l, c2h = fasttwosum(1.0,-s2,&c2l);
   c2l -= dx2;
   c2h = fasttwosum(c2h,c2l,&c2l);
   // c2h+c2l approximates 1-x^2
