@@ -346,6 +346,9 @@ double as_acos_refine(double x, double phi){
      |dsh|, |dch| < pi/128 < 0.0246 */
 
 #define MAGIC 0x1.8p-4
+  /* Remark: we could reduce magic to 0x1.8p-5, then Cs - Sc below would
+     still be exact, but this would add one exceptional case
+     (x=-0x1.52f06359672cdp-2) and save one, thus there is no benefit. */
   double Sc = __builtin_fma(Sh, dch, MAGIC) - MAGIC;
   double dSc = __builtin_fma(Sh, dch, -Sc);
   // Sc + dSc approximates Sh*dch, with Sc multiple of 2^-56 and |Sc| < 2^-5
