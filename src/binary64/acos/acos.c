@@ -279,7 +279,9 @@ static
 double as_acos_refine(double x, double phi){
   // Consider x as cos(phi) then sin(phi) is ch + cl = sqrt(1-x^2)
   // Using angle rotation formula bring the argument close to zero
-  // where the asin Taylor expansion works well.
+  // where the asin Taylor expansion works well:
+  // acos(x) = asin(sqrt(1-x^2)) for x > 0
+  // acos(x) = pi+asin(-sqrt(1-x^2)) for x < 0
   double s2 = x*x, dx2 = __builtin_fma(x,x,-s2);
   // s2+dx2 = x^2
   double c2l, c2h = fasttwosub(1.0,s2,&c2l);
@@ -294,8 +296,9 @@ double as_acos_refine(double x, double phi){
   double cl = (c2l - __builtin_fma(ch,ch,-c2h))*(0.5/ch);
   // now ch+cl approximates sqrt(1-x^2)
 
-  int64_t jf = roundeven_finite(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
-  // sin(pi/64*j) in the double-double format
+  int jf = roundeven_finite(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
+  // jf = round(|phi-pi/2|*64/pi)
+  // sin(pi/64*j) in the double-double format (smallest term first)
   static const double s[33][2] = {
     {0x0p+0, 0x0p+0}, {-0x1.912bd0d569a9p-61, 0x1.91f65f10dd814p-5},
     {-0x1.e2718d26ed688p-60, 0x1.917a6bc29b42cp-4}, {0x1.13000a89a11ep-58, 0x1.2c8106e8e613ap-3},
@@ -316,35 +319,68 @@ double as_acos_refine(double x, double phi){
     {0x0p+0, 0x1p+0}
   };    
 
+  /* let y = acos(x) and assume y = pi/2 -/+ jf*pi/64 - delta,
+     with |delta| < pi/128,
+     where -/+ means - for x > 0, and + for x < 0:
+     delta = pi/2 -/+ jf*pi/64 - y thus
+     sin(delta) = sin(pi/2 -/+ jf*pi/64 - y)
+                = cos(-/+jf*pi/64 - y)
+                = cos(-/+jf*pi/64)*cos(y) + sin(-/+jf*pi/64)*sin(y)
+                = cos(jf*pi/64)*x -/+ sin(jf*pi/64)*sqrt(1-x^2)
+  */
+
   // 0 <= jf <= 32
   double Ch = s[32-jf][1], Cl = s[32-jf][0], Sh = s[jf][1], Sl = s[jf][0];
+  /* Ch+Cl approximates cos(jf*pi/64), Sh+Sl approximates sin(jf*pi/64)
+     thus sin(delta) = (Ch+Cl)*x -/+ (Sh+Sl)*sqrt(1-x^2)
+                     ~ sgn(x) * [ (Ch+Cl)*|x| - (Sh+Sl)*(ch+cl)] */
 
   double ax = __builtin_fabs(x);
   double dsh = ax - Sh, dsl = -Sl;
   double dch = ch - Ch, dcl = cl - Cl;
+  /* now |x| = Sh+Sl + dsh+dsl, ch+cl = Ch+Cl + dch+dcl
+     thus sin(delta) ~ sgn(x) *
+     [ (Ch+Cl)*(Sh+Sl + dsh+dsl) - (Sh+Sl)*(Ch+Cl + dch+dcl)]
+     ~ sgn(x) * [(Ch+Cl)*(dsh+dsl) - (Sh+Sl)*(dch+dcl)].
+     Since |delta| < pi/128 and y = pi/2 -/+ jf*pi/64 - delta,
+     |dsh|, |dch| < pi/128 < 0.0246 */
 
-  double Sc = __builtin_fma(Sh, dch, 0x1.8p-4) - 0x1.8p-4;
+#define MAGIC 0x1.8p-4
+  double Sc = __builtin_fma(Sh, dch, MAGIC) - MAGIC;
   double dSc = __builtin_fma(Sh, dch, -Sc);
+  // Sc + dSc approximates Sh*dch, with Sc multiple of 2^-56 and |Sc| < 2^-5
 
-  double Cs = __builtin_fma(Ch, dsh, 0x1.8p-4) - 0x1.8p-4;
+  double Cs = __builtin_fma(Ch, dsh, MAGIC) - MAGIC;
   double dCs = __builtin_fma(Ch, dsh, -Cs);
+  // Cs+dCs approximates Ch*dsh, with Cs multiple of 2^-56 and |Cs| < 2^-5
 
-  double v = Cs - Sc;
+  double v = Cs - Sc; // exact since |Cs - Sc| multiple of 2^-56 and < 2^-4
+  // v approximates Ch*dsh - Sh*dch
   double dv =  (Ch*dsl + Cl*dsh) - (Sh*dcl + Sl*dch) - (dSc - dCs);
+  // v+dv approximates (Ch+Cl)*(dsh+dsl) - (Sh+Sl)*(dch+dcl)
+  // thus approximates by sgn(x) * sin(delta)
   v = fasttwosum(v,dv,&dv);
   double sgn = __builtin_copysign(1.0, x), jt = 32 - jf*sgn;
-  // 0 <= jt <= 64
+  // pi/2 -/+ jf*pi/64 = jt*pi/64 thus y = jt*pi/64 - delta
+  // with 0 <= jt <= 64
   static const double c[][2] = {
     {0x1p+0, -0x1.fc2c76456515bp-108}, {0x1.5555555555555p-3, 0x1.5555555623513p-57},
     {0x1.3333333333333p-4, 0x1.9997e3427441bp-59}, {0x1.6db6db6db6db7p-5, -0x1.cb95ff08658e6p-62},
     {0x1.f1c71c71c6d5bp-6, 0x1.b125bccdcc89ep-60}};
   static const double ct[] = {0x1.6e8ba2ec8cb69p-6, 0x1.1c4ea7a15c997p-6, 0x1.ca8355d39bb67p-7};
+  /* c[0]*x+c[1]*x^3+...+c[4]*x^9+ct[0]*x^11+...+ct[2]*x^15 is a
+     polynomial approximation of asin(x) at x=0 */
   double dv2, v2 = muldd(v,dv, v,dv, &dv2);
   v *= -sgn;
   dv *= -sgn;
   double fl = v2*(ct[0] + v2*(ct[1] + v2*ct[2])), fh = polydd(v2,dv2, 5,c, &fl);
   fh = muldd(v,dv, fh,fl, &fl);
+  // now fh+fl approximates -delta
 
+  /* h+l+s with h=0x1.921fb54442dp-5, l=0x1.8469898cc518p-53,
+     s=-0x1.fc8f8cbb5bf6cp-102 approximates pi/64 with error bounded
+     by 2^-155, thus ph+pl+ps approximates jt*pi/64 with error bounded
+     by 2^-149 */
   double ph = jt * 0x1.921fb54442dp-5, pl = 0x1.8469898cc518p-53*jt, ps = -0x1.fc8f8cbb5bf6cp-102*jt;
   // since 0 <= jt <= 64, ph and pl are exact
   pl = sum(fh,fl, pl,ps, &ps);
