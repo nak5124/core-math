@@ -252,7 +252,7 @@ double cr_acos (double x){
     // eps < 0 for x > 0, but the rounding test is still correct
     /* for |x| < 2^-4 (case j=0), fails with 0x1.d3p-53 and
        x=0x1.7cb54339263fbp-12;
-       for 2^-4 <= x < 0.5, fails with 0x1.4ap-52 and x=0x1.61660126545b3p-2
+       for 2^-4 <= |x| < 0.5, fails with 0x1.4ap-52 and x=0x1.61660126545b3p-2
        (no FMA, rndz) */
     eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.4bp-52);
   }
@@ -273,10 +273,11 @@ double cr_acos (double x){
   return lb;
 }
 
+// phi is the fast path approximation of acos(x)
 __attribute__((noinline,cold))
 static
 double as_acos_refine(double x, double phi){
-  // Consider x as sin(phi) then cos(phi) is ch + cl = sqrt(1-x^2)
+  // Consider x as cos(phi) then sin(phi) is ch + cl = sqrt(1-x^2)
   // Using angle rotation formula bring the argument close to zero
   // where the asin Taylor expansion works well.
   double s2 = x*x, dx2 = __builtin_fma(x,x,-s2);
