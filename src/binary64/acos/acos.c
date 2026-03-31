@@ -281,13 +281,18 @@ double as_acos_refine(double x, double phi){
   // Using angle rotation formula bring the argument close to zero
   // where the asin Taylor expansion works well.
   double s2 = x*x, dx2 = __builtin_fma(x,x,-s2);
+  // s2+dx2 = x^2
   double c2l, c2h = fasttwosub(1.0,s2,&c2l);
   c2l -= dx2;
   c2h = fasttwosum(c2h,c2l,&c2l);
+  // c2h+c2l approximates 1-x^2
 
-  double c2f = __builtin_fma(x,-x,1);
-  double ch = __builtin_sqrt(c2f);
-  double cl = (c2l - __builtin_fma(ch,ch,-c2f))*((0.5/c2f)*ch);
+  double ch = __builtin_sqrt(c2h);
+  /* let eps = ch^2-c2h, then c2h + c2l = ch^2 + c2l - eps,
+     thus sqrt(c2h + c2l) = sqrt(ch^2*(1+(c2l-eps)/ch^2))
+     ~ ch*(1 + (c2l-eps)/ch^2/2) = ch + (c2l-eps)/ch/2 */
+  double cl = (c2l - __builtin_fma(ch,ch,-c2h))*(0.5/ch);
+  // now ch+cl approximates sqrt(1-x^2)
 
   int64_t jf = roundeven_finite(__builtin_fabs(phi - 0x1.921fb54442d18p+0) * 0x1.45f306dc9c883p+4);
   // sin(pi/64*j) in the double-double format
@@ -355,13 +360,11 @@ double as_acos_refine(double x, double phi){
   u64 m = ((u64)1<<52)-((u64)1<<e);
   e = (e == 0) ? 64 : e;
   if(__builtin_expect(!((t.u+((u64)1<<(e-1)))&m), 0)){
-    if(x==-0x1.771164bfd1f84p-3 ) return 0x1.c14601daaf657p+0  - 0x1p-54;
-    if(x==-0x1.4510ee8eb4e67p-1 ) return 0x1.211c0e2c2559ep+1  - 0x1p-53;
-    if(x==-0x1.011c543f23a17p-2 ) return 0x1.d318c90d9e8b7p+0  - 0x1p-54;
     if(x== 0x1.ffffffffffdc0p-1 ) return 0x1.8000000000024p-22 + 0x1p-76;
     if(x== 0x1.53ea6c7255e88p-4 ) return 0x1.7cdacb6bbe707p+0  + 0x1p-54;
     if(x== 0x1.fd737be914578p-11) return 0x1.91e006d41d8d8p+0  + 0x1.8p-53;
     if(x== 0x1.fffffffffff70p-1 ) return 0x1.8000000000009p-23 + 0x1p-77;
+    if(x== 0x1.390e6939cd1a6p-5 ) return 0x1.8856a5d3296a4p+0  - 0x1p-109;
     b64u64_u w = {.f = ps};
     if((w.u^t.u)>>63)
       t.u--;
