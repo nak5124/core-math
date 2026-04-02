@@ -224,8 +224,10 @@ double cr_acos (double x){
 
     if (__builtin_expect(ax <= 0x7e00000000000000ull, 0)) { // |x| < 2^-15
       static const double c = -0x1.5555555555555p-3;
-      // avoid a spurious underflow for x very small
-      double v = (ax <= 0x7919676733ae8fe4ull) ? 0 : (x * x) * (c * x);
+      /* Avoid a spurious underflow for |x| <= x0 := 0x1.cb3b3869747f4p-55;
+         moreover for |x| <= x0 we always have lb=ub, thus the accurate
+         path is never called. */
+      double v = (ax <= 0x791967670d2e8fe8ull) ? 0 : (x * x) * (c * x);
       double h, w;
       h = fasttwosum (f0h, -x, &w);
       double l = v + (w + f0l);
@@ -246,9 +248,9 @@ double cr_acos (double x){
     // eps < 0 for x > 0, but the rounding test is still correct
     /* for |x| < 2^-4 (case j=0), fails with 0x1.d3p-53 and
        x=0x1.7cb54339263fbp-12;
-       for 2^-4 <= |x| < 0.5, fails with 0x1.57p-52 and x=0x1.96d70307e1d41p-2
+       for 2^-4 <= |x| < 0.5, fails with 0x1.63p-52 and x=0x1.bc3e0e92cd3e7p-2
        (no FMA, rndz) */
-    eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.58p-52);
+    eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.64p-52);
   }
   /* exhaustive search:
      [0.5,1] in progress: nancy (gr10)

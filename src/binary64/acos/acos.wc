@@ -264088,6 +264088,9 @@
 0x1.77b21dbc6f4fep-2
 0x1.82570a9cda5cdp-2
 0x1.96d70307e1d41p-2
+0x1.bc3e0e92cd3e7p-2
+0x1.bc4307d28f4e8p-2
+0x1.bd1f0408bc256p-2
 # the following inputs defeat the rounding test condition
 # with a reduced error bound for |x| < 2^-4
 0x1.3a95b67c4d4c7p-11
