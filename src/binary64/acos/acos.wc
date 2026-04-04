@@ -264091,6 +264091,16 @@
 0x1.bc3e0e92cd3e7p-2
 0x1.bc4307d28f4e8p-2
 0x1.bd1f0408bc256p-2
+-0x1.fec3ffa9d096bp-2
+-0x1.febdfd6ab96b3p-2
+-0x1.fd8ffffcb234dp-2
+-0x1.fd7fffd6e4cc5p-2
+-0x1.f92afc8ff89e5p-2
+-0x1.f890f883edaf9p-2
+-0x1.f7f24362ed006p-2
+-0x1.f6b0fd63e933bp-2
+-0x1.ee66d790176dep-2
+-0x1.ed28f330a2501p-2
 # the following inputs defeat the rounding test condition
 # with a reduced error bound for |x| < 2^-4
 0x1.3a95b67c4d4c7p-11
