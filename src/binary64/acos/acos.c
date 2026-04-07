@@ -253,10 +253,11 @@ double cr_acos (double x){
     eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.77p-52);
   }
   /* exhaustive search:
-     [0.5,1] in progress: nancy (gr10)
+     [0.25,1] done
      [-1,-0.5] done
-     [0.25,0.5] done
-     [-0.25,-0.5]: in progress: nancy (gr20)
+     [-0.5,-0.25]: in progress: nancy (gr20)
+     [2^-3,2^-2]: in progress: nancy (gr10)
+     [-0.25,-0.125]: in progress (explor)
   */
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
