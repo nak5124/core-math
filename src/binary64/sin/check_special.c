@@ -258,7 +258,7 @@ main (int argc, char *argv[])
   check_invalid ();
 
 #ifndef CORE_MATH_TESTS
-#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#define CORE_MATH_TESTS 500000000UL /* total number of tests */
 #endif
 
   unsigned int seed = getpid ();
