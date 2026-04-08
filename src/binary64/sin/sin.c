@@ -1339,7 +1339,9 @@ evalPSfast (double *h, double *l, double xh, double xl, double uh, double ul)
    for 2^-24 <= xh+xl < 2^-11 + 2^-24,
    and |xl| < 2^-52.36, with relative error < 2^-69.96
    (see evalPCfast() in sin.sage).
-   Assume uh + ul approximates (xh+xl)^2. */
+   Assume uh + ul approximates (xh+xl)^2.
+   Since cos2pi() is even, there is no need
+   to pass xh,xl to this function. */
 static void
 evalPCfast (double *h, double *l, double uh, double ul)
 {
