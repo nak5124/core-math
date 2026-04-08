@@ -205,6 +205,7 @@ doit (uint32_t n)
   fix_underflow (x, y);
 
   // check spurious/missing underflow
+#ifndef CORE_MATH_NOCHECK_UNDERFLOW
   if (fetestexcept (FE_UNDERFLOW) && !mpfr_flags_test (MPFR_FLAGS_UNDERFLOW))
   {
     printf ("Spurious underflow exception for x=%a (y=%a)\n",
@@ -219,6 +220,7 @@ doit (uint32_t n)
     fflush (stdout);
     if (!keep) exit (1);
   }
+#endif
 
   // check spurious/missing overflow
   if (fetestexcept (FE_OVERFLOW) && !mpfr_flags_test (MPFR_FLAGS_OVERFLOW))

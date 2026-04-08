@@ -119,6 +119,11 @@ target precision) is in the subnormal range, then underflow is raised.
 Otherwise underflow is not raised. As in the C standard, underflow is not
 raised when the result is exact.
 
+If you use the CORE-MATH test suite to check another library which does not
+support underflow (or does support underflow before rounding), you can add
+-DCORE_MATH_NOCHECK_UNDERFLOW in EXTRA_CFLAGS to disable the underflow
+tests.
+
 ## Support of overflow
 
 CORE-MATH always supports overflow: if the rounded result (with unbounded
