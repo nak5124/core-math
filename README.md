@@ -117,12 +117,16 @@ CORE-MATH always supports underflow, with the rule of "underflow after
 rounding": if the rounded result (with unbounded exponent range and full
 target precision) is in the subnormal range, then underflow is raised.
 Otherwise underflow is not raised. As in the C standard, underflow is not
-raised when the result is exact.
+raised when the result is exact. CORE-MATH assumes that the processor also
+supports underflow after rounding, since in some cases raising underflow
+is delegated to the underlying processor operations, as in "return a+b".
 
-If you use the CORE-MATH test suite to check another library which does not
-support underflow (or does support underflow before rounding), you can add
--DCORE_MATH_NOCHECK_UNDERFLOW in EXTRA_CFLAGS to disable the underflow
-tests.
+If you use the CORE-MATH test suite (check.sh) to check another library which
+does not support underflow, add -DCORE_MATH_NOCHECK_UNDERFLOW to EXTRA_CFLAGS
+to disable the underflow tests.
+
+If the external library supports underflow before rounding, add
+-DCORE_MATH_UNDERFLOW_BEFORE to EXTRA_CFLAGS in check.sh.
 
 ## Support of overflow
 

@@ -105,6 +105,10 @@ int underflow_before; // non-zero if processor raises underflow before rounding
 static void
 check_underflow_before (void)
 {
+#ifdef CORE_MATH_UNDERFLOW_BEFORE
+  underflow_before = 1;
+  return;
+#endif
   fexcept_t flag;
   fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
   fesetround (FE_TONEAREST);
