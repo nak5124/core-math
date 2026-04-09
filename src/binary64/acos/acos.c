@@ -82,9 +82,14 @@ static inline double fasttwosum(double x, double y, double *e){
   return s;
 }
 
-static inline double twosum(double xh, double ch, double *l){
-  double s = xh + ch, d = s - xh;
-  *l = (ch - d) + (xh + (d - s));
+// Reference: Handbook of Floating-Point Arithmetic, Algorithm 4.4
+static inline double twosum(double a, double b, double *l){
+  double s = a + b;
+  double a_prime = s - b;
+  double b_prime = s - a_prime;
+  double delta_a = a - a_prime;
+  double delta_b = b - b_prime;
+  *l = delta_a + delta_b;
   return s;
 }
 
