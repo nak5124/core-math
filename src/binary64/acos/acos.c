@@ -248,9 +248,9 @@ double cr_acos (double x){
     // eps < 0 for x > 0, but the rounding test is still correct
     /* for |x| < 2^-4 (case j=0), fails with 0x1.d3p-53 and
        x=0x1.7cb54339263fbp-12;
-       for 2^-4 <= |x| < 0.5, fails with 0x1.7ep-52 and x=-0x1.fed2e52fc010cp-2
+       for 2^-4 <= |x| < 0.5, fails with 0x1.80p-52 and x=-0x1.fda6fee396f8p-2
        (no FMA, rndz) */
-    eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.7fp-52);
+    eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.81p-52);
   }
   /* exhaustive search:
      [0.125,1] done
