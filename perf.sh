@@ -110,7 +110,7 @@ proc_rdtsc () {
 }
 
 has_symbol () {
-    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$f" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
+    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$g" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
 }
 
 RANDOMS_FILE="$(mktemp /tmp/core-math.XXXXXX)"
@@ -118,6 +118,13 @@ LOG_FILE="$(mktemp /tmp/core-math.XXXXXX)"
 # trap "rm -f $RANDOMS_FILE $LOG_FILE" 0
 
 f=$1
+# $g is the name in LIBM whuch might differ
+# for example cos_bf16 is cosbf16 in LLVM libc
+# we then use CORE_MATH_STD_NAME=cosbf16 LIBM=... ./perf.sh cos_bf16
+g=$f
+if [ "$CORE_MATH_STD_NAME" != "" ]; then
+   g=$CORE_MATH_STD_NAME
+fi
 u="$(echo src/binary*/*/$f.c)"
 
 if [ -z "$CORE_MATH_PERF_MODE" ]; then
@@ -195,7 +202,7 @@ elif [ "$CORE_MATH_PERF_MODE" = rdtsc ]; then
 fi
 
 has_symbol () {
-    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$f" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
+    [ "$(nm "$LIBM" | while read a b c; do if [ "$c" = "$g" ]; then echo OK; return; fi; done | wc -l)" -ge 1 ]
 }
 
 if [ -n "$BACKUP_LIBM" ]; then
@@ -212,6 +219,6 @@ if [ -n "$BACKUP_LIBM" ]; then
             proc_rdtsc
         fi
     elif [ -z "$CORE_MATH_QUIET" ]; then
-        echo "$f is not present in $LIBM; skipping" >&2
+        echo "$g is not present in $LIBM; skipping" >&2
     fi
 fi
