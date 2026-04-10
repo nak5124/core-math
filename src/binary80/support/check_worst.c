@@ -325,7 +325,7 @@ check (long double x, long double y)
     printf ("Spurious divbyzero exception for x,y=%La,%La (z=%La)\n", x, y, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
@@ -335,7 +335,7 @@ check (long double x, long double y)
     printf ("Missing divbyzero exception for x,y=%La,%La (z=%La)\n", x, y, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
@@ -349,7 +349,7 @@ check (long double x, long double y)
     printf (")\n");
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
@@ -361,7 +361,7 @@ check (long double x, long double y)
     printf ("Missing invalid exception for x,y=%La,%La (z=%La)\n", x, y, z1);
     fflush (stdout);
 #ifdef DO_NOT_ABORT
-    return;
+    return 1;
 #else
     exit(1);
 #endif
