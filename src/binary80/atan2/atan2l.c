@@ -616,7 +616,7 @@ long double cr_atan2l(long double y, long double x){
   long double res = fh, flu = fl + eps, fll = fl - eps;
   long double ub = res + flu, lb = res + fll;
   if(ub != lb){
-    if((jt == 0 && gt == 0 && xsgn == 0)){
+    if(jt == 0 && gt == 0 && xsgn == 0 && __builtin_fabs(fh)<0x1.15p-9){
       ub = res + fl;
       lb = res + (fl + eps0*fh);
       if(ub != lb){
