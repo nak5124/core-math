@@ -82,14 +82,18 @@ static inline double fasttwosum(double x, double y, double *e){
   return s;
 }
 
-// Reference: Handbook of Floating-Point Arithmetic, Algorithm 4.4
-static inline double twosum(double a, double b, double *l){
+/* Reference: Handbook of Floating-Point Arithmetic, Algorithm 4.4.
+   Theorem 4.1 from "On the Robustness of the 2Sum and Fast2Sum Algorithms"
+   by Sylvie Boldo, Stef Graillat and Jean-Michel Muller,
+   ACM Transactions on Mathematical Software, 2017 says:
+   t = (a+b) - s + alpha with |alpha| <= 2^(-p+1) ulp(s) [here p=53] */
+static inline double twosum(double a, double b, double *t){
   double s = a + b;
   double a_prime = s - b;
   double b_prime = s - a_prime;
   double delta_a = a - a_prime;
   double delta_b = b - b_prime;
-  *l = delta_a + delta_b;
+  *t = delta_a + delta_b;
   return s;
 }
 
@@ -258,11 +262,9 @@ double cr_acos (double x){
     eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.81p-52);
   }
   /* exhaustive search:
-     [0.125,1] done
-     [-1,-0.5] done
-     [-0.5,-0.25]: in progress: nancy (gr20)
-     [-0.25,-0.125]: in progress (explor)
-     [2^-4,2^-3]: in progress: nancy (gr10)
+     [2^-4,1] done
+     [-1,-0.125] done
+     [-2^-3,-2^-4]: in progress: nancy (gr20)
   */
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
