@@ -29,6 +29,7 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
+#include <assert.h>
 #include <mpfr.h>
 #ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
@@ -97,7 +98,16 @@ is_equal (float y1, float y2)
   return asuint (y1) == asuint (y2);
 }
 
-int underflow_before; // non-zero if processor raises underflow before rounding
+/* underflow_before can have three values:
+   0 : (default) check underflow after rounding (like on x86)
+   1 : check underflow before rounding (like on aarch64, arm)
+   -1 : don't check underflow in corner cases, i.e., when
+        underflow after and before rounding disagree.
+        This is exactly when |f(x)| < 2^-126, and after rounding
+        we get +/-2^-126.
+  The CORE-MATH code assumes underflow_before=0. Other values are useful
+  for checking external libraries. */
+int underflow_before = 0;
 
 // return non-zero if the processor raises underflow before rounding
 // (e.g., aarch64)
@@ -105,18 +115,11 @@ static void
 check_underflow_before (void)
 {
 #ifdef CORE_MATH_UNDERFLOW_BEFORE
-  underflow_before = 1;
+  underflow_before = CORE_MATH_UNDERFLOW_BEFORE;
+  assert (underflow_before == 0 || underflow_before == 1
+          || underflow_before == -1);
   return;
 #endif
-  fexcept_t flag;
-  fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
-  fesetround (FE_TONEAREST);
-  feclearexcept (FE_UNDERFLOW);
-  float x = 0x1p-126f;
-  float y = __builtin_fmaf (-x, x, x);
-  if (x == y) // this is needed otherwise the compiler says y is unused
-    underflow_before = fetestexcept (FE_UNDERFLOW);
-  fesetexceptflag (&flag, FE_ALL_EXCEPT); //restore flags
 }
 
 /* For |y| = 2^-126 and underflow after rounding, clear the MPFR
@@ -130,27 +133,38 @@ fix_underflow (float x, float y)
 {
   if (__builtin_fabsf (y) != 0x1p-126f)
     return;
-  if (underflow_before) {
-    if (mpfr_flags_test (MPFR_FLAGS_UNDERFLOW) == 0)
-      feclearexcept (FE_UNDERFLOW);
-    return;
-  }
+
   mpfr_t t;
   mpfr_init2 (t, 24);
   fexcept_t flag;
   fegetexceptflag (&flag, FE_ALL_EXCEPT); // save flags
   mpfr_set_flt (t, x, MPFR_RNDN); // exact
-  /* mpfr_set_d might raise the processor underflow/overflow/inexact flags
+  /* mpfr_set_flt might raise the processor underflow/overflow/inexact flags
      (https://gitlab.inria.fr/mpfr/mpfr/-/issues/2) */
   fesetexceptflag (&flag, FE_ALL_EXCEPT); // restore flags
-  mpfr_function_under_test (t, t, rnd2[rnd]);
+  int inex = mpfr_function_under_test (t, t, rnd2[rnd]);
   /* don't call mpfr_subnormalize here since we precisely want an unbounded
      exponent */
+  /* the corner case is when (t = 2^-126 and inex > 0)
+     or (t = -2^-126 and inex < 0) */
+  int corner = (mpfr_cmp_ui_2exp (t, 1, -126) == 0 && inex > 0) ||
+    (mpfr_cmp_si_2exp (t, -1, -126) == 0 && inex < 0);
   mpfr_abs (t, t, MPFR_RNDN); // exact
 #if MPFR_VERSION_MAJOR<4 || (MPFR_VERSION_MAJOR==4 && MPFR_VERSION_MINOR<=2)
   if (mpfr_cmp_ui_2exp (t, 1, -126) == 0) // |o(f(x))| = 2^-126
     mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
 #endif
+  if (corner && underflow_before == 0) // underflow after rounding
+    mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
+  if (corner && underflow_before == 1) // underflow before rounding
+    mpfr_flags_set (MPFR_FLAGS_UNDERFLOW);
+  if (corner && underflow_before == -1) {
+    // adjust MPFR underflow flag to fenv.h one so that we get no error
+    if (fetestexcept (FE_UNDERFLOW))
+      mpfr_flags_set (MPFR_FLAGS_UNDERFLOW);
+    else
+      mpfr_flags_clear (MPFR_FLAGS_UNDERFLOW);
+  }
   mpfr_clear (t);
 }
 
