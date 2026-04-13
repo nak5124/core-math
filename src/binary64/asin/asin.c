@@ -212,13 +212,14 @@ double cr_asin(double x){
     // for x>0.5 we use range reduction for double angle formula
     // asin(x) = pi/2 - 2*asin(sqrt((1-x)/2)) and for x<-0.5 acos(x) = -pi/2 +
     // 2*asin(sqrt((1-|x|)/2))
+    // exhaustive search in progress: explor
     t = 2 - 2*__builtin_fabs(x);
     jd = roundeven_finite(t*0x1p5);
     z = __builtin_copysign(__builtin_sqrt(t), -x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
-    // fails with 0x1.1dp-52 and x=0x1.6c753f93a1ed8p-1 (rndz, no FMA)
-    eps = __builtin_fabs(z*t)*0x1.1ep-52;
+    // fails with 0x1.22p-52 and x=0x1.05548244252e8p-1 (rndz)
+    eps = __builtin_fabs(z*t)*0x1.23p-52;
   } else { // |x|<=0.5
     // for |x| < 0x1.7137449123ef6p-26 |asin(x) - x| is less than half of ulp of asin(x)
     if(__builtin_expect(ax<0x7cae26e892247decull, 0)) return __builtin_fma(0x1p-55,x,x);

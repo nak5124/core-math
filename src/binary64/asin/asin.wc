@@ -13492,3 +13492,5 @@
 -0x1.fffffffffffffp+1023
 # non-regression tests
 0x1.fc7a07b2549abp-5
+# the following inputs fail with a reduced error bound
+0x1.05548244252e8p-1
