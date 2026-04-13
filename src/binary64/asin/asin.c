@@ -193,7 +193,7 @@ double cr_asin(double x){
 
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
-  double t,z,zl,jd,f0h,f0l;
+  double t,z,zl,jd,f0h,f0l,eps;
   if(ax>0x7fc0000000000000ull){ // |x|>0.5
     static const double off[][2] = {
       {0x1.921fb54442d18p+0, 0x1.1a62633145c07p-54}, {-0x1.921fb54442d18p+0, -0x1.1a62633145c07p-54}
@@ -217,6 +217,8 @@ double cr_asin(double x){
     z = __builtin_copysign(__builtin_sqrt(t), -x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
+    // fails with 0x1.1dp-52 and x=0x1.6c753f93a1ed8p-1 (rndz, no FMA)
+    eps = __builtin_fabs(z*t)*0x1.1ep-52;
   } else { // |x|<=0.5
     // for |x| < 0x1.7137449123ef6p-26 |asin(x) - x| is less than half of ulp of asin(x)
     if(__builtin_expect(ax<0x7cae26e892247decull, 0)) return __builtin_fma(0x1p-55,x,x);
@@ -227,6 +229,7 @@ double cr_asin(double x){
     t = __builtin_fma(x,x,-0x1p-7*jd);
     z = x;
     zl = 0;
+    eps = __builtin_fabs(z*t)*0x1.962p-52 + 0x1p-100;
   }
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
@@ -236,7 +239,6 @@ double cr_asin(double x){
   double fh = c[0], fl = c[1] + d;
   fh = muldd(z,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l, fh,fl, &fl);
-  double eps = __builtin_fabs(z*t)*0x1.962p-52 + 0x1p-100;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if(__builtin_expect(lb!=ub, 0)) return as_asin_refine(x, lb);
   return lb;
