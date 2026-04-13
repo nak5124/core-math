@@ -202,7 +202,7 @@ static inline u128 __attribute__((always_inline)) recipdn(u128 xx0){
   return R;
 }
 
-// the accurate path with 192 internal precision
+// the accurate path with 192-bit internal precision
 long double as_atan2l_accurate(long double y, long double x) {
   unsigned flagp = _mm_getcsr(), oflagp = flagp, rm = flagp&_MM_ROUND_MASK;
   b96u96_u Y = {.f = y}, X = {.f = x};
@@ -612,6 +612,8 @@ long double cr_atan2l(long double y, long double x){
   fh = muldd(zh,zl, fh,fl, &fl);
   fh = fastsum(f0h,f0l,fh,fl,&fl);
 
+  // fails with eps=0.4e-26 and
+  // x=-0xb.ac961beb22287cp-10 y=0x8.e1b862d0b5ca25p-7 (rndz)
   const double eps = 1.2e-26, eps0 = 0x1p-80;
   long double res = fh, flu = fl + eps, fll = fl - eps;
   long double ub = res + flu, lb = res + fll;
