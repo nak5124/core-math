@@ -222,7 +222,12 @@ double cr_asin(double x){
     eps = __builtin_fabs(z*t)*0x1.42p-52;
   } else { // |x|<=0.5
     // for |x| < 0x1.7137449123ef6p-26 |asin(x) - x| is less than half of ulp of asin(x)
-    if(__builtin_expect(ax<0x7cae26e892247decull, 0)) return __builtin_fma(0x1p-55,x,x);
+    if(__builtin_expect(ax<0x7cae26e892247decull, 0)) {
+#ifdef CORE_MATH_SUPPORT_ERRNO
+      if(__builtin_fabs(x) < 0x1p-1022 && x != 0.0) errno = ERANGE; // underflow
+#endif
+      return __builtin_fma(0x1p-55,x,x);
+    }
     f0h = 0;
     f0l = 0;
     t = x*x;
