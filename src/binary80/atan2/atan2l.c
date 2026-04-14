@@ -28,7 +28,10 @@ SOFTWARE.
 #include <fenv.h> // for FE_INEXACT, FE_UNDERFLOW
 #include <stdint.h>
 #ifdef __x86_64__
-#include <x86intrin.h>
+#  include <x86intrin.h>
+#endif
+#ifdef CORE_MATH_SUPPORT_ERRNO
+#  include <errno.h>
 #endif
 
 // Warning: clang also defines __GNUC__
@@ -408,8 +411,12 @@ long double as_atan2l_accurate(long double y, long double x) {
       ++e;
     }
   }
-  if(e == 0) feraiseexcept (FE_UNDERFLOW);
-
+  if(e == 0){
+    feraiseexcept (FE_UNDERFLOW);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    errno = ERANGE; // underflow
+#endif
+  }
   b96u96_u res;
   res.m = r;
   res.e = ysgn|e;
