@@ -246,7 +246,7 @@ double cr_acos (double x){
       return lb;
     }
 
-    // for 2^-15 <= |x|<=0.5 we use acos(x) = pi/2 - asin(x) so the argument
+    // for 2^-15 <= |x| <= 0.5 we use acos(x) = pi/2 - asin(x) so the argument
     // range for asin is the same for both branches to reuse the lookup
     // tables.
     t = x*x;
@@ -261,11 +261,7 @@ double cr_acos (double x){
        (no FMA, rndz) */
     eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.81p-52);
   }
-  /* exhaustive search:
-     [2^-4,1] done
-     [-1,-0.125] done
-     [-2^-3,-2^-4]: in progress: nancy (gr20)
-  */
+  // exhaustive search done in [-1,-2^-4] and [2^-4,1] with and without FMA
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
   int64_t j = jd;
