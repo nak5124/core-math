@@ -157,6 +157,64 @@ check (long double x, long double y)
   return ret;
 }
 
+static void
+check_random (void)
+{
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for(uint64_t n = 0; n < CORE_MATH_TESTS; n++) {
+    ref_init();
+    ref_fesetround(rnd);
+    fesetround(rnd1[rnd]);
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    long double x = get_random(tid), y = get_random(tid);
+    check(x, y);
+  }
+}
+
+static void
+check_subnormal (void)
+{
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for(uint64_t n = 0; n < CORE_MATH_TESTS; n++) {
+    ref_init();
+    ref_fesetround(rnd);
+    fesetround(rnd1[rnd]);
+    int tid;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num ();
+#else
+    tid = 0;
+#endif
+    long double x = get_random(tid), y = get_random(tid);
+    // adjust the exponents of x and y
+    // subnormal numbers are in [2^-16445,2^-16382)
+    int e = -16382 - (rand_r (Seed + tid) % 64); // -16445 <= e <= -16382
+    b80u80_t v;
+    // set the exponent of x to e/2, keeping sign
+    v.f = x;
+    // ensure the significand is normalized
+    v.m |= 1ul << 63;
+    v.e = (v.e & 0x8000) | ((e/2) + 0x3fff);
+    x = v.f;
+    // set the exponent of y to (e/2)-e, keeping sign
+    v.f = y;
+    // ensure the significand is normalized
+    v.m |= 1ul << 63;
+    v.e = (v.e & 0x8000) | (((e/2)-e) + 0x3fff);
+    y = v.f;
+    check(x, y);
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -203,28 +261,15 @@ main (int argc, char *argv[])
   ref_fesetround(rnd);
   fesetround(rnd1[rnd]);
 
-  printf ("Checking random values\n");
-
   unsigned int seed = getpid ();
   for (int i = 0; i < MAX_THREADS; i++)
     Seed[i] = seed + i;
 
-#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for
-#endif
-	for(uint64_t n = 0; n < CORE_MATH_TESTS; n++) {
-		ref_init();
-		ref_fesetround(rnd);
-		fesetround(rnd1[rnd]);
-                int tid;
-#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-                tid = omp_get_thread_num ();
-#else
-                tid = 0;
-#endif
-		long double x = get_random(tid), y = get_random(tid);
-		check(x, y);
-	}
+  printf ("Checking random subnormal values\n");
+  check_subnormal ();
+
+  printf ("Checking random values\n");
+  check_random ();
 
   return 0;
 }
