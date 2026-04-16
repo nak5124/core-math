@@ -218,8 +218,8 @@ double cr_asin(double x){
     z = __builtin_copysign(__builtin_sqrt(t), -x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
-    // fails with 0x1.41p-52 and x=0x1.158155c9abda4p-1 (rndz)
-    eps = __builtin_fabs(z*t)*0x1.42p-52;
+    // fails with 0x1.42p-52 and x=0x1.013156fff137bp-1 (rndz, no fma)
+    eps = __builtin_fabs(z*t)*0x1.43p-52;
   } else { // |x|<=0.5
     // for |x| < 0x1.7137449123ef6p-26 |asin(x) - x| is less than half of ulp of asin(x)
     if(__builtin_expect(ax<0x7cae26e892247decull, 0)) {
