@@ -209,7 +209,7 @@ double cr_asin(double x){
 #endif
       return 0./0.; // |x|>1
     }
-    // for x>0.5 we use range reduction for double angle formula
+    // for |x|>0.5 we use range reduction for double angle formula
     // asin(x) = pi/2 - 2*asin(sqrt((1-x)/2)) and for x<-0.5 acos(x) = -pi/2 +
     // 2*asin(sqrt((1-|x|)/2))
     // exhaustive search in progress: explor on [0.5,1), nancy/gr10 on [0.25,0.5)
@@ -218,8 +218,8 @@ double cr_asin(double x){
     z = __builtin_copysign(__builtin_sqrt(t), -x);
     zl = __builtin_fma(z,z,-t)*((-0.5/t)*z);
     t = 0.25*t - jd*0x1p-7;
-    // fails with 0x1.54p-52 and x=0x1.0556aaaaec262p-1 (rndz, no fma)
-    eps = __builtin_fabs(z*t)*0x1.55p-52;
+    // fails with 0x1.60p-52 and x=0x1.07d6ab1ad210bp-1 (rndz, no fma)
+    eps = __builtin_fabs(z*t)*0x1.61p-52;
   } else { // |x|<=0.5
     // for |x| < 0x1.7137449123ef6p-26 |asin(x) - x| is less than half of ulp of asin(x)
     if(__builtin_expect(ax<0x7cae26e892247decull, 0)) {
