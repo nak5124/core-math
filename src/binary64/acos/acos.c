@@ -259,7 +259,7 @@ double cr_acos (double x){
        x=0x1.7cb54339263fbp-12;
        for 2^-4 <= |x| < 0.5, fails with 0x1.80p-52 and x=-0x1.fda6fee396f8p-2
        (no FMA, rndz) */
-    eps = (z*t)*(__builtin_fabs (x) < 0x1p-4 ? 0x1.8cp-52 : 0x1.81p-52);
+    eps = (z*t)*0x1.81p-52;
   }
   // exhaustive search done in [-1,-2^-4] and [2^-4,1] with and without FMA
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
