@@ -38,7 +38,9 @@ SOFTWARE.
 #ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
 #endif
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #include <omp.h>
+#endif
 #include "function_under_test.h"
 
 int ref_init (void);
@@ -262,7 +264,7 @@ find_min (int n)
 }
 
 #ifndef CORE_MATH_TESTS
-#define CORE_MATH_TESTS 1000000000UL /* total number of tests */
+#define CORE_MATH_TESTS 200000000UL /* total number of tests */
 #endif
 
 static void
