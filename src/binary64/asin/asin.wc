@@ -13492,6 +13492,10 @@
 -0x1.fffffffffffffp+1023
 # non-regression tests
 0x1.fc7a07b2549abp-5
+# the following inputs exercice t=0 in branch |x| < 0.5
+0x1p-1
+0x1p-2
+0x1p-3
 # the following inputs fail with a reduced error bound
 0x1.05548244252e8p-1
 0x1.153eaac2b7a45p-1
