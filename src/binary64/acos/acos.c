@@ -261,7 +261,9 @@ double cr_acos (double x){
        (no FMA, rndz) */
     eps = (z*t)*0x1.81p-52;
   }
-  // exhaustive search done in [-1,-2^-4] and [2^-4,1] with and without FMA
+  /* an exhaustive search was performed in [-1,-2^-4] and [2^-4,1]
+     with and without FMA contraction */
+
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
   int64_t j = jd;
