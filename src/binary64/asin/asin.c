@@ -209,6 +209,7 @@ double cr_asin(double x){
     /* exhaustive search done for 0.25 <= x < 1 with and without FMA
        contraction. In progress:
        [2^-3,2^-2): explor
+       [2^-4,2^-3): done
     */
     t = 2 - 2*__builtin_fabs(x);
     jd = roundeven_finite(t*0x1p5);
