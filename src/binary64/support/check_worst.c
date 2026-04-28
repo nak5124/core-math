@@ -646,7 +646,9 @@ check_signaling_nan (void)
   if (!flag)
   {
     printf ("Missing invalid exception for x,y=sNaN,qnan\n");
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 
   feclearexcept (FE_INVALID);
@@ -674,7 +676,9 @@ check_signaling_nan (void)
   if (!flag)
   {
     printf ("Missing invalid exception for x,y=sNaN,2.0\n");
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 
   feclearexcept (FE_INVALID);
@@ -702,7 +706,9 @@ check_signaling_nan (void)
   if (!flag)
   {
     printf ("Missing invalid exception for x,y=qnan,sNaN\n");
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 
   feclearexcept (FE_INVALID);
@@ -730,7 +736,9 @@ check_signaling_nan (void)
   if (!flag)
   {
     printf ("Missing invalid exception for x,y=2.0,sNaN\n");
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 
   // check also sNaN with the sign bit set
@@ -760,7 +768,9 @@ check_signaling_nan (void)
   if (!flag)
   {
     printf ("Missing invalid exception for x,y=-sNaN,2.0\n");
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 
   feclearexcept (FE_INVALID);
@@ -788,7 +798,9 @@ check_signaling_nan (void)
   if (!flag)
   {
     printf ("Missing invalid exception for x,y=2.0,-sNaN\n");
+#ifndef DO_NOT_ABORT
     exit (1);
+#endif
   }
 }
 

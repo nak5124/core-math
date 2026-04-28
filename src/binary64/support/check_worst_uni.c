@@ -227,7 +227,10 @@ check (double x)
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
 #endif
+  int bug = x == -0x1.74f1e160307bcp+24;
+  if (bug) printf ("invalid %d\n", fetestexcept (FE_INVALID));
   double z2 = cr_function_under_test(x);
+  if (bug) printf ("invalid %d\n", fetestexcept (FE_INVALID));
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
@@ -539,14 +542,18 @@ check_signaling_nan (void)
     {
       fprintf (stderr, "Error, foo(sNaN) should be NaN, got %la=%"PRIx64"\n",
                y, asuint64 (y));
-      exit (1);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
     }
     // check that the signaling bit disappeared
     if (is_signaling (y))
     {
       fprintf (stderr, "Error, foo(sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
                asuint64 (y));
-      exit (1);
+#ifndef DO_NOT_ABORT
+      exit(1);
+#endif
     }
     // check the invalid exception was set
     flag = fetestexcept (FE_INVALID);
@@ -566,14 +573,18 @@ check_signaling_nan (void)
     {
       fprintf (stderr, "Error, foo(-sNaN) should be NaN, got %la=%"PRIx64"\n",
                y, asuint64 (y));
+#ifndef DO_NOT_ABORT
       exit (1);
+#endif
     }
     // check that the signaling bit disappeared
     if (is_signaling (y))
     {
       fprintf (stderr, "Error, foo(-sNaN) should be qNaN, got sNaN=%"PRIx64"\n",
                asuint64 (y));
+#ifndef DO_NOT_ABORT
       exit (1);
+#endif
     }
     // check the invalid exception was set
     flag = fetestexcept (FE_INVALID);
@@ -596,14 +607,18 @@ check_signaling_nan (void)
     {
       fprintf (stderr, "Error, foo(qNaN) should be NaN, got %la=%"PRIx64"\n",
                y, asuint64 (y));
+#ifndef DO_NOT_ABORT
       exit (1);
+#endif
     }
     // check that the signaling bit disappeared
     if (is_signaling (y))
     {
       fprintf (stderr, "Error, foo(qNaN) should be qNaN, got sNaN=%"PRIx64"\n",
                asuint64 (y));
+#ifndef DO_NOT_ABORT
       exit (1);
+#endif
     }
     // check the invalid exception was not set
     flag = fetestexcept (FE_INVALID);
@@ -623,14 +638,18 @@ check_signaling_nan (void)
     {
       fprintf (stderr, "Error, foo(-qNaN) should be NaN, got %la=%"PRIx64"\n",
                y, asuint64 (y));
+#ifndef DO_NOT_ABORT
       exit (1);
+#endif
     }
     // check that the signaling bit disappeared
     if (is_signaling (y))
     {
       fprintf (stderr, "Error, foo(-qNaN) should be qNaN, got sNaN=%"PRIx64"\n",
                asuint64 (y));
+#ifndef DO_NOT_ABORT
       exit (1);
+#endif
     }
     // check the invalid exception was not set
     flag = fetestexcept (FE_INVALID);
