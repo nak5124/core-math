@@ -227,10 +227,7 @@ check (double x)
 #ifdef CORE_MATH_SUPPORT_ERRNO
   errno = 0;
 #endif
-  int bug = x == -0x1.74f1e160307bcp+24;
-  if (bug) printf ("invalid %d\n", fetestexcept (FE_INVALID));
   double z2 = cr_function_under_test(x);
-  if (bug) printf ("invalid %d\n", fetestexcept (FE_INVALID));
   /* Note: the test z1 != z2 would not distinguish +0 and -0. */
   if (is_equal (z1, z2) == 0) {
     printf("FAIL x=%la ref=%la z=%la\n", x, z1, z2);
