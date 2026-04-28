@@ -1,6 +1,6 @@
 /* Correctly-rounded inverse hyperbolic cosine function for the binary64 format
 
-Copyright (c) 2023 Alexei Sibidanov
+Copyright (c) 2023-2026 Alexei Sibidanov and Paul Zimmermann
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -25,23 +25,8 @@ SOFTWARE. */
 
 #include <mpfr.h>
 #include "fenv_mpfr.h"
-#include <stdint.h>
-
-typedef uint64_t u64;
-typedef union {double f; u64 u;} b64u64_u;
 
 double ref_acosh(double x){
-  b64u64_u ix = {.f = x};
-  if(__builtin_expect(ix.u<=0x3ff0000000000000ull, 0)){
-    if(ix.u==0x3ff0000000000000ull) return 0;
-    return __builtin_nan("x<1");
-  }
-  if(__builtin_expect(ix.u>=0x7ff0000000000000ull, 0)){
-    u64 aix = ix.u<<1;
-    if(ix.u==0x7ff0000000000000ull || aix>((u64)0x7ff<<53)) return x; // +inf or nan
-    return __builtin_nan("x<1");
-  }
-
   mpfr_t y;
   mpfr_init2(y, 53);
   mpfr_set_d(y, x, MPFR_RNDN);
