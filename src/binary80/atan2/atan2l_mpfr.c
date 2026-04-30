@@ -1,6 +1,6 @@
-/* Correctly-rounded inverse hyperbolic cosine function for the binary64 format
+/* Correctly-rounded reference arc tangent function of two binary80 variables.
 
-Copyright (c) 2023-2026 Alexei Sibidanov and Paul Zimmermann
+Copyright (c) 2026 Alexei Sibidanov <sibid@uvic.ca>.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -21,17 +21,26 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. */
+SOFTWARE.
+*/
 
 #include <mpfr.h>
 #include "fenv_mpfr.h"
 
-double ref_acosh(double x){
-  mpfr_t y;
-  mpfr_init2(y, 53);
-  mpfr_set_d(y, x, MPFR_RNDN);
-  mpfr_acosh(y, y, rnd2[rnd]);
-  double ret = mpfr_get_d(y, MPFR_RNDN);
-  mpfr_clear(y);
+/* reference code using MPFR */
+long double ref_atan2l(long double y, long double x) {
+  mpfr_t z, _x, _y;
+  mpfr_exp_t emin = mpfr_get_emin ();
+  mpfr_set_emin (-16444);
+  mpfr_inits2(64, z, _x, _y, NULL);
+
+  mpfr_set_ld(_x, x, MPFR_RNDN);
+  mpfr_set_ld(_y, y, MPFR_RNDN);
+  int inex = mpfr_atan2 (z, _y, _x, rnd2[rnd]);
+  mpfr_subnormalize(z, inex, rnd2[rnd]);
+  long double ret = mpfr_get_ld(z, rnd2[rnd]);
+
+  mpfr_clears(z, _x, _y, NULL);
+  mpfr_set_emin (emin);
   return ret;
 }
