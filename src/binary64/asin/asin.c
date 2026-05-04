@@ -206,11 +206,8 @@ double cr_asin(double x){
     // for |x|>0.5 we use range reduction for double angle formula
     // asin(x) = pi/2 - 2*asin(sqrt((1-x)/2)) and for x<-0.5 acos(x) = -pi/2 +
     // 2*asin(sqrt((1-|x|)/2))
-    /* exhaustive search done for 0.25 <= x < 1 with and without FMA
-       contraction. In progress:
-       [2^-3,2^-2): explor
-       [2^-4,2^-3): done
-    */
+    /* exhaustive search done for 2^-4 <= x < 1 with and without FMA
+       contraction */
     t = 2 - 2*__builtin_fabs(x);
     jd = roundeven_finite(t*0x1p5);
     z = __builtin_copysign(__builtin_sqrt(t), -x);
@@ -233,8 +230,8 @@ double cr_asin(double x){
     t = __builtin_fma(x,x,-0x1p-7*jd);
     z = x;
     zl = 0;
-    // fails for 0x1.0dp-52 with x=0x1.468fa00146735p-4 (rndz, no FMA)
-    eps = __builtin_fabs(z*t)*0x1.0ep-52;
+    // fails for 0x1.0fp-52 with x=0x1.fa3c79a3c19abp-3 (rndz, no FMA)
+    eps = __builtin_fabs(z*t)*0x1.10p-52;
   }
   // asin(xh+xl) = (xh + xl)*(cc[j][0] + (cc[j][1] + t*Poly(t, cc[j]+2)))
   // where t = xh^2 - j/128 and j = round(128*xh^2)
