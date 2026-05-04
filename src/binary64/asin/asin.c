@@ -188,6 +188,8 @@ double cr_asin(double x){
   b64u64_u ix = {.f = x};
   u64 ax = ix.u<<1;
   double t,z,zl,jd,f0h,f0l,eps;
+  /* exhaustive search done for 2^-4 <= x < 1 with and without FMA
+     contraction */
   if(ax>0x7fc0000000000000ull){ // |x|>0.5
     static const double off[][2] = {
       {0x1.921fb54442d18p+0, 0x1.1a62633145c07p-54}, {-0x1.921fb54442d18p+0, -0x1.1a62633145c07p-54}
@@ -206,8 +208,6 @@ double cr_asin(double x){
     // for |x|>0.5 we use range reduction for double angle formula
     // asin(x) = pi/2 - 2*asin(sqrt((1-x)/2)) and for x<-0.5 acos(x) = -pi/2 +
     // 2*asin(sqrt((1-|x|)/2))
-    /* exhaustive search done for 2^-4 <= x < 1 with and without FMA
-       contraction */
     t = 2 - 2*__builtin_fabs(x);
     jd = roundeven_finite(t*0x1p5);
     z = __builtin_copysign(__builtin_sqrt(t), -x);
