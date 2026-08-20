@@ -1160,9 +1160,9 @@ def wc(e,parity="any"):
 def T1():
    print ("static const double T1[129][4] = {")
    for j in [0..2^7]:
-      sh = RR(round(n(sin(j/2^5)*2^26,200))/2^26)
+      sh = RR(n(sin(j/2^5),200))
       sl = RR(n(sin(j/2^5)-sh.exact_rational(),200))
-      ch = RR(round(n(cos(j/2^5)*2^26,200))/2^26)
+      ch = RR(n(cos(j/2^5),200))
       cl = RR(n(cos(j/2^5)-ch.exact_rational(),200))
       print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
    print ("};")
@@ -1171,9 +1171,9 @@ def T1():
 def T2():
    print ("static const double T2[128][4] = {")
    for j in range(2^7):
-      sh = RR(round(n(sin(j/2^12)*2^26,200))/2^26)
+      sh = RR(n(sin(j/2^12),200))
       sl = RR(n(sin(j/2^12)-sh.exact_rational(),200))
-      ch = RR(round(n(cos(j/2^12)*2^26,200))/2^26)
+      ch = RR(n(cos(j/2^12),200))
       cl = RR(n(cos(j/2^12)-ch.exact_rational(),200))
       print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
    print ("};")
