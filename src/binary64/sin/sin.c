@@ -2378,10 +2378,8 @@ cr_sin_fast (double x)
   // if (bug) printf ("s2h=%la s2l=%la\n", s2h, s2l);
   // s2h+s2l approximates sin(x2)*cos(x1)
   double Sh, Sl;
-  /* We need to use a version of fastsum that uses twosum (and not fasttwosum)
-     since s1h might be smaller than s2h in absolute value. However, this can
-     happen only for i1 in {0,100,101}. */
-  if (i1 == 101 && i2 >= 61)
+  if (__builtin_expect (i1 == 101 && i2 >= 61, 0))
+    // only case where s1h <> 0 and exp(s1h) < exp(s2h)
     Sh = fastsum (s2h, s2l, s1h, s1l, &Sl);
   else
     Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
