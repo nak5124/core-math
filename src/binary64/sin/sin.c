@@ -2032,11 +2032,374 @@ sin_accurate (double x)
   return y;
 }
 
+/* for each j, 0 <= j <= 128, T1[j] contains sh, sl, ch, cl where
+   sh+sl is a double-double approximation of sin(j/2^5) and
+   ch+cl is a double-double approximation of cos(j/2^5),
+   where sh,ch are integer multiples of 2^-26 */
+static const double T1[129][4] = {
+  {0x0p+0, 0x0p+0, 0x1p+0, 0x0p+0},
+  {0x1.ffeabp-6, -0x1.44445e45cd407p-28, 0x1.ffc0018p-1, -0x1.556c16a76a892p-28},
+  {0x1.ffaabp-5, -0x1.112b1254b45b5p-29, 0x1.ff00158p-1, -0x1.5b059659af8f1p-28},
+  {0x1.7f701p-4, 0x1.92a8720d7e169p-31, 0x1.fdc06cp-1, -0x1.0328c96737ea5p-30},
+  {0x1.feaafp-4, -0x1.17911ca35f965p-28, 0x1.fc0155p-1, 0x1.3eade9b6d1e6ap-28},
+  {0x1.3eb312p-3, 0x1.8bacd96a3eb33p-28, 0x1.f9c3408p-1, 0x1.3e621438b6d61p-28},
+  {0x1.7dc102p-3, 0x1.f75e56a2b56a2p-28, 0x1.f706bep-1, -0x1.84c791698c80cp-31},
+  {0x1.bc6f84p-3, 0x1.db8c332ce0d2bp-28, 0x1.f3cc7cp-1, 0x1.d9e8b6f6f2e29p-28},
+  {0x1.faaeeep-3, -0x1.619d5128aec43p-28, 0x1.f0154ap-1, -0x1.0422bd161f0b3p-30},
+  {0x1.1c37d6p-2, 0x1.31ae1d946077p-28, 0x1.ebe215p-1, -0x1.1220b0817cf89p-30},
+  {0x1.3ad129p-2, 0x1.da74f600207abp-28, 0x1.e733eap-1, 0x1.93d3fa6f5d32bp-33},
+  {0x1.591bcap-2, -0x1.7429a341c5a2ap-32, 0x1.e20bf48p-1, 0x1.acd6c0f4cfa8ap-29},
+  {0x1.771025p-2, 0x1.5d9084f48a946p-28, 0x1.dc6b7e8p-1, 0x1.ccac89052cd92p-28},
+  {0x1.94a6bfp-2, -0x1.82ae4ed69ce14p-28, 0x1.d653f08p-1, -0x1.837f80bb11b22p-30},
+  {0x1.b1d83p-2, 0x1.4c8585a51dbd3p-28, 0x1.cfc6cf8p-1, 0x1.2956cfb16b6aap-28},
+  {0x1.ce9d2ep-2, 0x1.ea528f6d0375fp-29, 0x1.c8c5bf8p-1, 0x1.9c35086acf468p-30},
+  {0x1.eaee87p-2, 0x1.12c17bfa1d92fp-28, 0x1.c152808p-1, -0x1.a482b06248445p-29},
+  {0x1.0362938p-1, 0x1.c69954b49cca2p-29, 0x1.b96eefp-1, -0x1.4ef7e3eba5c34p-30},
+  {0x1.110d0c8p-1, -0x1.a4b1e244dcecdp-28, 0x1.b11d04p-1, 0x1.62a4c623baac4p-29},
+  {0x1.1e7343p-1, 0x1.1b2ba6122a3fap-28, 0x1.a85ed4p-1, 0x1.b9f0168cdf032p-28},
+  {0x1.2b91de8p-1, 0x1.44210ec0b91c5p-28, 0x1.9f368fp-1, -0x1.37683da3a4019p-28},
+  {0x1.3865978p-1, -0x1.d4ebea910fadbp-28, 0x1.95a67ep-1, 0x1.963f97a0812efp-34},
+  {0x1.44eb38p-1, 0x1.cf386ab04a4f8p-29, 0x1.8bb1058p-1, 0x1.2ee48030c7c08p-28},
+  {0x1.511fap-1, -0x1.4265722b81d0cp-28, 0x1.8158a3p-1, 0x1.916d5ce21746fp-29},
+  {0x1.5cffc18p-1, -0x1.4070f29a4d324p-29, 0x1.769fec8p-1, -0x1.aadee11827d5dp-29},
+  {0x1.6888a5p-1, -0x1.ecb4d15adf4dep-29, 0x1.6b898f8p-1, 0x1.4f7dae915ac78p-28},
+  {0x1.73b768p-1, 0x1.bd4aefb76df3ep-30, 0x1.6018528p-1, -0x1.0a9c20ae4d688p-29},
+  {0x1.7e893f8p-1, -0x1.7e43535e2208bp-28, 0x1.544f11p-1, -0x1.4da6b6f3d7473p-30},
+  {0x1.88fb768p-1, -0x1.fa392f29330f8p-28, 0x1.4830bd8p-1, -0x1.598a64411001cp-32},
+  {0x1.930b708p-1, -0x1.0303d30084d73p-28, 0x1.3bc05f8p-1, 0x1.674caced5b892p-30},
+  {0x1.9cb6a98p-1, 0x1.de73256b0c186p-28, 0x1.2f0113p-1, 0x1.32107218e30fp-28},
+  {0x1.a5fab78p-1, 0x1.3d29c85d20ac8p-29, 0x1.21f608p-1, 0x1.07e379bd70375p-29},
+  {0x1.aed549p-1, -0x1.ede623f7ce458p-30, 0x1.14a281p-1, -0x1.2be5d1b71edcdp-31},
+  {0x1.b74427p-1, 0x1.cbfe513b46a36p-28, 0x1.0709d28p-1, 0x1.b5caf6d1c6762p-28},
+  {0x1.bf4537p-1, -0x1.eda23d4d139bfp-28, 0x1.f25ec7p-2, -0x1.1eb40f6bba343p-28},
+  {0x1.c6d6778p-1, -0x1.720cdce2e9c48p-28, 0x1.d62d53p-2, -0x1.602056e09151bp-30},
+  {0x1.cdf6048p-1, 0x1.0e56e6e94af8bp-28, 0x1.b98656p-2, 0x1.ce82cacd9c85fp-29},
+  {0x1.d4a217p-1, -0x1.3b1c74456fdeap-28, 0x1.9c70fap-2, 0x1.0309e73a72e4cp-28},
+  {0x1.dad903p-1, -0x1.5d4de3c2b4392p-31, 0x1.7ef484p-2, 0x1.785e66b06a528p-29},
+  {0x1.e0993b8p-1, -0x1.594b8507c9b3p-28, 0x1.611853p-2, -0x1.47e25cb89394ap-32},
+  {0x1.e5e15p-1, -0x1.eebe73e0d9b6dp-29, 0x1.42e3dep-2, -0x1.dd09ab89a9d5p-28},
+  {0x1.eaafee8p-1, 0x1.0958620ebd7bp-28, 0x1.245eb1p-2, -0x1.922f561c45554p-29},
+  {0x1.ef03e4p-1, -0x1.857abbf7d46a8p-30, 0x1.05906ep-2, -0x1.3ac825fdda781p-30},
+  {0x1.f2dc1bp-1, -0x1.e7ffd20df3a91p-29, 0x1.cd019p-3, 0x1.30bdeedbb9074p-28},
+  {0x1.f6379d8p-1, -0x1.e6c962a535a55p-29, 0x1.8e6f08p-3, -0x1.4acf053f96a06p-28},
+  {0x1.f915948p-1, 0x1.7e853f2cd8ef5p-29, 0x1.4f78e4p-3, 0x1.b8d69179f5106p-29},
+  {0x1.fb7549p-1, 0x1.507858ecfdf77p-30, 0x1.102ee6p-3, -0x1.f001420bbf63fp-28},
+  {0x1.fd5623p-1, -0x1.84658ad512148p-28, 0x1.a141b8p-4, -0x1.592576288bc88p-28},
+  {0x1.feb7a98p-1, 0x1.9636c56f370cp-28, 0x1.21bd54p-4, 0x1.f8bf34e87e5cap-29},
+  {0x1.ff99858p-1, -0x1.5b18cb550ab26p-28, 0x1.43e108p-5, 0x1.7ef421ae03b66p-28},
+  {0x1.fffb7dp-1, 0x1.f9d1296d2b6cbp-28, 0x1.0fd9ep-7, -0x1.47ed841615007p-28},
+  {0x1.ffdd79p-1, -0x1.5b2e8182f80e4p-30, -0x1.780a4p-6, 0x1.4fd169d43abc8p-28},
+  {0x1.ff3f8p-1, -0x1.166cb2886d71dp-30, -0x1.bbd1bp-5, 0x1.bc9611543efp-33},
+  {0x1.fe21bap-1, -0x1.e736c3fcea7d6p-28, -0x1.5d97a8p-4, -0x1.2f51552e59185p-31},
+  {0x1.fc846ep-1, -0x1.bb1e28514d9c2p-28, -0x1.dcef14p-4, -0x1.072ccf1f2bc74p-30},
+  {0x1.fa68038p-1, -0x1.3a94bacec1d28p-28, -0x1.2de7a4p-3, 0x1.d7002444152ffp-29},
+  {0x1.f7cd018p-1, 0x1.63048b8fe51ebp-30, -0x1.6d0c44p-3, -0x1.3a7d314588f0ap-28},
+  {0x1.f4b40fp-1, 0x1.cd6831663174fp-29, -0x1.abd5a4p-3, -0x1.0b99c5007afecp-28},
+  {0x1.f11df28p-1, -0x1.cce929909b7c2p-28, -0x1.ea3412p-3, 0x1.80b1ae2d5ea4cp-28},
+  {0x1.ed0b908p-1, 0x1.455585ac4c6b8p-30, -0x1.140bfap-2, 0x1.f4e4ac8a7de74p-29},
+  {0x1.e87dee8p-1, -0x1.3431b4106241fp-31, -0x1.32b8e9p-2, -0x1.523f382c03f6dp-28},
+  {0x1.e3762f8p-1, -0x1.0777f10272413p-31, -0x1.51192cp-2, -0x1.1968c6d053ee4p-28},
+  {0x1.ddf5958p-1, -0x1.563778533a264p-30, -0x1.6f252bp-2, 0x1.45e7694d73afbp-28},
+  {0x1.d7fd808p-1, 0x1.a7cdc78f2f4a5p-31, -0x1.8cd562p-2, 0x1.29dae27ca610fp-28},
+  {0x1.d18f6e8p-1, 0x1.68da22efd5c24p-28, -0x1.aa2265p-2, -0x1.d4dc81290ccbep-28},
+  {0x1.caacfb8p-1, -0x1.b59e333f7ea49p-29, -0x1.c704e3p-2, 0x1.6279a08212118p-29},
+  {0x1.c357df8p-1, -0x1.f8dfee1f162bdp-28, -0x1.e375a1p-2, -0x1.6086ae4341c06p-28},
+  {0x1.bb91ef8p-1, -0x1.d1ac3f22e4a5bp-34, -0x1.ff6d85p-2, 0x1.cb014fc98ab29p-32},
+  {0x1.b35d1d8p-1, 0x1.0d2dd5e2c28e9p-29, -0x1.0d72c8p-1, 0x1.dd63dcb3c455ep-30},
+  {0x1.aabb768p-1, 0x1.fa1ad37ab571dp-29, -0x1.1aeb72p-1, -0x1.b0436729dd282p-29},
+  {0x1.a1af23p-1, 0x1.37b94b3a74b0cp-30, -0x1.281d63p-1, 0x1.e5c6c85a8b2bap-29},
+  {0x1.983a66p-1, -0x1.401d3fc4e48b3p-28, -0x1.35054ep-1, 0x1.2d374bd3367ebp-28},
+  {0x1.8e5f9cp-1, 0x1.6871d4abb81b5p-28, -0x1.419ff9p-1, -0x1.b9ba6c997bd6dp-29},
+  {0x1.84213c8p-1, 0x1.71d490253008fp-28, -0x1.4dea3ep-1, -0x1.6d212e95e180fp-30},
+  {0x1.7981d7p-1, -0x1.a474ef19fcdb4p-29, -0x1.59e10ap-1, -0x1.4741767056153p-28},
+  {0x1.6e84128p-1, 0x1.ed0f95695aeadp-29, -0x1.65816p-1, 0x1.77d5814bd53fap-28},
+  {0x1.632aafp-1, 0x1.df6c9d810638p-28, -0x1.70c857p-1, 0x1.14a4cb4308b39p-32},
+  {0x1.577883p-1, 0x1.b15fd8d3898f2p-31, -0x1.7bb31ep-1, -0x1.34af555f01e71p-34},
+  {0x1.4b707a8p-1, -0x1.4c84cdef71ae7p-31, -0x1.863efap-1, -0x1.b0ee1295e50f5p-28},
+  {0x1.3f15978p-1, 0x1.43e8bd90781e5p-30, -0x1.9069488p-1, -0x1.ab1a3e76ca444p-28},
+  {0x1.326af1p-1, -0x1.181aa7bfa84e7p-28, -0x1.9a2f7fp-1, 0x1.e9d20b53c182bp-31},
+  {0x1.2573b1p-1, 0x1.85bffc432e146p-30, -0x1.a38f2b8p-1, 0x1.8a7e71bd5e7c7p-33},
+  {0x1.183316p-1, -0x1.4d106b2821139p-28, -0x1.ac85f68p-1, 0x1.6e86c27ae58afp-29},
+  {0x1.0aac6f8p-1, -0x1.7a8ae5a93fa78p-28, -0x1.b511a2p-1, -0x1.177e5e5d7c202p-29},
+  {0x1.f9c63ep-2, 0x1.2b8c63712c162p-29, -0x1.bd300b8p-1, -0x1.8112c3438b2edp-29},
+  {0x1.ddb52fp-2, -0x1.0eae02274b35bp-28, -0x1.c4df2b8p-1, 0x1.2ab1f47d09c4dp-29},
+  {0x1.c12cb5p-2, -0x1.ee2d7717eea8fp-28, -0x1.cc1d16p-1, 0x1.639c71d291293p-28},
+  {0x1.a433f1p-2, 0x1.d953c0e7d8c12p-28, -0x1.d2e7fb8p-1, 0x1.31ceff6ef91d4p-28},
+  {0x1.86d224p-2, -0x1.8f9f01207c724p-28, -0x1.d93e298p-1, 0x1.8289761421d75p-28},
+  {0x1.690ea3p-2, 0x1.082183ea3c7fbp-28, -0x1.df1e0ap-1, -0x1.91df083f06c07p-28},
+  {0x1.4af0e1p-2, 0x1.0466b6a924767p-29, -0x1.e48626p-1, -0x1.109c75079ca59p-29},
+  {0x1.2c8065p-2, -0x1.ffe55eb8dae9fp-28, -0x1.e97523p-1, 0x1.3a9c444d76b18p-29},
+  {0x1.0dc4c9p-2, 0x1.5c2148414fefbp-28, -0x1.ede9c5p-1, -0x1.6fcb1e2e732a6p-30},
+  {0x1.dd8b7cp-3, 0x1.8d891b690282ep-28, -0x1.f1e2ef8p-1, 0x1.a0a6fcb689edbp-28},
+  {0x1.9f1606p-3, 0x1.f3edce14786dbp-29, -0x1.f55fa38p-1, 0x1.7a75c06d590a6p-29},
+  {0x1.6038ccp-3, 0x1.b602623e01a1p-28, -0x1.f85f02p-1, -0x1.c3301e845e118p-28},
+  {0x1.210386p-3, 0x1.b6daab69e3903p-28, -0x1.fae04cp-1, 0x1.7a1a2d9f0401p-29},
+  {0x1.c30c04p-4, -0x1.090d1bef6c104p-28, -0x1.fce2ep-1, -0x1.4965bd6f70aap-28},
+  {0x1.43a038p-4, -0x1.c14926b467405p-30, -0x1.fe663e8p-1, 0x1.3c88572894e56p-28},
+  {0x1.87c708p-5, 0x1.ca014eb780c8ep-28, -0x1.ff6a058p-1, -0x1.04edf121b79c6p-28},
+  {0x1.0fd77p-6, 0x1.407cb5334e564p-31, -0x1.ffedf5p-1, -0x1.141633f87e7f7p-29},
+  {-0x1.e0466p-7, 0x1.69b03eec068c3p-28, -0x1.fff1eb8p-1, -0x1.796d1fbebcc46p-28},
+  {-0x1.77f0ep-5, 0x1.1bd6da38ce464p-29, -0x1.ff75e88p-1, 0x1.9fd8fdded8785p-32},
+  {-0x1.3bb918p-4, 0x1.a6c94505d3a18p-29, -0x1.fe7a0a8p-1, 0x1.77d6df63d1b87p-31},
+  {-0x1.bb2ad4p-4, 0x1.b9b5b73a75145p-28, -0x1.fcfe908p-1, -0x1.d7f7f7b01ff3ap-29},
+  {-0x1.1d16e2p-3, -0x1.f48ceff285e2fp-29, -0x1.fb03dap-1, 0x1.e52f6311ed761p-28},
+  {-0x1.5c5118p-3, 0x1.958a733c85ac5p-29, -0x1.f88a648p-1, -0x1.6c3516ec2bc33p-29},
+  {-0x1.9b343ap-3, -0x1.0a648f1418d86p-29, -0x1.f592cf8p-1, 0x1.c8c6d262dc945p-30},
+  {-0x1.d9b092p-3, -0x1.153dcd3088f9ap-37, -0x1.f21dd8p-1, -0x1.ac8ffc75b5aaep-28},
+  {-0x1.0bdb4p-2, -0x1.1023e71c02903p-31, -0x1.ee2c5cp-1, -0x1.b7f134b9f33a7p-29},
+  {-0x1.2a9b42p-2, 0x1.6804b84af70fap-28, -0x1.e9bf578p-1, 0x1.5d331badd2723p-32},
+  {-0x1.49109ep-2, -0x1.340b1a5999558p-34, -0x1.e4d7e58p-1, -0x1.6267d27efc971p-29},
+  {-0x1.6733b8p-2, 0x1.459de0ca3f54fp-30, -0x1.df774p-1, -0x1.e08d2f7bdac8cp-28},
+  {-0x1.84fd07p-2, 0x1.c7b8746cfefcbp-29, -0x1.d99ebf8p-1, -0x1.132217e082c96p-29},
+  {-0x1.a26518p-2, -0x1.9d717fe545ed9p-28, -0x1.d34fd98p-1, -0x1.6f3b10e16c5b9p-28},
+  {-0x1.bf6493p-2, 0x1.0928e2279e82p-30, -0x1.cc8c228p-1, 0x1.e5f730c9bb481p-28},
+  {-0x1.dbf437p-2, 0x1.62f0dbad73a4cp-28, -0x1.c5554ap-1, -0x1.b0a888fb189e2p-28},
+  {-0x1.f80cep-2, 0x1.9fd0374f161acp-29, -0x1.bdad1fp-1, -0x1.96418f3385fecp-28},
+  {-0x1.09d3c4p-1, -0x1.6382e11b758d3p-28, -0x1.b5958bp-1, -0x1.cf2eb46164a78p-28},
+  {-0x1.175ea5p-1, 0x1.bc0a43e116de1p-29, -0x1.ad1094p-1, -0x1.2d11a05510d2dp-28},
+  {-0x1.24a3af8p-1, 0x1.8af9de970bae9p-29, -0x1.a4205bp-1, -0x1.4333fb579c201p-28},
+  {-0x1.319f928p-1, -0x1.2cfa1ea83f7c9p-31, -0x1.9ac71c8p-1, 0x1.dbc6ad00addb1p-28},
+  {-0x1.3e4f0f8p-1, 0x1.586dab2b19263p-28, -0x1.91072d8p-1, -0x1.ea324687aa197p-28},
+  {-0x1.4aaefap-1, -0x1.382a11256069dp-30, -0x1.86e2ff8p-1, -0x1.45ddfd8c1274cp-33},
+  {-0x1.56bc3a8p-1, -0x1.c79c376e00ee2p-28, -0x1.7c5d1a8p-1, -0x1.d1ee7bc90c38fp-30},
+  {-0x1.6273cep-1, -0x1.1375543ac5b37p-28, -0x1.7178208p-1, 0x1.7d402f90b6224p-28},
+  {-0x1.6dd2c68p-1, 0x1.e10ab1f3a3b99p-30, -0x1.6636cap-1, 0x1.2af0b2b9119ddp-30},
+  {-0x1.78d64cp-1, 0x1.4b7e1b759ec6bp-30, -0x1.5a9be8p-1, 0x1.bf523d067c044p-28},
+  {-0x1.837b9ep-1, 0x1.11f0a8c798b4p-28, -0x1.4eaa608p-1, 0x1.24db3f3b9925ep-29},
+};
+
+/* for each j, 0 <= j < 128, T2[j] contains sh, sl, ch, cl where
+   sh+sl is a double-double approximation of sin(j/2^12) and
+   ch+cl is a double-double approximation of cos(j/2^12),
+   where sh,ch are integer multiples of 2^-26 */
+static const double T2[128][4] = {
+  {0x0p+0, 0x0p+0, 0x1p+0, 0x0p+0},
+  {0x1p-12, -0x1.5555554444444p-39, 0x1.ffffffp-1, 0x1.55555549f49f5p-53},
+  {0x1p-11, -0x1.5555551111111p-36, 0x1.fffffcp-1, 0x1.55555527d27d3p-49},
+  {0x1.8p-11, -0x1.1fffff7e66668p-34, 0x1.fffff7p-1, 0x1.afffff7e66668p-47},
+  {0x1p-10, -0x1.555554444444bp-33, 0x1.fffffp-1, 0x1.5555549f49f4dp-45},
+  {0x1.4p-10, -0x1.4d5553b4aaabap-32, 0x1.ffffe7p-1, 0x1.a0aaa94f71c7bp-44},
+  {0x1.8p-10, -0x1.1ffffdf9999b5p-31, 0x1.ffffdcp-1, 0x1.affffdf9999aep-43},
+  {0x1.cp-10, -0x1.c95550f4dde3p-31, 0x1.ffffcfp-1, 0x1.902aa81d0fa73p-42},
+  {0x1p-9, -0x1.5555511111179p-30, 0x1.ffffcp-1, 0x1.5555527d27d5cp-41},
+  {0x1.2p-9, -0x1.e5fff84fb342p-30, 0x1.ffffafp-1, 0x1.115ffd1de3376p-40},
+  {0x1.4p-9, -0x1.4d554ed2aaba3p-29, 0x1.ffff9cp-1, 0x1.a0aaa53dc7262p-40},
+  {0x1.6p-9, -0x1.bbaaa02e7bd9fp-29, 0x1.ffff87p-1, 0x1.3105508715323p-39},
+  {0x1.8p-9, -0x1.1ffff7e666823p-28, 0x1.ffff7p-1, 0x1.affff7e6667b4p-39},
+  {0x1.ap-9, -0x1.6e2a9e948f1f9p-28, 0x1.ffff57p-1, 0x1.2982a41eb10e1p-38},
+  {0x1.cp-9, -0x1.c95543d377c93p-28, 0x1.ffff3cp-1, 0x1.902aa0743eb7ap-38},
+  {0x1.dfff8p-9, 0x1.cd8018b81f7b9p-28, 0x1.ffff1fp-1, 0x1.07abf846761f1p-37},
+  {0x1.ffff8p-9, 0x1.5555777776a77p-28, 0x1.ffffp-1, 0x1.555549f49f7dfp-37},
+  {0x1.0fffcp-8, 0x1.9a55b1c59b61dp-29, 0x1.fffedfp-1, 0x1.b30144f6c8d1ap-37},
+  {0x1.1fffcp-8, 0x1.a001ec13245f3p-31, 0x1.fffebcp-1, 0x1.115ff4778d0f8p-36},
+  {0x1.2fffcp-8, -0x1.dca96842135bbp-30, 0x1.fffe97p-1, 0x1.53609ab6d30bdp-36},
+  {0x1.3fffcp-8, -0x1.3554ed2aae8acp-28, 0x1.fffe7p-1, 0x1.a0aa94f71d0cdp-36},
+  {0x1.4fff8p-8, 0x1.f88084f22758ep-28, 0x1.fffe47p-1, 0x1.fa75e2eb07184p-36},
+  {0x1.5fff8p-8, 0x1.1155fd183cb7p-28, 0x1.fffe1cp-1, 0x1.3105421c55457p-35},
+  {0x1.6fff8p-8, 0x1.42b7c2ed16cd3p-32, 0x1.fffdefp-1, 0x1.6c603c3c2b0c6p-35},
+  {0x1.7fff8p-8, -0x1.fffdf999b55f1p-29, 0x1.fffdcp-1, 0x1.afffdf999ae6ep-35},
+  {0x1.8fff4p-8, 0x1.d3d6933978302p-28, 0x1.fffd8fp-1, 0x1.fca02bf0f586ep-35},
+  {0x1.9fff4p-8, 0x1.1d585adc13a23p-29, 0x1.fffd5cp-1, 0x1.2982907ac5256p-34},
+  {0x1.afff4p-8, -0x1.a0fc59d3cc236p-29, 0x1.fffd27p-1, 0x1.59fd5f28719ecp-34},
+  {0x1.bfffp-8, 0x1.b5578590e8376p-28, 0x1.fffcfp-1, 0x1.902a81d0fc8b9p-34},
+  {0x1.cfffp-8, 0x1.f2d4658b44f08p-32, 0x1.fffcb7p-1, 0x1.cc77f83e2f9e8p-34},
+  {0x1.dfffp-8, -0x1.93fce8fc42365p-28, 0x1.fffc7cp-1, 0x1.07abe119d9f09p-33},
+  {0x1.effecp-8, 0x1.35b1f28a8857bp-29, 0x1.fffc3fp-1, 0x1.2c9fefb74fda3p-33},
+  {0x1.fffecp-8, -0x1.5551111179179p-28, 0x1.fffcp-1, 0x1.555527d28068p-33},
+  {0x1.07ff4p-7, 0x1.3509f3df8abe1p-29, 0x1.fffbbfp-1, 0x1.820a8942b1221p-33},
+  {0x1.0fff4p-7, -0x1.96a4e3a6c1265p-28, 0x1.fffb7cp-1, 0x1.b30113db273c4p-33},
+  {0x1.17ff2p-7, 0x1.631585c328b3dp-32, 0x1.fffb37p-1, 0x1.e87bc76ae696ap-33},
+  {0x1.1fffp-7, 0x1.a007b04bdf8ccp-28, 0x1.fffafp-1, 0x1.115fd1de375edp-32},
+  {0x1.27ffp-7, -0x1.f443b2c2f6492p-29, 0x1.fffaa7p-1, 0x1.3109d44abaf53p-32},
+  {0x1.2ffeep-7, 0x1.1ad2f7b985586p-30, 0x1.fffa5cp-1, 0x1.53606adb51015p-32},
+  {0x1.37fecp-7, 0x1.618b78fab3ba8p-28, 0x1.fffa0fp-1, 0x1.7889156d9fccap-32},
+  {0x1.3ffecp-7, -0x1.aa9da557455d5p-28, 0x1.fff9cp-1, 0x1.a0aa53dc7b774p-32},
+  {0x1.47feap-7, -0x1.bd8d33f696fbcp-29, 0x1.fff96fp-1, 0x1.cbeba5ffbf782p-32},
+  {0x1.4ffe8p-7, -0x1.df7b0de902ec7p-31, 0x1.fff91cp-1, 0x1.fa758bac271d2p-32},
+  {0x1.57fe6p-7, 0x1.e7403603d103ep-31, 0x1.fff8c7p-1, 0x1.1638c2599285ap-31},
+  {0x1.5ffe4p-7, 0x1.157f460983d19p-29, 0x1.fff87p-1, 0x1.310508715cdf6p-31},
+  {0x1.67fe2p-7, 0x1.592eed83e9684p-29, 0x1.fff817p-1, 0x1.4db55802a485cp-31},
+  {0x1.6ffep-7, 0x1.42df0baca0078p-29, 0x1.fff7bcp-1, 0x1.6c5ff0f0b74e9p-31},
+  {0x1.77fdep-7, 0x1.a11f513444767p-30, 0x1.fff75fp-1, 0x1.8d1b931ce8bb9p-31},
+  {0x1.7ffdcp-7, 0x1.0332fba84175p-39, 0x1.fff7p-1, 0x1.afff7e667b3a8p-31},
+  {0x1.87fdap-7, -0x1.300d7f148ef34p-29, 0x1.fff69fp-1, 0x1.d52372aa88e58p-31},
+  {0x1.8ffd8p-7, -0x1.612d98d7e7ecfp-28, 0x1.fff63cp-1, 0x1.fc9fafc3ebc3p-31},
+  {0x1.97fd4p-7, 0x1.a3abdf3fcfdc8p-28, 0x1.fff5d7p-1, 0x1.13467ac592c2fp-30},
+  {0x1.9ffd2p-7, 0x1.d616b6e06efdfp-30, 0x1.fff57p-1, 0x1.298241eb2366dp-30},
+  {0x1.a7fdp-7, -0x1.d9405081917b2p-29, 0x1.fff507p-1, 0x1.41100d3c6af36p-30},
+  {0x1.affccp-7, 0x1.7c3a62b75d904p-28, 0x1.fff49cp-1, 0x1.59fcfca1da855p-30},
+  {0x1.b7fcap-7, -0x1.43aaaf20da34dp-30, 0x1.fff42fp-1, 0x1.74567002840fep-30},
+  {0x1.bffc6p-7, 0x1.aaf0b20db54d7p-28, 0x1.fff3cp-1, 0x1.902a07440cfd1p-30},
+  {0x1.c7fc4p-7, -0x1.2266fb8549d1bp-29, 0x1.fff34fp-1, 0x1.ad85a24aa08d9p-30},
+  {0x1.cffcp-7, 0x1.f3519605e8a93p-29, 0x1.fff2dcp-1, 0x1.cc7760f8e1f91p-30},
+  {0x1.d7fbep-7, -0x1.b57a6d2c45ee4p-28, 0x1.fff267p-1, 0x1.ed0da32fde4e4p-30},
+  {0x1.dffbap-7, -0x1.3f3a3f423648dp-29, 0x1.fff1fp-1, 0x1.07ab84677f097p-29},
+  {0x1.e7fb6p-7, 0x1.d205d47565cb1p-31, 0x1.fff177p-1, 0x1.19b138d9fb521p-29},
+  {0x1.effb2p-7, 0x1.ae3e5112924b4p-29, 0x1.fff0fcp-1, 0x1.2c9f7edd5dab2p-29},
+  {0x1.f7faep-7, 0x1.35fe31b1f1071p-28, 0x1.fff07fp-1, 0x1.407e065eb72aap-29},
+  {0x1.fffaap-7, 0x1.55dddda9daa94p-28, 0x1.fffp-1, 0x1.55549f4a28a28p-29},
+  {0x1.03fd3p-6, 0x1.35be34513bb4dp-28, 0x1.ffef7fp-1, 0x1.6b2b398adad07p-29},
+  {0x1.07fd1p-6, 0x1.a93e7b90924fdp-29, 0x1.ffeefcp-1, 0x1.8209e50af66e3p-29},
+  {0x1.0bfcfp-6, 0x1.8c081381ba6cdp-31, 0x1.ffee77p-1, 0x1.99f8d1b39c219p-29},
+  {0x1.0ffcdp-6, -0x1.6938ea278c944p-29, 0x1.ffedfp-1, 0x1.b3004f6cdc4cap-29},
+  {0x1.13fcbp-6, -0x1.deb91fdd7cd33p-28, 0x1.ffed67p-1, 0x1.cd28ce1daebdbp-29},
+  {0x1.17fc8p-6, 0x1.6456167a8b63ap-29, 0x1.ffecdcp-1, 0x1.e87addabea3f6p-29},
+  {0x1.1bfc6p-6, -0x1.02efea544d91cp-28, 0x1.ffec4fp-1, 0x1.027f96fe1e046p-28},
+  {0x1.1ffc3p-6, 0x1.00f60922f9ac5p-28, 0x1.ffebcp-1, 0x1.115f47790f86cp-28},
+  {0x1.23fc1p-6, -0x1.43231060b533p-28, 0x1.ffeb2fp-1, 0x1.20e0f837e9971p-28},
+  {0x1.27fbep-6, 0x1.7e269b26a1f23p-31, 0x1.ffea9cp-1, 0x1.3109312b2a23ep-28},
+  {0x1.2bfbbp-6, 0x1.58adbf00c370dp-28, 0x1.ffea07p-1, 0x1.41dc8a42a8924p-28},
+  {0x1.2ffb9p-6, -0x1.c96842b5bb328p-28, 0x1.ffe97p-1, 0x1.535fab6d9125cp-28},
+  {0x1.33fb6p-6, -0x1.377d269c7c55ap-28, 0x1.ffe8d7p-1, 0x1.65974c9a60589p-28},
+  {0x1.37fb3p-6, -0x1.e521c28aab806p-29, 0x1.ffe83cp-1, 0x1.788835b6de238p-28},
+  {0x1.3bfbp-6, -0x1.f746cdea3cc69p-29, 0x1.ffe79fp-1, 0x1.8c373eb019362p-28},
+  {0x1.3ffadp-6, -0x1.53b4aba2ae64dp-28, 0x1.ffe7p-1, 0x1.a0a94f72621edp-28},
+  {0x1.43faap-6, -0x1.fbc4a2f5df2bdp-28, 0x1.ffe65fp-1, 0x1.b5e35fe94662dp-28},
+  {0x1.47fa6p-6, 0x1.0b2cbfb974935p-28, 0x1.ffe5bcp-1, 0x1.cbea77ff8b866p-28},
+  {0x1.4bfa3p-6, -0x1.ff03b4dc79afp-31, 0x1.ffe517p-1, 0x1.e2c3af9f2a04ap-28},
+  {0x1.4ffap-6, -0x1.ddec38a9c7fcdp-28, 0x1.ffe47p-1, 0x1.fa742eb148382p-28},
+  {0x1.53f9cp-6, 0x1.804c39675aa63p-31, 0x1.ffe3c78p-1, -0x1.ecfed2e1cacdbp-28},
+  {0x1.57f98p-6, 0x1.e900d6daaa533p-28, 0x1.ffe31c8p-1, -0x1.d3900d329c7bcp-28},
+  {0x1.5bf95p-6, -0x1.680c76b2d9fa3p-29, 0x1.ffe26f8p-1, -0x1.b93a285a9c09ep-28},
+  {0x1.5ff91p-6, 0x1.5fd17cb70729p-30, 0x1.ffe1c08p-1, -0x1.9df7bc741fd02p-28},
+  {0x1.63f8dp-6, 0x1.0bf0b5645162cp-28, 0x1.ffe10f8p-1, -0x1.81c3519a6aaf2p-28},
+  {0x1.67f89p-6, 0x1.66eed6965aca5p-28, 0x1.ffe05c8p-1, -0x1.64975fe9b187bp-28},
+  {0x1.6bf85p-6, 0x1.67eed268f533cp-28, 0x1.ffdfa78p-1, -0x1.466e4f7f20c2dp-28},
+  {0x1.6ff81p-6, 0x1.0df0b8db35f73p-28, 0x1.ffdef08p-1, -0x1.27427878e1e9ap-28},
+  {0x1.73f7dp-6, 0x1.5fd2691cc208dp-30, 0x1.ffde378p-1, -0x1.070e22f6214d2p-28},
+  {0x1.77f79p-6, -0x1.760af13a13716p-29, 0x1.ffdd7c8p-1, -0x1.cb970e2e277c2p-29},
+  {0x1.7bf74p-6, 0x1.d402914196ad5p-28, 0x1.ffdcbf8p-1, -0x1.86e999f9f8aa2p-29},
+  {0x1.7ff7p-6, 0x1.03325507bf8adp-34, 0x1.ffdc008p-1, -0x1.4008199464946p-29},
+  {0x1.83f6bp-6, 0x1.d419416a9a55cp-28, 0x1.ffdb3f8p-1, -0x1.edcd3a889b73cp-30},
+  {0x1.87f67p-6, -0x1.79afe895dce0ap-29, 0x1.ffda7c8p-1, -0x1.56f22aa5ad309p-30},
+  {0x1.8bf62p-6, 0x1.40e4eb122cd62p-30, 0x1.ffd9b78p-1, -0x1.76cd482db6ee2p-31},
+  {0x1.8ff5dp-6, 0x1.f499c31816d7fp-29, 0x1.ffd8f08p-1, -0x1.b120777b3db04p-34},
+  {0x1.93f58p-6, 0x1.4063136193dffp-28, 0x1.ffd8278p-1, 0x1.1449152ee5e8ap-31},
+  {0x1.97f53p-6, 0x1.217be3ff23b35p-28, 0x1.ffd75c8p-1, 0x1.34563171604cfp-30},
+  {0x1.9bf4ep-6, 0x1.392ecf076ed23p-29, 0x1.ffd68f8p-1, 0x1.e39c4c6be06abp-30},
+  {0x1.9ff49p-6, -0x1.3d29362edcba5p-30, 0x1.ffd5c08p-1, 0x1.4c083d6bd588p-29},
+  {0x1.a3f44p-6, -0x1.a3292643310b1p-28, 0x1.ffd4ef8p-1, 0x1.a8e64e0024f34p-29},
+  {0x1.a7f3ep-6, 0x1.3ff5e5627bffdp-29, 0x1.ffd41c8p-1, 0x1.043ab3caffa7fp-28},
+  {0x1.abf39p-6, -0x1.86ddecf178d32p-28, 0x1.ffd3478p-1, 0x1.35615ce6ea358p-28},
+  {0x1.aff33p-6, -0x1.8b3af046750f4p-32, 0x1.ffd2708p-1, 0x1.67edca22aaeb3p-28},
+  {0x1.b3f2dp-6, 0x1.d2f38614bb37cp-29, 0x1.ffd1978p-1, 0x1.9be6b34bb4cc9p-28},
+  {0x1.b7f27p-6, 0x1.7eaa8038bdd4cp-28, 0x1.ffd0bc8p-1, 0x1.d152e02e0e5fbp-28},
+  {0x1.bbf21p-6, 0x1.a5de9ff19defdp-28, 0x1.ffcfep-1, -0x1.f7c6d76bb51a5p-28},
+  {0x1.bff1bp-6, 0x1.5e163a0ddf20cp-28, 0x1.ffcf01p-1, -0x1.bf5f8bb87c7d1p-28},
+  {0x1.c3f15p-6, 0x1.4ca2cdaabe418p-29, 0x1.ffce2p-1, -0x1.857044f0afa8fp-28},
+  {0x1.c7f0fp-6, -0x1.04df82000fd36p-29, 0x1.ffcd3dp-1, -0x1.49f1fb4e3e7abp-28},
+  {0x1.cbf08p-6, 0x1.e2d2dbb6807c8p-28, 0x1.ffcc58p-1, -0x1.0cdd970ca7d35p-28},
+  {0x1.cff02p-6, -0x1.57354b61a7b1ap-31, 0x1.ffcb71p-1, -0x1.9c57e0d2015f6p-29},
+  {0x1.d3efbp-6, 0x1.5363c9a5a6968p-28, 0x1.ffca88p-1, -0x1.1bab9f43f6a0ep-29},
+  {0x1.d7ef5p-6, -0x1.a34db09221fd5p-28, 0x1.ffc99dp-1, -0x1.2f4fb3dfb9c69p-30},
+  {0x1.dbeeep-6, -0x1.0ffafd1cc7e47p-28, 0x1.ffc8bp-1, -0x1.03de159b92536p-33},
+  {0x1.dfee7p-6, -0x1.e748011b10fe4p-29, 0x1.ffc7c1p-1, 0x1.ea8467dc25932p-31},
+  {0x1.e3eep-6, -0x1.4f489f00a5771p-28, 0x1.ffc6dp-1, 0x1.090407778a80cp-29},
+  {0x1.e7ed8p-6, 0x1.dc1743e59b254p-28, 0x1.ffc5ddp-1, 0x1.9af9f69965fffp-29},
+  {0x1.ebed1p-6, 0x1.1af789f3dd8bbp-29, 0x1.ffc4e8p-1, 0x1.18490b655257ap-28},
+  {0x1.efecap-6, -0x1.3c1afe74f9c38p-28, 0x1.ffc3f1p-1, 0x1.64eddbbad693ep-28},
+  {0x1.f3ec2p-6, 0x1.f94c5d8a367dfp-30, 0x1.ffc2f8p-1, 0x1.b37324009a3fep-28},
+  {0x1.f7ebap-6, 0x1.bbc624c62c2bdp-28, 0x1.ffc1fd8p-1, -0x1.fc1f5417e892cp-28},
+  {0x1.fbeb3p-6, -0x1.84c1b7877bd93p-28, 0x1.ffc1008p-1, -0x1.a9c1b4df20132p-28},
+};
+
+/* special code for |x| < 4, using the following algorithm:
+ * special case for tiny x (to avoid underflow)
+ * save sign and replace x by |x|
+ * write x = x1 + x2 + r where x1 contains the upper 7 bits, x2 the next 7 bits, and |r| < 2^-13
+ * precompute double-double tables for sin(x1), cos(x1), sin(x2), cos(x2)
+ (no argument reduction)
+ * deduce from these tables Sh+Sl approximating sin(x1+x2) and Ch
+ approximating cos(x1+x2) (no need of the lower part of cos(x1+x2)).
+ * use polynomials delivering about 64 bits for sin(r) and cos(r)-1.
+ The following delivers about 65 bits (absolute error) for sin:
+ x * (0x1.fffffffffffffp-1 + x^2 * (-0x1.5555550666667p-3)) and the following
+ 79 bits for cos-1: x^2 * (-0x1.fffffffffffffp-2 + x^2 * 0x1.55555507d43dep-5)
+ * compute fh=Sh and fl=Ch*sh + Sl + Sh*ch where sh approximates sin(r) and
+ ch approximates cos(r)-1.
+ All computations are done in double precision, and all terms in fl are less
+ than about 2^-13 in absolute value.
+ * adjust sign (maybe can be done in Sh+Sl earlier)
+ * perform the rounding test with fh + (fl +/- eps)
+ */
+static double
+cr_sin_fast (double x)
+{
+  b64u64_u t = {.f = x};
+  int sgn = t.u >> 63; // save sign
+  t.u &= 0x7fffffffffffffffull; // t.u is now the encoding of |x|
+  // since |x| < 4, we have t.u < 0x4010000000000000
+
+  // deal with tiny x to avoid underflow
+  // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
+  if (t.u <= 0x3e57137449123ef6) {
+    if (x == 0)
+      return x;
+    // Taylor expansion of sin(x) is x - x^3/6 around zero
+    // for x=-0, fma (x, -0x1p-54, x) returns +0
+    /* We have underflow when 0 < |x| < 2^-1022 or when |x| = 2^-1022
+       and rounding towards zero. */
+    double res = __builtin_fma (x, -0x1p-54, x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    if (__builtin_fabs (x) < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
+      errno = ERANGE; // underflow
+#endif
+    return res;
+  }
+
+  double s = 0x1p+12 * t.f;
+  double jd = __builtin_roundeven (s); // 0 <= j <= 2^14
+  double r = (s - jd) * 0x1p-12; // |r| <= 2^-13
+  int j = jd, i1 = j >> 7, i2 = j & 0x7f;
+  // |x| = x1 + x2 + r where x1 = i1/2^5 and x2 = i2/2^12
+  // sin(x1+x2) = sin(x1)*cos(x2) + sin(x2)*cos(x1)
+  double s1h = T1[i1][0] * T2[i2][2]; // exact
+  // we can't ignore T1[i1][1] * T2[i2][3] since it is about 2^-54
+  double s1l = T1[i1][0] * T2[i2][3] + T1[i1][1] * (T2[i2][2] + T2[i2][3]);
+  // s1h+s1l approximates sin(x1)*cos(x2)
+  double s2h = T2[i2][0] * T1[i1][2]; // exact
+  // we can't ignore T2[i2][1] * T1[i1][3] since it is about 2^-54
+  double s2l = T2[i2][0] * T1[i1][3] + T2[i2][1] * (T1[i1][2] + T1[i1][3]);
+  // s2h+s2l approximates sin(x2)*cos(x1)
+  double Sh = s1h + s2h, Sl = s1l + s2l;
+  // Sh+Sl approximates sin(x1+x2)
+  // cos(x1+x2) = cos(x1)*cos(x2) - sin(x1)*sin(x2)
+  double c1h = T1[i1][2] * T2[i2][2];
+  double c1l = T1[i1][2] * T2[i2][3] + T1[i1][3] * (T2[i2][2] + T2[i2][3]);
+  // c1h+c1l approximates cos(x1)*cos(x2)
+  double c2h = T1[i1][0] * T2[i2][0];
+  double c2l = T1[i1][0] * T2[i2][1] + T1[i1][1] * (T2[i2][0] + T2[i2][1]);
+  // c2h+c2l approximates sin(x1)*sin(x2)
+  double Ch = c1h - c2h + (c1l - c2l);
+
+  /* for |x| <= 2^-13, the polynomial x - 0x1.555555519999ap-3 * x^3
+     approximates sin(x) with absolute error < 2^-74.815, and the polynomial
+     -0.5 * x^+ 0x1.55555552c550dp-5 * x^4 approximates cos(x)-1 with absolute
+     error < 2^-90.698 (cf sinfast.sollya) */
+  double r2 = r * r;
+  double sh = r * (1.0 - 0x1.555555519999ap-3 * r2);
+  double ch = r2 * (-0.5 + 0x1.55555552c550dp-5 * r2);
+  /* we can't ignore Sl*ch since Sl might be as large as 2^-27 and
+     ch might be as large as 2^-28 */
+  double fh = Sh, fl = Sl + (Sh+Sl)*ch + Ch*sh;
+  // all inputs from sin.wc pass with eps = 0x1.40p-64 (with/without fma)
+  static double eps = 0x1.40p-64;
+  // restore sign
+  static const double Sgn[] = {1.0, -1.0};
+  fh = Sgn[sgn] * fh;
+  fl = Sgn[sgn] * fl;
+  double lb = fh + (fl - eps), ub = fh + (fl + eps);
+  if (__builtin_expect (lb == ub, 1)) return lb;
+  return sin_accurate (x);
+}
+
 double
 cr_sin (double x)
 {
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff;
+
+  if (e < 1025) return cr_sin_fast (x); // |x| < 4
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {

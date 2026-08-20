@@ -1155,3 +1155,25 @@ def wc(e,parity="any"):
    q = bestq
    x = RR(q*2^(e-53))
    return x
+
+# compute double-double tables of sin(j/2^5), cos(j/2^5) for 0 <= j <= 2^7
+def T1():
+   print ("static const double T1[129][4] = {")
+   for j in [0..2^7]:
+      sh = RR(round(n(sin(j/2^5)*2^26,200))/2^26)
+      sl = RR(n(sin(j/2^5)-sh.exact_rational(),200))
+      ch = RR(round(n(cos(j/2^5)*2^26,200))/2^26)
+      cl = RR(n(cos(j/2^5)-ch.exact_rational(),200))
+      print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
+   print ("};")
+
+# compute double-double tables of sin(j/2^12), cos(j/2^12) for 0 <= j < 2^7
+def T2():
+   print ("static const double T2[128][4] = {")
+   for j in range(2^7):
+      sh = RR(round(n(sin(j/2^12)*2^26,200))/2^26)
+      sl = RR(n(sin(j/2^12)-sh.exact_rational(),200))
+      ch = RR(round(n(cos(j/2^12)*2^26,200))/2^26)
+      cl = RR(n(cos(j/2^12)-ch.exact_rational(),200))
+      print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
+   print ("};")
