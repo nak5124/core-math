@@ -2307,18 +2307,14 @@ static inline double muldd(double xh, double xl, double ch, double cl, double *l
   return ahhh;
 }
 
-static inline double twosum(double a, double b, double *t){
-  double s = a + b;
-  double a_prime = s - b;
-  double b_prime = s - a_prime;
-  double delta_a = a - a_prime;
-  double delta_b = b - b_prime;
-  *t = delta_a + delta_b;
+static inline double fasttwosum(double x, double y, double *e){
+  double s = x + y, z = s - x;
+  *e = y - z;
   return s;
 }
 
 static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
-  double sl, sh = twosum(xh, yh, &sl);
+  double sl, sh = fasttwosum(xh, yh, &sl);
   *e = (xl + yl) + sl;
   return sh;
 }
@@ -2382,7 +2378,13 @@ cr_sin_fast (double x)
   // if (bug) printf ("s2h=%la s2l=%la\n", s2h, s2l);
   // s2h+s2l approximates sin(x2)*cos(x1)
   double Sh, Sl;
-  Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
+  /* We need to use a version of fastsum that uses twosum (and not fasttwosum)
+     since s1h might be smaller than s2h in absolute value. However, this can
+     happen only for i1 in {0,100,101}. */
+  if (i1 == 101 && i2 >= 61)
+    Sh = fastsum (s2h, s2l, s1h, s1l, &Sl);
+  else
+    Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   // Sh+Sl approximates sin(x1+x2)
   // if (bug) printf ("Sh=%la Sl=%la\n", Sh, Sl);
   // cos(x1+x2) = cos(x1)*cos(x2) - sin(x1)*sin(x2)

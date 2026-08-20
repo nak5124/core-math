@@ -1177,3 +1177,37 @@ def T2():
       cl = RR(n(cos(j/2^12)-ch.exact_rational(),200))
       print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
    print ("};")
+
+# determine for which values of i1, i2 we have |s1h| >= |s2h|
+def checkT1T2():
+   t1 = dict()
+   for j in [0..2^7]:
+      sh = RR(n(sin(j/2^5),200))
+      sl = RR(n(sin(j/2^5)-sh.exact_rational(),200))
+      ch = RR(n(cos(j/2^5),200))
+      cl = RR(n(cos(j/2^5)-ch.exact_rational(),200))
+      t1[j] = (sh, sl, ch, cl)
+   t2 = dict()
+   for j in range(2^7):
+      sh = RR(n(sin(j/2^12),200))
+      sl = RR(n(sin(j/2^12)-sh.exact_rational(),200))
+      ch = RR(n(cos(j/2^12),200))
+      cl = RR(n(cos(j/2^12)-ch.exact_rational(),200))
+      t2[j] = (sh, sl, ch, cl)
+   for i1 in [0..2^7]:
+      for i2 in range(2^7):
+         s1h, _ = muldd (t1[i1][0], t1[i1][1], t2[i2][2], t2[i2][3])
+         s2h, _ = muldd (t2[i2][0] , t2[i2][1], t1[i1][2], t1[i1][3])
+         # |s1h| < |s1h| and s1h<>0 for i1=100 and i2 in 68-127,
+         # and for i1=101 and i2 in 61-127
+         # exp(s1h) < exp(s2h) and s1h<>0 only for i1=101 and i2 in 65-127
+         e1 = s1h.sign_mantissa_exponent()[2]
+         e2 = s2h.sign_mantissa_exponent()[2]
+         # if abs(s1h)<abs(s2h) and s1h!=0:
+         if e1<e2 and s2h!=0:
+            print (i1, i2, s1h, s2h)
+
+def muldd(xh,xl,ch,cl):
+   h = xh*ch
+   l = (xh*cl + xl*ch) + fma(xh, ch, -h)
+   return h, l
