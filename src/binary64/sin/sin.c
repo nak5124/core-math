@@ -2366,25 +2366,22 @@ cr_sin_fast (double x)
   double s = 0x1p+12 * t.f;
   double jd = __builtin_roundeven (s); // 0 <= j <= 2^14
   double r = (s - jd) * 0x1p-12; // |r| <= 2^-13
+  double r2 = r * r;
   int j = jd, i1 = j >> 7, i2 = j & 0x7f;
-  // if (bug) printf ("i1=%d i2=%d r=%la\n", i1, i2, r);
   // |x| = x1 + x2 + r where x1 = i1/2^5 and x2 = i2/2^12
   // sin(x1+x2) = sin(x1)*cos(x2) + sin(x2)*cos(x1)
   double s1h, s1l, s2h, s2l;
   s1h = muldd (T1[i1][0], T1[i1][1], T2[i2][2], T2[i2][3], &s1l);
-  // if (bug) printf ("s1h=%la s1l=%la\n", s1h, s1l);
   // s1h+s1l approximates sin(x1)*cos(x2)
   s2h = muldd (T2[i2][0] , T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
-  // if (bug) printf ("s2h=%la s2l=%la\n", s2h, s2l);
   // s2h+s2l approximates sin(x2)*cos(x1)
   double Sh, Sl;
   if (__builtin_expect (i1 == 101 && i2 >= 61, 0))
-    // only case where s1h <> 0 and exp(s1h) < exp(s2h)
+    // only case where fasttwosum conditions might not hold for s1h,s2h
     Sh = fastsum (s2h, s2l, s1h, s1l, &Sl);
   else
     Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   // Sh+Sl approximates sin(x1+x2)
-  // if (bug) printf ("Sh=%la Sl=%la\n", Sh, Sl);
   // cos(x1+x2) = cos(x1)*cos(x2) - sin(x1)*sin(x2)
   double Ch = T1[i1][2] * T2[i2][2] - T1[i1][0] * T2[i2][0];
   // Ch approximates cos(x1+x2)
@@ -2393,9 +2390,15 @@ cr_sin_fast (double x)
      approximates sin(x) with absolute error < 2^-74.815, and the polynomial
      -0.5 * x^+ 0x1.55555552c550dp-5 * x^4 approximates cos(x)-1 with absolute
      error < 2^-90.698 (cf sinfast.sollya) */
-  double r2 = r * r;
   double sh = r * (1.0 - 0x1.555555519999ap-3 * r2);
   double ch = r2 * (-0.5 + 0x1.55555552c550dp-5 * r2);
+  /* The maximal value of |Sl| for x in sin.wc is 0x1.495e901afd265p-52,
+     the maximal value of |Sh*ch| is 0x1.fe4155d08d31cp-28, and
+     the maximal value of |Ch*sh| is 0x1.fff97ad38b807p-14.
+     Adding them as Sl + Sh*ch + Ch*sh = (Sl + Sh*ch) + Ch*sh
+     minimizes the rounding error, since the error on Sl + Sh*ch is of
+     the order of ulp(2^-28), and also allows to compute this sum with
+     two FMAs. */
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
   // all inputs from sin.wc pass with eps = 0x1.80p-64 (with/without fma)
   static double eps = 0x1.80p-64;
