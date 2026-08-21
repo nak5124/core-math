@@ -2322,21 +2322,18 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
 /* special code for |x| < 4, using the following algorithm:
  * special case for tiny x (to avoid underflow)
  * save sign and replace x by |x|
- * write x = x1 + x2 + r where x1 contains the upper 7 bits, x2 the next 7 bits, and |r| < 2^-13
+ * write x = x1 + x2 + r where x1 contains the upper 7 bits,
+   x2 the next 7 bits, and |r| < 2^-13
  * precompute double-double tables for sin(x1), cos(x1), sin(x2), cos(x2)
- (no argument reduction)
+   (no argument reduction)
  * deduce from these tables Sh+Sl approximating sin(x1+x2) and Ch
- approximating cos(x1+x2) (no need of the lower part of cos(x1+x2)).
- * use polynomials delivering about 64 bits for sin(r) and cos(r)-1.
- The following delivers about 65 bits (absolute error) for sin:
- x * (0x1.fffffffffffffp-1 + x^2 * (-0x1.5555550666667p-3)) and the following
- 79 bits for cos-1: x^2 * (-0x1.fffffffffffffp-2 + x^2 * 0x1.55555507d43dep-5)
+   approximating cos(x1+x2) (no need of the lower part of cos(x1+x2)).
+ * use polynomials delivering about 75 bits for sin(r) and cos(r)-1.
  * compute fh=Sh and fl=Ch*sh + Sl + Sh*ch where sh approximates sin(r) and
- ch approximates cos(r)-1.
- All computations are done in double precision, and all terms in fl are less
- than about 2^-13 in absolute value.
- * adjust sign (maybe can be done in Sh+Sl earlier)
- * perform the rounding test with fh + (fl +/- eps)
+   ch approximates cos(r)-1. All computations are done in double precision,
+   and all terms in fl are less than about 2^-13 in absolute value.
+ * adjust sign
+ * perform the rounding test
  */
 static double
 cr_sin_fast (double x)
@@ -2411,6 +2408,63 @@ cr_sin_fast (double x)
   return sin_accurate (x);
 }
 
+// special for for 4 <= |x| < 2^26 (similar to cr_sin_fast)
+static double
+cr_sin_moderate (double x)
+{
+  // int bug = x == 0x1.a7fad48341474p+17;
+  b64u64_u t = {.f = x};
+  int sgn = t.u >> 63; // save sign
+  t.u &= 0x7fffffffffffffffull; // t.u is now the encoding of |x|
+  static const double inv2pi = 0x1.45f306dc9c883p-3;
+  // |inv2pi - 1/(2pi)| < 2^-56.496
+  double k = __builtin_roundeven (t.f * inv2pi); // 0 <= k <= 10680707
+  // if (bug) printf ("k=%la\n", k);
+  static const double twopih = -0x1.921fb54p+2,
+    twopil = -0x1.10b4612p-28, twopis = 0x1.676733ae8fe48p-58;
+  // |twopih + twopil + twopis + 2*pi| < 2^-112.151
+  double xrh = t.f + k * twopih, // exact
+    xrl = k * twopil, // exact
+    xrs = k * twopis;
+  //  if (bug) printf ("xrh=%la xrl=%la xrs=%la\n", xrh, xrl, xrs);
+  xrh = fasttwosum (xrh, xrl, &xrl);
+  xrl += xrs;
+  // if (bug) printf ("xrh=%la xrl=%la\n", xrh, xrl);
+
+  // now xrh is in [-pi,pi] modulo rounding errors
+
+  if (xrh < 0) { xrh = -xrh; xrl = -xrl; sgn = sgn ^ 1; }
+
+  double s = 0x1p+12 * xrh;
+  double jd = __builtin_roundeven (s);
+  double r = (s - jd) * 0x1p-12 + xrl;
+  //  if (bug) printf ("r=%la\n", r);
+  double r2 = r * r;
+  int j = jd, i1 = j >> 7, i2 = j & 0x7f;
+  //  if (bug) printf ("i1=%d i2=%d\n", i1, i2);
+  double s1h, s1l, s2h, s2l;
+  s1h = muldd (T1[i1][0], T1[i1][1], T2[i2][2], T2[i2][3], &s1l);
+  s2h = muldd (T2[i2][0] , T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
+  double Sh, Sl;
+  if (__builtin_expect (i1 == 101 && i2 >= 61, 0))
+    Sh = fastsum (s2h, s2l, s1h, s1l, &Sl);
+  else
+    Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
+  double Ch = T1[i1][2] * T2[i2][2] - T1[i1][0] * T2[i2][0];
+
+  double sh = r * (1.0 - 0x1.555555519999ap-3 * r2);
+  double ch = r2 * (-0.5 + 0x1.55555552c550dp-5 * r2);
+  double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
+  static double eps = 0x1.c0p-64;
+  static const double Sgn[] = {1.0, -1.0};
+  fh = Sgn[sgn] * fh;
+  fl = Sgn[sgn] * fl;
+  // if (bug) printf ("fh=%la fl=%la\n", fh, fl);
+  double lb = fh + (fl - eps), ub = fh + (fl + eps);
+  if (__builtin_expect (lb == ub, 1)) return lb;
+  return sin_accurate (x);
+}
+
 double
 cr_sin (double x)
 {
@@ -2418,6 +2472,8 @@ cr_sin (double x)
   int e = (t.u >> 52) & 0x7ff;
 
   if (e < 1025) return cr_sin_fast (x); // |x| < 4
+
+  if (e < 1049) return cr_sin_moderate (x); // |x| < 2^26
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
@@ -2430,35 +2486,7 @@ cr_sin (double x)
       return x + x;
     }
 
-  /* now x is a regular number */
-
-  /* For |x| <= 0x1.7137449123ef6p-26, sin(x) rounds to x (to nearest):
-     we can assume x >= 0 without loss of generality since sin(-x) = -sin(x),
-     we have x - x^3/6 < sin(x) < x for say 0 < x <= 1 thus
-     |sin(x) - x| < x^3/6.
-     Write x = c*2^e with 1/2 <= c < 1.
-     Then ulp(x)/2 = 2^(e-54), and x^3/6 = c^3/6*2^(3e), thus
-     x^3/6 < ulp(x)/2 rewrites as c^3/6*2^(3e) < 2^(e-54),
-     or c^3*2^(2e+53) < 3 (1).
-     For e <= -26, since c^3 < 1, we have c^3*2^(2e+53) < 2 < 3.
-     For e=-25, (1) rewrites 8*c^3 < 3 which yields c <= 0x1.7137449123ef6p-1.
-  */
-  uint64_t ux = t.u & 0x7fffffffffffffff;
-  // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-  if (ux <= 0x3e57137449123ef6) {
-    if (x == 0)
-      return x;
-    // Taylor expansion of sin(x) is x - x^3/6 around zero
-    // for x=-0, fma (x, -0x1p-54, x) returns +0
-    /* We have underflow when 0 < |x| < 2^-1022 or when |x| = 2^-1022
-       and rounding towards zero. */
-    double res = __builtin_fma (x, -0x1p-54, x);
-#ifdef CORE_MATH_SUPPORT_ERRNO
-    if (__builtin_fabs (x) < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
-      errno = ERANGE; // underflow
-#endif
-    return res;
-  }
+  /* now x is a regular number, with |x| >= 4 */
 
   double h, l, err;
   err = sin_fast (&h, &l, x);
