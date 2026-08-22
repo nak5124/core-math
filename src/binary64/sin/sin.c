@@ -2413,17 +2413,15 @@ static double
 cr_sin_moderate (double x)
 {
   // int bug = x == 0x1.a7fad48341474p+17;
-  b64u64_u t = {.f = x};
-  int sgn = t.u >> 63; // save sign
-  t.u &= 0x7fffffffffffffffull; // t.u is now the encoding of |x|
+  double sgn = 1.0;
   static const double inv2pi = 0x1.45f306dc9c883p-3;
   // |inv2pi - 1/(2pi)| < 2^-56.496
-  double k = __builtin_roundeven (t.f * inv2pi); // 0 <= k <= 10680707
+  double k = __builtin_roundeven (x * inv2pi); // 0 <= |k| <= 10680707
   // if (bug) printf ("k=%la\n", k);
   static const double twopih = -0x1.921fb54p+2,
     twopil = -0x1.10b4612p-28, twopis = 0x1.676733ae8fe48p-58;
   // |twopih + twopil + twopis + 2*pi| < 2^-112.151
-  double xrh = t.f + k * twopih, // exact
+  double xrh = x + k * twopih, // exact
     xrl = k * twopil, // exact
     xrs = k * twopis;
   //  if (bug) printf ("xrh=%la xrl=%la xrs=%la\n", xrh, xrl, xrs);
@@ -2433,7 +2431,7 @@ cr_sin_moderate (double x)
 
   // now xrh is in [-pi,pi] modulo rounding errors
 
-  if (xrh < 0) { xrh = -xrh; xrl = -xrl; sgn = sgn ^ 1; }
+  if (xrh < 0) { xrh = -xrh; xrl = -xrl; sgn = -1.0; }
 
   double s = 0x1p+12 * xrh;
   double jd = __builtin_roundeven (s);
@@ -2456,9 +2454,8 @@ cr_sin_moderate (double x)
   double ch = r2 * (-0.5 + 0x1.55555552c550dp-5 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
   static double eps = 0x1.c0p-64;
-  static const double Sgn[] = {1.0, -1.0};
-  fh = Sgn[sgn] * fh;
-  fl = Sgn[sgn] * fl;
+  fh = sgn * fh;
+  fl = sgn * fl;
   // if (bug) printf ("fh=%la fl=%la\n", fh, fl);
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
