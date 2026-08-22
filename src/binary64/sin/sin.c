@@ -2424,8 +2424,6 @@ cr_sin_moderate (double x)
   double xrh = __builtin_fma (k, twopih, x), // exact
     xrl = k * twopil;
   // if (bug) printf ("xrh=%la xrl=%la\n", xrh, xrl);
-  xrh = fasttwosum (xrh, xrl, &xrl);
-  // if (bug) printf ("xrh=%la xrl=%la\n", xrh, xrl);
 
   // now xrh is in [-pi,pi] modulo rounding errors
 
