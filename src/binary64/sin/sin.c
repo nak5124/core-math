@@ -2412,21 +2412,19 @@ cr_sin_fast (double x)
 static double
 cr_sin_moderate (double x)
 {
-  // int bug = x == 0x1.a7fad48341474p+17;
+  // int bug = x == 0x1.4d8b5d725a7f8p+21;
   double sgn = 1.0;
   static const double inv2pi = 0x1.45f306dc9c883p-3;
   // |inv2pi - 1/(2pi)| < 2^-56.496
   double k = __builtin_roundeven (x * inv2pi); // 0 <= |k| <= 10680707
   // if (bug) printf ("k=%la\n", k);
-  static const double twopih = -0x1.921fb54p+2,
-    twopil = -0x1.10b4612p-28, twopis = 0x1.676733ae8fe48p-58;
-  // |twopih + twopil + twopis + 2*pi| < 2^-112.151
-  double xrh = x + k * twopih, // exact
-    xrl = k * twopil, // exact
-    xrs = k * twopis;
-  //  if (bug) printf ("xrh=%la xrl=%la xrs=%la\n", xrh, xrl, xrs);
+  static const double twopih = -0x1.921fb54442d18p+2,
+    twopil = -0x1.1a62633145c07p-52;
+  // |twopih + twopil + 2*pi| < 2^-107.041
+  double xrh = __builtin_fma (k, twopih, x), // exact
+    xrl = k * twopil;
+  // if (bug) printf ("xrh=%la xrl=%la\n", xrh, xrl);
   xrh = fasttwosum (xrh, xrl, &xrl);
-  xrl += xrs;
   // if (bug) printf ("xrh=%la xrl=%la\n", xrh, xrl);
 
   // now xrh is in [-pi,pi] modulo rounding errors
