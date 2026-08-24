@@ -2443,7 +2443,7 @@ as_sin_fast_acc (double x)
   return fh + fl;
 }
 
-/* special code for |x| < 4, using the following algorithm:
+/* special code for |x| <= 0x1.95e4p+1, using the following algorithm:
  * special case for tiny x (to avoid underflow)
  * save sign and replace x by |x|
  * write x = x1 + x2 + r where x1 contains the upper 7 bits,
@@ -2495,15 +2495,7 @@ cr_sin_fast (double x)
   s2h = muldd (T2[i2][0] , T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
   // s2h+s2l approximates sin(x2)*cos(x1)
   double Sh, Sl;
-  /* FIXME: if we restrict this branch to |x| <= 0x1.95e4p+1 ~ 3.1710
-     instead of |x| <= 4, then we never have i1=101 and i2>=61, thus
-     the fasttwosum precondition always holds for s1h,s2h.
-     This gains about 1 cycle. */
-  if (__builtin_expect (i1 == 101 && i2 >= 61, 0))
-    // only case where fasttwosum conditions might not hold for s1h,s2h
-    Sh = fastsum (s2h, s2l, s1h, s1l, &Sl);
-  else
-    Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
+  Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   // Sh+Sl approximates sin(x1+x2)
   // cos(x1+x2) = cos(x1)*cos(x2) - sin(x1)*sin(x2)
   double Ch = T1[i1][2] * T2[i2][2] - T1[i1][0] * T2[i2][0];
@@ -2842,9 +2834,11 @@ double
 cr_sin (double x)
 {
   b64u64_u t = {.f = x};
-  int e = (t.u >> 52) & 0x7ff;
 
-  if (__builtin_expect(e < 1025, 1)) return cr_sin_fast (x); // |x| < 4
+  if (__builtin_expect ((t.u<<1) <= 0x8012bc8000000000ull, 1))
+    return cr_sin_fast (x); // |x| <= 0x1.95e4p+1
+
+  int e = (t.u >> 52) & 0x7ff;
 
   if (e < 1049) return cr_sin_moderate (x); // |x| < 2^26
 
