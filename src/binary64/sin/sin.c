@@ -2495,6 +2495,10 @@ cr_sin_fast (double x)
   s2h = muldd (T2[i2][0] , T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
   // s2h+s2l approximates sin(x2)*cos(x1)
   double Sh, Sl;
+  /* FIXME: if we restrict this branch to |x| <= 0x1.95e4p+1 ~ 3.1710
+     instead of |x| <= 4, then we never have i1=101 and i2>=61, thus
+     the fasttwosum precondition always holds for s1h,s2h.
+     This gains about 1 cycle. */
   if (__builtin_expect (i1 == 101 && i2 >= 61, 0))
     // only case where fasttwosum conditions might not hold for s1h,s2h
     Sh = fastsum (s2h, s2l, s1h, s1l, &Sl);
