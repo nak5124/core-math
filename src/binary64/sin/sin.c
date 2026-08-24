@@ -2460,11 +2460,8 @@ as_sin_fast_acc (double x)
  * perform the rounding test
  */
 static double
-cr_sin_fast (double x, double ax) // ax = |x|
+cr_sin_fast (double x, double ax, int sgn) // ax = |x|, sgn = sign(x)
 {
-  b64u64_u t = {.f = x};
-  int sgn = t.u >> 63; // save sign
-
   // deal with tiny x to avoid underflow
   if (__builtin_expect(ax <= 0x1.7137449123ef6p-26, 0)) {
     if (x == 0)
@@ -2833,9 +2830,10 @@ cr_sin (double x)
 {
   b64u64_u t = {.f = x};
   double ax = __builtin_fabs (x);
+  int sgn = t.u >> 63;
 
   if (__builtin_expect ((t.u<<1) <= 0x8012bc8000000000ull, 1))
-    return cr_sin_fast (x, ax); // |x| <= 0x1.95e4p+1
+    return cr_sin_fast (x, ax, sgn); // |x| <= 0x1.95e4p+1
 
   int e = (t.u >> 52) & 0x7ff;
 
