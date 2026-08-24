@@ -2464,13 +2464,10 @@ cr_sin_fast (double x)
 {
   b64u64_u t = {.f = x};
   int sgn = t.u >> 63; // save sign
-  t.u &= 0x7fffffffffffffffull; // t.u is now the encoding of |x|
-  // since |x| < 4, we have t.u < 0x4010000000000000
 
-  double ax = __builtin_fabs(x);
+  double ax = __builtin_fabs (x);
   // deal with tiny x to avoid underflow
-  // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-  if (__builtin_expect(t.u <= 0x3e57137449123ef6, 0)) {
+  if (__builtin_expect(ax <= 0x1.7137449123ef6p-26, 0)) {
     if (x == 0)
       return x;
     // Taylor expansion of sin(x) is x - x^3/6 around zero
