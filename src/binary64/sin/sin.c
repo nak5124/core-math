@@ -1282,7 +1282,7 @@ static const double SC[256][3] = {
    {-0x1.202f686p-28, 0x1.68ed1e0990551p-1, 0x1.6b25cf728c35p-1}, /* 255 */
 };
 
-// Multiply exactly a and b, such that *hi + *lo = a * b. 
+// Multiply exactly a and b, such that *hi + *lo = a * b.
 static inline void a_mul(double *hi, double *lo, double a, double b) {
   *hi = a * b;
   *lo = __builtin_fma (a, b, -*hi);
@@ -1879,7 +1879,7 @@ sin_accurate (double x)
 
   /* reduce argument */
   reduce (X);
-  
+
   // now |X - x/(2pi) mod 1| < 2^-126.67*X, with 0 <= X < 1.
 
   int neg = x < 0, is_sin = 1;
@@ -2319,6 +2319,130 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
   return sh;
 }
 
+static double __attribute__((noinline))
+as_sin_fast_acc (double x)
+{
+  b64u64_u t = {.f = x};
+  int sgn = t.u >> 63; // save sign
+  t.u &= 0x7fffffffffffffffull; // t.u is now the encoding of |x|
+  double ax = __builtin_fabs(x), s = 0x1p+12 * ax;
+  double jd = __builtin_roundeven (s); // 0 <= j <= 2^14
+  double r = (s - jd) * 0x1p-12; // |r| <= 2^-13
+  double r2h = r * r, r2l = __builtin_fma(r,r,-r2h);
+  int j = jd, i1 = j >> 7, i2 = j & 0x7f;
+  double s1h, s1l, s2h, s2l;
+  s1h = muldd (T1[i1][0], T1[i1][1], T2[i2][2], T2[i2][3], &s1l);
+  s2h = muldd (T2[i2][0] , T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
+  double Sh, Sl;
+  if (__builtin_expect (i1 == 101 && i2 >= 61, 0))
+    Sh = fastsum (s2h, s2l, s1h, s1l, &Sl);
+  else
+    Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
+  double c1h, c1l, c2h, c2l;
+  c1h = muldd (T1[i1][2], T1[i1][3], T2[i2][2], T2[i2][3], &c1l);
+  c2h = muldd (T1[i1][0], T1[i1][1], T2[i2][0], T2[i2][1], &c2l);
+  double Ch, Cl;
+  if(__builtin_expect(i1==50&&i2>64,0))
+    Ch = fastsum (-c2h, -c2l, c1h, c1l, &Cl);
+  else
+    Ch = fastsum (c1h, c1l, -c2h, -c2l, &Cl);
+  double rCh = r*Ch, rCl = Cl*r + __builtin_fma(Ch,r,-rCh);
+  static const double cs[] = {0x1.1111111111111p-7, -0x1.a01a019d36453p-13};
+  static const double cc[] = {0x1.5555555555555p-5, -0x1.6c16c168d68d7p-10};
+  double rC3l, rC3h = muldd(rCh,rCl, 0x1.5555555555555p-2, 0x1.5555555555555p-56, &rC3l);
+  double fl, fh;
+  if(__builtin_expect(j==12868,0)){
+    if(__builtin_fabs(Sh) > __builtin_fabs(rCh))
+      fh = fastsum(Sh,Sl, rCh,rCl, &fl);
+    else
+      fh = fastsum(rCh,rCl, Sh,Sl, &fl);
+    if(__builtin_fabs(Sh) > __builtin_fabs(rC3h))
+      rC3h = fastsum(Sh,Sl, rC3h,rC3l, &rC3l);
+    else
+      rC3h = fastsum(rC3h,rC3l, Sh,Sl, &rC3l);
+  } else {
+    fh = fastsum(Sh,Sl, rCh,rCl, &fl);
+    rC3h = fastsum(Sh,Sl, rC3h,rC3l, &rC3l);
+  }
+  rC3h *= 0.5;
+  rC3l *= 0.5;
+
+  double tt = r2h*(Sh*(cc[0]+r2h*cc[1]) + rCh*(cs[0]+r2h*cs[1])), e;
+
+  rC3h = fasttwosum(rC3h, -tt, &e);
+  rC3l += e;
+
+  rC3h = muldd(rC3h,rC3l, r2h,r2l, &rC3l);
+
+  fh = fastsum(fh,fl, -rC3h,-rC3l, &fl);
+  fh = fasttwosum(fh, fl, &fl);
+
+  b64u64_u  rl = {.f = fl};
+  uint64_t d = (rl.u + 16)&(~(uint64_t)0>>12);
+  if(__builtin_expect(d<=16, 0)){
+    static const double wow[] = {
+      0x1.2359262c76506p-13, 0x1.3f69df45a2f3bp-13, 0x1.55fd6fc227d9dp-12,
+      0x1.96350d587e672p-12, 0x1.1e2e72ca9e866p-11, 0x1.3bc6ca12143b6p-11,
+      0x1.bac75a647203p-11, 0x1.ce8b994974d0bp-11, 0x1.7f9ec1226e157p-10,
+      0x1.b960ebdc4ec13p-10, 0x1.933fb67c4d0afp-9, 0x1.ab56a7ae04d3bp-9,
+      0x1.b3f2ba40dbc66p-9, 0x1.e77a1b55ccf96p-9, 0x1.efe186fe553d9p-9,
+      0x1.46a9ab5a2c58ep-8, 0x1.8e113d622c77ap-8, 0x1.dafa3c69f3426p-8,
+      0x1.1c730dcd71abap-7, 0x1.5dc43f86236ccp-7, 0x1.e17faefac7797p-7,
+      0x1.41db571d96126p-6, 0x1.9c412d62c144p-6, 0x1.275a3d78c01ecp-5,
+      0x1.4cd45ddee2881p-5, 0x1.69949b3d51fb1p-5, 0x1.9283586503fep-5,
+      0x1.d7bdcd778049fp-5, 0x1.fccdc252cad1fp-5, 0x1.0023629fc9899p-4,
+      0x1.21857ad584f7fp-4, 0x1.2e36813a9874p-4, 0x1.456ac98461b72p-4,
+      0x1.5231b416ba885p-4, 0x1.7f4ea0f3bbc6fp-4, 0x1.9c5c0d685abd4p-4,
+      0x1.a202b3fb84788p-4, 0x1.45c341fb80643p-3, 0x1.6f9a0f284d491p-3,
+      0x1.967cda38032b3p-3, 0x1.c49ac7cde7b4cp-3, 0x1.d5064e6fe82c5p-3,
+      0x1.dd04b12d498c6p-3, 0x1.e3095cae52dd7p-3, 0x1.223c48cd64801p-2,
+      0x1.50954b7bbf87bp-2, 0x1.6b30c65ac788ap-2, 0x1.bdc8830ddf4e6p-2,
+      0x1.c881b16b684b1p-2, 0x1.e05b0e0a809bcp-2, 0x1.ed25c5eb8c916p-2,
+      0x1.fe767739d0f6dp-2, 0x1.22f26f182fabdp-1, 0x1.3eb4df7c5532ap-1,
+      0x1.41516c909749cp-1, 0x1.4566e96eb9313p-1, 0x1.540e24e5f33f3p-1,
+      0x1.d98c4c612718dp-1, 0x1.ee539c9654a36p-1, 0x1.02c2f02bd16d5p+0,
+      0x1.3aa301f6ebb1ep+0, 0x1.640ac66708cp+0, 0x1.8272d4fd7730bp+0,
+      0x1.921fb54442d16p+0, 0x1.921fb54442d17p+0, 0x1.921fb54442d18p+0,
+      0x1.921fb54442d19p+0, 0x1.921fb54442d1ap+0, 0x1.bbfa05708792dp+0,
+      0x1.e2fae1619a6afp+0, 0x1.4dbe000d5c1d2p+1, 0x1.6756745770a51p+1,
+      0x1.6e6198df13b76p+1, 0x1.920745cc24d5ep+1, 0x1.9255291b529ecp+1,
+      0x1.aa0b46aa9cc59p+1};
+    static const unsigned char tls[] = {
+      7, 0, 7, 6, 4, 1, 4, 3, 0, 7, 4, 0, 6, 2, 1, 4, 2, 4, 5, 7, 4, 2, 5, 3,
+      5, 0, 5, 5, 4, 5, 1, 6, 7, 4, 3, 4, 7, 6, 3, 6, 0, 2, 0, 3, 2, 6, 3, 3,
+      1, 3, 2, 5, 4, 3, 5, 7, 0, 7, 3, 4, 2, 6, 6, 1, 1, 1, 1, 1, 0, 3, 4, 2,
+      3, 6, 2, 6 };
+    const uint64_t *db = (const uint64_t*)wow;
+    int a = 0, b = sizeof(wow)/sizeof(wow[0]) - 1, m = (a + b)/2;
+    while (a <= b) {
+      if (db[m] < t.u){
+	a = m + 1;
+      } else if (__builtin_expect(db[m] == t.u, 0)) {
+	b64u64_u jf = {.f = fh},
+	  dr = {.u = ((jf.u&(0x7fful<<52)) - (54ul<<52))|((tls[m]&1ul)<<63)};
+	uint64_t t0 = tls[m]>>1;
+	for(int k = -1; k<=1; k++){
+	  b64u64_u jk = {.u = jf.u + k};
+	  if((jk.u&3) == t0){
+	    fh = jk.f;
+	    fl = dr.f;
+	    break;
+	  }
+	}
+	break;
+      } else {
+	b = m - 1;
+      }
+      m = (a + b)>>1;
+    }
+  }
+
+  static const double Sgn[] = {1.0, -1.0};
+  fh *= Sgn[sgn];
+  fl *= Sgn[sgn];
+  return fh + fl;
+}
+
 /* special code for |x| < 4, using the following algorithm:
  * special case for tiny x (to avoid underflow)
  * save sign and replace x by |x|
@@ -2343,9 +2467,10 @@ cr_sin_fast (double x)
   t.u &= 0x7fffffffffffffffull; // t.u is now the encoding of |x|
   // since |x| < 4, we have t.u < 0x4010000000000000
 
+  double ax = __builtin_fabs(x);
   // deal with tiny x to avoid underflow
   // 0x3e57137449123ef6 = 0x1.7137449123ef6p-26
-  if (t.u <= 0x3e57137449123ef6) {
+  if (__builtin_expect(t.u <= 0x3e57137449123ef6, 0)) {
     if (x == 0)
       return x;
     // Taylor expansion of sin(x) is x - x^3/6 around zero
@@ -2360,9 +2485,9 @@ cr_sin_fast (double x)
     return res;
   }
 
-  double s = 0x1p+12 * t.f;
+  double s = 0x1p+12 * ax;
   double jd = __builtin_roundeven (s); // 0 <= j <= 2^14
-  double r = (s - jd) * 0x1p-12; // |r| <= 2^-13
+  double r = s - jd; // |r| <= 2^-13
   double r2 = r * r;
   int j = jd, i1 = j >> 7, i2 = j & 0x7f;
   // |x| = x1 + x2 + r where x1 = i1/2^5 and x2 = i2/2^12
@@ -2387,8 +2512,8 @@ cr_sin_fast (double x)
      approximates sin(x) with absolute error < 2^-74.815, and the polynomial
      -0.5 * x^+ 0x1.55555552c550dp-5 * x^4 approximates cos(x)-1 with absolute
      error < 2^-90.698 (cf sinfast.sollya) */
-  double sh = r * (1.0 - 0x1.555555519999ap-3 * r2);
-  double ch = r2 * (-0.5 + 0x1.55555552c550dp-5 * r2);
+  double sh = r  * ( 0x1p-12 - 0x1.555555519999ap-39 * r2);
+  double ch = r2 * (-0x1p-25 + 0x1.55555552c550dp-53 * r2);
   /* The maximal value of |Sl| for x in sin.wc is 0x1.495e901afd265p-52,
      the maximal value of |Sh*ch| is 0x1.fe4155d08d31cp-28, and
      the maximal value of |Ch*sh| is 0x1.fff97ad38b807p-14.
@@ -2398,14 +2523,16 @@ cr_sin_fast (double x)
      two FMAs. */
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
   // all inputs from sin.wc pass with eps = 0x1.80p-64 (with/without fma)
-  static double eps = 0x1.80p-64;
+  // RZ no-fma x=0x1.94840460d764p+1 fh=-0x1.3420b74fbbe1ep-6 fl=0x1.fdb8a55665bccp-14
+  // fh + fl - sin(x) ~ -0x1.9dd0fc1d3433bp-64
+  static const double eps = 0x1.ap-64;
   // restore sign
   static const double Sgn[] = {1.0, -1.0};
   fh = Sgn[sgn] * fh;
   fl = Sgn[sgn] * fl;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
-  return sin_accurate (x);
+  return as_sin_fast_acc(x);
 }
 
 // special for for 4 <= |x| < 2^26 (similar to cr_sin_fast)
@@ -2464,7 +2591,7 @@ cr_sin (double x)
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff;
 
-  if (e < 1025) return cr_sin_fast (x); // |x| < 4
+  if (__builtin_expect(e < 1025, 1)) return cr_sin_fast (x); // |x| < 4
 
   if (e < 1049) return cr_sin_moderate (x); // |x| < 2^26
 
