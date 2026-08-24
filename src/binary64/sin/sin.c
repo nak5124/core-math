@@ -2443,22 +2443,7 @@ as_sin_fast_acc (double x)
   return fh + fl;
 }
 
-/* special code for |x| <= 0x1.95e4p+1, using the following algorithm:
- * special case for tiny x (to avoid underflow)
- * save sign and replace x by |x|
- * write x = x1 + x2 + r where x1 contains the upper 7 bits,
-   x2 the next 7 bits, and |r| < 2^-13
- * precompute double-double tables for sin(x1), cos(x1), sin(x2), cos(x2)
-   (no argument reduction)
- * deduce from these tables Sh+Sl approximating sin(x1+x2) and Ch
-   approximating cos(x1+x2) (no need of the lower part of cos(x1+x2)).
- * use polynomials delivering about 75 bits for sin(r) and cos(r)-1.
- * compute fh=Sh and fl=Ch*sh + Sl + Sh*ch where sh approximates sin(r) and
-   ch approximates cos(r)-1. All computations are done in double precision,
-   and all terms in fl are less than about 2^-13 in absolute value.
- * adjust sign
- * perform the rounding test
- */
+// Special code for |x| < 0x1.95e4p+1, see sin.pdf for details
 static double
 cr_sin_fast (double x, double ax, int sgn) // ax = |x|, sgn = sign(x)
 {
@@ -2472,7 +2457,7 @@ cr_sin_fast (double x, double ax, int sgn) // ax = |x|, sgn = sign(x)
        and rounding towards zero. */
     double res = __builtin_fma (x, -0x1p-54, x);
 #ifdef CORE_MATH_SUPPORT_ERRNO
-    if (__builtin_fabs (x) < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
+    if (ax < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
       errno = ERANGE; // underflow
 #endif
     return res;
@@ -2480,7 +2465,7 @@ cr_sin_fast (double x, double ax, int sgn) // ax = |x|, sgn = sign(x)
 
   double s = 0x1p+12 * ax;
   double jd = __builtin_roundeven (s); // 0 <= j <= 2^14
-  double r = s - jd; // |r| <= 2^-13
+  double r = s - jd; // |r| <= 0.5
   double r2 = r * r;
   int j = jd, i1 = j >> 7, i2 = j & 0x7f;
   // |x| = x1 + x2 + r where x1 = i1/2^5 and x2 = i2/2^12
@@ -2497,10 +2482,10 @@ cr_sin_fast (double x, double ax, int sgn) // ax = |x|, sgn = sign(x)
   double Ch = T1[i1][2] * T2[i2][2] - T1[i1][0] * T2[i2][0];
   // Ch approximates cos(x1+x2)
 
-  /* for |x| <= 2^-13, the polynomial x - 0x1.555555519999ap-3 * x^3
-     approximates sin(x) with absolute error < 2^-74.815, and the polynomial
-     -0.5 * x^2 + 0x1.55555552c550dp-5 * x^4 approximates cos(x)-1 with
-     absolute error < 2^-90.698 (cf sinfast.sollya) */
+  /* for |r| <= 0.5, the polynomial 0x1p-12 * r - 0x1.555555519999ap-3 * r^3
+     approximates sin(r/2^12) with absolute error < 2^-74.815, and the
+     polynomial -0x1p-25 * r^2 + 0x1.55555552c550dp-53 * r^4 approximates
+     cos(r/2^12)-1 with absolute error < 2^-90.698 (cf sinfast.sollya) */
   double sh = r  * ( 0x1p-12 - 0x1.555555519999ap-39 * r2);
   double ch = r2 * (-0x1p-25 + 0x1.55555552c550dp-53 * r2);
   /* The maximal value of |Sl| for x in sin.wc is 0x1.495e901afd265p-52,
@@ -2514,11 +2499,11 @@ cr_sin_fast (double x, double ax, int sgn) // ax = |x|, sgn = sign(x)
   // all inputs from sin.wc pass with eps = 0x1.80p-64 (with/without fma)
   // RZ no-fma x=0x1.94840460d764p+1 fh=-0x1.3420b74fbbe1ep-6 fl=0x1.fdb8a55665bccp-14
   // fh + fl - sin(x) ~ -0x1.9dd0fc1d3433bp-64
-  static const double eps = 0x1.80p-64;
   // restore sign
   static const double Sgn[] = {1.0, -1.0};
   fh = Sgn[sgn] * fh;
   fl = Sgn[sgn] * fl;
+  static const double eps = 0x1.f1p-64;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
   return as_sin_fast_acc(x);
@@ -2786,7 +2771,7 @@ static const double U2[128][4] = {
   {0x1.8ed315b7d372ap-5, 0x1.64be32595b4c8p-59, 0x1.ff6493275bbf5p-1, 0x1.0882863be6502p-59},
 };
 
-// special code for 4 <= |x| < 2^26 (similar to cr_sin_fast)
+// special code for 0x1.95e4p+1 <= |x| < 2^26 (similar to cr_sin_fast)
 static double
 cr_sin_moderate (double x, double ax) // ax = |x|
 {
@@ -2832,8 +2817,8 @@ cr_sin (double x)
   double ax = __builtin_fabs (x);
   int sgn = t.u >> 63;
 
-  if (__builtin_expect ((t.u<<1) <= 0x8012bc8000000000ull, 1))
-    return cr_sin_fast (x, ax, sgn); // |x| <= 0x1.95e4p+1
+  if (__builtin_expect ((t.u<<1) < 0x8012bc8000000000ull, 1))
+    return cr_sin_fast (x, ax, sgn); // |x| < 0x1.95e4p+1
 
   int e = (t.u >> 52) & 0x7ff;
 
