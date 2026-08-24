@@ -2812,9 +2812,7 @@ cr_sin_moderate (double x)
   double xrh = __builtin_fma (k, twopih, ax), // exact
     xrl = k * twopil;
 
-  // now xrh is in [-pi,pi] modulo rounding errors
-
-  double r = xrh + xrl;
+  double r = xrh + xrl; // |r| <= 2*pi/2^15 modulo rounding errors
   double r2 = r * r;
   uint64_t j = k;
   int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
