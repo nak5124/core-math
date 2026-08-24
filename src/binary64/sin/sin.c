@@ -2460,12 +2460,11 @@ as_sin_fast_acc (double x)
  * perform the rounding test
  */
 static double
-cr_sin_fast (double x)
+cr_sin_fast (double x, double ax) // ax = |x|
 {
   b64u64_u t = {.f = x};
   int sgn = t.u >> 63; // save sign
 
-  double ax = __builtin_fabs (x);
   // deal with tiny x to avoid underflow
   if (__builtin_expect(ax <= 0x1.7137449123ef6p-26, 0)) {
     if (x == 0)
@@ -2492,7 +2491,7 @@ cr_sin_fast (double x)
   double s1h, s1l, s2h, s2l;
   s1h = muldd (T1[i1][0], T1[i1][1], T2[i2][2], T2[i2][3], &s1l);
   // s1h+s1l approximates sin(x1)*cos(x2)
-  s2h = muldd (T2[i2][0] , T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
+  s2h = muldd (T2[i2][0], T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
   // s2h+s2l approximates sin(x2)*cos(x1)
   double Sh, Sl;
   Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
@@ -2792,9 +2791,8 @@ static const double U2[128][4] = {
 
 // special code for 4 <= |x| < 2^26 (similar to cr_sin_fast)
 static double
-cr_sin_moderate (double x)
+cr_sin_moderate (double x, double ax) // ax = |x|
 {
-  double ax = __builtin_fabs (x);
   static const double inv2pi = 0x1.45f306dc9c883p+11;
   // |inv2pi/2^14 - 1/(2pi)| < 2^-56.496
   double k = __builtin_roundeven (ax * inv2pi); // 0 <= k <= 2^38
@@ -2810,7 +2808,7 @@ cr_sin_moderate (double x)
   int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
   double s1h, s1l, s2h, s2l;
   s1h = muldd (U1[i1][0], U1[i1][1], U2[i2][2], U2[i2][3], &s1l);
-  s2h = muldd (U2[i2][0] , U2[i2][1], U1[i1][2], U1[i1][3], &s2l);
+  s2h = muldd (U2[i2][0], U2[i2][1], U1[i1][2], U1[i1][3], &s2l);
   double Sh, Sl;
   Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   double Ch = U1[i1][2] * U2[i2][2] - U1[i1][0] * U2[i2][0];
@@ -2834,13 +2832,14 @@ double
 cr_sin (double x)
 {
   b64u64_u t = {.f = x};
+  double ax = __builtin_fabs (x);
 
   if (__builtin_expect ((t.u<<1) <= 0x8012bc8000000000ull, 1))
-    return cr_sin_fast (x); // |x| <= 0x1.95e4p+1
+    return cr_sin_fast (x, ax); // |x| <= 0x1.95e4p+1
 
   int e = (t.u >> 52) & 0x7ff;
 
-  if (e < 1049) return cr_sin_moderate (x); // |x| < 2^26
+  if (e < 1049) return cr_sin_moderate (x, ax); // |x| < 2^26
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
