@@ -2525,7 +2525,7 @@ cr_sin_fast (double x)
   // all inputs from sin.wc pass with eps = 0x1.80p-64 (with/without fma)
   // RZ no-fma x=0x1.94840460d764p+1 fh=-0x1.3420b74fbbe1ep-6 fl=0x1.fdb8a55665bccp-14
   // fh + fl - sin(x) ~ -0x1.9dd0fc1d3433bp-64
-  static const double eps = 0x1.ap-64;
+  static const double eps = 0x1.80p-64;
   // restore sign
   static const double Sgn[] = {1.0, -1.0};
   fh = Sgn[sgn] * fh;
