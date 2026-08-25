@@ -1217,26 +1217,26 @@ def muldd(xh,xl,ch,cl):
    l = (xh*cl + xl*ch) + fma(xh, ch, -h)
    return h, l
 
-# compute double-double tables of sin(j*2*pi/2^7), cos(j*2*pi/2^7)
+# compute double-double tables of sin(j*pi/2^7), cos(j*pi/2^7)
 # for 0 <= j < 2^7
 def U1():
    print ("static const double U1[128][4] = {")
    for j in range(2^7):
-      sh = RR(n(sin(j*2*pi/2^7),200))
-      sl = RR(n(sin(j*2*pi/2^7)-sh.exact_rational(),200))
-      ch = RR(n(cos(j*2*pi/2^7),200))
-      cl = RR(n(cos(j*2*pi/2^7)-ch.exact_rational(),200))
+      sh = RR(n(sin(j*pi/2^7),200))
+      sl = RR(n(sin(j*pi/2^7)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^7),200))
+      cl = RR(n(cos(j*pi/2^7)-ch.exact_rational(),200))
       print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
    print ("};")
 
-# compute double-double tables of sin(j*2*pi/2^14), cos(j*2*pi/2^14)
+# compute double-double tables of sin(j*pi/2^14), cos(j*pi/2^14)
 # for 0 <= j < 2^7
 def U2():
    print ("static const double U2[128][4] = {")
    for j in range(2^7):
-      sh = RR(n(sin(j*2*pi/2^14),200))
-      sl = RR(n(sin(j*2*pi/2^14)-sh.exact_rational(),200))
-      ch = RR(n(cos(j*2*pi/2^14),200))
-      cl = RR(n(cos(j*2*pi/2^14)-ch.exact_rational(),200))
+      sh = RR(n(sin(j*pi/2^14),200))
+      sl = RR(n(sin(j*pi/2^14)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^14),200))
+      cl = RR(n(cos(j*pi/2^14)-ch.exact_rational(),200))
       print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
    print ("};")
