@@ -1240,3 +1240,28 @@ def U2():
       cl = RR(n(cos(j*pi/2^14)-ch.exact_rational(),200))
       print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
    print ("};")
+
+# check the fasttwosum condition is satisfied
+def checkU1U2():
+   u1 = dict()
+   for j in range(2^7):
+      sh = RR(n(sin(j*pi/2^7),200))
+      sl = RR(n(sin(j*pi/2^7)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^7),200))
+      cl = RR(n(cos(j*pi/2^7)-ch.exact_rational(),200))
+      u1[j] = (sh, sl, ch, cl)
+   u2 = dict()
+   for j in range(2^7):
+      sh = RR(n(sin(j*pi/2^14),200))
+      sl = RR(n(sin(j*pi/2^14)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^14),200))
+      cl = RR(n(cos(j*pi/2^14)-ch.exact_rational(),200))
+      u2[j] = (sh, sl, ch, cl)
+   for i1 in range(2^7):
+      for i2 in range(2^7):
+         for r in 'NZUD':
+            R = RealField(53,rnd='RND'+r)
+            s1h, _ = muldd (R(u1[i1][0]), R(u1[i1][1]), R(u2[i2][2]), R(u2[i2][3]))
+            s2h, _ = muldd (R(u2[i2][0]), R(u2[i2][1]), R(u1[i1][2]), R(u1[i1][3]))
+            if not fast2sum_ok(s1h,s2h):
+               print (i1, i2, s1h, s2h, R.rounding_mode())

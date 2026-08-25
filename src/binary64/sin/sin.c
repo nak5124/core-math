@@ -2771,20 +2771,21 @@ static const double U2[128][4] = {
   {0x1.8ef15d9667fdap-6, -0x1.668dc9ba82a7p-60, 0x1.ffd9235046557p-1, -0x1.c3c6e16616fb2p-56},
 };
 
-// special code for 0x1.95e4p+1 <= |x| < 2^26 (similar to cr_sin_fast)
+// special code for 0x1.95e4p+1 <= |x| < 2^31 (similar to cr_sin_fast)
+// see proof of correctness in sin.pdf
 static double
 cr_sin_moderate (double x, double ax) // ax = |x|
 {
   int sbit = (x > 0) ? 0 : 1;
   static const double invpi = 0x1.45f306dc9c883p+12;
   // |invpi/2^14 - 1/pi| < 2^-55.496
-  double k = __builtin_roundeven (ax * invpi); // 0 <= k <= 2^39
+  double k = __builtin_roundeven (invpi * ax);
   static const double pih = -0x1.921fb54442d18p-13,
     pil = -0x1.1a62633145c07p-67;
   // |2^14*(pih + pil) + pi| < 2^-108.041
-  double xrh = __builtin_fma (k, pih, ax), xrl = k * pil;
+  double rh = __builtin_fma (k, pih, ax), rl = k * pil; // rh is exact
 
-  double r = xrh + xrl; // |r| <= pi/2^15 modulo rounding errors
+  double r = rh + rl; // |r| < 2^-13.347 (see sin.pdf)
   double r2 = r * r;
   uint64_t j = k;
   sbit = sbit ^ ((j >> 14) & 1); // reduction by an odd multiple of pi?
@@ -2796,14 +2797,14 @@ cr_sin_moderate (double x, double ax) // ax = |x|
   Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   double Ch = U1[i1][2] * U2[i2][2] - U1[i1][0] * U2[i2][0];
 
-  /* for |x| <= pi/2^15, the polynomial x - 0x1.5555555307cap-3 * x^3
-     approximates sin(x) with absolute error < 2^-76.558, and the polynomial
-     -0.5 * x^2 + 0x1.55555553c0ab3p-5 * x^4 approximates cos(x)-1 with
-     absolute error < 2^-92.789 (cf sinmoderate.sollya) */
-  double sh = r * (1.0 - 0x1.5555555307cap-3 * r2);
-  double ch = r2 * (-0.5 + 0x1.55555553c0ab3p-5 * r2);
+  /* for |r| <= 2^-13.347, the polynomial r - 0x1.55555553068fp-3 * r^3
+     approximates sin(r) with absolute error < 2^-76.550, and the polynomial
+     -0.5 * r^2 + 0x1.55555553bfd3p-5 * r^4 approximates cos(r)-1 with
+     absolute error < 2^-92.780 (cf sinmoderate.sollya) */
+  double sh = r * (1.0 - 0x1.55555553068fp-3 * r2);
+  double ch = r2 * (-0.5 + 0x1.55555553bfd3p-5 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
-  static double eps = 0x1.41p-64, Sgn[] = {1.0, -1.0};
+  static double eps = 0x1.dep-64, Sgn[] = {1.0, -1.0};
   fh = Sgn[sbit] * fh;
   fl = Sgn[sbit] * fl;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
@@ -2823,7 +2824,7 @@ cr_sin (double x)
 
   int e = (t.u >> 52) & 0x7ff;
 
-  if (e < 1049) return cr_sin_moderate (x, ax); // |x| < 2^26
+  if (e < 1054) return cr_sin_moderate (x, ax); // |x| < 2^31
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
