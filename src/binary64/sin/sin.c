@@ -2443,72 +2443,6 @@ as_sin_fast_acc (double x)
   return fh + fl;
 }
 
-// Special code for |x| < 0x1.95e4p+1, see sin.pdf for details
-static double
-cr_sin_fast (double x, double ax, int sgn) // ax = |x|, sgn = sign(x)
-{
-  // deal with tiny x to avoid underflow
-  if (__builtin_expect(ax <= 0x1.7137449123ef6p-26, 0)) {
-    if (x == 0)
-      return x;
-    // Taylor expansion of sin(x) is x - x^3/6 around zero
-    // for x=-0, fma (x, -0x1p-54, x) returns +0
-    /* We have underflow when 0 < |x| < 2^-1022 or when |x| = 2^-1022
-       and rounding towards zero. */
-    double res = __builtin_fma (x, -0x1p-54, x);
-#ifdef CORE_MATH_SUPPORT_ERRNO
-    if (ax < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
-      errno = ERANGE; // underflow
-#endif
-    return res;
-  }
-
-  double s = 0x1p+12 * ax;
-  double jd = __builtin_roundeven (s); // 0 <= j <= 2^14
-  double r = s - jd; // |r| <= 0.5
-  double r2 = r * r;
-  int j = jd, i1 = j >> 7, i2 = j & 0x7f;
-  // |x| = x1 + x2 + r where x1 = i1/2^5 and x2 = i2/2^12
-  // sin(x1+x2) = sin(x1)*cos(x2) + sin(x2)*cos(x1)
-  double s1h, s1l, s2h, s2l;
-  s1h = muldd (T1[i1][0], T1[i1][1], T2[i2][2], T2[i2][3], &s1l);
-  // s1h+s1l approximates sin(x1)*cos(x2)
-  s2h = muldd (T2[i2][0], T2[i2][1], T1[i1][2], T1[i1][3], &s2l);
-  // s2h+s2l approximates sin(x2)*cos(x1)
-  double Sh, Sl;
-  Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
-  // Sh+Sl approximates sin(x1+x2)
-  // cos(x1+x2) = cos(x1)*cos(x2) - sin(x1)*sin(x2)
-  double Ch = T1[i1][2] * T2[i2][2] - T1[i1][0] * T2[i2][0];
-  // Ch approximates cos(x1+x2)
-
-  /* for |r| <= 0.5, the polynomial 0x1p-12 * r - 0x1.555555519999ap-3 * r^3
-     approximates sin(r/2^12) with absolute error < 2^-74.815, and the
-     polynomial -0x1p-25 * r^2 + 0x1.55555552c550dp-53 * r^4 approximates
-     cos(r/2^12)-1 with absolute error < 2^-90.698 (cf sinfast.sollya) */
-  double sh = r  * ( 0x1p-12 - 0x1.555555519999ap-39 * r2);
-  double ch = r2 * (-0x1p-25 + 0x1.55555552c550dp-53 * r2);
-  /* The maximal value of |Sl| for x in sin.wc is 0x1.495e901afd265p-52,
-     the maximal value of |Sh*ch| is 0x1.fe4155d08d31cp-28, and
-     the maximal value of |Ch*sh| is 0x1.fff97ad38b807p-14.
-     Adding them as Sl + Sh*ch + Ch*sh = (Sl + Sh*ch) + Ch*sh
-     minimizes the rounding error, since the error on Sl + Sh*ch is of
-     the order of ulp(2^-28), and also allows to compute this sum with
-     two FMAs. */
-  double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
-  // all inputs from sin.wc pass with eps = 0x1.80p-64 (with/without fma)
-  // RZ no-fma x=0x1.94840460d764p+1 fh=-0x1.3420b74fbbe1ep-6 fl=0x1.fdb8a55665bccp-14
-  // fh + fl - sin(x) ~ -0x1.9dd0fc1d3433bp-64
-  // restore sign
-  static const double Sgn[] = {1.0, -1.0};
-  fh = Sgn[sgn] * fh;
-  fl = Sgn[sgn] * fl;
-  static const double eps = 0x1.f1p-64;
-  double lb = fh + (fl - eps), ub = fh + (fl + eps);
-  if (__builtin_expect (lb == ub, 1)) return lb;
-  return as_sin_fast_acc(x);
-}
-
 static const double U1[128][4] = {
   {0x0p+0, 0x0p+0, 0x1p+0, 0x0p+0},
   {0x1.92155f7a3667ep-6, -0x1.b1d63091a013p-64, 0x1.ffd886084cd0dp-1, -0x1.1354d4556e4cbp-55},
@@ -2771,10 +2705,11 @@ static const double U2[128][4] = {
   {0x1.8ef15d9667fdap-6, -0x1.668dc9ba82a7p-60, 0x1.ffd9235046557p-1, -0x1.c3c6e16616fb2p-56},
 };
 
-// special code for 0x1.95e4p+1 <= |x| < 2^31 (similar to cr_sin_fast)
+// special code for 0x1.95e4p+1 <= |x| < 2^31
+// ax = |x| and eps is the error bound for the rounding test
 // see proof of correctness in sin.pdf
 static double
-cr_sin_moderate (double x, double ax) // ax = |x|
+cr_sin_moderate (double x, double ax, double eps) // ax = |x|
 {
   int sbit = (x > 0) ? 0 : 1;
   static const double invpi = 0x1.45f306dc9c883p+12;
@@ -2804,7 +2739,7 @@ cr_sin_moderate (double x, double ax) // ax = |x|
   double sh = r * (1.0 - 0x1.55555553068fp-3 * r2);
   double ch = r2 * (-0.5 + 0x1.55555553bfd3p-5 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
-  static double eps = 0x1.dep-64, Sgn[] = {1.0, -1.0};
+  static double Sgn[] = {1.0, -1.0};
   fh = Sgn[sbit] * fh;
   fl = Sgn[sbit] * fl;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
@@ -2817,14 +2752,34 @@ cr_sin (double x)
 {
   b64u64_u t = {.f = x};
   double ax = __builtin_fabs (x);
-  int sgn = t.u >> 63;
-
-  if (__builtin_expect ((t.u<<1) < 0x8012bc8000000000ull, 1))
-    return cr_sin_fast (x, ax, sgn); // |x| < 0x1.95e4p+1
-
   int e = (t.u >> 52) & 0x7ff;
 
-  if (e < 1054) return cr_sin_moderate (x, ax); // |x| < 2^31
+  // deal with tiny x to avoid underflow
+  if (__builtin_expect((t.u<<1) <= 0x7cae26e892247decull, 0)) {
+    if (x == 0)
+      return x;
+    // Taylor expansion of sin(x) is x - x^3/6 around zero
+    // for x=-0, fma (x, -0x1p-54, x) returns +0
+    /* We have underflow when 0 < |x| < 2^-1022 or when |x| = 2^-1022
+       and rounding towards zero. */
+    double res = __builtin_fma (x, -0x1p-54, x);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+    if (ax < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
+      errno = ERANGE; // underflow
+#endif
+    return res;
+  }
+
+  if (e < 1054) return cr_sin_moderate (x, ax, 0x1.dep-64); // |x| < 2^31
+
+  // cr_sin_moderate works up to |x| < 2^38 and is faster than sin_fast below
+  if (e < 1061) {
+    static const double E[] = {0x1.dfp-64, 0x1.e0p-64, 0x1.01p-63, 0x1.03p-63,
+                               0x1.06p-63, 0x1.8cp-63, 0x1.99p-63};
+    return cr_sin_moderate (x, ax, E[e-1054]);
+  }
+
+  // now |x| >= 2^38
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
