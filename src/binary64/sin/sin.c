@@ -2032,6 +2032,7 @@ sin_accurate (double x)
   return y;
 }
 
+#if 0
 /* for each j, 0 <= j <= 128, T1[j] contains sh, sl, ch, cl where
    sh+sl is a double-double approximation of sin(j/2^5) and
    ch+cl is a double-double approximation of cos(j/2^5) */
@@ -2300,6 +2301,7 @@ static const double T2[128][4] = {
   {0x1.f7eba6ef18932p-6, -0x1.d3d43446c6013p-60, 0x1.ffc1fd407c158p-1, -0x1.7e892bb34cd41p-56},
   {0x1.fbeb29ecf921ep-6, 0x1.084d9ff5acb2p-61, 0x1.ffc1004ac7c96p-1, 0x1.06ff6710a573ep-55},
 };
+#endif
 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahhh = xh*ch;
@@ -2319,6 +2321,7 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
   return sh;
 }
 
+#if 0
 static double __attribute__((noinline))
 as_sin_fast_acc (double x)
 {
@@ -2442,6 +2445,7 @@ as_sin_fast_acc (double x)
   fl *= Sgn[sgn];
   return fh + fl;
 }
+#endif
 
 static const double U1[128][4] = {
   {0x0p+0, 0x0p+0, 0x1p+0, 0x0p+0},
