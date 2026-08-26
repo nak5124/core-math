@@ -1217,7 +1217,7 @@ reduce2 (dint64_t *X)
 // argument reduction for |x| >= 2^31
 // return i and h such that
 // x/(2pi) mod 1 = i/2^15 + h with |h| < 2^-15
-static int
+static uint64_t
 reduce_large (double *h, double x)
 {
   b64u64_u t = {.f = x};
@@ -1239,18 +1239,12 @@ reduce_large (double *h, double x)
     U0 = (_T[i] << f) | (_T[i+1] >> (64-f));
     U1 = (_T[i+1] << f) | (_T[i+2] >> (64-f));
   }
-  uint64_t c[2];
   u128 u;
-  // FIXME: we could simply compute m * U in u128 where U=U1+(U0<<64)
-  u = (u128) m * (u128) U1;
-  c[0] = u;
-  c[1] = u >> 64;
-  c[1] += m * U0;
-  /* the ignored part contributes to less than 2^-75 */
-  // h is formed by the lower 49 bits from c[1] and the upper 4 from c[0]
-  t.f = ((c[1]<<15)>>11) | (c[0]>>60);
+  u = (u128) U1 | (((u128) U0) << 64);
+  u = (u128) m * u;
+  t.f = (u<<15)>>75;
   *h = t.f * 0x1p-68;
-  return c[1]>>49;
+  return u>>113;
   // since we return 15 bits in i and 53 in h, the accuracy is at most 2^-68
 }
 
@@ -2153,7 +2147,7 @@ static double
 cr_sin_large (double x, double ax)
 {
   double r;
-  int j = reduce_large (&r, ax);
+  uint64_t j = reduce_large (&r, ax);
   // now x/(2pi) ~ k + j/2^15 + r with 0 <= r < 2^-15
   int sbit = (x > 0) ? 0 : 1;
 
@@ -2225,4 +2219,3 @@ cr_sin (double x)
   // now |x| >= 2^31
   return cr_sin_large (x, ax);
 }
-                   
