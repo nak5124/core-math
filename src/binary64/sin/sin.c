@@ -998,12 +998,6 @@ static const dint64_t PC[] = {
   {.hi = 0xd368f6f4207cfe49, .lo = 0xec63157807ebffa, .ex = 5, .sgn=1},  // 10
 };
 
-// Multiply exactly a and b, such that *hi + *lo = a * b.
-static inline void a_mul(double *hi, double *lo, double a, double b) {
-  *hi = a * b;
-  *lo = __builtin_fma (a, b, -*hi);
-}
-
 /* Put in Y an approximation of sin2pi(X), for 0 <= X < 2^-11,
    where X2 approximates X^2.
    Absolute error bounded by 2^-132.999 with 0 <= Y < 0.003068
