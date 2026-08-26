@@ -2724,7 +2724,7 @@ cr_sin_moderate (double x, double ax, double eps) // ax = |x|
   // |2^14*(pih + pil) + pi| < 2^-108.041
   double rh = __builtin_fma (k, pih, ax), rl = k * pil; // rh is exact
 
-  double r = rh + rl; // |r| < 2^-13.347 (see sin.pdf)
+  double r = rh + rl; // |r| < 2^-13.339 (see sin.pdf)
   double r2 = r * r;
   uint64_t j = k;
   sbit = sbit ^ ((j >> 14) & 1); // reduction by an odd multiple of pi?
@@ -2736,10 +2736,10 @@ cr_sin_moderate (double x, double ax, double eps) // ax = |x|
   Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   double Ch = U1[i1][2] * U2[i2][2] - U1[i1][0] * U2[i2][0];
 
-  /* for |r| <= 2^-13.347, the polynomial r - 0x1.55555553068fp-3 * r^3
-     approximates sin(r) with absolute error < 2^-76.550, and the polynomial
+  /* for |r| <= 2^-13.339, the polynomial r - 0x1.55555553068fp-3 * r^3
+     approximates sin(r) with absolute error < 2^-76.494, and the polynomial
      -0.5 * r^2 + 0x1.55555553bfd3p-5 * r^4 approximates cos(r)-1 with
-     absolute error < 2^-92.780 (cf sinmoderate.sollya) */
+     absolute error < 2^-92.723 (cf sinmoderate.sollya) */
   double sh = r * (1.0 - 0x1.55555553068fp-3 * r2);
   double ch = r2 * (-0.5 + 0x1.55555553bfd3p-5 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
@@ -2776,14 +2776,7 @@ cr_sin (double x)
 
   if (e < 1054) return cr_sin_moderate (x, ax, 0x1.dep-64); // |x| < 2^31
 
-  // cr_sin_moderate works up to |x| < 2^38 and is faster than sin_fast below
-  if (e < 1061) {
-    static const double E[] = {0x1.dfp-64, 0x1.e0p-64, 0x1.01p-63, 0x1.03p-63,
-                               0x1.06p-63, 0x1.8cp-63, 0x1.99p-63};
-    return cr_sin_moderate (x, ax, E[e-1054]);
-  }
-
-  // now |x| >= 2^38
+  // now |x| >= 2^31
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
