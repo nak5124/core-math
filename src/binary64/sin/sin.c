@@ -1215,10 +1215,10 @@ reduce2 (dint64_t *X)
 }
 
 // argument reduction for |x| >= 2^31
-// return i and h such that
-// x/(2pi) mod 1 = i/2^15 + h with |h| < 2^-15
+// return k and r such that
+// x/(2pi) mod 1 = k/2^15 + r + s with 0 <= r < 2^-15 and 0 <= s < 2^-67.988
 static uint64_t
-reduce_large (double *h, double x)
+reduce_large (double *r, double x)
 {
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff; /* 1054 <= e <= 2046 */
@@ -1239,11 +1239,13 @@ reduce_large (double *h, double x)
     U0 = (_T[i] << f) | (_T[i+1] >> (64-f));
     U1 = (_T[i+1] << f) | (_T[i+2] >> (64-f));
   }
-  u128 u;
-  u = (u128) U1 | (((u128) U0) << 64);
+  /* Remark: computing directly u with 128-bit arithmetic from _T[i],
+     _T[i+1] and _T[i+2] is slower (surely because 128-bit arithmetic is
+     emulated.) */
+  u128 u = (u128) U1 | (((u128) U0) << 64);
   u = (u128) m * u;
   t.f = (u<<15)>>75;
-  *h = t.f * 0x1p-68;
+  *r = t.f * 0x1p-68;
   return u>>113;
   // since we return 15 bits in i and 53 in h, the accuracy is at most 2^-68
 }
