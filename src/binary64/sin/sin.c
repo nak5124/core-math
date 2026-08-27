@@ -1221,7 +1221,7 @@ reduce_large (double *r, double x)
   /* _T[j] corresponds to _T[j]/2^(64*j) thus _T[j]*x corresponds to
      m*_T[j]*2^(e-1075-64*j). To get a non-zero fractional value,
      we need e-1075-64*j < 0, thus 64*j > e-1075 or 64*j >= e-1074. */
-  int i = (e - 1074 + 63) / 64; // i = ceil((e-1074)/64), 0 <= i <= 16
+  int i = (e - 1011) / 64; // i = ceil((e-1074)/64), 0 <= i <= 16
   int f = (e - 1011) & 0x3f;
   /* the number of fractional bits from m*_T[i] is 64-f, thus we have to
      shift _T[i] by f bits to get 64 fractional bits */
@@ -1238,9 +1238,9 @@ reduce_large (double *r, double x)
      emulated.) */
   u128 u = (u128) U1 | (((u128) U0) << 64);
   u = (u128) m * u;
-  t.f = (u<<15)>>75;
+  t.f = (u << 15) >> 75; // next 53 bits of u after the first 15
   *r = t.f * 0x1p-68;
-  return u>>113;
+  return u >> 113;
   // since we return 15 bits in i and 53 in h, the accuracy is at most 2^-68
 }
 
@@ -2170,7 +2170,7 @@ cr_sin_large (double x, double ax)
   static double Sgn[] = {1.0, -1.0};
   fh = Sgn[sbit] * fh;
   fl = Sgn[sbit] * fl;
-  static double eps = 0x1.80p-63;
+  static double eps = 0x1.01p-62;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
   return sin_accurate (x);
