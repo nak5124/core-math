@@ -1238,8 +1238,11 @@ reduce_large (double *r, double x)
      emulated.) */
   u128 u = (u128) U1 | (((u128) U0) << 64);
   u = (u128) m * u;
+  // round r to nearest, where 0x810000000000000 = 2^59 + 2^52
+  static const u128 magic = ((u128) 1 << 112) + 0x810000000000000ull;
+  u += magic;
   t.f = (u << 15) >> 75; // next 53 bits of u after the first 15
-  *r = t.f * 0x1p-68;
+  *r = t.f * 0x1p-68 - 0x1p-16;
   return u >> 113;
   // since we return 15 bits in i and 53 in h, the accuracy is at most 2^-68
 }
@@ -2157,20 +2160,13 @@ cr_sin_large (double x, double ax)
   Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   double Ch = U1[i1][2] * U2[i2][2] - U1[i1][0] * U2[i2][0];
 
-  /* for 0 <= r < 2^-15, the polynomial
-     0x1.921fb54442d18p2 * r - 0x1.4abbce2f1363ep5 * r^3
-     approximates sin(2*pi*r) with absolute error < 2^-68.469,
-     and the polynomial
-     -0x1.3bd3cc9be45dep4 * x^2 + 0x1.03c1f015e6301p6 * x^4
-     approximates cos(2*pi*r)-1 with absolute error < 2^-81.728
-     (cf sinlarge.sollya) */
-  double sh = r * (0x1.921fb54442d18p2 - 0x1.4abbce2f1363ep5 * r2);
-  double ch = r2 * (-0x1.3bd3cc9be45dep4 + 0x1.03c1f015e6301p6 * r2);
+  double sh = r * (0x1.921fb54442d18p2 - 0x1.4abbcdb6b26d1p5 * r2);
+  double ch = r2 * (-0x1.3bd3cc9be45dep4 + 0x1.03c1eee483083p6 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
   static double Sgn[] = {1.0, -1.0};
   fh = Sgn[sbit] * fh;
   fl = Sgn[sbit] * fl;
-  static double eps = 0x1.01p-62;
+  static double eps = 0x1.41p-63;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
   return sin_accurate (x);
