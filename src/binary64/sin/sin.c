@@ -2194,11 +2194,11 @@ sin_accurate_moderate (double x, double ax)
   // since |ps[3]*r^5/ps[0]*r| < 2^-60, we can still compute in binary64
   // add ps[3]
   sh += ps[3];
-  sh = mulddd (r2h, r2l, sh, &sl);
-  // sh+sl approximates ps[3]*r^2+ps[4]*r^4
+  sh = r2h * sh;
+  // sh approximates ps[3]*r^2+ps[4]*r^4
   // add ps[1]+ps[2]
-  sh = fasttwosum (ps[1], sh, &t);
-  sl += t + ps[2];
+  sh = fasttwosum (ps[1], sh, &sl);
+  sl += ps[2];
   sh = muldd (r2h, r2l, sh, sl, &sl);
   // sh+sl approximates (ps[1]+ps[2])*r^2+ps[3]*r^4
   // add ps[0]
@@ -2210,15 +2210,13 @@ sin_accurate_moderate (double x, double ax)
   double ch, cl;
   // since |pc[2]*r^6| < 2^-89, we can compute pc[2]*r^2 as double
   ch = pc[2] * r2h;
-  cl = 0;
   // since |pc[1]*r^4| < 2^-57, we can still compute in binary64
   // add pc[1]
   ch += pc[1];
-  ch = mulddd (r2h, r2l, ch, &cl);
-  // ch+cl approximates pc[1]*r^2+pc[2]*r^4
+  ch = r2h * ch;
+  // ch approximates pc[1]*r^2+pc[2]*r^4
   // add pc[0]
-  ch = fasttwosum (pc[0], ch, &t);
-  cl += t;
+  ch = fasttwosum (pc[0], ch, &cl);
   ch = muldd (r2h, r2l, ch, cl, &cl);
   // add 1
   ch = fasttwosum (1.0, ch, &t);
