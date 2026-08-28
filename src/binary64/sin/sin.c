@@ -1683,10 +1683,40 @@ static const double T2[128][4] = {
 };
 #endif
 
+static inline double fasttwosum(double x, double y, double *e){
+  double s = x + y, z = s - x;
+  *e = y - z;
+  return s;
+}
+
+// from acos.c (see comments there)
+static inline double twosum(double a, double b, double *t){
+  double s = a + b;
+  double a_prime = s - b;
+  double b_prime = s - a_prime;
+  double delta_a = a - a_prime;
+  double delta_b = b - b_prime;
+  *t = delta_a + delta_b;
+  return s;
+}
+
+static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
+  double sl, sh = fasttwosum(xh, yh, &sl);
+  *e = (xl + yl) + sl;
+  return sh;
+}
+
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahhh = xh*ch;
   *l = (xh*cl + xl*ch) + __builtin_fma(xh, ch, -ahhh);
   return ahhh;
+}
+
+// accurate version, with an extra normalization step
+static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
+  double ahhh = xh*ch;
+  *l = (xh*cl + xl*ch) + __builtin_fma(xh, ch, -ahhh);
+  return fasttwosum (ahhh, *l, l);
 }
 
 static inline double mulddd(double xh, double xl, double ch, double *l){
@@ -1695,16 +1725,11 @@ static inline double mulddd(double xh, double xl, double ch, double *l){
   return ahhh;
 }
 
-static inline double fasttwosum(double x, double y, double *e){
-  double s = x + y, z = s - x;
-  *e = y - z;
-  return s;
-}
-
-static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
-  double sl, sh = fasttwosum(xh, yh, &sl);
-  *e = (xl + yl) + sl;
-  return sh;
+// accurate version, with an extra normalization step
+static inline double mulddd_acc(double xh, double xl, double ch, double *l){
+  double ahhh = xh*ch;
+  *l = xl*ch + __builtin_fma(xh, ch, -ahhh);
+  return fasttwosum (ahhh, *l, l);
 }
 
 #if 0
@@ -2136,17 +2161,17 @@ sin_accurate_moderate (double x, double ax)
   int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
   double s1h, s1l, s2h, s2l;
   // s1h approximates sin(t1)*cos(t2)
-  s1h = muldd (U1[i1][0], U1[i1][1], U2[i2][2], U2[i2][3], &s1l);
+  s1h = muldd_acc (U1[i1][0], U1[i1][1], U2[i2][2], U2[i2][3], &s1l);
   // s2h approximates cos(t1)*sin(t2)
-  s2h = muldd (U2[i2][0], U2[i2][1], U1[i1][2], U1[i1][3], &s2l);
+  s2h = muldd_acc (U2[i2][0], U2[i2][1], U1[i1][2], U1[i1][3], &s2l);
   double Sh, Sl;
   // Sh approximates sin(t1+t2)
   Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   double c1h, c1l, c2h, c2l;
   // c1h+c1l approximates cos(t1)*cos(t2)
-  c1h = muldd (U1[i1][2], U1[i1][3], U2[i2][2], U2[i2][3], &c1l);
+  c1h = muldd_acc (U1[i1][2], U1[i1][3], U2[i2][2], U2[i2][3], &c1l);
   // c2h+c2l approximates sin(t1)*sin(t2)
-  c2h = muldd (U1[i1][0], U1[i1][1], U2[i2][0], U2[i2][1], &c2l);
+  c2h = muldd_acc (U1[i1][0], U1[i1][1], U2[i2][0], U2[i2][1], &c2l);
   double Ch, Cl;
   // Ch approximates cos(t1+t2)
   Ch = fastsum (c1h, c1l, -c2h, -c2l, &Cl);
@@ -2164,11 +2189,12 @@ sin_accurate_moderate (double x, double ax)
                         0x1.1111111111111p-7, -0x1.a01a006eb9947p-13};
   static double pc[] = {-0x1p-1, 0x1.5555555555555p-5, -0x1.6c16bcc416d44p-10};
   double sh, sl, t;
-  sh = mulddd (r2h, r2l, ps[4], &sl); // sh+sl approximates ps[4]*r^2
+  // since |ps[4]*r^7/ps[0]*r| < 2^-92, we can compute ps[4]*r^2 as double
+  sh = r2h * ps[4];
+  // since |ps[3]*r^5/ps[0]*r| < 2^-60, we can still compute in binary64
   // add ps[3]
-  sh = fasttwosum (ps[3], sh, &t);
-  sl += t;
-  sh = muldd (r2h, r2l, sh, sl, &sl);
+  sh += ps[3];
+  sh = mulddd (r2h, r2l, sh, &sl);
   // sh+sl approximates ps[3]*r^2+ps[4]*r^4
   // add ps[1]+ps[2]
   sh = fasttwosum (ps[1], sh, &t);
@@ -2182,11 +2208,13 @@ sin_accurate_moderate (double x, double ax)
   sh = muldd (rh, rl, sh, sl, &sl);
   // now sh+sl approximates sin(rh+rl)
   double ch, cl;
-  ch = mulddd (r2h, r2l, pc[2], &cl); // ch+cl approximates r^2*pc[2]
+  // since |pc[2]*r^6| < 2^-89, we can compute pc[2]*r^2 as double
+  ch = pc[2] * r2h;
+  cl = 0;
+  // since |pc[1]*r^4| < 2^-57, we can still compute in binary64
   // add pc[1]
-  ch = fasttwosum (pc[1], ch, &t);
-  cl += t;
-  ch = muldd (r2h, r2l, ch, cl, &cl);
+  ch += pc[1];
+  ch = mulddd (r2h, r2l, ch, &cl);
   // ch+cl approximates pc[1]*r^2+pc[2]*r^4
   // add pc[0]
   ch = fasttwosum (pc[0], ch, &t);
@@ -2197,13 +2225,11 @@ sin_accurate_moderate (double x, double ax)
   cl += t;
   // now ch+cl approximates cos(rh+rl)
 
-  // we now have to compite (Sh+Sl)*(ch+cl) + (Ch+Cl)*(sh+sl)
-  Sh = muldd (Sh, Sl, ch, cl, &Sl);
-  Ch = muldd (Ch, Cl, sh, sl, &Cl);
-  if (__builtin_fabs (Sh) >= __builtin_fabs (Ch))
-    sh = fasttwosum (Sh, Ch, &sl);
-  else
-    sh = fasttwosum (Ch, Sh, &sl);
+  // we now have to compute (Sh+Sl)*(ch+cl) + (Ch+Cl)*(sh+sl)
+  Sh = muldd_acc (Sh, Sl, ch, cl, &Sl);
+  Ch = muldd_acc (Ch, Cl, sh, sl, &Cl);
+  // twosum is faster than a test and fasttwosum by about 1 cycle
+  sh = twosum (Sh, Ch, &sl);
   sl += Sl + Cl;
   double ret = (sbit == 0) ? sh + sl : - sh - sl;
   // check worst cases
@@ -2255,6 +2281,7 @@ cr_sin_moderate (double x, double ax)
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
   return sin_accurate_moderate (x, ax);
+  // return sin_accurate (x);
 }
 
 // fast path for |x| >= 2^31
