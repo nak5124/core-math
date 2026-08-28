@@ -2218,17 +2218,24 @@ sin_accurate_moderate (double x, double ax)
   // add pc[0]
   ch = fasttwosum (pc[0], ch, &cl);
   ch = muldd (r2h, r2l, ch, cl, &cl);
-  // add 1
-  ch = fasttwosum (1.0, ch, &t);
-  cl += t;
-  // now ch+cl approximates cos(rh+rl)
+  // now ch+cl approximates cos(rh+rl)-1
 
-  // we now have to compute (Sh+Sl)*(ch+cl) + (Ch+Cl)*(sh+sl)
-  Sh = muldd_acc (Sh, Sl, ch, cl, &Sl);
-  Ch = muldd_acc (Ch, Cl, sh, sl, &Cl);
+  /* We now have to compute (Sh+Sl)*(1+ch+cl) + (Ch+Cl)*(sh+sl),
+     where Sh+Sl approximates sin(z) where z = pi*(i1/2^7+i2/2^14),
+     Ch+Cl approximates cos(z),
+     sh+sl approximates sin(r) and ch+cl approximates cos(r-1).
+     Since |r| <= 2^-13.339, |sh+sl| <= 2^-13.339 and |1-cos(r)| < 2^-27.678.
+  */
+  ch = muldd_acc (Sh, Sl, ch, cl, &cl);
+  sh = muldd_acc (Ch, Cl, sh, sl, &sl);
   // twosum is faster than a test and fasttwosum by about 1 cycle
-  sh = twosum (Sh, Ch, &sl);
-  sl += Sl + Cl;
+  sh = twosum (sh, ch, &t);
+  sl += cl + t;
+  // now |sh+sl| < 2^-13.339 + 2^-27.678 < 2^-13.338
+  /* Now add Sh+Sl: since Sh+Sl is either zero or |Sh+Sl| >= sin(pi/2^14),
+     we can use fasttwosum. */
+  sh = fasttwosum (Sh, sh, &t);
+  sl += Sl + t;
   double ret = (sbit == 0) ? sh + sl : - sh - sl;
   // check worst cases
   b64u64_u z = {.f = sl};
