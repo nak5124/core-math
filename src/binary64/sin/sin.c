@@ -1689,17 +1689,6 @@ static inline double fasttwosum(double x, double y, double *e){
   return s;
 }
 
-// from acos.c (see comments there)
-static inline double twosum(double a, double b, double *t){
-  double s = a + b;
-  double a_prime = s - b;
-  double b_prime = s - a_prime;
-  double delta_a = a - a_prime;
-  double delta_b = b - b_prime;
-  *t = delta_a + delta_b;
-  return s;
-}
-
 static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
   double sl, sh = fasttwosum(xh, yh, &sl);
   *e = (xl + yl) + sl;
@@ -1709,12 +1698,6 @@ static inline double fastsum(double xh, double xl, double yh, double yl, double 
 static inline double muldd(double xh, double xl, double ch, double cl, double *l){
   double ahhh = xh*ch;
   *l = (xh*cl + xl*ch) + __builtin_fma(xh, ch, -ahhh);
-  return ahhh;
-}
-
-static inline double mulddd(double xh, double xl, double ch, double *l){
-  double ahhh = xh*ch;
-  *l = xl*ch + __builtin_fma(xh, ch, -ahhh);
   return ahhh;
 }
 
