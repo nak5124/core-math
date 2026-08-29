@@ -2350,34 +2350,24 @@ moderate_exceptions (double x, double y)
   return y;
 }
 
-// accurate path for 0x1.95e4p+1 <= |x| < 2^31
-// FIXME: we could reuse the following values from cr_sin_moderate():
-// sbit, k, initial values of rh and rl, i1, i2, Sh, Sl, Ch, Cl
+// accurate path for 0x1.95e4p+1 <= |x| < 2^31,
+// reusing values computed in the fast path
 static double
-sin_accurate_moderate (double x, double ax)
+sin_accurate_moderate (double *ctx)
 {
+  double x = ctx[0], k = ctx[1], Sh = ctx[2], Sl = ctx[3], rh = ctx[4],
+    rl = ctx[5];
   int sbit = (x > 0) ? 0 : 1;
-  static const double invpi = 0x1.45f306dc9c883p+12;
-  double k = __builtin_roundeven (invpi * ax);
-  static const double pih = -0x1.921fb54442d18p-13,
-    pil = -0x1.1a62633145c07p-67, pis = 0x1.f1976b7ed8fbcp-123;
-  // |pih+pil+pis+pi/2^14| < 2^-176.620
-  double rh = __builtin_fma (k, pih, ax), rl = k * pil,
-    rs = k * pis + __builtin_fma (k, pil, -rl);
+  static const double pil = -0x1.1a62633145c07p-67,
+    pis = 0x1.f1976b7ed8fbcp-123;
+  double rs = k * pis + __builtin_fma (k, pil, -rl);
   rh = fasttwosum (rh, rl, &rl);
   rl += rs;
 
   uint64_t j = k;
   sbit = sbit ^ ((j >> 14) & 1); // reduction by an odd multiple of pi?
   int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
-  double s1h, s1l, s2h, s2l;
-  // s1h approximates sin(t1)*cos(t2)
-  s1h = muldd (U1[i1][0], U1[i1][1], U2[i2][2], U2[i2][3], &s1l);
-  // s2h approximates cos(t1)*sin(t2)
-  s2h = muldd (U2[i2][0], U2[i2][1], U1[i1][2], U1[i1][3], &s2l);
-  double Sh, Sl;
   // Sh approximates sin(t1+t2)
-  Sh = fastsum (s1h, s1l, s2h, s2l, &Sl);
   double c1h, c1l, c2h, c2l;
   // c1h+c1l approximates cos(t1)*cos(t2)
   c1h = muldd (U1[i1][2], U1[i1][3], U2[i2][2], U2[i2][3], &c1l);
@@ -2498,7 +2488,8 @@ cr_sin_moderate (double x, double ax)
   static double eps = 0x1.dep-64;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
-  return sin_accurate_moderate (x, ax);
+  double ctx[] = {x, k, Sh, Sl, rh, rl};
+  return sin_accurate_moderate (ctx);
   // return sin_accurate (x);
 }
 
