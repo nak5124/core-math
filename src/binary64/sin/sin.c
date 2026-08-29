@@ -1712,24 +1712,10 @@ static inline double muldd(double xh, double xl, double ch, double cl, double *l
   return ahhh;
 }
 
-// accurate version, with an extra normalization step
-static inline double muldd_acc(double xh, double xl, double ch, double cl, double *l){
-  double ahhh = xh*ch;
-  *l = (xh*cl + xl*ch) + __builtin_fma(xh, ch, -ahhh);
-  return fasttwosum (ahhh, *l, l);
-}
-
 static inline double mulddd(double xh, double xl, double ch, double *l){
   double ahhh = xh*ch;
   *l = xl*ch + __builtin_fma(xh, ch, -ahhh);
   return ahhh;
-}
-
-// accurate version, with an extra normalization step
-static inline double mulddd_acc(double xh, double xl, double ch, double *l){
-  double ahhh = xh*ch;
-  *l = xl*ch + __builtin_fma(xh, ch, -ahhh);
-  return fasttwosum (ahhh, *l, l);
 }
 
 #if 0
@@ -2350,10 +2336,17 @@ moderate_exceptions (double x, double y)
     {0x1.f2d1b8ac49c5bp+30, 0x1.5b889d955c0d4p-1, -0x1.8a21d6f4fda52p-105},
   };
   double ax = __builtin_fabs (x);
-  for (unsigned int i = 0; i < sizeof(e)/(3*sizeof(double)); i++) {
-    if (ax == e[i][0])
-      return (x == ax) ? e[i][1] + e[i][2] : - e[i][1] - e[i][2];
+  unsigned int a = 0, b = sizeof(e)/(3*sizeof(double)), c;
+  // invariant: e[i][a] <= ax < e[i][b]
+  while (a + 1 < b) {
+    c = (a + b) / 2;
+    if (e[c][0] <= ax)
+      a = c;
+    else
+      b = c;
   }
+  if (ax == e[a][0])
+    return (x == ax) ? e[a][1] + e[a][2] : - e[a][1] - e[a][2];
   return y;
 }
 
