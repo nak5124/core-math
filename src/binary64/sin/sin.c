@@ -2336,20 +2336,16 @@ moderate_exceptions (double x, double y)
 // accurate path for 0x1.95e4p+1 <= |x| < 2^31,
 // reusing values computed in the fast path
 static double
-sin_accurate_moderate (double *ctx)
+sin_accurate_moderate (double *ctx, int sbit, int i1, int i2)
 {
   double x = ctx[0], k = ctx[1], Sh = ctx[2], Sl = ctx[3], rh = ctx[4],
     rl = ctx[5];
-  int sbit = (x > 0) ? 0 : 1;
   static const double pil = -0x1.1a62633145c07p-67,
     pis = 0x1.f1976b7ed8fbcp-123;
   double rs = k * pis + __builtin_fma (k, pil, -rl);
   rh = fasttwosum (rh, rl, &rl);
   rl += rs;
 
-  uint64_t j = k;
-  sbit = sbit ^ ((j >> 14) & 1); // reduction by an odd multiple of pi?
-  int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
   // Sh approximates sin(t1+t2)
   double c1h, c1l, c2h, c2l;
   // c1h+c1l approximates cos(t1)*cos(t2)
@@ -2374,10 +2370,9 @@ sin_accurate_moderate (double *ctx)
   static double pc[] = {-0x1p-1, 0x1.5555555555555p-5, -0x1.6c16bcc416d44p-10};
   double sh, sl, t;
   // since |ps[4]*r^7/ps[0]*r| < 2^-92, we can compute ps[4]*r^2 as double
-  sh = r2h * ps[4];
   // since |ps[3]*r^5/ps[0]*r| < 2^-60, we can still compute in binary64
   // add ps[3]
-  sh += ps[3];
+  sh = ps[3] + r2h * ps[4];
   sh = r2h * sh;
   // sh approximates ps[3]*r^2+ps[4]*r^4
   // add ps[1]+ps[2]
@@ -2393,10 +2388,9 @@ sin_accurate_moderate (double *ctx)
   // now sh+sl approximates sin(rh+rl)
   double ch, cl;
   // since |pc[2]*r^6| < 2^-89, we can compute pc[2]*r^2 as double
-  ch = pc[2] * r2h;
   // since |pc[1]*r^4| < 2^-57, we can still compute in binary64
   // add pc[1]
-  ch += pc[1];
+  ch = pc[1] + pc[2] * r2h;
   ch = r2h * ch;
   // ch approximates pc[1]*r^2+pc[2]*r^4
   // add pc[0]
@@ -2472,7 +2466,7 @@ cr_sin_moderate (double x, double ax)
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
   double ctx[] = {x, k, Sh, Sl, rh, rl};
-  return sin_accurate_moderate (ctx);
+  return sin_accurate_moderate (ctx, sbit, i1, i2);
   // return sin_accurate (x);
 }
 
