@@ -1,6 +1,6 @@
 /* Correctly-rounded sine function for binary64 value.
 
-Copyright (c) 2022-2025 Paul Zimmermann and Tom Hubrecht
+Copyright (c) 2022-2026 Paul Zimmermann and Tom Hubrecht and Alexei Sibidanov
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
