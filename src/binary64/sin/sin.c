@@ -2365,9 +2365,10 @@ sin_accurate_moderate (double *ctx, int sbit, int i1, int i2)
      The reason why we use the relative error for sin(r) is that for x tiny,
      we have i1=i2=0, thus the approximation is simply sh+sl, and we need
      a small relative error. */
-  static double ps[] = {1.0, -0x1.5555555555555p-3, -0x1.555555551de06p-57,
-                        0x1.1111111111111p-7, -0x1.a01a006eb9947p-13};
-  static double pc[] = {-0x1p-1, 0x1.5555555555555p-5, -0x1.6c16bcc416d44p-10};
+  static const double ps[] = {1.0, -0x1.5555555555555p-3,
+         -0x1.555555551de06p-57, 0x1.1111111111111p-7, -0x1.a01a006eb9947p-13};
+  static const double pc[] = {-0x1p-1, 0x1.5555555555555p-5,
+                              -0x1.6c16bcc416d44p-10};
   double sh, sl, t;
   // since |ps[4]*r^7/ps[0]*r| < 2^-92, we can compute ps[4]*r^2 as double
   // since |ps[3]*r^5/ps[0]*r| < 2^-60, we can still compute in binary64
@@ -2494,10 +2495,10 @@ cr_sin_large (double x)
   double sh = r * (0x1.921fb54442d18p2 - 0x1.4abbcdb6b26d1p5 * r2);
   double ch = r2 * (-0x1.3bd3cc9be45dep4 + 0x1.03c1eee483083p6 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
-  static double Sgn[] = {1.0, -1.0};
+  static const double Sgn[] = {1.0, -1.0};
   fh = Sgn[sbit] * fh;
   fl = Sgn[sbit] * fl;
-  static double eps = 0x1.41p-63;
+  static const double eps = 0x1.41p-63;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
   return sin_accurate (x);
