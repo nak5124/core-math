@@ -2335,7 +2335,7 @@ moderate_exceptions (double x, double y)
 
 // accurate path for 0x1.95e4p+1 <= |x| < 2^31,
 // reusing values computed in the fast path
-static double
+static double __attribute__((noinline))
 sin_accurate_moderate (double *ctx, int sbit, int i1, int i2)
 {
   double x = ctx[0], k = ctx[1], Sh = ctx[2], Sl = ctx[3], rh = ctx[4],
@@ -2428,10 +2428,10 @@ sin_accurate_moderate (double *ctx, int sbit, int i1, int i2)
 // fast path for 0x1.95e4p+1 <= |x| < 2^31
 // ax = |x| and eps is the error bound for the rounding test
 // see proof of correctness in sin.pdf
-static double
-cr_sin_moderate (double x, double ax)
+static inline double
+cr_sin_moderate (double x, int sbit)
 {
-  int sbit = (x > 0) ? 0 : 1;
+  double ax = __builtin_fabs(x);
   static const double invpi = 0x1.45f306dc9c883p+12;
   // |invpi/2^14 - 1/pi| < 2^-55.496
   double k = __builtin_roundeven (invpi * ax);
@@ -2442,8 +2442,8 @@ cr_sin_moderate (double x, double ax)
 
   double r = rh + rl; // |r| < 2^-13.339 (see sin.pdf)
   double r2 = r * r;
-  uint64_t j = k;
-  sbit = sbit ^ ((j >> 14) & 1); // reduction by an odd multiple of pi?
+  int64_t j = k;
+  sbit ^= (j >> 14) & 1; // reduction by an odd multiple of pi?
   int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
   double s1h, s1l, s2h, s2l;
   s1h = muldd (U1[i1][0], U1[i1][1], U2[i2][2], U2[i2][3], &s1l);
@@ -2456,15 +2456,15 @@ cr_sin_moderate (double x, double ax)
      approximates sin(r) with absolute error < 2^-76.494, and the polynomial
      -0.5 * r^2 + 0x1.55555553bfd3p-5 * r^4 approximates cos(r)-1 with
      absolute error < 2^-92.723 (cf sinmoderate.sollya) */
-  double sh = r * (1.0 - 0x1.55555553068fp-3 * r2);
+  double sh =  r * ( 1.0 - 0x1.55555553068fp-3 * r2);
   double ch = r2 * (-0.5 + 0x1.55555553bfd3p-5 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
-  static double Sgn[] = {1.0, -1.0};
+  static const double Sgn[] = {1.0, -1.0};
+  const double eps = 0x1.dep-64, eps2 = 0x1.dep-63;
   fh = Sgn[sbit] * fh;
-  fl = Sgn[sbit] * fl;
-  static double eps = 0x1.dep-64;
-  double lb = fh + (fl - eps), ub = fh + (fl + eps);
-  if (__builtin_expect (lb == ub, 1)) return lb;
+  fl = Sgn[sbit] * fl - eps;
+  double lb = fh + fl, ub = fh + (fl + eps2);
+  if (__builtin_expect (ub == lb, 1)) return lb;
   double ctx[] = {x, k, Sh, Sl, rh, rl};
   return sin_accurate_moderate (ctx, sbit, i1, i2);
   // return sin_accurate (x);
@@ -2472,9 +2472,10 @@ cr_sin_moderate (double x, double ax)
 
 // fast path for |x| >= 2^31
 // ax = |x| and eps is the error bound for the rounding test
-static double
-cr_sin_large (double x, double ax)
+static double __attribute__((noinline))
+cr_sin_large (double x)
 {
+  double ax = __builtin_fabs(x);
   double r;
   uint64_t j = reduce_large (&r, ax);
   // now x/(2pi) ~ k + j/2^15 + r with 0 <= r < 2^-15
@@ -2506,38 +2507,30 @@ double
 cr_sin (double x)
 {
   b64u64_u t = {.f = x};
-  double ax = __builtin_fabs (x);
-  int e = (t.u >> 52) & 0x7ff;
-
+  int e = (t.u>>52)&0x7ff;
   // deal with tiny x to avoid underflow
-  if (__builtin_expect((t.u<<1) <= 0x7cae26e892247decull, 0)) {
-    if (x == 0)
-      return x;
+  if (__builtin_expect(e <= 0x3ff-27, 0)) {
+    if ((t.u<<1) == 0) return x;
     // Taylor expansion of sin(x) is x - x^3/6 around zero
     // for x=-0, fma (x, -0x1p-54, x) returns +0
     /* We have underflow when 0 < |x| < 2^-1022 or when |x| = 2^-1022
        and rounding towards zero. */
     double res = __builtin_fma (x, -0x1p-54, x);
 #ifdef CORE_MATH_SUPPORT_ERRNO
-    if (ax < 0x1p-1022 || __builtin_fabs (res) < 0x1p-1022)
+    if ((t.u<<1)<(1ull<<53) || __builtin_fabs (res) < 0x1p-1022)
       errno = ERANGE; // underflow
 #endif
     return res;
   }
-
-  if (e < 1054) return cr_sin_moderate (x, ax); // |x| < 2^31
-
+  if (__builtin_expect(e < 1054, 1)) return cr_sin_moderate(x, t.u>>63); // |x| < 2^31
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
-      if ((t.u << 1) == 0x7ffull<<53){ // +/-Inf
 #ifdef CORE_MATH_SUPPORT_ERRNO
+      if ((t.u<<1) == 0x7ffull<<53) // +/-Inf
         errno = EDOM;
 #endif
-        return x - x; // raises invalid
-      }
-      return x + x;
+      return x - x; // raises invalid
     }
-
   // now |x| >= 2^31
-  return cr_sin_large (x, ax);
+  return cr_sin_large (x);
 }
