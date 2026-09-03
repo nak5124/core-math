@@ -1240,8 +1240,7 @@ reduce_large (double *r, double x)
 }
 
 /* Assume x is a regular number, and |x| > 0x1.7137449123ef6p-26. */
-__attribute__((cold))
-static double
+static double __attribute__((cold,noinline))
 sin_accurate (double x)
 {
   double absx = (x > 0) ? x : -x;
@@ -1692,7 +1691,7 @@ static const double U2[128][4] = {
   {0x1.8ef15d9667fdap-6, -0x1.668dc9ba82a7p-60, 0x1.ffd9235046557p-1, -0x1.c3c6e16616fb2p-56},
 };
 
-static double
+static double __attribute__((noinline))
 moderate_exceptions (double x, double y)
 {
   static double e[][3] = {
