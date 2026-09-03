@@ -2102,10 +2102,11 @@ double
 cr_sin (double x)
 {
   b64u64_u t = {.f = x};
-  int e = (t.u>>52)&0x7ff;
   // deal with tiny x to avoid underflow
-  if (__builtin_expect(e <= 0x3ff-27, 0)) {
-    if ((t.u<<1) == 0) return x;
+  uint64_t au = t.u<<1;
+  if (__builtin_expect(au <= 0x7cae26e892247decull, 0)) {
+    // |x| <= 0x1.7137449123ef6p-26
+    if (au == 0) return x;
     // Taylor expansion of sin(x) is x - x^3/6 around zero
     // for x=-0, fma (x, -0x1p-54, x) returns +0
     /* We have underflow when 0 < |x| < 2^-1022 or when |x| = 2^-1022
@@ -2117,6 +2118,7 @@ cr_sin (double x)
 #endif
     return res;
   }
+  int e = (t.u>>52)&0x7ff;
   if (__builtin_expect(e < 1054, 1)) return cr_sin_moderate(x, t.u>>63); // |x| < 2^31
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
