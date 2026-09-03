@@ -1939,6 +1939,7 @@ sin_accurate_moderate (double *ctx, int sbit, int i1, int i2)
   double rs = k * pis + __builtin_fma (k, pil, -rl);
   rh = fasttwosum (rh, rl, &rl);
   rl += rs;
+  rh = fasttwosum (rh, rl, &rl);
 
   // Sh approximates sin(t1+t2)
   double c1h, c1l, c2h, c2l;
@@ -2062,7 +2063,6 @@ cr_sin_moderate (double x, int sbit)
   if (__builtin_expect (ub == lb, 1)) return lb;
   double ctx[] = {x, k, Sh, Sl, rh, rl};
   return sin_accurate_moderate (ctx, sbit, i1, i2);
-  // return sin_accurate (x);
 }
 
 // fast path for |x| >= 2^31
