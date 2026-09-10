@@ -12,6 +12,8 @@ def computeT():
 # given x a 128-bit float, print it
 def out_dint(x):
    s, m, e = x.sign_mantissa_exponent()
+   if m==0: # force exponent to 0 for x=0
+      e=-128
    while m!=0 and m.nbits()<128:
       m *= 2
       e -= 1
@@ -26,6 +28,66 @@ def computeS(out=true):
    S = []
    for i in range(256):
       s = n(sin(2*pi*i/2^11), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+def computeS1(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t S1[64] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^6), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+def computeS2(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t S2[64] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^12), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+def computeC1(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t C1[64] = {")
+   S = []
+   for i in range(64):
+      s = n(cos(pi*i/2^6), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+def computeC2(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t C2[64] = {")
+   S = []
+   for i in range(64):
+      s = n(cos(pi*i/2^12), 512)
       s = R(s)
       if out:
          out_dint(s)
