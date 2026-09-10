@@ -49,7 +49,9 @@ SOFTWARE.
       u*(1/2 - u*(E - u*O)) for u = theta^2, with A, B, E, O the even and odd
       halves of polynomials in v = u^2: a degree-four minimax for sine and
       six Taylor terms for cosine at the fast width, eighteen Taylor
-      coefficients each at the accurate width.
+      coefficients each at the accurate width, summed in three tiers (128,
+      256 and 384 bits) since the high-order terms ride powers of u that
+      bury a narrower width's slack; the sums are within 2^-296 of exact.
    4. Recombine.  With A = j*pi/256 + theta, sin|x| is +-sin A or +-cos A by
       quadrant, and sin A = S_j*cos(theta) + C_j*sin(theta), cos A =
       C_j*cos(theta) - S_j*sin(theta) from tables of sin(j*pi/256) and
@@ -581,6 +583,24 @@ static inline u384 mul_hi_384(u384 a, u384 b) {
   return add_384(add_384(t1, t2), add_384(t3, t4));
 }
 
+/* high 256 bits of a 256x256-bit product: the dropped tail leaves it up to
+   one unit short of the exact value, never over */
+static inline u256 mul_hi_256(u256 a, u256 b) {
+  u128 high, low, cross_high, cross_low, other_high, other_low, sum, middle;
+  wmul(a.l[1], b.l[1], &high, &low);
+  wmul(a.l[1], b.l[0], &cross_high, &cross_low);
+  wmul(a.l[0], b.l[1], &other_high, &other_low);
+  /* The two cross terms and the top of a[0]*b[0] all land one limb below the
+     window, so only their carry into it survives. */
+  int carry = __builtin_add_overflow(cross_low, other_low, &sum);
+  int tail_carry = __builtin_add_overflow(sum, mhi_approx(a.l[0], b.l[0]), &sum);
+  int overflow = __builtin_add_overflow(cross_high, other_high, &middle);
+  int spill = __builtin_add_overflow(middle, (u128)carry + tail_carry, &middle);
+  int final_carry = __builtin_add_overflow(low, middle, &low);
+  u256 r = {{low, high + overflow + spill + final_carry}};
+  return r;
+}
+
 /* ---------- reduction ---------- */
 
 /* m*win as W+3 little-endian 64-bit limbs, for a window win of W limbs most
@@ -807,11 +827,24 @@ static void reduce_wide(u128 m, int e, int *n, int *negative, u384 *t, int *et) 
   *et = 1 - (lz + lzt);
 }
 
-/* sum_{k>=0} (-1)^k coef[k]*u^k at 384 bits by Horner: every step stays
-   positive because u*coef[k+1] < coef[k] */
-static u384 alternating(u384 u, const u128 coef[][3], int count) {
-  u384 q = {{coef[count - 1][0], coef[count - 1][1], coef[count - 1][2]}};
-  for (int k = count - 2; k >= 0; k--) {
+/* sum_{k>=0} (-1)^k coef[k]*u^k, eighteen terms by Horner in three tiers:
+   terms 11..17 at 128 bits, 2..10 at 256, 0..1 at 384.  Every step stays
+   positive because u*coef[k+1] < coef[k].  Each tier's slack -- under 2^-126
+   for the narrow one, 2^-253 for the middle -- rides u^11 < 2^-161 or
+   u^2 < 2^-29 (u < 2^-14.68) into the sum, so the result is within 2^-282 of
+   the exact value, and the caller's multiply by u puts that below 2^-296.
+   Mirrors correction_384 in metallic-rs's atan2.rs. */
+static u384 alternating(u384 u, const u128 coef[][3]) {
+  u128 narrow = coef[17][2];
+  for (int k = 16; k >= 11; k--)
+    narrow = coef[k][2] - mhi_approx(u.l[2], narrow);
+  u256 middle = {{0, narrow}}, u2 = {{u.l[1], u.l[2]}};
+  for (int k = 10; k >= 2; k--) {
+    u256 c = {{coef[k][1], coef[k][2]}};
+    middle = sub_256(c, mul_hi_256(u2, middle));
+  }
+  u384 q = {{0, middle.l[0], middle.l[1]}};
+  for (int k = 1; k >= 0; k--) {
     u384 c = {{coef[k][0], coef[k][1], coef[k][2]}};
     q = sub_384(c, mul_hi_384(u, q));
   }
@@ -847,7 +880,7 @@ static u128 __attribute__((noinline, cold)) accurate(u128 m, int e, int cosine, 
   sign ^= (k & 2) ? SIGN_MASK : 0;
 
   // sin(theta) = theta*(1 - u*Q) keeps theta's floating form, at most one bit short
-  u384 s = sub_384(t, mul_hi_384(t, mul_hi_384(u, alternating(u, SIN_COEF, 18))));
+  u384 s = sub_384(t, mul_hi_384(t, mul_hi_384(u, alternating(u, SIN_COEF))));
   int lzs = lz_384(s);
   s = shl_384(s, lzs);
   int es = et - lzs;
@@ -855,7 +888,7 @@ static u128 __attribute__((noinline, cold)) accurate(u128 m, int e, int cosine, 
     return round_384(s, es, sign ^ (negative ? SIGN_MASK : 0), rm);
 
   // 1 - cos(theta) = u*Q, so T*cos(theta) = T - T*(u*Q) never overflows the frame
-  u384 c = mul_hi_384(u, alternating(u, COS_COEF, 18));
+  u384 c = mul_hi_384(u, alternating(u, COS_COEF));
   u384 first = {{SINCOS[j][want_cos][0], SINCOS[j][want_cos][1], SINCOS[j][want_cos][2]}};
   u384 second = {{SINCOS[j][!want_cos][0], SINCOS[j][!want_cos][1], SINCOS[j][!want_cos][2]}};
   u384 base = sub_384(first, mul_hi_384(first, c));
