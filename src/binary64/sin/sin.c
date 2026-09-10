@@ -1214,7 +1214,7 @@ reduce_large_acc (dint64_t *r, double x)
 #define SHIFT 13
   uint64_t k = u >> (128-SHIFT);
   u = u << SHIFT; // ignore leading SHIFT bits (returned in k)
-  // round k to nearest to have |r| < 
+  // round k to nearest to have |r| < 2^-14
   int neg = u >> 127;
   if (neg) { // add 1 to k and subtract 1/2^13 to r
     k = (k+1) & ((1ull<<SHIFT)-1);
