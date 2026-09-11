@@ -48,6 +48,8 @@ typedef unsigned _BitInt(128) u128;
 typedef unsigned __int128 u128;
 #endif
 
+typedef uint64_t u64;
+
 /* The dint64_t structure represents a 128-bit number:
    (-1)^sgn*(hi/2^64+lo/2^128)*2^ex */
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -416,15 +418,18 @@ static const uint64_t _T[20] = {
    // 0xfc33ef0826bd0d87, // i=20 (unused)
 };
 
+#define U128(l,h) (((u128)h)<<64 | (u128)l)
+
 /* The following is a degree-9 polynomial with odd coefficients
-   approximating sin2pi(x) for 0 <= x < 2^-14 with relative error 2^-129.244.
-   Generated with sinlarge_acc.sollya. */
-static const dint64_t PS[] = {
-  {.hi = 0xc90fdaa22168c234, .lo = 0xc4c6628b80dc1cd1, .ex = 3, .sgn=0}, // 1
-  {.hi = 0xa55de7312df295f5, .lo = 0x5dc72f712116556d, .ex = 6, .sgn=1}, // 3
-  {.hi = 0xa335e33bad570e92, .lo = 0x3d7a1ec0d7432166, .ex = 7, .sgn=0}, // 5
-  {.hi = 0x9969667315bbdbf2, .lo = 0x9404d0794a9df9, .ex = 7, .sgn=1},   // 7
-  {.hi = 0xa838e0cc4a0533c1, .lo = 0x4a8296a81bab0ed5, .ex = 6, .sgn=0}, // 9
+   approximating sin(2*pi*x)/2^7 for 0 <= x < 2^-14 with relative error
+   < 2^-126.387. Generated with sinlarge_acc.sollya. */
+static const u128 PS[] = {
+  // little-endian format
+  U128(0x4c4c6628b80dc1cd,0xc90fdaa22168c23),  // degree 1
+  U128(0xaee397b871c5480d,0x52aef39896f94afa), // deg 3, implicit - sign
+  U128(0x32b2dadb1115ef52,0xa335e33bad570e92), // degree 5
+  U128(0x1db4d6819a2da0a4,0x99696673148e38fa), // deg 7, implicit - sign
+  U128(0xd9756363a0522998,0x54125fff015e02e7), // degree 9
 };
 
 /* The following is a degree-8 polynomial with even coefficients
@@ -438,20 +443,65 @@ static const dint64_t PC[] = {
   {.hi = 0xf0fa833467926457, .lo = 0x8d1fbd5d841925dd, .ex = 6, .sgn=0}, // 8
 };
 
+static inline u128 mhUU(u128 a, u128 b){
+  u64 ah = a>>64, al = a;
+  u64 bh = b>>64, bl = b;
+  u128 ahbh = (u128)ah*bh;
+  u128 ahbl = (u128)ah*bl;
+  u128 albh = (u128)al*bh;
+  return ahbh += (ahbl>>64)+(albh>>64);
+}
+
+static inline u128 mhUu(u128 a, u64 b){
+  u64 ah = a>>64, al = a;
+  u128 ahb = (u128)ah*b;
+  u128 alb = (u128)al*b;
+  return ahb += alb>>64;
+}
+
+static inline void dint_normalize (dint64_t *x)
+{
+  if (__builtin_expect (x->r == 0, 0)) return;
+  uint64_t h = x->r >> 64;
+  int sh = (h) ? __builtin_clzll (h) : 64 + __builtin_clzll ((uint64_t) x->r);
+  x->r <<= sh;
+  x->_ex -= sh;
+}
+
+#if 1
+// Prints a dint64_t value for debugging purposes
+static inline void print_dint(const dint64_t *a) {
+  printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
+         a->sgn);
+}
+#endif
+
 /* Put in Y an approximation of sin2pi(X), for 0 <= X < 2^-14,
    where X2 approximates X^2. */
 static void
 evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
 {
-  mul_dint_21 (Y, X2, PS+4); // degree 9
-  add_dint (Y, Y, PS+3);     // degree 7
-  mul_dint (Y, Y, X2);
-  add_dint (Y, Y, PS+2);     // degree 5
-  mul_dint (Y, Y, X2);
-  add_dint (Y, Y, PS+1);     // degree 3
-  mul_dint (Y, Y, X2);
-  add_dint (Y, Y, PS+0);     // degree 1
-  mul_dint (Y, Y, X);        // multiply by X
+  u128 u = X->r >> -X->_ex, u2 = X2->r >> -X2->_ex, u2h = u2 >> 64;
+  u128 s;
+  /* we perform the computation in fixed point, where each variable a is
+     interpreted as a/2^128, thus multiplying two variables a and b mean
+     taking floor(a*b/2^128) */
+  // since signs of coefficients are alternating, and each new coefficient
+  // dominates the lower terms, we subtract each time the lower terms from
+  // the (absolute value of) the new coefficient
+  s = PS[3] - (PS[4]>>64) * u2h;
+  s = (s>>64) * u2h;
+  s = PS[2] - s;
+  s = mhUU(s, u2); // multiply by r^2
+  s = PS[1] - s;
+  s = mhUU(s, u2); // multiply by r^2
+  s = PS[0] - s;
+  s = mhUU(s, u); // multiply by r
+  Y->r = s;
+  Y->sgn = X->sgn;
+  // since this was for sin(2*pi*r)/2^7, multiply by 2^7
+  Y->_ex += 7;
+  dint_normalize (Y);
 }
 
 /* Put in Y an approximation of cos2pi(X), for 0 <= X < 2^-14,
@@ -1229,14 +1279,6 @@ reduce_large_acc (dint64_t *r, double x)
   r->_sgn = neg;
   return k;
 }
-
-#if 0
-// Prints a dint64_t value for debugging purposes
-static inline void print_dint(const dint64_t *a) {
-  printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
-         a->sgn);
-}
-#endif
 
 /* Table containing 128-bit approximations of sin(pi*i/2^6) for 0 <= i < 64
    (to nearest).
