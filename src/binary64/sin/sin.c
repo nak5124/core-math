@@ -454,13 +454,6 @@ static inline u128 mhUU(u128 a, u128 b){
   return ahbh += (ahbl>>64)+(albh>>64);
 }
 
-static inline u128 mhUu(u128 a, u64 b){
-  u64 ah = a>>64, al = a;
-  u128 ahb = (u128)ah*b;
-  u128 alb = (u128)al*b;
-  return ahb += alb>>64;
-}
-
 static inline void dint_normalize (dint64_t *x)
 {
   if (__builtin_expect (x->r == 0, 0)) return;
@@ -470,7 +463,7 @@ static inline void dint_normalize (dint64_t *x)
   x->_ex -= sh;
 }
 
-#if 1
+#if 0
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
   printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
