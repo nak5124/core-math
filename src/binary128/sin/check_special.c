@@ -243,6 +243,74 @@ static u128 rand128(int tid){
   return (r << 64) | rand64(tid);
 }
 
+/* Compare tiny inputs against MPFR, including tininess after rounding.
+   Unlike expq, sinq needs inputs near zero, not logarithms of the limits.
+   The normal/subnormal boundary is tested too: directed rounding can make
+   sinq(+/-2^-16382) subnormal. */
+static void
+check_tiny (__float128 x)
+{
+  ref_init();
+  ref_fesetround(rnd);
+  mpfr_clear_flags();
+  __float128 expected = ref_sinq(x);
+  int inexact = !!mpfr_inexflag_p();
+  int underflow = inexact && mpfr_underflow_p();
+  int expected_flags = (inexact ? FE_INEXACT : 0)
+                     | (underflow ? FE_UNDERFLOW : 0);
+  feclearexcept(FE_ALL_EXCEPT);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  errno = 0;
+#endif
+  __float128 actual = cr_sinq(x);
+  if (!is_equal(expected, actual))
+    error2(x, expected, actual);
+  else if (fetestexcept(FE_ALL_EXCEPT) != expected_flags)
+    error("Incorrect exception flags for tiny input", x, actual);
+#ifdef CORE_MATH_SUPPORT_ERRNO
+  else if (errno != (underflow ? ERANGE : 0))
+    error("Incorrect errno for tiny input", x, actual);
+#endif
+  else
+    return;
+#ifndef DO_NOT_ABORT
+  exit(1);
+#endif
+}
+
+static void
+check_subnormal (void)
+{
+  /* Every significand bit boundary, including zero, the smallest
+     subnormal, the largest subnormal, and the first normal values. */
+  for (int bit = 0; bit <= 112; bit++)
+    for (int offset = -2; offset <= 2; offset++) {
+      __int128 m = ((__int128) 1 << bit) + offset;
+      if (m < 0) continue;
+      b128u128_u v = {.a = (u128) m};
+      check_tiny(v.f);
+      v.a |= (u128) 1 << 127;
+      check_tiny(v.f);
+    }
+
+  /* Uniform nonzero subnormal significands, with both signs. */
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+#pragma omp parallel for
+#endif
+  for (uint64_t n = 0; n < CORE_MATH_TESTS / 10; n++) {
+    int tid = 0;
+#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
+    tid = omp_get_thread_num();
+#endif
+    u128 m = rand128(tid) & (((u128) 1 << 112) - 1);
+    if (m == 0) m = 1;
+    b128u128_u v = {.a = m};
+    check_tiny(v.f);
+    v.a |= (u128) 1 << 127;
+    check_tiny(v.f);
+  }
+}
+
 /* random bit pattern (with random sign): this covers all exponents,
    including subnormals, Inf and NaN */
 static __float128 get_random(int tid){
@@ -372,6 +440,9 @@ int main(int argc, char *argv[]){
 
   printf("Checking special values\n");
   check_invalid ();
+
+  printf("Checking subnormal inputs and the normal boundary\n");
+  check_subnormal ();
 
   printf("Checking random values in the full range\n");
   check_random (get_random);

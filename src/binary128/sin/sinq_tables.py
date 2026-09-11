@@ -12,12 +12,47 @@ from another library.
 The including C file must typedef u64 (uint64_t) and u128 (unsigned __int128).
 """
 from math import factorial
+from fractions import Fraction
+import sys
 from mpmath import mp, mpf, pi, sin, cos, floor, nint
 
 LIMBS = 264    # 64-bit limbs of 2/pi: a 10-limb window starting at (e-114)/64 reaches e = 16383
 SECTORS = 128  # breakpoints j*pi/256 for j = 0..127
 TERMS = 18     # Taylor terms: u^18/37! < 2^-407 for u < 2^-14.69, past the 384-bit frame
 FRAME = 384    # fixed-point frame: value * 2^FRAME in three little-endian 128-bit limbs
+
+def check_tiered_error():
+    """Bound alternating() against the exact Taylor polynomial at its input u.
+
+    Check that all computed partial sums stay in [0,1). At width w,
+    coefficient and argument truncation each cost less than one unit,
+    and the approximate
+    product costs less than three (128/256 bits) or five (384 bits). At
+    384 bits there is no argument truncation and coefficient rounding costs
+    at most half a unit. Six units therefore bound every local step.
+    This bounds evaluation only, not argument reduction or final rounding.
+    """
+    u = Fraction(3765, 100000000)
+    for offset in (2, 3):  # cosine and sine factorials
+        coefficients = [((1 << 385) + factorial(2*k + offset))
+                        // (2 * factorial(2*k + offset)) for k in range(18)]
+        upper = Fraction(coefficients[17] >> 256, 1 << 128)
+        for k in range(16, -1, -1):
+            width = 128 if k >= 11 else 256 if k >= 2 else 384
+            c = Fraction(coefficients[k] >> (384 - width), 1 << width)
+            assert 0 <= c - u * upper <= c < 1
+            upper = c  # every approximate product is nonnegative
+    error = Fraction(2, 1 << 128)  # initial coefficient, including Q384 rounding
+    for k in range(16, -1, -1):
+        width = 128 if k >= 11 else 256 if k >= 2 else 384
+        error = u * error + Fraction(6, 1 << width)
+    assert error < Fraction(1, 1 << 282)
+    assert u * error + Fraction(5, 1 << 384) < Fraction(1, 1 << 296)
+    print("Accurate polynomial evaluation error after u multiplication < 2^-296"
+          " (exact rational bound)", file=sys.stderr)
+
+
+check_tiered_error()
 
 mp.prec = 64 * LIMBS + 304  # 17200 bits: every bit of the 2/pi limbs plus a margin
 

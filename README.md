@@ -7,6 +7,18 @@ Newlib, OpenLibm, Musl, Apple Libm, llvm-libc, CUDA libm, ROCm).
 
 Homepage: https://core-math.gitlabpages.inria.fr/
 
+## Binary128 sine and cosine contribution
+
+The `sinq`/`cosq` implementation on this branch is ported from
+[metallic-rs](https://github.com/jdh8/metallic-rs), extended to all four IEEE
+rounding modes. The author's methodology is described in
+[How to program math functions](https://jdh8.org/how-to-program-math-functions/)
+and the [metallic-rs agent skill](https://github.com/jdh8/metallic-rs/blob/main/.claude/skills/program-math-functions/SKILL.md).
+The related [metallic agent skill](https://github.com/jdh8/metallic/blob/main/.claude/skills/program-math-functions/SKILL.md)
+covers the C/WebAssembly library. AI agents assisted with the port and its
+subsequent revisions. Upstream review is tracked in
+[CORE-MATH issue #47](https://gitlab.inria.fr/core-math/core-math/-/work_items/47).
+
 
 ## Quick guide
 
