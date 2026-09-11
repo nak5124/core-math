@@ -422,7 +422,8 @@ static const uint64_t _T[20] = {
 
 /* The following is a degree-9 polynomial with odd coefficients
    approximating sin(2*pi*x)/2^7 for 0 <= x < 2^-14 with relative error
-   < 2^-126.387. Generated with sinlarge_acc.sollya. */
+   < 2^-126.387. Coefficients are PS[i]/2^128 (fixed precision).
+   Generated with sinlarge_acc.sollya. */
 static const u128 PS[] = {
   // little-endian format
   U128(0x4c4c6628b80dc1cd,0xc90fdaa22168c23),  // degree 1
@@ -433,14 +434,15 @@ static const u128 PS[] = {
 };
 
 /* The following is a degree-8 polynomial with even coefficients
-   approximating cos2pi(x) for 0 <= x < 2^-14 with absolute error 2^-144.04.
+   approximating cos(2*pi*x)/2^7 for 0 <= x < 2^-14 with absolute error
+   2^-151.041. Coefficients are PC[i]/2^128 (fixed precision).
    Generated with coslarge_acc.sollya. */
-static const dint64_t PC[] = {
-  {.hi = 0x8000000000000000, .lo = 0x0, .ex = 1, .sgn=0}, // degree 0
-  {.hi = 0x9de9e64df22ef2d2, .lo = 0x56e26cd9808c0ba3, .ex = 5, .sgn=1}, // 2
-  {.hi = 0x81e0f840dad61d9a, .lo = 0x9980edc272f93d1c, .ex = 7, .sgn=0}, // 4
-  {.hi = 0xaae9e3f1e5ffcf75, .lo = 0xa557ea13a2a92cd2, .ex = 7, .sgn=1}, // 6
-  {.hi = 0xf0fa833467926457, .lo = 0x8d1fbd5d841925dd, .ex = 6, .sgn=0}, // 8
+static const u128 PC[] = {
+  U128(0x0,0x200000000000000),                 // degree 0
+  U128(0x95b89b36602302e9,0x277a79937c8bbcb4), // degree 2
+  U128(0x9980edc2878b863a,0x81e0f840dad61d9a), // degree 4
+  U128(0xa757ea13ddd880b8,0xaae9e3f1e5ffcf75), // degree 6
+  U128(0xc65d9b3d960c48f3,0x787d419a33d8b60c), // degree 8
 };
 
 static inline u128 mhUU(u128 a, u128 b){
@@ -509,14 +511,24 @@ evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
 static void
 evalPC (dint64_t *Y, dint64_t *X2)
 {
-  mul_dint_21 (Y, X2, PC+4); // degree 8
-  add_dint (Y, Y, PC+3);     // degree 6
-  mul_dint (Y, Y, X2);
-  add_dint (Y, Y, PC+2);     // degree 4
-  mul_dint (Y, Y, X2);
-  add_dint (Y, Y, PC+1);     // degree 2
-  mul_dint (Y, Y, X2);
-  add_dint (Y, Y, PC+0);     // degree 0
+  u128 u2 = X2->r >> -X2->_ex, s;
+  s = mhUU(PC[4], u2);
+  // assert (s <= PC[3]);
+  s = PC[3] - s;
+  s = mhUU(s, u2);
+  // assert (s <= PC[2]);
+  s = PC[2] - s;
+  s = mhUU(s, u2); // multiply by r^2
+  // assert (s <= PC[1]);
+  s = PC[1] - s;
+  s = mhUU(s, u2); // multiply by r^2
+  // assert (s <= PC[0]);
+  s = PC[0] - s;
+  Y->r = s;
+  // since this was for cos(2*pi*r)/2^7, multiply by 2^7
+  Y->_ex += 7;
+  dint_normalize (Y);
+  // assert (Y->_ex <= 0);
 }
 
 // argument reduction for |x| >= 2^31
