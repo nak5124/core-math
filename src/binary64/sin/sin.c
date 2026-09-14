@@ -422,27 +422,28 @@ static const uint64_t _T[20] = {
 
 /* The following is a degree-9 polynomial with odd coefficients
    approximating sin(2*pi*x)/2^7 for 0 <= x < 2^-14 with relative error
-   < 2^-126.387. Coefficients are PS[i]/2^128 (fixed precision).
+   < 2^-126.387. Coefficients of degree 1, 3, 5, 7 are PS[i]/2^128,
+   with that of degree 9 is PS[i]/2^64 (fixed point).
    Generated with sinlarge_acc.sollya. */
 static const u128 PS[] = {
   // little-endian format
   U128(0x4c4c6628b80dc1cd,0xc90fdaa22168c23),  // degree 1
-  U128(0xaee397b871c5480d,0x52aef39896f94afa), // deg 3, implicit - sign
-  U128(0x32b2dadb1115ef52,0xa335e33bad570e92), // degree 5
-  U128(0x1db4d6819a2da0a4,0x99696673148e38fa), // deg 7, implicit - sign
-  U128(0xd9756363a0522998,0x54125fff015e02e7), // degree 9
+  U128(0xaee397b871c5480d,0x52aef39896f94afa), // degree 3, implicit - sign
+  U128(0x32b2dadb1115ef68,0xa335e33bad570e92), // degree 5
+  U128(0x1db4d6855659744c,0x99696673148e38fa), // degree 7, implicit - sign
+  U128(0x54125fff015e02e8,0)                   // degree 9
 };
 
-/* The following is a degree-8 polynomial with even coefficients
+/* The following is a degree-6 polynomial with even coefficients
    approximating cos(2*pi*x)/2^7 for 0 <= x < 2^-14 with absolute error
-   2^-151.041. Coefficients are PC[i]/2^128 (fixed precision).
+   2^-120.087. Coefficients are PC[i]/2^128 (fixed precision),
+   except degree-6 coefficient which is PC[i]/2^64.
    Generated with coslarge_acc.sollya. */
 static const u128 PC[] = {
-  U128(0x0,0x200000000000000),                 // degree 0
-  U128(0x95b89b36602302e9,0x277a79937c8bbcb4), // degree 2
-  U128(0x9980edc2878b863a,0x81e0f840dad61d9a), // degree 4
-  U128(0xa757ea13ddd880b8,0xaae9e3f1e5ffcf75), // degree 6
-  U128(0xc65d9b3d960c48f3,0x787d419a33d8b60c), // degree 8
+  U128(0xffffffffffffff0f,0x1ffffffffffffff),  // degree 0
+  U128(0x95b89954685e30ef,0x277a79937c8bbcb4), // degree 2, implicit - sign
+  U128(0xfc971fbbcf438a36,0x81e0f840dad61d03), // degree 4
+  U128(0xaae9e3e2d654796c,0),                  // degree 6, implicit - sign
 };
 
 static inline u128 mhUU(u128 a, u128 b){
@@ -484,7 +485,7 @@ evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
   // since signs of coefficients are alternating, and each new coefficient
   // dominates the lower terms, we subtract each time the lower terms from
   // the (absolute value of) the new coefficient
-  s = PS[3] - (PS[4]>>64) * u2h;
+  s = PS[3] - PS[4] * u2h; // PS[3] is degree 7, PS[4] is degree 9
   s = (s>>64) * u2h;
   s = PS[2] - s;
   s = mhUU(s, u2); // multiply by r^2
@@ -504,24 +505,16 @@ evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
 static void
 evalPC (dint64_t *Y, dint64_t *X2)
 {
-  u128 u2 = X2->r >> -X2->_ex, s;
-  s = mhUU(PC[4], u2);
-  // assert (s <= PC[3]);
-  s = PC[3] - s;
+  u128 u2 = X2->r >> -X2->_ex, s, u2h = u2 >> 64;
+  s = PC[2] - u2h * PC[3];
   s = mhUU(s, u2);
-  // assert (s <= PC[2]);
-  s = PC[2] - s;
-  s = mhUU(s, u2); // multiply by r^2
-  // assert (s <= PC[1]);
   s = PC[1] - s;
   s = mhUU(s, u2); // multiply by r^2
-  // assert (s <= PC[0]);
   s = PC[0] - s;
   Y->r = s;
   // since this was for cos(2*pi*r)/2^7, multiply by 2^7
   Y->_ex += 7;
   dint_normalize (Y);
-  // assert (Y->_ex <= 0);
 }
 
 // argument reduction for |x| >= 2^31
@@ -1578,7 +1571,7 @@ cr_sin_large (double x)
   fl = Sgn[sbit] * fl;
   static const double eps = 0x1.41p-63;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
-  if (__builtin_expect (lb == ub, 1)) return lb;
+  // if (__builtin_expect (lb == ub, 1)) return lb;
   return sin_large_accurate (x);
 }
 
