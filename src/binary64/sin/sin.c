@@ -475,9 +475,8 @@ static inline void print_dint(const dint64_t *a) {
 /* Put in Y an approximation of sin2pi(X), for 0 <= X < 2^-14,
    where X2 approximates X^2. */
 static void
-evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
+evalPS (dint64_t *Y, u128 u, u128 u2, u128 u2h, int sgn)
 {
-  u128 u = X->r >> -X->_ex, u2 = X2->r >> -X2->_ex, u2h = u2 >> 64;
   u128 s;
   /* we perform the computation in fixed point, where each variable a is
      interpreted as a/2^128, thus multiplying two variables a and b mean
@@ -494,7 +493,7 @@ evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
   s = PS[0] - s;
   s = mhUU(s, u); // multiply by r
   Y->r = s;
-  Y->sgn = X->sgn;
+  Y->sgn = sgn;
   // since this was for sin(2*pi*r)/2^7, multiply by 2^7
   Y->_ex += 7;
   dint_normalize (Y);
@@ -503,9 +502,9 @@ evalPS (dint64_t *Y, dint64_t *X, dint64_t *X2)
 /* Put in Y an approximation of cos2pi(X), for 0 <= X < 2^-14,
    where X2 approximates X^2. */
 static void
-evalPC (dint64_t *Y, dint64_t *X2)
+evalPC (dint64_t *Y, u128 u2, u128 u2h)
 {
-  u128 u2 = X2->r >> -X2->_ex, s, u2h = u2 >> 64;
+  u128 s;
   s = PC[2] - u2h * PC[3];
   s = mhUU(s, u2);
   s = PC[1] - s;
@@ -1530,9 +1529,12 @@ sin_large_accurate (double x)
   // c1 approximates cos(t1+t2)
 
   dint64_t Sr[1], Cr[1], r2[1];
+  u128 u = r->r >> -r-> ex;
   mul_dint (r2, r, r); // r2 approximates r^2
-  evalPS (Sr, r, r2); // Sr approximates sin(2*pi*r)
-  evalPC (Cr, r2);    // Cr approximates cos(2*pi*r)
+  u128 u2 = r2->r >> -r2->_ex;
+  u128 u2h = u2 >> 64;
+  evalPS (Sr, u, u2, u2h, r->sgn); // Sr approximates sin(2*pi*r)
+  evalPC (Cr, u2, u2h);    // Cr approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
   mul_dint (s1, s1, Cr);
