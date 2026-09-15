@@ -472,10 +472,11 @@ static inline void print_dint(const dint64_t *a) {
 }
 #endif
 
-/* Put in Y an approximation of sin2pi(X), for 0 <= X < 2^-14,
-   where X2 approximates X^2. */
-static void
-evalPS (dint64_t *Y, u128 u, u128 u2, u128 u2h, u128 u4, int sgn)
+/* Return Sr such that Sr/2^128 approximates sin2pi(r), for 0 <= r < 2^-14,
+   where u/2^128 approximates r, u2/2^128 approximates r^2,
+   u4/2^128 approximates r^4, and u2h = floor(u2/2^64). */
+static inline u128
+evalPS (u128 u, u128 u2, u128 u2h, u128 u4)
 {
   u128 s;
   /* we perform the computation in fixed point, where each variable a is
@@ -494,17 +495,14 @@ evalPS (dint64_t *Y, u128 u, u128 u2, u128 u2h, u128 u4, int sgn)
   s = PS[0] - s;
   s = s + sh;
   s = mhUU(s, u); // multiply by r
-  Y->r = s;
-  Y->sgn = sgn;
-  // since this was for sin(2*pi*r)/2^7, multiply by 2^7
-  Y->_ex = 7;
-  dint_normalize (Y);
+  return s << 7;
 }
 
-/* Put in Y an approximation of cos2pi(X), for 0 <= X < 2^-14,
-   where X2 approximates X^2. */
-static void
-evalPC (dint64_t *Y, u128 u2, u128 u4, u128 u2h)
+/* Return Cr such that Cr/2^128 approximates cos2pi(r), for 0 <= r < 2^-14,
+   where u2/2^128 approximates r^2, u4/2^128 approximates r^4, and
+   u2h = floor(u2/2^64). */
+static inline u128
+evalPC (u128 u2, u128 u4, u128 u2h)
 {
   // use Estrin's scheme
   u128 s, sh = PC[2] - u2h * PC[3];
@@ -512,11 +510,8 @@ evalPC (dint64_t *Y, u128 u2, u128 u4, u128 u2h)
   s = mhUU(PC[1],u2);
   s = PC[0] - s;
   s = s + sh;
-  Y->r = s;
   // since this was for cos(2*pi*r)/2^7, multiply by 2^7
-  Y->_ex = 7;
-  Y->sgn = 0;
-  dint_normalize (Y);
+  return s << 7;
 }
 
 // argument reduction for |x| >= 2^31
@@ -1531,26 +1526,24 @@ sin_large_accurate (double x)
   add_dint (c1, c1, c2);
   // c1 approximates cos(t1+t2)
 
-  dint64_t Sr[1], Cr[1], r2[1];
+  dint64_t r2[1];
   u128 u = r->r >> -r->_ex;
   mul_dint (r2, r, r); // r2 approximates r^2
   u128 u2 = r2->r >> -r2->_ex;
   u128 u4 = mhUU(u2,u2);
   u128 u2h = u2 >> 64;
-  evalPS (Sr, u, u2, u2h, u4, r->sgn); // Sr approximates sin(2*pi*r)
-  evalPC (Cr, u2, u4, u2h);    // Cr approximates cos(2*pi*r)
+  u128 Sru = evalPS (u, u2, u2h, u4); // Sru approximates sin(2*pi*r)
+  u128 Cru = evalPC (u2, u4, u2h);    // Cru approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
   // mul_dint (s1, s1, Cr);
   u128 s1u = (s1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
     : s1->r >> -s1->_ex;
-  u128 Cru = Cr->r >> -Cr->_ex;
   s1u = mhUU(s1u,Cru);
 
   // mul_dint (c1, c1, Sr);
   u128 c1u = (c1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
     : c1->r >> -c1->_ex;
-  u128 Sru = Sr->r >> -Sr->_ex;
   c1u = mhUU(c1u,Sru);
 
   // add_dint (s1, s1, c1);
