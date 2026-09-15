@@ -515,6 +515,7 @@ evalPC (dint64_t *Y, u128 u2, u128 u4, u128 u2h)
   Y->r = s;
   // since this was for cos(2*pi*r)/2^7, multiply by 2^7
   Y->_ex += 7;
+  Y->sgn = 0;
   dint_normalize (Y);
 }
 
