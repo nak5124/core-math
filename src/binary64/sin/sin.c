@@ -1221,10 +1221,11 @@ cr_sin_moderate (double x, int sbit)
 
 // argument reduction for |x| >= 2^31 (accurate path)
 // return k and r such that
-// x/(2pi) mod 1 = k/2^13 + r + eps with |r| <= 2^-14
+// x/(2pi) mod 1 = k/2^13 + r/2^128 + eps with |r/2^128| <= 2^-14
 // and 0 <= eps < 2^-128 + 2^-139 < 2^-127.999
+// neg=0 if r >= 0, neg=1 if r < 0
 static uint64_t
-reduce_large_acc (dint64_t *r, double x)
+reduce_large_acc (u128 *r, int *neg, double x)
 {
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff; /* 1054 <= e <= 2046 */
@@ -1256,22 +1257,17 @@ reduce_large_acc (dint64_t *r, double x)
   u128 v = (u128) m * (u128) V2;
   u += v >> 64; // add contribution of m*V2 from 2^-76 to 2^-128
   // the ignored part of v contributes to less than 2^-128
-#define SHIFT 13
-  uint64_t k = u >> (128-SHIFT);
-  u = u << SHIFT; // ignore leading SHIFT bits (returned in k)
-  // round k to nearest to have |r| < 2^-14
-  int neg = u >> 127;
-  if (neg) { // add 1 to k and subtract 1/2^13 to r
-    k = (k+1) & ((1ull<<SHIFT)-1);
-    u = -u;
+  uint64_t k = u >> (128-13);
+  static const u128 mask = U128(0xffffffffffffffffull, 0x7ffffffffffffull);
+  u &= mask; // ignore leading 13 bits
+  // round k to nearest to have |r/2^128| < 2^-14
+  *neg = u >> 114;
+  if (*neg) { // add 1 to k and subtract 1/2^13 to r
+    k = (k+1) & ((1ull<<13)-1);
+    u = mask + 1 - u;
   }
   // now store u in r
-  if (u == 0) { cp_dint (r, &ZERO); return k; }
-  // compute the number of leading zeros in u
-  int sh = (u>>64) ? __builtin_clzll (u>>64) : 64 + __builtin_clzll((uint64_t) u);
-  r->r = u << sh; // make significand normalized
-  r->_ex = -SHIFT - sh;
-  r->_sgn = neg;
+  *r = u;
   return k;
 }
 
@@ -1484,8 +1480,9 @@ static const u128 C2u[64] = {
 static double __attribute__((cold,noinline))
 sin_large_accurate (double x)
 {
-  dint64_t r[1];
-  uint64_t k = reduce_large_acc (r, x);
+  u128 r;
+  int neg;
+  uint64_t k = reduce_large_acc (&r, &neg, x);
   /* x/(2*pi) mod 1 = k/2^13 + r + eps with |r| <= 2^-14 and 0 <= eps < 2^-127.999
      then sin(x) ~ sin(pi*k/2^12 + 2*pi*r)
                  ~ sin(pi*k/2^12)*cos(2*pi*r) + cos(pi*k/2^12)*sin(2*pi*r)
@@ -1494,7 +1491,7 @@ sin_large_accurate (double x)
      and  cos(pi*k/2^12) = (-1)^s*[cos(t1)*cos(t2)-sin(t1)*sin(t2)]
   */
   int sbit = (x > 0) ? 0 : 1;
-  sbit = sbit ^ (k >> (SHIFT-1));
+  sbit = sbit ^ (k >> 12);
   int i1 = (k >> 6) & 0x3f, i2 = k & 0x3f;
   dint64_t s1[1];
 
@@ -1515,8 +1512,8 @@ sin_large_accurate (double x)
   t = mhUU (S1u[i1], S2u[i2]);
   c1u = (i1 < 32) ? c1u - t : c1u + t;
 
-  u128 u = r->r >> -r->_ex, u2 = mhUU(u,u), u4 = mhUU(u2,u2), u2h = u2 >> 64;
-  u128 Sr = evalPS (u, u2, u2h, u4); // Sr/2^128 approximates |sin(2*pi*r)|
+  u128 u2 = mhUU(r,r), u4 = mhUU(u2,u2), u2h = u2 >> 64;
+  u128 Sr = evalPS (r, u2, u2h, u4); // Sr/2^128 approximates |sin(2*pi*r)|
   u128 Cr = evalPC (u2, u4, u2h);    // Cr/2^128 approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
@@ -1530,7 +1527,7 @@ sin_large_accurate (double x)
   /* s1u/2^128 approximates sin(z)*cos(r) which is always >= 0, while
      c1u/2^128 approximates cos(z)*sin(r), where cos(z) > 0 for i1 < 32,
      and cos(z) <= for i1 >= 32, and sign(r) has the sign of r. */
-  if ((i1 < 32) ^ (r->sgn != 0)) { // r >= 0
+  if ((i1 < 32) ^ neg) { // r >= 0
     s1u += c1u;
     s1->sgn = 0;
   } else if (s1u <= c1u) {
