@@ -26,7 +26,15 @@ SOFTWARE.
 
 /* This is a C port of the binary128 sine/cosine of metallic-rs
    (https://github.com/jdh8/metallic-rs, src/f128_/trig.rs), extended from
-   round-to-nearest to the four IEEE rounding modes.  The sine is odd and the
+   round-to-nearest to the four IEEE rounding modes. AI agents assisted with
+   the port and subsequent revisions. Methodology and related agent skills:
+   https://jdh8.org/how-to-program-math-functions/
+   https://github.com/jdh8/metallic-rs/blob/main/.claude/skills/program-math-functions/SKILL.md
+   https://github.com/jdh8/metallic/blob/main/.claude/skills/program-math-functions/SKILL.md
+   Review: https://gitlab.inria.fr/core-math/core-math/-/work_items/47
+   Fast-path error argument: ../sin/sinq_error.md.
+
+   The sine is odd and the
    cosine even, so both run one pipeline on |x| in unsigned fixed point:
 
    1. Reduce.  x*2/pi is formed as the exact product of the 113-bit
@@ -58,8 +66,8 @@ SOFTWARE.
       cos(j*pi/256), in a frame at 2^-256 (fast) or 2^-384 (accurate).  j = 0
       with the sine wanted keeps the floating form of sin(theta) all the way.
    5. Round.  The fast path keeps a 15-bit guard below the 113-bit
-      significand; its error is bounded by ZIV_GATE units of that guard
-      (certified with over 4x margin against MPFR in metallic-rs), so it decides
+      significand; its error is below ZIV_GATE units of that guard
+      (see ../sin/sinq_error.md and sinq_tables.py), so it decides
       whenever the guard is farther than the gate from the rounding boundary:
       the midpoint for round-to-nearest, the grid point for directed modes.
       Everything else goes to the 384-bit path, which rounds outright.
@@ -151,9 +159,11 @@ static inline int round_away(unsigned rm, u128 sign) {
 #define GUARD_HALF (1u << (GUARD - 1))
 
 /* Half-width of the window around a rounding boundary the fast path refuses
-   to decide, in units of 2^-15 of the result's last bit.  The path's true
-   error is under 0.25 of this (metallic-rs, ziv_soundness), whichever
-   boundary -- midpoint or grid point -- the rounding mode puts there. */
+   to decide, in units of 2^(e2-128), or 2^-15 ulp in the returned frame.
+   The analytic bound is < 15.8 units, including reduction, evaluation and
+   recombination; see ../sin/sinq_error.md. This covers midpoint boundaries
+   in round-to-nearest and grid boundaries in directed modes. Sampled MPFR
+   error measurements are additional checks, not a proof of the bound. */
 #define ZIV_GATE 16u
 
 static inline __float128 asf128(u128 t) {

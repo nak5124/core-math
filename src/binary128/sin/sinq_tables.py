@@ -21,6 +21,52 @@ SECTORS = 128  # breakpoints j*pi/256 for j = 0..127
 TERMS = 18     # Taylor terms: u^18/37! < 2^-407 for u < 2^-14.69, past the 384-bit frame
 FRAME = 384    # fixed-point frame: value * 2^FRAME in three little-endian 128-bit limbs
 
+def check_fast_error(coefficients):
+    """Exact rational bookkeeping for sinq_error.md, in Q128 units.
+
+    This checks the stated analytic inequalities, not an exhaustive execution
+    of the C code. The reduction and recombination arguments are in the note.
+    """
+    F = Fraction
+    u = F("3.765e-5")
+    c = [F(x, 1 << 128) for x in coefficients]
+    r = F(1, 6) + F(1, 1000000)
+    assert sum(c[k] * u**k for k in range(5)) < r
+    assert sum((k+1) * c[k] * u**k for k in range(5)) < r
+    assert c[2] + 2*u*u*c[4] < F(1, 1000)
+    assert c[3] < F(1, 100000)
+    eu = 1 + F(3, 1 << 14)
+    ea = 3 + 3*u*u + F(3, 1000)
+    eb = 3 + F(3, 100000)
+    ep = ea + 3 + u*eb
+    sine = 3 + 3*r + u*ep + eu*r + u*(1 << 14)
+    assert sine < F("4.3")
+
+    # The cosine's E/O chains include coefficient truncation. Their errors
+    # are each < 4.01 units; the omitted term is theta^14/14!.
+    cc = [F(1, factorial(2*k+2)) for k in range(6)]
+    assert cc[3] + 2*u*u*cc[5] < F(1, 1000)
+    assert cc[4] < F(1, 100000)
+    assert 1 + 3 + 4*u*u + u**4 + F(3, 1000) < F("4.01")
+    assert 1 + 3 + u*u + F(3, 100000) < F("4.01")
+    assert sum(k*cc[k]*u**(k-1) for k in range(1, 6)) < F(1, 20)
+    ew = F("4.01") + 3 + u*F("4.01")
+    cosine = F(9, 2) + 3 + u*ew + eu/20 + u**6*(1 << 128)/factorial(14)
+    assert cosine < 20
+
+    # pi/2 < 11/7; lz <= 56 and lzt <= 1 in reduce().
+    reduction = (1 + F(1, 1 << 14))/256 + F(11, 7) + 1 + 1
+    assert reduction < F("3.6")
+    floating_sine = 2*(F("3.6") + F("4.3"))
+    table = F("3.6") + F("4.3") + 4 + F(24, 128) + 1 + F(1, 1 << 121)
+    direct_cosine = 1 + F(20, 1 << 16) + F(1, 1 << 128)
+    assert table < 14
+    assert direct_cosine < 2
+    assert floating_sine < 16
+    print("Fast-path error < 15.8 guard units (analytic bookkeeping; "
+          "see sinq_error.md)", file=sys.stderr)
+
+
 def check_tiered_error():
     """Bound alternating() against the exact Taylor polynomial at its input u.
 
@@ -156,6 +202,7 @@ def fast_sine_coefficients():
             grid = max(grid, abs(p))
         bound = grid + derivative*end_bound/(2*steps) + end_bound**6/fact(15)
         assert bound < F(1, 1 << 114), bound
+        check_fast_error(coefficients)
         import sys
         print(f"SIN_FAST rational error bound: 2^{float(mp.log(mpf(bound.numerator)/bound.denominator, 2)):.4f}", file=sys.stderr)
         print(f"SIN_FAST sampled Q128 error: 2^{float(mp.log(worst, 2)):.4f}", file=sys.stderr)
