@@ -418,7 +418,7 @@ static const uint64_t _T[20] = {
    // 0xfc33ef0826bd0d87, // i=20 (unused)
 };
 
-#define U128(l,h) (((u128)h)<<64 | (u128)l)
+#define U128(l,h) (((u128)h)<<64 | (u128)l) // little endian
 
 /* The following is a degree-9 polynomial with odd coefficients
    approximating sin(2*pi*x)/2^7 for 0 <= x < 2^-14 with relative error
@@ -1275,223 +1275,210 @@ reduce_large_acc (dint64_t *r, double x)
   return k;
 }
 
-/* Table containing 128-bit approximations of sin(pi*i/2^6) for 0 <= i < 64
-   (to nearest).
-   Each entry is to be interpreted as (hi/2^64+lo/2^128)*2^ex*(-1)^sgn.
-   Generated with computeS1() from sin.sage. */
-static const dint64_t S1[64] = {
-  {.hi = 0x0, .lo = 0x0, .ex = 0, .sgn=0},
-  {.hi = 0xc8fb2f886ec09f37, .lo = 0x6a17954b2b7c5171, .ex = -4, .sgn=0},
-  {.hi = 0xc8bd35e14da15f0e, .lo = 0xc7396c894bbf7389, .ex = -3, .sgn=0},
-  {.hi = 0x964083747309d113, .lo = 0xa89a11e07c1fe, .ex = -2, .sgn=0},
-  {.hi = 0xc7c5c1e34d3055b2, .lo = 0x5cc8c00e4fccd850, .ex = -2, .sgn=0},
-  {.hi = 0xf8cfcbd90af8d57a, .lo = 0x4221dc4ba772598d, .ex = -2, .sgn=0},
-  {.hi = 0x94a03176acf82d45, .lo = 0xae4ba773da6bf754, .ex = -1, .sgn=0},
-  {.hi = 0xac7cd3ad58fee7f0, .lo = 0x811f953984eff83e, .ex = -1, .sgn=0},
-  {.hi = 0xc3ef1535754b168d, .lo = 0x3122c2a59efddc37, .ex = -1, .sgn=0},
-  {.hi = 0xdae8804f0ae6015b, .lo = 0x362cb974182e3030, .ex = -1, .sgn=0},
-  {.hi = 0xf15ae9c037b1d8f0, .lo = 0x6c48e9e3420b0f1e, .ex = -1, .sgn=0},
-  {.hi = 0x839c3cc917ff6cb4, .lo = 0xbfd79717f2880abf, .ex = 0, .sgn=0},
-  {.hi = 0x8e39d9cd73464364, .lo = 0xbba4cfecbff54867, .ex = 0, .sgn=0},
-  {.hi = 0x987fbfe70b81a708, .lo = 0x19cec845ac87a5c6, .ex = 0, .sgn=0},
-  {.hi = 0xa267992848eeb0c0, .lo = 0x3b5167ee359a234e, .ex = 0, .sgn=0},
-  {.hi = 0xabeb49a46764fd15, .lo = 0x1becda8089c1a94c, .ex = 0, .sgn=0},
-  {.hi = 0xb504f333f9de6484, .lo = 0x597d89b3754abe9f, .ex = 0, .sgn=0},
-  {.hi = 0xbdaef913557d76f0, .lo = 0xac85320f528d6d5d, .ex = 0, .sgn=0},
-  {.hi = 0xc5e40358a8ba05a7, .lo = 0x43da25d99267326b, .ex = 0, .sgn=0},
-  {.hi = 0xcd9f023f9c3a059e, .lo = 0x23af31db7179a4aa, .ex = 0, .sgn=0},
-  {.hi = 0xd4db3148750d1819, .lo = 0xf630e8b6dac83e69, .ex = 0, .sgn=0},
-  {.hi = 0xdb941a28cb71ec87, .lo = 0x2c19b63253da43fc, .ex = 0, .sgn=0},
-  {.hi = 0xe1c5978c05ed8691, .lo = 0xf4e8a8372f8c5810, .ex = 0, .sgn=0},
-  {.hi = 0xe76bd7a1e63b9786, .lo = 0x125129529d48a92f, .ex = 0, .sgn=0},
-  {.hi = 0xec835e79946a3145, .lo = 0x7e610231ac1d6181, .ex = 0, .sgn=0},
-  {.hi = 0xf1090827b43725fd, .lo = 0x67127db35b287316, .ex = 0, .sgn=0},
-  {.hi = 0xf4fa0ab6316ed2ec, .lo = 0x163c5c7f03b718c5, .ex = 0, .sgn=0},
-  {.hi = 0xf853f7dc9186b952, .lo = 0xc7adc6b4988891bb, .ex = 0, .sgn=0},
-  {.hi = 0xfb14be7fbae58156, .lo = 0x2172a361fd2a722f, .ex = 0, .sgn=0},
-  {.hi = 0xfd3aabf84528b50b, .lo = 0xeae6bd951c1dabbe, .ex = 0, .sgn=0},
-  {.hi = 0xfec46d1e89292cf0, .lo = 0x41390efdc726e9ef, .ex = 0, .sgn=0},
-  {.hi = 0xffb10f1bcb6bef1d, .lo = 0x421e8edaaf59453e, .ex = 0, .sgn=0},
-  {.hi = 0x8000000000000000, .lo = 0x0, .ex = 1, .sgn=0},
-  {.hi = 0xffb10f1bcb6bef1d, .lo = 0x421e8edaaf59453e, .ex = 0, .sgn=0},
-  {.hi = 0xfec46d1e89292cf0, .lo = 0x41390efdc726e9ef, .ex = 0, .sgn=0},
-  {.hi = 0xfd3aabf84528b50b, .lo = 0xeae6bd951c1dabbe, .ex = 0, .sgn=0},
-  {.hi = 0xfb14be7fbae58156, .lo = 0x2172a361fd2a722f, .ex = 0, .sgn=0},
-  {.hi = 0xf853f7dc9186b952, .lo = 0xc7adc6b4988891bb, .ex = 0, .sgn=0},
-  {.hi = 0xf4fa0ab6316ed2ec, .lo = 0x163c5c7f03b718c5, .ex = 0, .sgn=0},
-  {.hi = 0xf1090827b43725fd, .lo = 0x67127db35b287316, .ex = 0, .sgn=0},
-  {.hi = 0xec835e79946a3145, .lo = 0x7e610231ac1d6181, .ex = 0, .sgn=0},
-  {.hi = 0xe76bd7a1e63b9786, .lo = 0x125129529d48a92f, .ex = 0, .sgn=0},
-  {.hi = 0xe1c5978c05ed8691, .lo = 0xf4e8a8372f8c5810, .ex = 0, .sgn=0},
-  {.hi = 0xdb941a28cb71ec87, .lo = 0x2c19b63253da43fc, .ex = 0, .sgn=0},
-  {.hi = 0xd4db3148750d1819, .lo = 0xf630e8b6dac83e69, .ex = 0, .sgn=0},
-  {.hi = 0xcd9f023f9c3a059e, .lo = 0x23af31db7179a4aa, .ex = 0, .sgn=0},
-  {.hi = 0xc5e40358a8ba05a7, .lo = 0x43da25d99267326b, .ex = 0, .sgn=0},
-  {.hi = 0xbdaef913557d76f0, .lo = 0xac85320f528d6d5d, .ex = 0, .sgn=0},
-  {.hi = 0xb504f333f9de6484, .lo = 0x597d89b3754abe9f, .ex = 0, .sgn=0},
-  {.hi = 0xabeb49a46764fd15, .lo = 0x1becda8089c1a94c, .ex = 0, .sgn=0},
-  {.hi = 0xa267992848eeb0c0, .lo = 0x3b5167ee359a234e, .ex = 0, .sgn=0},
-  {.hi = 0x987fbfe70b81a708, .lo = 0x19cec845ac87a5c6, .ex = 0, .sgn=0},
-  {.hi = 0x8e39d9cd73464364, .lo = 0xbba4cfecbff54867, .ex = 0, .sgn=0},
-  {.hi = 0x839c3cc917ff6cb4, .lo = 0xbfd79717f2880abf, .ex = 0, .sgn=0},
-  {.hi = 0xf15ae9c037b1d8f0, .lo = 0x6c48e9e3420b0f1e, .ex = -1, .sgn=0},
-  {.hi = 0xdae8804f0ae6015b, .lo = 0x362cb974182e3030, .ex = -1, .sgn=0},
-  {.hi = 0xc3ef1535754b168d, .lo = 0x3122c2a59efddc37, .ex = -1, .sgn=0},
-  {.hi = 0xac7cd3ad58fee7f0, .lo = 0x811f953984eff83e, .ex = -1, .sgn=0},
-  {.hi = 0x94a03176acf82d45, .lo = 0xae4ba773da6bf754, .ex = -1, .sgn=0},
-  {.hi = 0xf8cfcbd90af8d57a, .lo = 0x4221dc4ba772598d, .ex = -2, .sgn=0},
-  {.hi = 0xc7c5c1e34d3055b2, .lo = 0x5cc8c00e4fccd850, .ex = -2, .sgn=0},
-  {.hi = 0x964083747309d113, .lo = 0xa89a11e07c1fe, .ex = -2, .sgn=0},
-  {.hi = 0xc8bd35e14da15f0e, .lo = 0xc7396c894bbf7389, .ex = -3, .sgn=0},
-  {.hi = 0xc8fb2f886ec09f37, .lo = 0x6a17954b2b7c5171, .ex = -4, .sgn=0},
+static const u128 S1u[64] = {
+  U128(0x0,0x0),
+  U128(0x76a17954b2b7c517,0xc8fb2f886ec09f3),
+  U128(0xd8e72d912977ee71,0x1917a6bc29b42be1),
+  U128(0xc002a2684781f080,0x259020dd1cc27444),
+  U128(0x9732300393f33614,0x31f17078d34c156c),
+  U128(0x90887712e9dc9663,0x3e33f2f642be355e),
+  U128(0xd725d3b9ed35fbaa,0x4a5018bb567c16a2),
+  U128(0x408fca9cc277fc1f,0x563e69d6ac7f73f8),
+  U128(0x98916152cf7eee1c,0x61f78a9abaa58b46),
+  U128(0x9b165cba0c171818,0x6d744027857300ad),
+  U128(0x362474f1a105878f,0x78ad74e01bd8ec78),
+  U128(0xbfd79717f2880abf,0x839c3cc917ff6cb4),
+  U128(0xbba4cfecbff54867,0x8e39d9cd73464364),
+  U128(0x19cec845ac87a5c6,0x987fbfe70b81a708),
+  U128(0x3b5167ee359a234e,0xa267992848eeb0c0),
+  U128(0x1becda8089c1a94c,0xabeb49a46764fd15),
+  U128(0x597d89b3754abe9f,0xb504f333f9de6484),
+  U128(0xac85320f528d6d5d,0xbdaef913557d76f0),
+  U128(0x43da25d99267326b,0xc5e40358a8ba05a7),
+  U128(0x23af31db7179a4aa,0xcd9f023f9c3a059e),
+  U128(0xf630e8b6dac83e69,0xd4db3148750d1819),
+  U128(0x2c19b63253da43fc,0xdb941a28cb71ec87),
+  U128(0xf4e8a8372f8c5810,0xe1c5978c05ed8691),
+  U128(0x125129529d48a92f,0xe76bd7a1e63b9786),
+  U128(0x7e610231ac1d6181,0xec835e79946a3145),
+  U128(0x67127db35b287316,0xf1090827b43725fd),
+  U128(0x163c5c7f03b718c5,0xf4fa0ab6316ed2ec),
+  U128(0xc7adc6b4988891bb,0xf853f7dc9186b952),
+  U128(0x2172a361fd2a722f,0xfb14be7fbae58156),
+  U128(0xeae6bd951c1dabbe,0xfd3aabf84528b50b),
+  U128(0x41390efdc726e9ef,0xfec46d1e89292cf0),
+  U128(0x421e8edaaf59453e,0xffb10f1bcb6bef1d),
+  U128(0xffffffffffffffff,0xffffffffffffffff),
+  U128(0x421e8edaaf59453e,0xffb10f1bcb6bef1d),
+  U128(0x41390efdc726e9ef,0xfec46d1e89292cf0),
+  U128(0xeae6bd951c1dabbe,0xfd3aabf84528b50b),
+  U128(0x2172a361fd2a722f,0xfb14be7fbae58156),
+  U128(0xc7adc6b4988891bb,0xf853f7dc9186b952),
+  U128(0x163c5c7f03b718c5,0xf4fa0ab6316ed2ec),
+  U128(0x67127db35b287316,0xf1090827b43725fd),
+  U128(0x7e610231ac1d6181,0xec835e79946a3145),
+  U128(0x125129529d48a92f,0xe76bd7a1e63b9786),
+  U128(0xf4e8a8372f8c5810,0xe1c5978c05ed8691),
+  U128(0x2c19b63253da43fc,0xdb941a28cb71ec87),
+  U128(0xf630e8b6dac83e69,0xd4db3148750d1819),
+  U128(0x23af31db7179a4aa,0xcd9f023f9c3a059e),
+  U128(0x43da25d99267326b,0xc5e40358a8ba05a7),
+  U128(0xac85320f528d6d5d,0xbdaef913557d76f0),
+  U128(0x597d89b3754abe9f,0xb504f333f9de6484),
+  U128(0x1becda8089c1a94c,0xabeb49a46764fd15),
+  U128(0x3b5167ee359a234e,0xa267992848eeb0c0),
+  U128(0x19cec845ac87a5c6,0x987fbfe70b81a708),
+  U128(0xbba4cfecbff54867,0x8e39d9cd73464364),
+  U128(0xbfd79717f2880abf,0x839c3cc917ff6cb4),
+  U128(0x362474f1a105878f,0x78ad74e01bd8ec78),
+  U128(0x9b165cba0c171818,0x6d744027857300ad),
+  U128(0x98916152cf7eee1c,0x61f78a9abaa58b46),
+  U128(0x408fca9cc277fc1f,0x563e69d6ac7f73f8),
+  U128(0xd725d3b9ed35fbaa,0x4a5018bb567c16a2),
+  U128(0x90887712e9dc9663,0x3e33f2f642be355e),
+  U128(0x9732300393f33614,0x31f17078d34c156c),
+  U128(0xc002a2684781f080,0x259020dd1cc27444),
+  U128(0xd8e72d912977ee71,0x1917a6bc29b42be1),
+  U128(0x76a17954b2b7c517,0xc8fb2f886ec09f3),
 };
 
-/* Table containing 128-bit approximations of sin(pi*i/2^12) for 0 <= i < 64
-   (to nearest).
-   Each entry is to be interpreted as (hi/2^64+lo/2^128)*2^ex*(-1)^sgn.
-   Generated with computeS2() from sin.sage. */
-static const dint64_t S2[64] = {
-  {.hi = 0x0, .lo = 0x0, .ex = 0, .sgn=0},
-  {.hi = 0xc90fd957659b030e, .lo = 0xc2afcacd698bdf76, .ex = -10, .sgn=0},
-  {.hi = 0xc90fd57732396c23, .lo = 0x5a3af6ac41069419, .ex = -9, .sgn=0},
-  {.hi = 0x96cbdb41258434c4, .lo = 0xa32c4560d01e7004, .ex = -8, .sgn=0},
-  {.hi = 0xc90fc5f66525d257, .lo = 0x480f7956b6470765, .ex = -8, .sgn=0},
-  {.hi = 0xfb53a8eb3ec38532, .lo = 0x8421cf8014d69789, .ex = -8, .sgn=0},
-  {.hi = 0x96cbc117ccb5e27c, .lo = 0xb42bdad547b10410, .ex = -7, .sgn=0},
-  {.hi = 0xafeda7e9ae465569, .lo = 0x185182c979282464, .ex = -7, .sgn=0},
-  {.hi = 0xc90f87f3380388d5, .lo = 0xcb3ff35bd4d81baa, .ex = -7, .sgn=0},
-  {.hi = 0xe231603c5e20db3e, .lo = 0xdb734d5b478687e2, .ex = -7, .sgn=0},
-  {.hi = 0xfb532fcd151e2c42, .lo = 0xe76f0f818a303da0, .ex = -7, .sgn=0},
-  {.hi = 0x8a3a7ad6a8e8b65f, .lo = 0x47af06ccf2bed25, .ex = -6, .sgn=0},
-  {.hi = 0x96cb587284b81770, .lo = 0xb767005691b9d9d1, .ex = -6, .sgn=0},
-  {.hi = 0xa35c303e18cc9b23, .lo = 0xa3585459daba5337, .ex = -6, .sgn=0},
-  {.hi = 0xafed01bd602f0401, .lo = 0x4c816951623c2ac3, .ex = -6, .sgn=0},
-  {.hi = 0xbc7dcc7456263d55, .lo = 0x5bfafd218b6a5bec, .ex = -6, .sgn=0},
-  {.hi = 0xc90e8fe6f63c2330, .lo = 0xf1d7d06db39ea9fc, .ex = -6, .sgn=0},
-  {.hi = 0xd59f4b993c424a6b, .lo = 0x628b4306a78ea2f5, .ex = -6, .sgn=0},
-  {.hi = 0xe22fff0f2456c8a0, .lo = 0x30725e9973c8a45e, .ex = -6, .sgn=0},
-  {.hi = 0xeec0a9ccaae8fc2a, .lo = 0x124efe701fddd951, .ex = -6, .sgn=0},
-  {.hi = 0xfb514b55ccbe541a, .lo = 0xd784e031f9af76d6, .ex = -6, .sgn=0},
-  {.hi = 0x83f0f197437b8c17, .lo = 0xfd74443f73a0b7b3, .ex = -5, .sgn=0},
-  {.hi = 0x8a39386d6b899861, .lo = 0xda7803806001176f, .ex = -5, .sgn=0},
-  {.hi = 0x908179ef5d7b775d, .lo = 0x2f0ae40f78b13b4f, .ex = -5, .sgn=0},
-  {.hi = 0x96c9b5df1877e9b5, .lo = 0xf91ee371d6467dca, .ex = -5, .sgn=0},
-  {.hi = 0x9d11ebfe9bdcac44, .lo = 0xc2f6cbeb4551eb34, .ex = -5, .sgn=0},
-  {.hi = 0xa35a1c0fe740dbff, .lo = 0x3f13f6cb7c548aa5, .ex = -5, .sgn=0},
-  {.hi = 0xa9a245d4fa7759e6, .lo = 0xadde30ec694a6399, .ex = -5, .sgn=0},
-  {.hi = 0xafea690fd5912ef3, .lo = 0xf56e3c87ae3c56df, .ex = -5, .sgn=0},
-  {.hi = 0xb632858278dff001, .lo = 0x53e382471fa0ba92, .ex = -5, .sgn=0},
-  {.hi = 0xbc7a9aeee4f821b1, .lo = 0x94ad9b1aa972fe03, .ex = -5, .sgn=0},
-  {.hi = 0xc2c2a9171ab39c54, .lo = 0xb13274ed67e9ffc7, .ex = -5, .sgn=0},
-  {.hi = 0xc90aafbd1b33efc9, .lo = 0xc539edcbfda0cf2c, .ex = -5, .sgn=0},
-  {.hi = 0xcf52aea2e7e4c75e, .lo = 0x3f87db6f41e2ead3, .ex = -5, .sgn=0},
-  {.hi = 0xd59aa58a827e4daa, .lo = 0x370d90684597567c, .ex = -5, .sgn=0},
-  {.hi = 0xdbe29435ed079069, .lo = 0xcd1c0c5d62efc5af, .ex = -5, .sgn=0},
-  {.hi = 0xe22a7a6729d8e453, .lo = 0x850021e392744a4f, .ex = -5, .sgn=0},
-  {.hi = 0xe87257e03b9e48eb, .lo = 0x7971fa8396212dd9, .ex = -5, .sgn=0},
-  {.hi = 0xeeba2c632559cc53, .lo = 0x58418067afeb9868, .ex = -5, .sgn=0},
-  {.hi = 0xf501f7b1ea65ef17, .lo = 0xca955048af12e9d, .ex = -5, .sgn=0},
-  {.hi = 0xfb49b98e8e7807f6, .lo = 0xb21ccebc9caac3, .ex = -5, .sgn=0},
-  {.hi = 0x80c8b8dd8ad153d4, .lo = 0x6f0804dae5f13b9b, .ex = -4, .sgn=0},
-  {.hi = 0x83ec8ffcc22bfe51, .lo = 0xdb725856ff8c2846, .ex = -4, .sgn=0},
-  {.hi = 0x87106205efb61b6a, .lo = 0x3f67ad05a5be69e5, .ex = -4, .sgn=0},
-  {.hi = 0x8a342eda160bf5ae, .lo = 0xde5b1068d174be9c, .ex = -4, .sgn=0},
-  {.hi = 0x8d57f65a37fd3c26, .lo = 0xaed92d34c17df538, .ex = -4, .sgn=0},
-  {.hi = 0x907bb867588e3427, .lo = 0xc8c5732d89e910b0, .ex = -4, .sgn=0},
-  {.hi = 0x939f74e27af8eb2e, .lo = 0xcc93966728e412d3, .ex = -4, .sgn=0},
-  {.hi = 0x96c32baca2ae68b4, .lo = 0x37b2dd49d5fca3c0, .ex = -4, .sgn=0},
-  {.hi = 0x99e6dca6d357dfff, .lo = 0x9a60c93317892c3b, .ex = -4, .sgn=0},
-  {.hi = 0x9d0a87b210d7e1f8, .lo = 0xa318ba775fd7b039, .ex = -4, .sgn=0},
-  {.hi = 0xa02e2caf5f4b8ef5, .lo = 0xf3d645e787b94f1d, .ex = -4, .sgn=0},
-  {.hi = 0xa351cb7fc30bc889, .lo = 0xb56007d16d4ad5a3, .ex = -4, .sgn=0},
-  {.hi = 0xa675640440ae634b, .lo = 0xdcd0d6bb4b9cd3e8, .ex = -4, .sgn=0},
-  {.hi = 0xa998f61ddd0758a2, .lo = 0x17954ed6093c44c0, .ex = -4, .sgn=0},
-  {.hi = 0xacbc81ad9d29f885, .lo = 0x5213c653bfb79b78, .ex = -4, .sgn=0},
-  {.hi = 0xafe00694866a1b44, .lo = 0xcd34d2751c2e1da7, .ex = -4, .sgn=0},
-  {.hi = 0xb30384b39e5d5346, .lo = 0xb7029d39efd76818, .ex = -4, .sgn=0},
-  {.hi = 0xb626fbebeadc1ec6, .lo = 0x3a95642f565102f2, .ex = -4, .sgn=0},
-  {.hi = 0xb94a6c1e7203198e, .lo = 0xfb8391d83d6da17d, .ex = -4, .sgn=0},
-  {.hi = 0xbc6dd52c3a342eb5, .lo = 0xf10bfca3d6464012, .ex = -4, .sgn=0},
-  {.hi = 0xbf9136f64a17ca4f, .lo = 0x9530f050886d7566, .ex = -4, .sgn=0},
-  {.hi = 0xc2b4915da89e0b23, .lo = 0x5bfac0f965612e23, .ex = -4, .sgn=0},
-  {.hi = 0xc5d7e4435cfff45c, .lo = 0x6718c1dfd2aa611c, .ex = -4, .sgn=0},
+static const u128 S2u[64] = {
+  U128(0x0,0x0),
+  U128(0xc3b0abf2b35a62f8,0x3243f655d966c0),
+  U128(0x11ad1d7b5620834a,0x6487eabb991cb6),
+  U128(0xc4a32c4560d01e70,0x96cbdb41258434),
+  U128(0x57480f7956b64707,0xc90fc5f66525d2),
+  U128(0x328421cf8014d698,0xfb53a8eb3ec385),
+  U128(0xf96857b5aa8f6208,0x12d97822f996bc4),
+  U128(0xd230a30592f25049,0x15fdb4fd35c8caa),
+  U128(0xab967fe6b7a9b037,0x1921f0fe6700711),
+  U128(0x7db6e69ab68f0d10,0x1c462c078bc41b6),
+  U128(0x85cede1f0314607b,0x1f6a65f9a2a3c58),
+  U128(0x7c11ebc1b33cafb5,0x228e9eb5aa3a2d9),
+  U128(0xc2dd9c015a46e767,0x25b2d61ca12e05d),
+  U128(0x8e8d6151676ae94d,0x28d70c0f863326c),
+  U128(0x53205a54588f0ab,0x2bfb406f580bc10),
+  U128(0x556febf4862da970,0x2f1f731d15898f5),
+  U128(0xc3c75f41b6ce7aa8,0x3243a3f9bd8f08c),
+  U128(0xad8a2d0c1a9e3a8c,0x3567d2e64f10929),
+  U128(0x80c1c97a65cf2291,0x388bffc3c915b22),
+  U128(0xa8493bf9c07f7765,0x3bb02a732aba3f0),
+  U128(0x6b5e1380c7e6bddb,0x3ed452d5732f950),
+  U128(0xbfeba221fb9d05be,0x41f878cba1bdc60),
+  U128(0xed3c01c030008bb,0x451c9c36b5c4cc3),
+  U128(0xe97857207bc589da,0x4840bcf7aebdbba),
+  U128(0xafc8f71b8eb233ee,0x4b64daef8c3bf4d),
+  U128(0x2617b65f5a2a8f5a,0x4e88f5ff4dee562),
+  U128(0xf9f89fb65be2a455,0x51ad0e07f3a06df),
+  U128(0x356ef187634a531d,0x54d122ea7d3bacf),
+  U128(0x9fab71e43d71e2b7,0x57f53487eac8977),
+  U128(0xa9f1c1238fd05d5,0x5b1942c13c6ff80),
+  U128(0x8ca56cd8d54b97f0,0x5e3d4d77727c10d),
+  U128(0xa58993a76b3f4ffe,0x6161548b8d59ce2),
+  U128(0x4e29cf6e5fed0679,0x648557de8d99f7e),
+  U128(0xf1fc3edb7a0f1757,0x67a9575173f263a),
+  U128(0x51b86c83422cbab4,0x6acd52c5413f26d),
+  U128(0x4e68e062eb177e2d,0x6df14a1af683c83),
+  U128(0x9c28010f1c93a252,0x71153d3394ec722),
+  U128(0x5bcb8fd41cb1096f,0x74392bf01dcf247),
+  U128(0x9ac20c033d7f5cc3,0x775d163192ace62),
+  U128(0xb8654aa824578975,0x7a80fbd8f532f78),
+  U128(0xb00590e675e4e556,0x7da4dcc7473c03f),
+  U128(0x46f0804dae5f13ba,0x80c8b8dd8ad153d),
+  U128(0x1db725856ff8c284,0x83ec8ffcc22bfe5),
+  U128(0xa3f67ad05a5be69e,0x87106205efb61b6),
+  U128(0xede5b1068d174bea,0x8a342eda160bf5a),
+  U128(0x6aed92d34c17df54,0x8d57f65a37fd3c2),
+  U128(0x7c8c5732d89e910b,0x907bb867588e342),
+  U128(0xecc93966728e412d,0x939f74e27af8eb2),
+  U128(0x437b2dd49d5fca3c,0x96c32baca2ae68b),
+  U128(0xf9a60c93317892c4,0x99e6dca6d357dff),
+  U128(0x8a318ba775fd7b04,0x9d0a87b210d7e1f),
+  U128(0x5f3d645e787b94f2,0xa02e2caf5f4b8ef),
+  U128(0x9b56007d16d4ad5a,0xa351cb7fc30bc88),
+  U128(0xbdcd0d6bb4b9cd3e,0xa675640440ae634),
+  U128(0x217954ed6093c44c,0xa998f61ddd0758a),
+  U128(0x55213c653bfb79b7,0xacbc81ad9d29f88),
+  U128(0x4cd34d2751c2e1da,0xafe00694866a1b4),
+  U128(0x6b7029d39efd7682,0xb30384b39e5d534),
+  U128(0x63a95642f565102f,0xb626fbebeadc1ec),
+  U128(0xefb8391d83d6da18,0xb94a6c1e7203198),
+  U128(0x5f10bfca3d646401,0xbc6dd52c3a342eb),
+  U128(0xf9530f050886d756,0xbf9136f64a17ca4),
+  U128(0x35bfac0f965612e2,0xc2b4915da89e0b2),
+  U128(0xc6718c1dfd2aa612,0xc5d7e4435cfff45),
 };
 
 /* Table C1 is not needed, since cos(x) = sin(pi/2+x) for 0 <= x < pi/2,
    and cos(x) = -sin(x-pi/2) for pi/2 <= x < pi, thus
    C1[i] = S1[32+i] for 0 <= i < 32, and C1[i] = -S1[i-32] for 32 <= i < 64. */
 
-/* Table containing 128-bit approximations of cos(pi*i/2^12) for 0 <= i < 64
-   (to nearest).
-   Each entry is to be interpreted as (hi/2^64+lo/2^128)*2^ex*(-1)^sgn.
-   Generated with computeC2() from sin.sage. */
-static const dint64_t C2[64] = {
-  {.hi = 0x8000000000000000, .lo = 0x0, .ex = 1, .sgn=0},
-  {.hi = 0xfffffb10b0d19f76, .lo = 0x491a703231e0a12e, .ex = 0, .sgn=0},
-  {.hi = 0xffffec42c3773235, .lo = 0xec9e2e75cb525f2c, .ex = 0, .sgn=0},
-  {.hi = 0xffffd3963882d553, .lo = 0x6276b75b91de105e, .ex = 0, .sgn=0},
-  {.hi = 0xffffb10b10e80e95, .lo = 0x3031437d7eccb9df, .ex = 0, .sgn=0},
-  {.hi = 0xffff84a14dfbcc6a, .lo = 0x858425d8b397dee6, .ex = 0, .sgn=0},
-  {.hi = 0xffff4e58f17465de, .lo = 0x177338053fd93920, .ex = 0, .sgn=0},
-  {.hi = 0xffff0e31fd699a85, .lo = 0x3a11d60588d8b96e, .ex = 0, .sgn=0},
-  {.hi = 0xfffec42c7454926b, .lo = 0x38e310779edfec68, .ex = 0, .sgn=0},
-  {.hi = 0xfffe7048590fddf8, .lo = 0xedd8e1034213f22b, .ex = 0, .sgn=0},
-  {.hi = 0xfffe1285aed775d8, .lo = 0x96f351efc65556cf, .ex = 0, .sgn=0},
-  {.hi = 0xfffdaae47948bad5, .lo = 0xea80aedd6a19710f, .ex = 0, .sgn=0},
-  {.hi = 0xfffd3964bc6275ba, .lo = 0x69fff9ae0dedb047, .ex = 0, .sgn=0},
-  {.hi = 0xfffcbe067c84d725, .lo = 0xf3a703b987eca44a, .ex = 0, .sgn=0},
-  {.hi = 0xfffc38c9be717763, .lo = 0x928db07a0e70ba36, .ex = 0, .sgn=0},
-  {.hi = 0xfffba9ae874b563a, .lo = 0x8d800bed6653dcba, .ex = 0, .sgn=0},
-  {.hi = 0xfffb10b4dc96dabb, .lo = 0xb47903f7a19f8ee2, .ex = 0, .sgn=0},
-  {.hi = 0xfffa6ddcc439d30a, .lo = 0xecc7b9244a48eb19, .ex = 0, .sgn=0},
-  {.hi = 0xfff9c126447b7424, .lo = 0xfbe18032d0016082, .ex = 0, .sgn=0},
-  {.hi = 0xfff90a91640459a1, .lo = 0x90e2d2eaf6da4d1e, .ex = 0, .sgn=0},
-  {.hi = 0xfff84a1e29de8571, .lo = 0x8cc193c5d508e13f, .ex = 0, .sgn=0},
-  {.hi = 0xfff77fcc9d755f99, .lo = 0x89332d07a713477e, .ex = 0, .sgn=0},
-  {.hi = 0xfff6ab9cc695b5e8, .lo = 0x9e4938f661aa140c, .ex = 0, .sgn=0},
-  {.hi = 0xfff5cd8ead6dbbab, .lo = 0x66c785e86dfbb75f, .ex = 0, .sgn=0},
-  {.hi = 0xfff4e5a25a8d095b, .lo = 0x43366df666fd54ff, .ex = 0, .sgn=0},
-  {.hi = 0xfff3f3d7d6e49c49, .lo = 0xdbb49f29fa872a83, .ex = 0, .sgn=0},
-  {.hi = 0xfff2f82f2bc6d648, .lo = 0xe08b96133ecce0bd, .ex = 0, .sgn=0},
-  {.hi = 0xfff1f2a862e77d4e, .lo = 0x98a31bcda3def20, .ex = 0, .sgn=0},
-  {.hi = 0xfff0e343865bbb13, .lo = 0x5428ed0647c9e5d1, .ex = 0, .sgn=0},
-  {.hi = 0xffefca00a09a1cb3, .lo = 0x807b6e7a4a723dae, .ex = 0, .sgn=0},
-  {.hi = 0xffeea6dfbc7a9242, .lo = 0xccf344c647917821, .ex = 0, .sgn=0},
-  {.hi = 0xffed79e0e5366e63, .lo = 0xf0f7cb05bde024f1, .ex = 0, .sgn=0},
-  {.hi = 0xffec4304266865d9, .lo = 0x5657552366961732, .ex = 0, .sgn=0},
-  {.hi = 0xffeb02498c0c8f12, .lo = 0x9195e99fbca2f10a, .ex = 0, .sgn=0},
-  {.hi = 0xffe9b7b1228061b6, .lo = 0x191df31aaa6f7f45, .ex = 0, .sgn=0},
-  {.hi = 0xffe8633af682b627, .lo = 0x3b57790bf77b6b2d, .ex = 0, .sgn=0},
-  {.hi = 0xffe704e71533c508, .lo = 0x53aa9423bb0adc21, .ex = 0, .sgn=0},
-  {.hi = 0xffe59cb58c1526b9, .lo = 0x3e71f7d99688082a, .ex = 0, .sgn=0},
-  {.hi = 0xffe42aa66909d2d2, .lo = 0xbe28fbec7cfb8a6, .ex = 0, .sgn=0},
-  {.hi = 0xffe2aeb9ba561f99, .lo = 0xf1ed54343fe7be24, .ex = 0, .sgn=0},
-  {.hi = 0xffe128ef8e9fc17a, .lo = 0x7d209f32d42d864e, .ex = 0, .sgn=0},
-  {.hi = 0xffdf9947f4edca6f, .lo = 0x8e6ee05573d420, .ex = 0, .sgn=0},
-  {.hi = 0xffddffc2fca8a970, .lo = 0x44bd28b8d85b530a, .ex = 0, .sgn=0},
-  {.hi = 0xffdc5c60b59a29dc, .lo = 0x75a8951fc304b914, .ex = 0, .sgn=0},
-  {.hi = 0xffdaaf212fed72db, .lo = 0x4fd8f038449ec436, .ex = 0, .sgn=0},
-  {.hi = 0xffd8f8047c2f06be, .lo = 0x8c9611f0b1d8f023, .ex = 0, .sgn=0},
-  {.hi = 0xffd7370aab4cc25e, .lo = 0x8d3cd437dc7fa9d2, .ex = 0, .sgn=0},
-  {.hi = 0xffd56c33ce95dc73, .lo = 0x45bd035edb0a65f5, .ex = 0, .sgn=0},
-  {.hi = 0xffd3977ff7bae4e9, .lo = 0x664649b4d541b9c5, .ex = 0, .sgn=0},
-  {.hi = 0xffd1b8ef38cdc433, .lo = 0xc42aac754bedcfde, .ex = 0, .sgn=0},
-  {.hi = 0xffcfd081a441ba99, .lo = 0x1fd552bf146b4a6, .ex = 0, .sgn=0},
-  {.hi = 0xffcdde374ceb5f7d, .lo = 0x76f487bb853a6989, .ex = 0, .sgn=0},
-  {.hi = 0xffcbe2104600a0a9, .lo = 0x5595ca3f421ae09c, .ex = 0, .sgn=0},
-  {.hi = 0xffc9dc0ca318c18b, .lo = 0x11b369083a7a62e5, .ex = 0, .sgn=0},
-  {.hi = 0xffc7cc2c782c5a76, .lo = 0x5c2a6019679e41f, .ex = 0, .sgn=0},
-  {.hi = 0xffc5b26fd99557dd, .lo = 0x579207cfe424dcb7, .ex = 0, .sgn=0},
-  {.hi = 0xffc38ed6dc0ef98b, .lo = 0x1c676208aa3be545, .ex = 0, .sgn=0},
-  {.hi = 0xffc1616194b5d1d3, .lo = 0xbc8d54e81d94f831, .ex = 0, .sgn=0},
-  {.hi = 0xffbf2a101907c4c5, .lo = 0x965827f33d906c7c, .ex = 0, .sgn=0},
-  {.hi = 0xffbce8e27ee40754, .lo = 0xe0aa07fcb29eef39, .ex = 0, .sgn=0},
-  {.hi = 0xffba9dd8dc8b1e83, .lo = 0xccfed60a91097c48, .ex = 0, .sgn=0},
-  {.hi = 0xffb848f3489ede86, .lo = 0xe907d9a298ab1feb, .ex = 0, .sgn=0},
-  {.hi = 0xffb5ea31da2269e5, .lo = 0xbfdfce09aea7ac02, .ex = 0, .sgn=0},
-  {.hi = 0xffb38194a87a3097, .lo = 0xbadfe70a1ef51116, .ex = 0, .sgn=0},
+static const u128 C2u[64] = {
+  U128(0xffffffffffffffff,0xffffffffffffffff),
+  U128(0x491a703231e0a12e,0xfffffb10b0d19f76),
+  U128(0xec9e2e75cb525f2c,0xffffec42c3773235),
+  U128(0x6276b75b91de105e,0xffffd3963882d553),
+  U128(0x3031437d7eccb9df,0xffffb10b10e80e95),
+  U128(0x858425d8b397dee6,0xffff84a14dfbcc6a),
+  U128(0x177338053fd93920,0xffff4e58f17465de),
+  U128(0x3a11d60588d8b96e,0xffff0e31fd699a85),
+  U128(0x38e310779edfec68,0xfffec42c7454926b),
+  U128(0xedd8e1034213f22b,0xfffe7048590fddf8),
+  U128(0x96f351efc65556cf,0xfffe1285aed775d8),
+  U128(0xea80aedd6a19710f,0xfffdaae47948bad5),
+  U128(0x69fff9ae0dedb047,0xfffd3964bc6275ba),
+  U128(0xf3a703b987eca44a,0xfffcbe067c84d725),
+  U128(0x928db07a0e70ba36,0xfffc38c9be717763),
+  U128(0x8d800bed6653dcba,0xfffba9ae874b563a),
+  U128(0xb47903f7a19f8ee2,0xfffb10b4dc96dabb),
+  U128(0xecc7b9244a48eb19,0xfffa6ddcc439d30a),
+  U128(0xfbe18032d0016082,0xfff9c126447b7424),
+  U128(0x90e2d2eaf6da4d1e,0xfff90a91640459a1),
+  U128(0x8cc193c5d508e13f,0xfff84a1e29de8571),
+  U128(0x89332d07a713477e,0xfff77fcc9d755f99),
+  U128(0x9e4938f661aa140c,0xfff6ab9cc695b5e8),
+  U128(0x66c785e86dfbb75f,0xfff5cd8ead6dbbab),
+  U128(0x43366df666fd54ff,0xfff4e5a25a8d095b),
+  U128(0xdbb49f29fa872a83,0xfff3f3d7d6e49c49),
+  U128(0xe08b96133ecce0bd,0xfff2f82f2bc6d648),
+  U128(0x98a31bcda3def20,0xfff1f2a862e77d4e),
+  U128(0x5428ed0647c9e5d1,0xfff0e343865bbb13),
+  U128(0x807b6e7a4a723dae,0xffefca00a09a1cb3),
+  U128(0xccf344c647917821,0xffeea6dfbc7a9242),
+  U128(0xf0f7cb05bde024f1,0xffed79e0e5366e63),
+  U128(0x5657552366961732,0xffec4304266865d9),
+  U128(0x9195e99fbca2f10a,0xffeb02498c0c8f12),
+  U128(0x191df31aaa6f7f45,0xffe9b7b1228061b6),
+  U128(0x3b57790bf77b6b2d,0xffe8633af682b627),
+  U128(0x53aa9423bb0adc21,0xffe704e71533c508),
+  U128(0x3e71f7d99688082a,0xffe59cb58c1526b9),
+  U128(0xbe28fbec7cfb8a6,0xffe42aa66909d2d2),
+  U128(0xf1ed54343fe7be24,0xffe2aeb9ba561f99),
+  U128(0x7d209f32d42d864e,0xffe128ef8e9fc17a),
+  U128(0x8e6ee05573d420,0xffdf9947f4edca6f),
+  U128(0x44bd28b8d85b530a,0xffddffc2fca8a970),
+  U128(0x75a8951fc304b914,0xffdc5c60b59a29dc),
+  U128(0x4fd8f038449ec436,0xffdaaf212fed72db),
+  U128(0x8c9611f0b1d8f023,0xffd8f8047c2f06be),
+  U128(0x8d3cd437dc7fa9d2,0xffd7370aab4cc25e),
+  U128(0x45bd035edb0a65f5,0xffd56c33ce95dc73),
+  U128(0x664649b4d541b9c5,0xffd3977ff7bae4e9),
+  U128(0xc42aac754bedcfde,0xffd1b8ef38cdc433),
+  U128(0x1fd552bf146b4a6,0xffcfd081a441ba99),
+  U128(0x76f487bb853a6989,0xffcdde374ceb5f7d),
+  U128(0x5595ca3f421ae09c,0xffcbe2104600a0a9),
+  U128(0x11b369083a7a62e5,0xffc9dc0ca318c18b),
+  U128(0x5c2a6019679e41f,0xffc7cc2c782c5a76),
+  U128(0x579207cfe424dcb7,0xffc5b26fd99557dd),
+  U128(0x1c676208aa3be545,0xffc38ed6dc0ef98b),
+  U128(0xbc8d54e81d94f831,0xffc1616194b5d1d3),
+  U128(0x965827f33d906c7c,0xffbf2a101907c4c5),
+  U128(0xe0aa07fcb29eef39,0xffbce8e27ee40754),
+  U128(0xccfed60a91097c48,0xffba9dd8dc8b1e83),
+  U128(0xe907d9a298ab1feb,0xffb848f3489ede86),
+  U128(0xbfdfce09aea7ac02,0xffb5ea31da2269e5),
+  U128(0xbadfe70a1ef51116,0xffb38194a87a3097),
 };
-
 
 // accurate path for |x| >= 2^31
 static double __attribute__((cold,noinline))
@@ -1509,22 +1496,24 @@ sin_large_accurate (double x)
   int sbit = (x > 0) ? 0 : 1;
   sbit = sbit ^ (k >> (SHIFT-1));
   int i1 = (k >> 6) & 0x3f, i2 = k & 0x3f;
-  dint64_t s1[1], s2[1], c1[1], c2[2];
-  // approximate sin(t1)*cos(t2) in s1, and cos(t1)*sin(t2) in s2
-  mul_dint (s1, S1+i1, C2+i2);
-  mul_dint (s2, S1+((i1+32)&0x3f), S2+i2);
-  s2->sgn ^= i1>=32;
-  // add s1+s2
-  add_dint (s1, s1, s2);
-  // s1 approximates sin(t1+t2)
-  // approximate cos(t1)*cos(t2) in c1, and sin(t1)*sin(t2) in c2
-  mul_dint (c1, S1+((i1+32)&0x3f), C2+i2);
-  c1->sgn ^= i1>=32;
-  mul_dint (c2, S1+i1, S2+i2);
-  // compute c1-c2
-  c2->sgn ^= 1;
-  add_dint (c1, c1, c2);
-  // c1 approximates cos(t1+t2)
+  dint64_t s1[1];
+
+  u128 s1u, t;
+  // approximate |sin(z)| in s1u/2^128
+  s1u = mhUU (S1u[i1], C2u[i2]);
+  // since cos(x) = sin(x+pi/2), we have |C1u[i1]| = |S1u[(i1+32) mod 64]|
+  t = mhUU (S1u[(i1+32)&0x3f], S2u[i2]);
+  // if i1 >= 32, we have to subtract t
+  /* s1u/2^128 approximates sin(t1)*cos(t2), and t/2^128 approximates (up to sign)
+     sin(t2)*cos(t1), thus s1u +/- t approximates sin(z=t1+t2), but since
+     sin(z) >= 0 (0 <= z < pi), we have s1u +/- t >= 0. */
+  s1u = (i1 < 32) ? s1u + t : s1u - t;
+
+  // approximate cos(z) in c1u/2^128
+  u128 c1u;
+  c1u = mhUU (S1u[(i1+32)&0x3f], C2u[i2]);
+  t = mhUU (S1u[i1], S2u[i2]);
+  c1u = (i1 < 32) ? c1u - t : c1u + t;
 
   u128 u = r->r >> -r->_ex, u2 = mhUU(u,u), u4 = mhUU(u2,u2), u2h = u2 >> 64;
   u128 Sr = evalPS (u, u2, u2h, u4); // Sr/2^128 approximates |sin(2*pi*r)|
@@ -1532,13 +1521,9 @@ sin_large_accurate (double x)
 
   // now combine: sin(x) ~ s1*C + c1*S
   // mul_dint (s1, s1, Cr);
-  u128 s1u = (s1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
-    : s1->r >> -s1->_ex;
   s1u = mhUU(s1u,Cr);
 
   // mul_dint (c1, c1, Sr);
-  u128 c1u = (c1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
-    : c1->r >> -c1->_ex;
   c1u = mhUU(c1u,Sr);
 
   // add_dint (s1, s1, c1);

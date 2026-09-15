@@ -51,6 +51,12 @@ def computeS1(out=true):
       print ("};")
    return S
 
+def out_u128(s):
+   if s==2^128: # cap to 2^128-1
+      s -= 1
+   h, l = divmod(s,2^64)
+   print("  U128(" + hex(l) + "," + hex(h) + "),")
+
 def computeS2(out=true):
    R = RealField(128)
    if out:
@@ -65,6 +71,26 @@ def computeS2(out=true):
    if out:
       print ("};")
    return S
+
+def computeS1u():
+   R = RealField(128)
+   print ("static const u128 S1u[64] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^6), 512)
+      s = round(s*2^128)
+      out_u128(s)
+   print ("};")
+
+def computeS2u():
+   R = RealField(128)
+   print ("static const u128 S2u[64] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^12), 512)
+      s = round(s*2^128)
+      out_u128(s)
+   print ("};")
 
 def computeC1(out=true):
    R = RealField(128)
@@ -95,6 +121,16 @@ def computeC2(out=true):
    if out:
       print ("};")
    return S
+
+def computeC2u():
+   R = RealField(128)
+   print ("static const u128 C2u[64] = {")
+   S = []
+   for i in range(64):
+      s = n(cos(pi*i/2^12), 512)
+      s = round(s*2^128)
+      out_u128(s)
+   print ("};")
 
 # compute table of cos(2*pi*i/2^11) for 0 <= i < 256
 def computeC(out=true):
