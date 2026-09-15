@@ -497,7 +497,7 @@ evalPS (dint64_t *Y, u128 u, u128 u2, u128 u2h, u128 u4, int sgn)
   Y->r = s;
   Y->sgn = sgn;
   // since this was for sin(2*pi*r)/2^7, multiply by 2^7
-  Y->_ex += 7;
+  Y->_ex = 7;
   dint_normalize (Y);
 }
 
@@ -514,7 +514,7 @@ evalPC (dint64_t *Y, u128 u2, u128 u4, u128 u2h)
   s = s + sh;
   Y->r = s;
   // since this was for cos(2*pi*r)/2^7, multiply by 2^7
-  Y->_ex += 7;
+  Y->_ex = 7;
   Y->sgn = 0;
   dint_normalize (Y);
 }
@@ -1541,12 +1541,7 @@ sin_large_accurate (double x)
   evalPC (Cr, u2, u4, u2h);    // Cr approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
-  // int bug = x == 0x1.2dd92f12119a2p+1021;
-  // if (bug) { printf ("s1="); print_dint (s1); }
-  // if (bug) { printf ("Cr="); print_dint (Cr); }
-#if 0
-  mul_dint (s1, s1, Cr);
-#else
+  // mul_dint (s1, s1, Cr);
   u128 s1u = (s1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
     : s1->r >> -s1->_ex;
   u128 Cru = Cr->r >> -Cr->_ex;
@@ -1555,10 +1550,30 @@ sin_large_accurate (double x)
   s1->sgn ^= Cr->sgn;
   s1->_ex = 0;
   dint_normalize (s1);
-#endif
-  //  if (bug) { printf ("s1="); print_dint (s1); }
-  mul_dint (c1, c1, Sr);
-  add_dint (s1, s1, c1);
+
+  // mul_dint (c1, c1, Sr);
+  u128 c1u = (c1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
+    : c1->r >> -c1->_ex;
+  u128 Sru = Sr->r >> -Sr->_ex;
+  c1u = mhUU(c1u,Sru);
+
+  // add_dint (s1, s1, c1);
+  /* s1u/2^128 approximates sin(z)*cos(r) which is always >= 0, while
+     c1u/2^128 approximates cos(z)*sin(r), where cos(z) > 0 for i1 < 32,
+     and cos(z) <= for i1 >= 32, and sign(r) has the sign of r. */
+  if ((i1 < 32) ^ (r->sgn != 0)) { // r >= 0
+    s1u += c1u;
+    s1->sgn = 0;
+  } else if (s1u <= c1u) {
+    s1u = c1u - s1u;
+    s1->sgn = 1;
+  } else {
+    s1u = s1u - c1u;
+    s1->sgn = 0;
+  }
+  s1->r = s1u;
+  s1->_ex = 0;
+  dint_normalize (s1);
   s1->sgn ^= sbit;
   return dint_tod (s1);
 }
