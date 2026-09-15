@@ -464,7 +464,7 @@ static inline void dint_normalize (dint64_t *x)
   x->_ex -= sh;
 }
 
-#if 0
+#if 1
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
   printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
@@ -1541,7 +1541,22 @@ sin_large_accurate (double x)
   evalPC (Cr, u2, u4, u2h);    // Cr approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
+  // int bug = x == 0x1.2dd92f12119a2p+1021;
+  // if (bug) { printf ("s1="); print_dint (s1); }
+  // if (bug) { printf ("Cr="); print_dint (Cr); }
+#if 0
   mul_dint (s1, s1, Cr);
+#else
+  u128 s1u = (s1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
+    : s1->r >> -s1->_ex;
+  u128 Cru = Cr->r >> -Cr->_ex;
+  s1u = mhUU(s1u,Cru);
+  s1->r = s1u;
+  s1->sgn ^= Cr->sgn;
+  s1->_ex = 0;
+  dint_normalize (s1);
+#endif
+  //  if (bug) { printf ("s1="); print_dint (s1); }
   mul_dint (c1, c1, Sr);
   add_dint (s1, s1, c1);
   s1->sgn ^= sbit;
