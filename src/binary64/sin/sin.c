@@ -1546,10 +1546,6 @@ sin_large_accurate (double x)
     : s1->r >> -s1->_ex;
   u128 Cru = Cr->r >> -Cr->_ex;
   s1u = mhUU(s1u,Cru);
-  s1->r = s1u;
-  s1->sgn ^= Cr->sgn;
-  s1->_ex = 0;
-  dint_normalize (s1);
 
   // mul_dint (c1, c1, Sr);
   u128 c1u = (c1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
