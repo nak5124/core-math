@@ -119,7 +119,8 @@ else
     SKIP80=1
 fi
 
-if $CC -c $CFLAGS ci/quadmath_test.c -o /dev/null &> /dev/null; then
+# Match the target and include flags passed to the function builds.
+if $CC -c $CFLAGS $EXTRA_CFLAGS ci/quadmath_test.c -o /dev/null &> /dev/null; then
    echo "Compiler supports libquadmath"
 else
    echo "Compiler lacks libquadmath support"
