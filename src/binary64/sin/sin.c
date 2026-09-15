@@ -1526,25 +1526,20 @@ sin_large_accurate (double x)
   add_dint (c1, c1, c2);
   // c1 approximates cos(t1+t2)
 
-  dint64_t r2[1];
-  u128 u = r->r >> -r->_ex;
-  mul_dint (r2, r, r); // r2 approximates r^2
-  u128 u2 = r2->r >> -r2->_ex;
-  u128 u4 = mhUU(u2,u2);
-  u128 u2h = u2 >> 64;
-  u128 Sru = evalPS (u, u2, u2h, u4); // Sru approximates sin(2*pi*r)
-  u128 Cru = evalPC (u2, u4, u2h);    // Cru approximates cos(2*pi*r)
+  u128 u = r->r >> -r->_ex, u2 = mhUU(u,u), u4 = mhUU(u2,u2), u2h = u2 >> 64;
+  u128 Sr = evalPS (u, u2, u2h, u4); // Sr/2^128 approximates |sin(2*pi*r)|
+  u128 Cr = evalPC (u2, u4, u2h);    // Cr/2^128 approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
   // mul_dint (s1, s1, Cr);
   u128 s1u = (s1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
     : s1->r >> -s1->_ex;
-  s1u = mhUU(s1u,Cru);
+  s1u = mhUU(s1u,Cr);
 
   // mul_dint (c1, c1, Sr);
   u128 c1u = (c1->_ex == 1) ? U128(0xffffffffffffffff,0xffffffffffffffff)
     : c1->r >> -c1->_ex;
-  c1u = mhUU(c1u,Sru);
+  c1u = mhUU(c1u,Sr);
 
   // add_dint (s1, s1, c1);
   /* s1u/2^128 approximates sin(z)*cos(r) which is always >= 0, while
