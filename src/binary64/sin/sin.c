@@ -114,16 +114,19 @@ static const u128 PS[] = {
   U128(0x54125fff015e02e8,0)                   // degree 9
 };
 
-/* The following is a degree-6 polynomial with even coefficients
-   approximating cos(2*pi*x)/2^7 for 0 <= x < 2^-14 with absolute error
-   2^-120.087. Coefficients are PC[i]/2^128 (fixed precision),
-   except degree-6 coefficient which is PC[i]/2^64.
+/* The following is a degree-8 polynomial with even coefficients
+   approximating cos(x) for 0 <= x < 2^-11.348. The original polynomial
+   had absolute error < 2^-144. The constant coefficient was changed from 1
+   to 1-2^-128, thus the absolute error is now < 2^-128+2^-144.
+   Coefficients are PC[i]/2^128 (fixed precision),
+   except degree-8 coefficient which is PC[i]/2^64.
    Generated with coslarge_acc.sollya. */
 static const u128 PC[] = {
-  U128(0xffffffffffffff0f,0x1ffffffffffffff),  // degree 0
-  U128(0x95b89954685e30ef,0x277a79937c8bbcb4), // degree 2, implicit - sign
-  U128(0xfc971fbbcf438a36,0x81e0f840dad61d03), // degree 4
-  U128(0xaae9e3e2d654796c,0),                  // degree 6, implicit - sign
+  U128(0xffffffffffffffff,0xffffffffffffffff), // degree 0
+  U128(0xfffffffffffff3b2,0x7fffffffffffffff), // degree 2, implicit - sign
+  U128(0xaaaaaa7ad29f1e6a,0xaaaaaaaaaaaaaaa),  // degree 4
+  U128(0xcb8e62ca4ce7455a,0x5b05b05b05b05a),   // degree 6, implicit - sign
+  U128(0x1a01a01843278,0),                     // degree 8
 };
 
 static inline u128 mhUU(u128 a, u128 b){
@@ -173,16 +176,21 @@ evalPS (u128 u, u128 u2, u128 u2h, u128 u4)
    where u2/2^128 approximates r^2, u4/2^128 approximates r^4, and
    u2h = floor(u2/2^64). */
 static inline u128
-evalPC (u128 u2, u128 u4, u128 u2h)
+evalPC (u128 u2)
 {
+  // twopi2/2^128 approximates (2pi)^2/2^6
+  static const u128 twopi2 = U128(0x56e26cd9808c1ac7,0x9de9e64df22ef2d2);
+  u128 v2 = mhUU (twopi2, u2 << 6);
+  // v2/2^128 approximates (2pir)^2
+  u128 v4 = mhUU(v2,v2);
+  u128 v2h = v2 >> 64;
   // use Estrin's scheme
-  u128 s, sh = PC[2] - u2h * PC[3];
-  sh = mhUU (sh, u4);
-  s = mhUU (PC[1], u2);
+  u128 sh = PC[3] - v2h * PC[4];
+  sh = PC[2] - mhUU (sh, v2);
+  // printf ("sh=%lx,%lx\n", (uint64_t) (sh>>64), (uint64_t) sh);
+  u128 s = mhUU (PC[1], v2);
   s = PC[0] - s;
-  s = s + sh;
-  // since this was for cos(2*pi*r)/2^7, multiply by 2^7
-  return s << 7;
+  return s + mhUU (sh, v4);
 }
 
 // argument reduction for |x| >= 2^31
@@ -1151,9 +1159,11 @@ static const u128 C2u[64] = {
 static double __attribute__((cold,noinline))
 sin_large_accurate (double x)
 {
+  // int bug = x == 0x1.b23560bdf045dp+1021;
   u128 r;
   int neg;
   uint64_t k = reduce_large_acc (&r, &neg, x);
+  // if (bug) printf ("r=%lx,%lx\n", (uint64_t) (r>>64), (uint64_t) r);
   /* x/(2*pi) mod 1 = k/2^13 + r + eps with |r| <= 2^-14 and 0 <= eps < 2^-127.999
      then sin(x) ~ sin(pi*k/2^12 + 2*pi*r)
                  ~ sin(pi*k/2^12)*cos(2*pi*r) + cos(pi*k/2^12)*sin(2*pi*r)
@@ -1184,7 +1194,8 @@ sin_large_accurate (double x)
 
   u128 u2 = mhUU(r,r), u4 = mhUU(u2,u2), u2h = u2 >> 64;
   u128 Sr = evalPS (r, u2, u2h, u4); // Sr/2^128 approximates |sin(2*pi*r)|
-  u128 Cr = evalPC (u2, u4, u2h);    // Cr/2^128 approximates cos(2*pi*r)
+  u128 Cr = evalPC (u2);    // Cr/2^128 approximates cos(2*pi*r)
+  // if (bug) printf ("Cr=%lx,%lx\n", (uint64_t) (Cr>>64), (uint64_t) Cr);
 
   // now combine: sin(x) ~ s1*C + c1*S
   // mul_dint (s1, s1, Cr);
