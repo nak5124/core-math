@@ -40,8 +40,6 @@ SOFTWARE.
 
 #pragma STDC FENV_ACCESS ON
 
-/******************** code copied from dint.h and pow.[ch] *******************/
-
 #if (defined(__clang__) && __clang_major__ >= 14) || (defined(__GNUC__) && __GNUC__ >= 14 && __BITINT_MAXWIDTH__ && __BITINT_MAXWIDTH__ >= 128)
 typedef unsigned _BitInt(128) u128;
 #else
@@ -50,344 +48,26 @@ typedef unsigned __int128 u128;
 
 typedef uint64_t u64;
 
-/* The dint64_t structure represents a 128-bit number:
-   (-1)^sgn*(hi/2^64+lo/2^128)*2^ex */
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-typedef union {
-  struct {
-    u128 r;
-    int64_t _ex;
-    uint64_t _sgn;
-  };
-  struct {
-    uint64_t lo;
-    uint64_t hi;
-    int64_t ex;
-    uint64_t sgn;
-  };
-} dint64_t;
-#else
-typedef union {
-  struct {
-    u128 r;
-    int64_t _ex;
-    uint64_t _sgn;
-  };
-  struct {
-    uint64_t hi;
-    uint64_t lo;
-    int64_t ex;
-    uint64_t sgn;
-  };
-} dint64_t;
-#endif
-
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-typedef union {
-  u128 r;
-  struct {
-    uint64_t l;
-    uint64_t h;
-  };
-} uint128_t;
-#else
-typedef union {
-  u128 r;
-  struct {
-    uint64_t h;
-    uint64_t l;
-  };
-} uint128_t;
-#endif
-
 typedef union {
   double f;
   uint64_t u;
 } f64_u;
 
-// Return non-zero if a = 0
-static inline int
-dint_zero_p (const dint64_t *a)
+// round (-1)^sbit*r/2^128 to double, assuming r is non-zero and not in the
+// subnormal region
+static inline double u128_tod (u128 r, int sbit)
 {
-  return a->hi == 0;
+  uint64_t h = r >> 64, l = r;
+  uint64_t sh = (h != 0) ? __builtin_clzll (h) : 64 + __builtin_clzll (l);
+  assert (sh <= 75);
+  h = r >> (75 - sh); // upper 53 non-zero bits
+  int rbit = (r >> (74 - sh)) & 1; // round bit
+  static const double Sgn[] = { 0x1p-53, -0x1p-53 };
+  f64_u v = {.f = Sgn[sbit]};
+  v.u -= sh << 52; // scale by 2^-sh
+  double a = h * v.f, b = a * ((rbit) ? 0x1p-53 : 0x1p-54);
+  return a + b;
 }
-
-static inline int cmp(int64_t a, int64_t b) { return (a > b) - (a < b); }
-
-static inline int cmpu128 (u128 a, u128 b) { return (a > b) - (a < b); }
-
-/* ZERO is a dint64_t representation of 0, which ensures that
-   dint_tod(ZERO) = 0 */
-static const dint64_t ZERO = {.hi = 0x0, .lo = 0x0, .ex = -1076, .sgn = 0x0};
-
-// Compare the absolute values of a and b
-// Return -1 if |a| < |b|
-// Return  0 if |a| = |b|
-// Return +1 if |a| > |b|
-static inline signed char
-cmp_dint_abs (const dint64_t *a, const dint64_t *b) {
-  if (dint_zero_p (a))
-    return dint_zero_p (b) ? 0 : -1;
-  if (dint_zero_p (b))
-    return +1;
-  char c1 = cmp (a->ex, b->ex);
-  return c1 ? c1 : cmpu128 (a->r, b->r);
-}
-
-// Copy a dint64_t value
-static inline void cp_dint(dint64_t *r, const dint64_t *a) {
-  r->ex = a->ex;
-  r->r = a->r;
-  r->sgn = a->sgn;
-}
-
-// Add two dint64_t values, with error bounded by 2 ulps (ulp_128)
-// (more precisely 1 ulp when a and b have same sign, 2 ulps otherwise)
-// Moreover, when Sterbenz theorem applies, i.e., |b| <= |a| <= 2|b|
-// and a,b are of different signs, there is no error, i.e., r = a-b.
-static inline void
-add_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
-  if (!(a->hi | a->lo)) {
-    cp_dint (r, b);
-    return;
-  }
-
-  switch (cmp_dint_abs (a, b)) {
-  case 0:
-    if (a->sgn ^ b->sgn) {
-      cp_dint (r, &ZERO);
-      return;
-    }
-
-    cp_dint (r, a);
-    r->ex++;
-    return;
-
-  case -1: // |A| < |B|
-    {
-      // swap operands
-      const dint64_t *tmp = a; a = b; b = tmp;
-      break; // fall through the case |A| > |B|
-    }
-  }
-
-  // From now on, |A| > |B| thus a->ex >= b->ex
-
-  u128 A = a->r, B = b->r;
-  uint64_t k = a->ex - b->ex;
-
-  if (k > 0) {
-    /* Warning: the right shift x >> k is only defined for 0 <= k < n
-       where n is the bit-width of x. See for example
-       https://developer.arm.com/documentation/den0024/a/The-A64-instruction-set/Data-processing-instructions/Shift-operations
-       where it is said that k is interpreted modulo n. */
-    B = (k < 128) ? B >> k : 0;
-  }
-
-  u128 C;
-  unsigned char sgn = a->sgn;
-
-  r->ex = a->ex; /* tentative exponent for the result */
-
-  if (a->sgn ^ b->sgn) {
-    /* a and b have different signs C = A + (-B)
-       Sterbenz case |a|/2 <= |b| <= |a| can occur only when:
-       * k=0: then B is not truncated, and C is exact below
-       * k=1 and ex>0 below: then we ensure C is exact
-     */
-    C = A - B;
-    uint64_t ch = C >> 64;
-    /* We can't have C=0 here since we excluded the case |A| = |B|,
-       thus __builtin_clzll(C) is well-defined below. */
-    uint64_t ex = ch ? __builtin_clzll(ch) : 64 + __builtin_clzll(C);
-    /* The error from the truncated part of B (1 ulp) is multiplied by 2^ex,
-       thus by 2 ulps when ex <= 1. */
-    if (ex > 0)
-    {
-      if (k == 1) /* Sterbenz case */
-        C = (A << ex) - (b->r << (ex - 1));
-      else
-        C = (A << ex) - (B << ex);
-      /* If C0 is the previous value of C, we have:
-         (C0-1)*2^ex < A*2^ex-B*2^ex <= C0*2^ex
-         since some neglected bits from B might appear which contribute
-         a value less than ulp(C0)=1.
-         As a consequence since 2^(127-ex) <= C0 < 2^(128-ex), because C0 had
-         ex leading zero bits, we have 2^127-2^ex <= A*2^ex-B*2^ex < 2^128.
-         Thus the value of C, which is truncated to 128 bits, is the right
-         one (as if no truncation); moreover in some rare cases we need to
-         shift by 1 bit to the left. */
-      r->ex -= ex;
-      ex = __builtin_clzll (C >> 64);
-      /* Fall through with the code for ex = 0. */
-    }
-    C = C << ex;
-    r->ex -= ex;
-    /* The neglected part of B is bounded by 2 ulp(C) when ex=0, 1 ulp
-       when ex > 0 but ex=0 at the end, and by 2*ulp(C) when ex > 0 and there
-       is an extra shift at the end (in that case necessarily ex=1). */
-  } else {
-    C = A + B;
-    if (C < A)
-    {
-      C = ((u128) 1 << 127) | (C >> 1);
-      r->ex ++;
-    }
-  }
-
-  /* In the addition case, we loose the truncated part of B, which
-     contributes to at most 1 ulp. If there is an exponent shift, we
-     might also loose the least significant bit of C, which counts as
-     1/2 ulp, but the truncated part of B is now less than 1/2 ulp too,
-     thus in all cases the error is less than 1 ulp(r). */
-
-  r->sgn = sgn;
-  r->r = C;
-}
-
-// Multiply two dint64_t numbers, with error bounded by 6 ulps
-// on the 128-bit floating-point numbers.
-// Overlap between r and a is allowed
-static inline void
-mul_dint (dint64_t *r, const dint64_t *a, const dint64_t *b) {
-  u128 bh = b->hi, bl = b->lo;
-
-  /* compute the two middle terms */
-  u128 m1 = (u128)(a->hi) * bl;
-  u128 m2 = (u128)(a->lo) * bh;
-
-  /* put the 128-bit product of the high terms in r */
-  r->r = (u128)(a->hi) * bh;
-
-  /* there can be no overflow in the following addition since r <= (B-1)^2
-     with B=2^64, (m1>>64) <= B-1 and (m2>>64) <= B-1, thus the sum is
-     bounded by (B-1)^2+2*(B-1) = B^2-1 */
-  r->r += (m1 >> 64) + (m2 >> 64);
-
-  // Ensure that r->hi starts with a 1
-  uint64_t ex = r->hi >> 63;
-  r->r = r->r << (1 - ex);
-
-  // Exponent and sign
-  // if ex=1, then ex(r) = ex(a) + ex(b)
-  // if ex=0, then ex(r) = ex(a) + ex(b) - 1
-  r->ex = a->ex + b->ex + ex - 1;
-  r->sgn = a->sgn ^ b->sgn;
-
-  /* The ignored part can be as large as 3 ulps before the shift (one
-     for the low part of a->hi * bl, one for the low part of a->lo * bh,
-     and one for the neglected a->lo * bl term). After the shift this can
-     be as large as 6 ulps. */
-}
-
-// Multiply two dint64_t numbers, assuming the low part of b is zero
-// with error bounded by 2 ulps
-static inline void
-mul_dint_21 (dint64_t *r, const dint64_t *a, const dint64_t *b) {
-  u128 bh = b->hi;
-  u128 hi = (u128) (a->hi) * bh;
-  u128 lo = (u128) (a->lo) * bh;
-
-  /* put the 128-bit product of the high terms in r */
-  r->r = hi;
-
-  /* add the middle term */
-  r->r += lo >> 64;
-
-  // Ensure that r->hi starts with a 1
-  uint64_t ex = r->hi >> 63;
-  r->r = r->r << (1 - ex);
-
-  // Exponent and sign
-  r->ex = a->ex + b->ex + ex - 1;
-  r->sgn = a->sgn ^ b->sgn;
-
-  /* The ignored part can be as large as 1 ulp before the shift (truncated
-     part of lo). After the shift this can be as large as 2 ulps. */
-}
-
-static inline void subnormalize_dint(dint64_t *a) {
-  if (a->ex > -1023)
-    return;
-
-  uint64_t ex = -(1011 + a->ex);
-
-  uint64_t hi = a->hi >> ex;
-  uint64_t md = (a->hi >> (ex - 1)) & 0x1;
-  uint64_t lo = (a->hi & (~0ull >> ex)) || a->lo;
-
-  switch (fegetround()) {
-  case FE_TONEAREST:
-    hi += lo ? md : hi & md;
-    break;
-  case FE_DOWNWARD:
-    hi += a->sgn & (md | lo);
-    break;
-  case FE_UPWARD:
-    hi += (!a->sgn) & (md | lo);
-    break;
-  }
-
-  a->hi = hi << ex;
-  a->lo = 0;
-
-  if (!a->hi) {
-    a->ex++;
-    a->hi = (1ull << 63);
-  }
-}
-
-// Convert a dint64_t value to a double
-static inline double dint_tod(dint64_t *a) {
-  subnormalize_dint (a);
-
-  f64_u r = {.u = (a->hi >> 11) | (0x3ffll << 52)};
-
-  double rd = 0.0;
-  if ((a->hi >> 10) & 0x1)
-    rd += 0x1p-53;
-
-  if (a->hi & 0x3ff || a->lo)
-    rd += 0x1p-54;
-
-  if (a->sgn)
-    rd = -rd;
-
-  r.u = r.u | a->sgn << 63;
-  r.f += rd;
-
-  f64_u e;
-
-  if (a->ex > -1022) { // The result is a normal double
-    if (a->ex > 1024)
-      if (a->ex == 1025) {
-        r.f = r.f * 0x1p+1;
-        e.f = 0x1p+1023;
-      } else {
-        r.f = 0x1.fffffffffffffp+1023;
-        e.f = 0x1.fffffffffffffp+1023;
-      }
-    else
-      e.u = ((a->ex + 1022) & 0x7ff) << 52;
-  } else {
-    if (a->ex < -1073) {
-      if (a->ex == -1074) {
-        r.f = r.f * 0x1p-1;
-        e.f = 0x1p-1074;
-      } else {
-        r.f = 0x0.0000000000001p-1022;
-        e.f = 0x0.0000000000001p-1022;
-      }
-    } else {
-      e.u = 1l << (a->ex + 1073);
-    }
-  }
-
-  return r.f * e.f;
-}
-
-/**************** end of code copied from dint.h and pow.[ch] ****************/
 
 typedef union {double f; uint64_t u;} b64u64_u;
 
@@ -455,16 +135,7 @@ static inline u128 mhUU(u128 a, u128 b){
   return ahbh += (ahbl>>64)+(albh>>64);
 }
 
-static inline void dint_normalize (dint64_t *x)
-{
-  if (__builtin_expect (x->r == 0, 0)) return;
-  uint64_t h = x->r >> 64;
-  int sh = (h) ? __builtin_clzll (h) : 64 + __builtin_clzll ((uint64_t) x->r);
-  x->r <<= sh;
-  x->_ex -= sh;
-}
-
-#if 1
+#if 0
 // Prints a dint64_t value for debugging purposes
 static inline void print_dint(const dint64_t *a) {
   printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
@@ -1271,6 +942,10 @@ reduce_large_acc (u128 *r, int *neg, double x)
   return k;
 }
 
+#define SHIFT1 (1<<13) // 0x1.7787c8ca380e5p+447
+#define SHIFT2 (1<<9) // 0x1.49521aeb456b6p+335
+#define SHIFT3 (1<<14) // 0x1.45323b135fd7p+719
+
 static const u128 S1u[64] = {
   U128(0x0,0x0),
   U128(0x76a17954b2b7c517,0xc8fb2f886ec09f3),
@@ -1279,7 +954,7 @@ static const u128 S1u[64] = {
   U128(0x9732300393f33614,0x31f17078d34c156c),
   U128(0x90887712e9dc9663,0x3e33f2f642be355e),
   U128(0xd725d3b9ed35fbaa,0x4a5018bb567c16a2),
-  U128(0x408fca9cc277fc1f,0x563e69d6ac7f73f8),
+  U128(0x408fca9cc277fc1f + SHIFT3,0x563e69d6ac7f73f8),
   U128(0x98916152cf7eee1c,0x61f78a9abaa58b46),
   U128(0x9b165cba0c171818,0x6d744027857300ad),
   U128(0x362474f1a105878f,0x78ad74e01bd8ec78),
@@ -1290,7 +965,7 @@ static const u128 S1u[64] = {
   U128(0x1becda8089c1a94c,0xabeb49a46764fd15),
   U128(0x597d89b3754abe9f,0xb504f333f9de6484),
   U128(0xac85320f528d6d5d,0xbdaef913557d76f0),
-  U128(0x43da25d99267326b,0xc5e40358a8ba05a7),
+  U128(0x43da25d99267326b + SHIFT1,0xc5e40358a8ba05a7),
   U128(0x23af31db7179a4aa,0xcd9f023f9c3a059e),
   U128(0xf630e8b6dac83e69,0xd4db3148750d1819),
   U128(0x2c19b63253da43fc,0xdb941a28cb71ec87),
@@ -1302,7 +977,7 @@ static const u128 S1u[64] = {
   U128(0xc7adc6b4988891bb,0xf853f7dc9186b952),
   U128(0x2172a361fd2a722f,0xfb14be7fbae58156),
   U128(0xeae6bd951c1dabbe,0xfd3aabf84528b50b),
-  U128(0x41390efdc726e9ef,0xfec46d1e89292cf0),
+  U128(0x41390efdc726e9ef + SHIFT2,0xfec46d1e89292cf0),
   U128(0x421e8edaaf59453e,0xffb10f1bcb6bef1d),
   U128(0xffffffffffffffff,0xffffffffffffffff),
   U128(0x421e8edaaf59453e,0xffb10f1bcb6bef1d),
@@ -1311,7 +986,7 @@ static const u128 S1u[64] = {
   U128(0x2172a361fd2a722f,0xfb14be7fbae58156),
   U128(0xc7adc6b4988891bb,0xf853f7dc9186b952),
   U128(0x163c5c7f03b718c5,0xf4fa0ab6316ed2ec),
-  U128(0x67127db35b287316,0xf1090827b43725fd),
+  U128(0x67127db35b287316 - SHIFT3,0xf1090827b43725fd),
   U128(0x7e610231ac1d6181,0xec835e79946a3145),
   U128(0x125129529d48a92f,0xe76bd7a1e63b9786),
   U128(0xf4e8a8372f8c5810,0xe1c5978c05ed8691),
@@ -1322,7 +997,7 @@ static const u128 S1u[64] = {
   U128(0xac85320f528d6d5d,0xbdaef913557d76f0),
   U128(0x597d89b3754abe9f,0xb504f333f9de6484),
   U128(0x1becda8089c1a94c,0xabeb49a46764fd15),
-  U128(0x3b5167ee359a234e,0xa267992848eeb0c0),
+  U128(0x3b5167ee359a234e + SHIFT1,0xa267992848eeb0c0),
   U128(0x19cec845ac87a5c6,0x987fbfe70b81a708),
   U128(0xbba4cfecbff54867,0x8e39d9cd73464364),
   U128(0xbfd79717f2880abf,0x839c3cc917ff6cb4),
@@ -1334,7 +1009,7 @@ static const u128 S1u[64] = {
   U128(0x90887712e9dc9663,0x3e33f2f642be355e),
   U128(0x9732300393f33614,0x31f17078d34c156c),
   U128(0xc002a2684781f080,0x259020dd1cc27444),
-  U128(0xd8e72d912977ee71,0x1917a6bc29b42be1),
+  U128(0xd8e72d912977ee71 + SHIFT2,0x1917a6bc29b42be1),
   U128(0x76a17954b2b7c517,0xc8fb2f886ec09f3),
 };
 
@@ -1365,7 +1040,7 @@ static const u128 S2u[64] = {
   U128(0xe97857207bc589da,0x4840bcf7aebdbba),
   U128(0xafc8f71b8eb233ee,0x4b64daef8c3bf4d),
   U128(0x2617b65f5a2a8f5a,0x4e88f5ff4dee562),
-  U128(0xf9f89fb65be2a455,0x51ad0e07f3a06df),
+  U128(0xf9f89fb65be2a455 + SHIFT3,0x51ad0e07f3a06df),
   U128(0x356ef187634a531d,0x54d122ea7d3bacf),
   U128(0x9fab71e43d71e2b7,0x57f53487eac8977),
   U128(0xa9f1c1238fd05d5,0x5b1942c13c6ff80),
@@ -1379,7 +1054,7 @@ static const u128 S2u[64] = {
   U128(0x5bcb8fd41cb1096f,0x74392bf01dcf247),
   U128(0x9ac20c033d7f5cc3,0x775d163192ace62),
   U128(0xb8654aa824578975,0x7a80fbd8f532f78),
-  U128(0xb00590e675e4e556,0x7da4dcc7473c03f),
+  U128(0xb00590e675e4e556 + SHIFT1,0x7da4dcc7473c03f),
   U128(0x46f0804dae5f13ba,0x80c8b8dd8ad153d),
   U128(0x1db725856ff8c284,0x83ec8ffcc22bfe5),
   U128(0xa3f67ad05a5be69e,0x87106205efb61b6),
@@ -1396,7 +1071,7 @@ static const u128 S2u[64] = {
   U128(0x217954ed6093c44c,0xa998f61ddd0758a),
   U128(0x55213c653bfb79b7,0xacbc81ad9d29f88),
   U128(0x4cd34d2751c2e1da,0xafe00694866a1b4),
-  U128(0x6b7029d39efd7682,0xb30384b39e5d534),
+  U128(0x6b7029d39efd7682 - SHIFT2,0xb30384b39e5d534),
   U128(0x63a95642f565102f,0xb626fbebeadc1ec),
   U128(0xefb8391d83d6da18,0xb94a6c1e7203198),
   U128(0x5f10bfca3d646401,0xbc6dd52c3a342eb),
@@ -1436,7 +1111,7 @@ static const u128 C2u[64] = {
   U128(0x66c785e86dfbb75f,0xfff5cd8ead6dbbab),
   U128(0x43366df666fd54ff,0xfff4e5a25a8d095b),
   U128(0xdbb49f29fa872a83,0xfff3f3d7d6e49c49),
-  U128(0xe08b96133ecce0bd,0xfff2f82f2bc6d648),
+  U128(0xe08b96133ecce0bd - SHIFT3,0xfff2f82f2bc6d648),
   U128(0x98a31bcda3def20,0xfff1f2a862e77d4e),
   U128(0x5428ed0647c9e5d1,0xfff0e343865bbb13),
   U128(0x807b6e7a4a723dae,0xffefca00a09a1cb3),
@@ -1450,7 +1125,7 @@ static const u128 C2u[64] = {
   U128(0x3e71f7d99688082a,0xffe59cb58c1526b9),
   U128(0xbe28fbec7cfb8a6,0xffe42aa66909d2d2),
   U128(0xf1ed54343fe7be24,0xffe2aeb9ba561f99),
-  U128(0x7d209f32d42d864e,0xffe128ef8e9fc17a),
+  U128(0x7d209f32d42d864e + SHIFT1,0xffe128ef8e9fc17a),
   U128(0x8e6ee05573d420,0xffdf9947f4edca6f),
   U128(0x44bd28b8d85b530a,0xffddffc2fca8a970),
   U128(0x75a8951fc304b914,0xffdc5c60b59a29dc),
@@ -1467,7 +1142,7 @@ static const u128 C2u[64] = {
   U128(0x5c2a6019679e41f,0xffc7cc2c782c5a76),
   U128(0x579207cfe424dcb7,0xffc5b26fd99557dd),
   U128(0x1c676208aa3be545,0xffc38ed6dc0ef98b),
-  U128(0xbc8d54e81d94f831,0xffc1616194b5d1d3),
+  U128(0xbc8d54e81d94f831 + SHIFT2,0xffc1616194b5d1d3),
   U128(0x965827f33d906c7c,0xffbf2a101907c4c5),
   U128(0xe0aa07fcb29eef39,0xffbce8e27ee40754),
   U128(0xccfed60a91097c48,0xffba9dd8dc8b1e83),
@@ -1480,6 +1155,7 @@ static const u128 C2u[64] = {
 static double __attribute__((cold,noinline))
 sin_large_accurate (double x)
 {
+  int bug = x == 0x1.45323b135fd7p+719;
   u128 r;
   int neg;
   uint64_t k = reduce_large_acc (&r, &neg, x);
@@ -1493,7 +1169,9 @@ sin_large_accurate (double x)
   int sbit = (x > 0) ? 0 : 1;
   sbit = sbit ^ (k >> 12);
   int i1 = (k >> 6) & 0x3f, i2 = k & 0x3f;
-  dint64_t s1[1];
+  if (bug) printf ("i1=%d i2=%d\n", i1, i2);
+  if (bug) printf ("%lx %lx %lx %lx\n", (uint64_t) S1u[i1], (uint64_t) C2u[i2],
+                   (uint64_t) S1u[(i1+32)&0x3f], (uint64_t) S2u[i2]);
 
   u128 s1u, t;
   // approximate |sin(z)| in s1u/2^128
@@ -1527,21 +1205,15 @@ sin_large_accurate (double x)
   /* s1u/2^128 approximates sin(z)*cos(r) which is always >= 0, while
      c1u/2^128 approximates cos(z)*sin(r), where cos(z) > 0 for i1 < 32,
      and cos(z) <= for i1 >= 32, and sign(r) has the sign of r. */
-  if ((i1 < 32) ^ neg) { // r >= 0
+  if ((i1 < 32) ^ neg) // r >= 0
     s1u += c1u;
-    s1->sgn = 0;
-  } else if (s1u <= c1u) {
+  else if (s1u <= c1u) {
     s1u = c1u - s1u;
-    s1->sgn = 1;
-  } else {
+    sbit ^= 1;
+  } else
     s1u = s1u - c1u;
-    s1->sgn = 0;
-  }
-  s1->r = s1u;
-  s1->_ex = 0;
-  dint_normalize (s1);
-  s1->sgn ^= sbit;
-  return dint_tod (s1);
+  if (bug) printf ("s1u=%lx,%lx\n", (uint64_t) (s1u>>64), (uint64_t) s1u);
+  return u128_tod (s1u, sbit);
 }
 
 // fast path for |x| >= 2^31
