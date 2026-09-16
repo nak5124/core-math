@@ -32,7 +32,7 @@ SOFTWARE.
    https://github.com/jdh8/metallic-rs/blob/main/.claude/skills/program-math-functions/SKILL.md
    https://github.com/jdh8/metallic/blob/main/.claude/skills/program-math-functions/SKILL.md
    Review: https://gitlab.inria.fr/core-math/core-math/-/work_items/47
-   Fast-path error argument: ../sin/sinq_error.md.
+   Fast-path error argument: sinq_error.md.
 
    The sine is odd and the
    cosine even, so both run one pipeline on |x| in unsigned fixed point:
@@ -67,7 +67,7 @@ SOFTWARE.
       with the sine wanted keeps the floating form of sin(theta) all the way.
    5. Round.  The fast path keeps a 15-bit guard below the 113-bit
       significand; its error is below ZIV_GATE units of that guard
-      (see ../sin/sinq_error.md and sinq_tables.py), so it decides
+      (see sinq_error.md and sinq_tables.py), so it decides
       whenever the guard is farther than the gate from the rounding boundary:
       the midpoint for round-to-nearest, the grid point for directed modes.
       Everything else goes to the 384-bit path, which rounds outright.
@@ -161,7 +161,7 @@ static inline int round_away(unsigned rm, u128 sign) {
 /* Half-width of the window around a rounding boundary the fast path refuses
    to decide, in units of 2^(e2-128), or 2^-15 ulp in the returned frame.
    The analytic bound is < 15.8 units, including reduction, evaluation and
-   recombination; see ../sin/sinq_error.md. This covers midpoint boundaries
+   recombination; see sinq_error.md. This covers midpoint boundaries
    in round-to-nearest and grid boundaries in directed modes. Sampled MPFR
    error measurements are additional checks, not a proof of the bound. */
 #define ZIV_GATE 16u
