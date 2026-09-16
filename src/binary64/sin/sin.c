@@ -115,18 +115,16 @@ static const u128 PS[] = {
 };
 
 /* The following is a degree-8 polynomial with even coefficients
-   approximating cos(x) for 0 <= x < 2^-11.348. The original polynomial
-   had absolute error < 2^-144. The constant coefficient was changed from 1
-   to 1-2^-128, thus the absolute error is now < 2^-128+2^-144.
+   approximating cos(x) for 0 <= x < 2^-11.348, with absolute error < 2^-128.
    Coefficients are PC[i]/2^128 (fixed precision),
    except degree-8 coefficient which is PC[i]/2^64.
    Generated with coslarge_acc.sollya. */
 static const u128 PC[] = {
   U128(0xffffffffffffffff,0xffffffffffffffff), // degree 0
-  U128(0xfffffffffffff3b2,0x7fffffffffffffff), // degree 2, implicit - sign
-  U128(0xaaaaaa7ad29f1e6a,0xaaaaaaaaaaaaaaa),  // degree 4
-  U128(0xcb8e62ca4ce7455a,0x5b05b05b05b05a),   // degree 6, implicit - sign
-  U128(0x1a01a01843278,0),                     // degree 8
+  U128(0xfffffffffa998bf0,0x7fffffffffffffff), // degree 2, implicit - sign
+  U128(0xaaa2caecc94962c7,0xaaaaaaaaaaaaaaa),  // degree 4
+  U128(0x642013bc289028b6,0x5b05b05b05ac1a),   // degree 6, implicit - sign
+  U128(0x1a0193d9a550c,0),                     // degree 8
 };
 
 static inline u128 mhUU(u128 a, u128 b){
