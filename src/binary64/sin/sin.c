@@ -177,8 +177,8 @@ evalPC (u128 u2, u128 u4, u128 u2h)
 {
   // use Estrin's scheme
   u128 s, sh = PC[2] - u2h * PC[3];
-  sh = mhUU(sh, u4);
-  s = mhUU(PC[1],u2);
+  sh = mhUU (sh, u4);
+  s = mhUU (PC[1], u2);
   s = PC[0] - s;
   s = s + sh;
   // since this was for cos(2*pi*r)/2^7, multiply by 2^7
@@ -942,10 +942,6 @@ reduce_large_acc (u128 *r, int *neg, double x)
   return k;
 }
 
-#define SHIFT1 (1<<13) // 0x1.7787c8ca380e5p+447
-#define SHIFT2 (1<<9) // 0x1.49521aeb456b6p+335
-#define SHIFT3 (1<<14) // 0x1.45323b135fd7p+719
-
 static const u128 S1u[64] = {
   U128(0x0,0x0),
   U128(0x76a17954b2b7c517,0xc8fb2f886ec09f3),
@@ -954,7 +950,7 @@ static const u128 S1u[64] = {
   U128(0x9732300393f33614,0x31f17078d34c156c),
   U128(0x90887712e9dc9663,0x3e33f2f642be355e),
   U128(0xd725d3b9ed35fbaa,0x4a5018bb567c16a2),
-  U128(0x408fca9cc277fc1f + SHIFT3,0x563e69d6ac7f73f8),
+  U128(0x408fca9cc277fc1f,0x563e69d6ac7f73f8),
   U128(0x98916152cf7eee1c,0x61f78a9abaa58b46),
   U128(0x9b165cba0c171818,0x6d744027857300ad),
   U128(0x362474f1a105878f,0x78ad74e01bd8ec78),
@@ -965,7 +961,7 @@ static const u128 S1u[64] = {
   U128(0x1becda8089c1a94c,0xabeb49a46764fd15),
   U128(0x597d89b3754abe9f,0xb504f333f9de6484),
   U128(0xac85320f528d6d5d,0xbdaef913557d76f0),
-  U128(0x43da25d99267326b + SHIFT1,0xc5e40358a8ba05a7),
+  U128(0x43da25d99267326b,0xc5e40358a8ba05a7),
   U128(0x23af31db7179a4aa,0xcd9f023f9c3a059e),
   U128(0xf630e8b6dac83e69,0xd4db3148750d1819),
   U128(0x2c19b63253da43fc,0xdb941a28cb71ec87),
@@ -977,7 +973,7 @@ static const u128 S1u[64] = {
   U128(0xc7adc6b4988891bb,0xf853f7dc9186b952),
   U128(0x2172a361fd2a722f,0xfb14be7fbae58156),
   U128(0xeae6bd951c1dabbe,0xfd3aabf84528b50b),
-  U128(0x41390efdc726e9ef + SHIFT2,0xfec46d1e89292cf0),
+  U128(0x41390efdc726e9ef,0xfec46d1e89292cf0),
   U128(0x421e8edaaf59453e,0xffb10f1bcb6bef1d),
   U128(0xffffffffffffffff,0xffffffffffffffff),
   U128(0x421e8edaaf59453e,0xffb10f1bcb6bef1d),
@@ -986,7 +982,7 @@ static const u128 S1u[64] = {
   U128(0x2172a361fd2a722f,0xfb14be7fbae58156),
   U128(0xc7adc6b4988891bb,0xf853f7dc9186b952),
   U128(0x163c5c7f03b718c5,0xf4fa0ab6316ed2ec),
-  U128(0x67127db35b287316 - SHIFT3,0xf1090827b43725fd),
+  U128(0x67127db35b287316,0xf1090827b43725fd),
   U128(0x7e610231ac1d6181,0xec835e79946a3145),
   U128(0x125129529d48a92f,0xe76bd7a1e63b9786),
   U128(0xf4e8a8372f8c5810,0xe1c5978c05ed8691),
@@ -997,7 +993,7 @@ static const u128 S1u[64] = {
   U128(0xac85320f528d6d5d,0xbdaef913557d76f0),
   U128(0x597d89b3754abe9f,0xb504f333f9de6484),
   U128(0x1becda8089c1a94c,0xabeb49a46764fd15),
-  U128(0x3b5167ee359a234e + SHIFT1,0xa267992848eeb0c0),
+  U128(0x3b5167ee359a234e,0xa267992848eeb0c0),
   U128(0x19cec845ac87a5c6,0x987fbfe70b81a708),
   U128(0xbba4cfecbff54867,0x8e39d9cd73464364),
   U128(0xbfd79717f2880abf,0x839c3cc917ff6cb4),
@@ -1009,7 +1005,7 @@ static const u128 S1u[64] = {
   U128(0x90887712e9dc9663,0x3e33f2f642be355e),
   U128(0x9732300393f33614,0x31f17078d34c156c),
   U128(0xc002a2684781f080,0x259020dd1cc27444),
-  U128(0xd8e72d912977ee71 + SHIFT2,0x1917a6bc29b42be1),
+  U128(0xd8e72d912977ee71,0x1917a6bc29b42be1),
   U128(0x76a17954b2b7c517,0xc8fb2f886ec09f3),
 };
 
@@ -1040,7 +1036,7 @@ static const u128 S2u[64] = {
   U128(0xe97857207bc589da,0x4840bcf7aebdbba),
   U128(0xafc8f71b8eb233ee,0x4b64daef8c3bf4d),
   U128(0x2617b65f5a2a8f5a,0x4e88f5ff4dee562),
-  U128(0xf9f89fb65be2a455 + SHIFT3,0x51ad0e07f3a06df),
+  U128(0xf9f89fb65be2a455,0x51ad0e07f3a06df),
   U128(0x356ef187634a531d,0x54d122ea7d3bacf),
   U128(0x9fab71e43d71e2b7,0x57f53487eac8977),
   U128(0xa9f1c1238fd05d5,0x5b1942c13c6ff80),
@@ -1054,7 +1050,7 @@ static const u128 S2u[64] = {
   U128(0x5bcb8fd41cb1096f,0x74392bf01dcf247),
   U128(0x9ac20c033d7f5cc3,0x775d163192ace62),
   U128(0xb8654aa824578975,0x7a80fbd8f532f78),
-  U128(0xb00590e675e4e556 + SHIFT1,0x7da4dcc7473c03f),
+  U128(0xb00590e675e4e556,0x7da4dcc7473c03f),
   U128(0x46f0804dae5f13ba,0x80c8b8dd8ad153d),
   U128(0x1db725856ff8c284,0x83ec8ffcc22bfe5),
   U128(0xa3f67ad05a5be69e,0x87106205efb61b6),
@@ -1071,7 +1067,7 @@ static const u128 S2u[64] = {
   U128(0x217954ed6093c44c,0xa998f61ddd0758a),
   U128(0x55213c653bfb79b7,0xacbc81ad9d29f88),
   U128(0x4cd34d2751c2e1da,0xafe00694866a1b4),
-  U128(0x6b7029d39efd7682 - SHIFT2,0xb30384b39e5d534),
+  U128(0x6b7029d39efd7682,0xb30384b39e5d534),
   U128(0x63a95642f565102f,0xb626fbebeadc1ec),
   U128(0xefb8391d83d6da18,0xb94a6c1e7203198),
   U128(0x5f10bfca3d646401,0xbc6dd52c3a342eb),
@@ -1111,7 +1107,7 @@ static const u128 C2u[64] = {
   U128(0x66c785e86dfbb75f,0xfff5cd8ead6dbbab),
   U128(0x43366df666fd54ff,0xfff4e5a25a8d095b),
   U128(0xdbb49f29fa872a83,0xfff3f3d7d6e49c49),
-  U128(0xe08b96133ecce0bd - SHIFT3,0xfff2f82f2bc6d648),
+  U128(0xe08b96133ecce0bd,0xfff2f82f2bc6d648),
   U128(0x98a31bcda3def20,0xfff1f2a862e77d4e),
   U128(0x5428ed0647c9e5d1,0xfff0e343865bbb13),
   U128(0x807b6e7a4a723dae,0xffefca00a09a1cb3),
@@ -1125,7 +1121,7 @@ static const u128 C2u[64] = {
   U128(0x3e71f7d99688082a,0xffe59cb58c1526b9),
   U128(0xbe28fbec7cfb8a6,0xffe42aa66909d2d2),
   U128(0xf1ed54343fe7be24,0xffe2aeb9ba561f99),
-  U128(0x7d209f32d42d864e + SHIFT1,0xffe128ef8e9fc17a),
+  U128(0x7d209f32d42d864e,0xffe128ef8e9fc17a),
   U128(0x8e6ee05573d420,0xffdf9947f4edca6f),
   U128(0x44bd28b8d85b530a,0xffddffc2fca8a970),
   U128(0x75a8951fc304b914,0xffdc5c60b59a29dc),
@@ -1142,7 +1138,7 @@ static const u128 C2u[64] = {
   U128(0x5c2a6019679e41f,0xffc7cc2c782c5a76),
   U128(0x579207cfe424dcb7,0xffc5b26fd99557dd),
   U128(0x1c676208aa3be545,0xffc38ed6dc0ef98b),
-  U128(0xbc8d54e81d94f831 + SHIFT2,0xffc1616194b5d1d3),
+  U128(0xbc8d54e81d94f831,0xffc1616194b5d1d3),
   U128(0x965827f33d906c7c,0xffbf2a101907c4c5),
   U128(0xe0aa07fcb29eef39,0xffbce8e27ee40754),
   U128(0xccfed60a91097c48,0xffba9dd8dc8b1e83),
@@ -1155,7 +1151,6 @@ static const u128 C2u[64] = {
 static double __attribute__((cold,noinline))
 sin_large_accurate (double x)
 {
-  int bug = x == 0x1.45323b135fd7p+719;
   u128 r;
   int neg;
   uint64_t k = reduce_large_acc (&r, &neg, x);
@@ -1169,9 +1164,6 @@ sin_large_accurate (double x)
   int sbit = (x > 0) ? 0 : 1;
   sbit = sbit ^ (k >> 12);
   int i1 = (k >> 6) & 0x3f, i2 = k & 0x3f;
-  if (bug) printf ("i1=%d i2=%d\n", i1, i2);
-  if (bug) printf ("%lx %lx %lx %lx\n", (uint64_t) S1u[i1], (uint64_t) C2u[i2],
-                   (uint64_t) S1u[(i1+32)&0x3f], (uint64_t) S2u[i2]);
 
   u128 s1u, t;
   // approximate |sin(z)| in s1u/2^128
@@ -1212,7 +1204,6 @@ sin_large_accurate (double x)
     sbit ^= 1;
   } else
     s1u = s1u - c1u;
-  if (bug) printf ("s1u=%lx,%lx\n", (uint64_t) (s1u>>64), (uint64_t) s1u);
   return u128_tod (s1u, sbit);
 }
 
