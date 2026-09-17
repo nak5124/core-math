@@ -74,9 +74,9 @@ def computeS2(out=true):
 
 def computeS1u():
    R = RealField(128)
-   print ("static const u128 S1u[64] = {")
+   print ("static const u128 S1u[33] = {")
    S = []
-   for i in range(64):
+   for i in range(33):
       s = n(sin(pi*i/2^6), 512)
       s = round(s*2^128)
       out_u128(s)
