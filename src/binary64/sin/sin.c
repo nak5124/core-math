@@ -98,17 +98,18 @@ static const uint64_t _T[20] = {
 #define U128(l,h) (((u128)h)<<64 | (u128)l) // little endian
 
 /* The following is a degree-9 polynomial with odd coefficients
-   approximating sin(x) for 0 <= x < 2^-11.348 with relative error
-   < 2^-146.115. Coefficients of degree 1, 3, 5, 7 are PS[i]/2^128,
+   approximating sin(x) for 0 <= x < 2^-11.348 with absolute error
+   < 2^-159.524. Coefficients of degree 1, 3, 5, 7 are PS[i]/2^128,
    with that of degree 9 is PS[i]/2^64 (fixed point).
-   Generated with sinlarge_acc.sollya. */
+   Generated with sinlarge_acc.sollya. Since we cap the degree 1 coefficient
+   to 2^128-1, the final error bound is 2^-128+2^-159.524. */
 static const u128 PS[] = {
   // little-endian format
   U128(0xffffffffffffffff,0xffffffffffffffff), // degree 1, capped to 2^128-1
-  U128(0xaaaaaaaaaaaaaa14,0x2aaaaaaaaaaaaaaa), // degree 3, implicit - sign
-  U128(0x2222221f50fc3150,0x222222222222222),  // degree 5
-  U128(0xfcb6926f3f8ca2c1,0xd00d00d00d00c),    // degree 7, implicit - sign
-  U128(0x2e3bc74868b6,0)                       // degree 9
+  U128(0xaaaaaaaaaaaaa8ec,0x2aaaaaaaaaaaaaaa), // degree 3, implicit - sign
+  U128(0x2222221c7ac2ce78,0x222222222222222),  // degree 5
+  U128(0xfab4c4adc16c89d6,0xd00d00d00d00c),    // degree 7, implicit - sign
+  U128(0x2e3bc747fad5,0)                       // degree 9
 };
 
 /* The following is a degree-8 polynomial with even coefficients
