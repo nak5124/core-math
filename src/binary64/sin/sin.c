@@ -97,19 +97,17 @@ static const uint64_t _T[20] = {
 
 #define U128(l,h) (((u128)h)<<64 | (u128)l) // little endian
 
-/* The following is a degree-9 polynomial with odd coefficients
+/* The following is a degree-7 polynomial with odd coefficients
    approximating sin(x) for 0 <= x < 2^-11.348 with absolute error
-   < 2^-159.524. Coefficients of degree 1, 3, 5, 7 are PS[i]/2^128,
-   with that of degree 9 is PS[i]/2^64 (fixed point).
-   Generated with sinlarge_acc.sollya. Since we cap the degree 1 coefficient
-   to 2^128-1, the final error bound is 2^-128+2^-159.524. */
+   < 2^-128.601. Coefficients of degree 1, 3, 5 are PS[i]/2^128,
+   with that of degree 7 is PS[i]/2^64 (fixed point).
+   Generated with sinlarge_acc.sollya. */
 static const u128 PS[] = {
   // little-endian format
-  U128(0xffffffffffffffff,0xffffffffffffffff), // degree 1, capped to 2^128-1
-  U128(0xaaaaaaaaaaaaa8ec,0x2aaaaaaaaaaaaaaa), // degree 3, implicit - sign
-  U128(0x2222221c7ac2ce78,0x222222222222222),  // degree 5
-  U128(0xfab4c4adc16c89d6,0xd00d00d00d00c),    // degree 7, implicit - sign
-  U128(0x2e3bc747fad5,0)                       // degree 9
+  U128(0xffffffffffffc396,0xffffffffffffffff), // degree 1
+  U128(0xaaaaa9646e8f872e,0x2aaaaaaaaaaaaaaa), // degree 3, implicit - sign
+  U128(0x467b898367fb1249,0x222222222222220),  // degree 5
+  U128(0xd00d00bfff5ee,0),                     // degree 7, implicit - sign
 };
 
 /* The following is a degree-8 polynomial with even coefficients
@@ -156,16 +154,13 @@ evalPS (u128 u, u128 u2, u128 u2h, u128 u4)
   // dominates the lower terms, we subtract each time the lower terms from
   // the (absolute value of) the new coefficient
   // use Estrin's scheme: evaluate separately the degree-{1,3} part,
-  // and the degree-{5,7,9} part, multiplied by r^4
-  u128 sh = PS[3] - PS[4] * u2h;
-  sh = (sh>>64) * u2h;
-  sh = PS[2] - sh;
-  sh = mhUU(sh,u4);
-  s = mhUU(PS[1], u2);
+  // and the degree-{5,7} part, multiplied by r^4
+  u128 sh = PS[2] - PS[3] * u2h;
+  sh = mhUU (sh, u4);
+  s = mhUU (PS[1], u2);
   s = PS[0] - s;
   s = s + sh;
-  s = mhUU(s, u); // multiply by r
-  return s;
+  return mhUU (s, u); // multiply by r
 }
 
 /* Return Cr such that Cr/2^128 approximates cos2pi(r), for 0 <= r < 2^-14,
