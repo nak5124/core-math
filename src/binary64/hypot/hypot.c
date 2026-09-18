@@ -238,12 +238,12 @@ double cr_hypot(double x, double y){
   b64u64_u xd = {.f = u}, yd = {.f = v};
   ey = yd.u;
   if(__builtin_expect(!(ey>>52),0)){ // y is subnormal
-    if(!yd.u) return xd.f;
+    if(!ey) return xd.f;
     ex = xd.u;
-    if(__builtin_expect(!(ex>>52),0)){ // x is subnormal too
-      if(!ex) return 0;
+    if(__builtin_expect(!(ex>>52),0)) // x is subnormal too
+      /* we can't have x=0 here since then y=0 because 0<=y<=x,
+         and the case y=0 was tested above */
       return as_hypot_denorm(ex,ey);
-    }
     int nz = __builtin_clzll(ey);
     ey <<= nz-11;
     ey &= ~0ull>>12;
