@@ -333,7 +333,7 @@ check_triples_subnormal (void)
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for
 #endif
-  /* since z=r^2+s^2 with s < r, we must have r <= 2^26 to ensure
+  /* since z=r^2+s^2 with s < r, r <= 2^26 is sufficient to ensure
      z is representable on 53 bits */
   for (uint64_t r = r0; r <= 0x4000000; r += 2 * STEP)
   {
@@ -350,11 +350,12 @@ check_triples_subnormal (void)
         if (z >> 53) // z >= 2^53
           break;
         // now (x,y,z) is a primitive Pythagorean triple
-        for (int n = 1; ; n++)
+        for (uint64_t n = 1; ; n++)
         {
           uint64_t nn = n * n;
           uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
-          if (zz >> 53) // zz >= 2^53
+          // we allow zz to have 54 bits (midpoint case in the normal range)
+          if (zz >> 54) // zz >= 2^54
             break;
           check (ldexp (xx, -1074), ldexp (yy, -1074));
         }
@@ -378,14 +379,14 @@ check_triples_subnormal (void)
         uint64_t x = r * r - s * s;
         uint64_t y = 2 * r * s;
         uint64_t z = r * r + s * s;
-        if (z > 0xffffffffffffful)
+        if (z >> 53) // z >= 2^53
           break;
         // now (x,y,z) is a primitive Pythagorean triple
-        for (int n = 1; ; n++)
+        for (uint64_t n = 1; ; n++)
         {
           uint64_t nn = n * n;
           uint64_t xx = x * nn, yy = y * nn, zz = z * nn;
-          if (zz > 0xffffffffffffful)
+          if (zz >> 54) // zz >= 2^54
             break;
           check (ldexp (xx, -1074), ldexp (yy, -1074));
         }

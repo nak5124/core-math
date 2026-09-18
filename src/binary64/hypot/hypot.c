@@ -105,25 +105,24 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
   int rb = tm & 1; // round bit for rm
   int rb2 = D >= tm; // round bit for tm
   int sb = D != 0; // sticky bit for rm
+  /* We cannot have rb=1 and sb=0 (midpoint case) in the subnormal range.
+     Indeed, this would mean x=a*2^-1074, y=b*2^-1074, z=(k+1/2)*2^-1074
+     with a, b, k integers and x^2+y^2=z^2. This would imply
+     a^2+b^2 = (k+1/2)^2 which is impossible: the left-hand side is an
+     integer, while the right-hand side is 1/4 mod 1.
+     Thus the only possible cases are:
+     rb=0, sb=0: exact case
+     rb=0, sb=1
+     rb=1, sb=1
+  */
   rm = tm >> 1; // truncate the low bit
   underflow = rm < 0x10000000000000ull;
-  if(__builtin_expect(rb || sb, 1)){
+  if(__builtin_expect(sb, 1)){ // non-exact case
     double op = 1.0 + 0x1p-54, om = 1.0 - 0x1p-54;
     if(__builtin_expect(op == om, 1)){ // rounding to nearest
-      if(__builtin_expect(sb, 1)) {
-	rm += rb;
-        // we have no underflow when rm is now 2^52 and rb2 != 0
-        // Remark: we cannot have a^2+b^2 = (tm+1/2)^2 exactly
-        // since this would mean a^2+b^2 = tm^2+tm+1/4,
-        // thus a^2+b^2 would be an odd multiple of 2^-1077
-        // (since ulp(tm) = 2^-1075)
-        if (rm >> 52 && rb2) underflow = 0;
-      }
-      /* We cannot have rb=1 and sb=0 (midpoint case) in the subnormal range.
-         Indeed, this would mean x=a*2^-1074, y=b*2^-1074, z=(k+1/2)*2^-1074
-         with a, b, k integers and x^2+y^2=z^2. This would imply
-         a^2+b^2 = (k+1/2)^2 which is impossible: the left-hand side is an
-         integer, while the right-hand side is 1/4 mod 1. */
+      rm += rb;
+      // we have no underflow when rm is now 2^52 and rb2 != 0
+      if (rm >> 52 && rb2) underflow = 0;
     } else if (op > 1.0) { // rounding upwards
       rm ++;
       // we have no underflow when rm is now 2^52 and tm was odd
