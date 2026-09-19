@@ -108,8 +108,8 @@ static inline int round_away(unsigned rm, u128 sign) {
 #define GUARD_MASK ((1u << GUARD) - 1)
 #define GUARD_HALF (1u << (GUARD - 1))
 
-/* The quotient error is less than 128 normalized Q128 units. */
-#define ZIV_GATE 128u
+/* The quotient error is less than 68 normalized Q128 units (tanq_error.md). */
+#define ZIV_GATE 72u
 
 static inline __float128 asf128(u128 t) {
 #if defined(__SSE4_1__) && !defined(__clang__)
@@ -431,36 +431,11 @@ static inline u128 mhi_approx(u128 x, u128 y) {
   return xh * yh + ((xh * yl) >> 64) + ((xl * yh) >> 64);
 }
 
-static inline u256 add_256(u256 a, u256 b) {
-  u256 r;
-  int c = __builtin_add_overflow(a.l[0], b.l[0], &r.l[0]);
-  r.l[1] = a.l[1] + b.l[1] + c;
-  return r;
-}
-
 static inline u256 sub_256(u256 a, u256 b) {
   u256 r;
   int c = __builtin_sub_overflow(a.l[0], b.l[0], &r.l[0]);
   r.l[1] = a.l[1] - b.l[1] - c;
   return r;
-}
-
-// a + b or a - b without a data-dependent branch
-static inline u256 add_signed_256(u256 a, u256 b, int negative) {
-  u128 mask = -(u128)negative;
-  u256 nb = {{b.l[0] ^ mask, b.l[1] ^ mask}}, one = {{(u128)negative, 0}};
-  return add_256(a, add_256(nb, one));
-}
-
-// f << shift in the 256-bit frame, for shift < 128
-static inline u256 place_256(u128 f, unsigned shift) {
-  u256 r = {{f << shift, (f >> 1) >> (127 - shift)}};
-  return r;
-}
-
-// the top 128 bits of s << shift, for shift < 64
-static inline u128 top_256(u256 s, unsigned shift) {
-  return (s.l[1] << shift) | ((s.l[0] >> 1) >> (127 - shift));
 }
 
 // x >> shift with the bit below it folded into the last bit, 0 < shift < 128
@@ -634,11 +609,10 @@ static inline int reduce(u128 m, int e, residual *r) {
   u64 low = (g1 << lz) | (g0 >> (64 - lz));
   u128 g = ((u128)high << 64) | low, ph, pl;
   wmul(g, PIO2_128, &ph, &pl);
-  int lzt = clz128(ph);
-  u256 t = {{pl, ph}};
+  int lzt = !(ph >> 127); // g and pi/2 are normalized: ph >= 2^126
   r->n = n;
   r->negative = negative;
-  r->t1 = top_256(t, lzt);
+  r->t1 = lzt ? (ph << 1) | (pl >> 127) : ph;
   r->et = 1 - (lz + lzt);
   return 1;
 }
@@ -673,8 +647,50 @@ static inline u128 cos_corr(u128 u1, u128 u, u128 v) {
 #undef C
 }
 
-/* One reduction and one residual evaluation for both unrounded outputs. */
-static inline int fast_pair(u128 m, int e, u128 f[2], int ex[2], u128 sg[2]) {
+/* The recombination frame: hi*2^-64 + lo*2^-192.  The 64 bits a 256-bit
+   frame would add sit 2^-57 guard units down, and cutting the frame on a
+   64-bit limb keeps every variable shift below narrower than 64 bits. */
+typedef struct { u128 lo; u64 hi; } u192;
+
+static inline u192 sub_192(u192 a, u192 b) {
+  u192 r;
+  int c = __builtin_sub_overflow(a.lo, b.lo, &r.lo);
+  r.hi = a.hi - b.hi - c;
+  return r;
+}
+
+// a + b or a - b without a data-dependent branch
+static inline u192 add_signed_192(u192 a, u192 b, int negative) {
+  u128 mask = -(u128)negative, t;
+  u192 r;
+  int c0 = __builtin_add_overflow(b.lo ^ mask, (u128)negative, &t);
+  int c1 = __builtin_add_overflow(a.lo, t, &r.lo);
+  r.hi = a.hi + (b.hi ^ (u64)mask) + c0 + c1;
+  return r;
+}
+
+// x >> shift for 0 < shift < 64
+static inline u192 shr_192(u192 x, unsigned shift) {
+  shift &= 63;
+  u192 r = {(x.lo >> shift) | ((u128)x.hi << 64 << (64 - shift)), x.hi >> shift};
+  return r;
+}
+
+// the frame normalized to 128 bits; it is above 2^-8, so its top limb is not zero
+static inline u128 frame_top(u192 f, int *e2) {
+  int lz = __builtin_clzll(f.hi);
+  u128 top = ((u128)f.hi << 64) | (u64)(f.lo >> 64);
+  *e2 = -lz;
+  return (top << lz) | (((u64)f.lo >> 1) >> (63 - lz));
+}
+
+/* One reduction and one residual evaluation for both unrounded outputs.
+   sin A and cos A at the breakpoint-plus-residual angle A are formed once;
+   the quadrant only picks which is the numerator f[0] and flips the sign.
+   theta = t1*2^(et-128) with -57 <= et <= -7, so the sine term is placed by
+   a left shift of et+64 and the cosine term, which rides theta^2, by two
+   right shifts of -et.  The direct path is the breakpoint j = 0. */
+static inline int fast_pair(u128 m, int e, u128 f[2], int ex[2], u128 *flip) {
   residual r;
   if (e < DIRECT) {
     r.n = r.negative = 0;
@@ -684,54 +700,69 @@ static inline int fast_pair(u128 m, int e, u128 f[2], int ex[2], u128 sg[2]) {
   u128 u, v, u1;
   squares(r.t1, r.et, &u, &v, &u1);
   u128 s1 = sin_frac(r.t1, u, v), c1 = cos_corr(u1, u, v);
-  for (int cosine = 0; cosine < 2; cosine++) {
-    int k = (r.n >> 7) + cosine, want_cos = k & 1, j = r.n & 127;
-    sg[cosine] = (k & 2) ? SIGN_MASK : 0;
-    if (j == 0 && !want_cos) {
-      int lz = clz128(s1);
-      sg[cosine] ^= r.negative ? SIGN_MASK : 0;
-      f[cosine] = s1 << lz;
-      ex[cosine] = r.et - lz;
-      continue;
-    }
-    const u128 *first = SINCOS[j][want_cos], *second = SINCOS[j][!want_cos];
-    u256 base = {{first[1], first[2]}};
-    u256 c = place_256(mhi_approx(first[2], c1), 2 * r.et + 128);
-    u256 ss = place_256(mhi_approx(second[2], s1), r.et + 128);
-    u256 ff = add_signed_256(sub_256(base, c), ss, r.negative != want_cos);
-    int lz = clz128(ff.l[1]);
-    f[cosine] = top_256(ff, lz);
-    ex[cosine] = -lz;
+  int odd = (r.n >> 7) & 1, j = r.n & 127;
+  const u128 *S = SINCOS[j][0], *C = SINCOS[j][1];
+  unsigned down = -r.et, up = (r.et + 64) & 63;
+  u128 pcc = mhi_approx(C[2], c1), pss = mhi_approx(S[2], s1);
+  u192 cb = {C[1] >> 64 | C[2] << 64, C[2] >> 64};
+  u192 cc = {pcc << 64, pcc >> 64};
+  cc = shr_192(shr_192(cc, down), down);
+  u192 ss = {pss << up, (u64)(pss >> 64) >> (64 - up)};
+  u192 cosA = add_signed_192(sub_192(cb, cc), ss, !r.negative);
+  f[!odd] = frame_top(cosA, &ex[!odd]);
+  *flip = odd ? SIGN_MASK : 0;
+  if (__builtin_expect(j == 0, 0)) { // sin(theta) keeps its floating form
+    int lz = clz128(s1);
+    f[odd] = s1 << lz;
+    ex[odd] = r.et - lz;
+    *flip ^= r.negative ? SIGN_MASK : 0;
+  } else {
+    u128 psc = mhi_approx(S[2], c1), pcs = mhi_approx(C[2], s1);
+    u192 sb = {S[1] >> 64 | S[2] << 64, S[2] >> 64};
+    u192 sc = {psc << 64, psc >> 64};
+    sc = shr_192(shr_192(sc, down), down);
+    u192 cs = {pcs << up, (u64)(pcs >> 64) >> (64 - up)};
+    u192 sinA = add_signed_192(sub_192(sb, sc), cs, r.negative);
+    f[odd] = frame_top(sinA, &ex[odd]);
   }
   return 1;
 }
 
-/* One base-2^64 division digit: r < d, d >= 2^127.  The estimate from the
-   high divisor limb is at most two too large. Products and remainders are
-   exact, including the carry beyond the 128-bit low word. */
-static inline u64 div_digit(u128 *r, u128 d) {
-  u64 dh = d >> 64;
-  u64 q = (*r >> 64) == dh ? UINT64_MAX : (u64)(*r / dh);
-  u128 hi, lo;
-  wmul(d, q, &hi, &lo);
-  u128 nh = *r >> 64, nl = *r << 64;
-  while (hi > nh || (hi == nh && lo > nl)) {
-    q--;
-    u128 old = lo;
-    lo -= d;
-    hi -= old < d;
-  }
-  *r = nl - lo;
+/* floor(n/d) for n < d*2^64, saturating when the top limb of n equals d.
+   A 128-by-64-bit C division calls libgcc; the guard makes the quotient fit
+   one limb, which is what the x86-64 instruction requires. */
+static inline u64 div_limb(u128 n, u64 d) {
+  if (__builtin_expect((u64)(n >> 64) == d, 0)) return UINT64_MAX;
+#if defined(__x86_64__) && defined(__GNUC__)
+  u64 q, rem;
+  __asm__("divq %[d]" : "=a"(q), "=d"(rem) : "a"((u64)n), "d"((u64)(n >> 64)), [d] "rm"(d) : "cc");
   return q;
+#else
+  return (u64)(n / d);
+#endif
 }
 
-/* floor(a/b * 2^(128-up)), with a,b normalized and up=(a>=b). */
+/* Approximate a/b * 2^(128-up), with a,b normalized and up=(a>=b), through
+   the reciprocal 2^128/b = 2^128 + X.  One limb division gives
+   x0 = floor((2^128-1)/bh) - 2^64, whose residual e = 2^128 - b*(1+x0/2^64)
+   satisfies -2^65 < e <= 2^64; one signed Newton step squares it.  With
+   the floors below and the approximate product, the quotient before the
+   final shift errs by more than -8 and less than 2 units (tanq_error.md).
+   X is below zero only if b is within a few units of 2^128, where bh is all
+   ones; the quotient is clamped into [2^127, 2^128) as the exact one is. */
 static inline u128 divide_fast(u128 a, u128 b, int *up) {
   *up = a >= b;
   u128 r = *up ? a - b : a;
-  u128 q = (u128)div_digit(&r, b) << 64;
-  q |= div_digit(&r, b);
-  return *up ? SIGN_MASK | (q >> 1) : q;
+  u64 bh = b >> 64, bl = b;
+  u64 x0 = div_limb(((u128)~bh << 64) | UINT64_MAX, bh);
+  u128 t = b + (u128)x0 * bh + (((u128)x0 * bl) >> 64); // mod 2^128
+  __int128 e = (__int128)-t; // t is within 2^66 of 2^128: no signed overflow
+  __int128 step = e + (__int128)x0 * (i64)(e >> 64) + (__int128)(((u128)x0 * (u64)e) >> 64);
+  u128 X = ((u128)x0 << 64) + (u128)step, q = mhi_approx(r, X);
+  if (__builtin_expect(!(bh == UINT64_MAX && X >> 127), 1))
+    if (__builtin_add_overflow(q, r, &q)) q = ~(u128)0;
+  if (*up) return SIGN_MASK | (q >> 1);
+  return q < SIGN_MASK ? SIGN_MASK : q;
 }
 
 /* Round the fast frame on its fixed 15-bit guard; 0 hands the window around
@@ -875,21 +906,57 @@ static inline int cmp_384(u384 a, u384 b) {
   return 0;
 }
 
-/* Exact restoring division, truncated to a normalized 384-bit fraction. */
+/* One radix-2^64 digit of a normalized six-limb division. The estimate
+   from the leading divisor limb is at most two too large. Correct against
+   the full seven-limb product before retaining the exact remainder. */
+static inline u64 div_digit_wide(u64 r[6], const u64 d[6]) {
+  u64 q = div_limb(((u128)r[5] << 64) | r[4], d[5]);
+  u64 p[7], n[7] = {0, r[0], r[1], r[2], r[3], r[4], r[5]};
+  u128 carry = 0;
+  for (int i = 0; i < 6; i++) {
+    carry += (u128)d[i]*q;
+    p[i] = carry;
+    carry >>= 64;
+  }
+  p[6] = carry;
+  for (;;) {
+    int i = 6;
+    while (i >= 0 && p[i] == n[i]) i--;
+    if (i < 0 || p[i] < n[i]) break;
+    q--;
+    u128 borrow = 0;
+    for (int j = 0; j < 6; j++) {
+      u128 sub = (u128)d[j] + borrow;
+      borrow = (u128)p[j] < sub;
+      p[j] -= (u64)sub;
+    }
+    p[6] -= (u64)borrow;
+  }
+  u128 borrow = 0;
+  for (int i = 0; i < 6; i++) {
+    u128 sub = (u128)p[i] + borrow;
+    borrow = (u128)n[i] < sub;
+    r[i] = n[i] - (u64)sub;
+  }
+  return q;
+}
+
+/* Exact division, truncated to a normalized 384-bit fraction. Six radix
+   digits replace 383/384 single-bit restoring steps. */
 static u384 divide_wide(u384 a, u384 b, int *up) {
   *up = cmp_384(a, b) >= 0;
-  u384 q = {{0, 0, 0}}, r = a;
-  if (*up) {
-    q.l[2] = SIGN_MASK;
-    r = sub_384(r, b);
+  if (*up) a = sub_384(a, b);
+  u64 r[6], d[6];
+  for (int i = 0; i < 3; i++) {
+    r[2*i] = a.l[i]; r[2*i+1] = a.l[i] >> 64;
+    d[2*i] = b.l[i]; d[2*i+1] = b.l[i] >> 64;
   }
-  for (int bit = 383 - *up; bit >= 0; bit--) {
-    int carry = r.l[2] >> 127;
-    r = shl_384(r, 1);
-    if (carry || cmp_384(r, b) >= 0) {
-      r = sub_384(r, b);
-      q.l[bit / 128] |= (u128)1 << (bit % 128);
-    }
+  u384 q = {{0, 0, 0}};
+  for (int i = 5; i >= 0; i--)
+    q.l[i/2] |= (u128)div_digit_wide(r, d) << (64*(i%2));
+  if (*up) {
+    q = shr_384_sat(q, 1);
+    q.l[2] |= SIGN_MASK;
   }
   return q;
 }
@@ -1206,16 +1273,16 @@ __float128 cr_tanq(__float128 x) {
   }
   u128 m = (ax & MANTISSA_MASK) | IMPLICIT_BIT;
   int e = (int)(ax >> 112) - BIAS;
-  u128 f[2], sg[2];
+  u128 f[2], flip;
   int ex[2], up;
 #ifndef CORE_MATH_TANQ_FORCE_ACCURATE
-  if (fast_pair(m, e, f, ex, sg)) {
+  if (fast_pair(m, e, f, ex, &flip)) {
     u128 q = divide_fast(f[0], f[1], &up);
-    if (round_fast(q, ex[0] - ex[1] + up, sign ^ sg[0] ^ sg[1], rm, &res))
+    if (round_fast(q, ex[0] - ex[1] + up, sign ^ flip, rm, &res))
       goto done;
   }
 #else
-  (void)f; (void)sg; (void)ex; (void)up;
+  (void)f; (void)flip; (void)ex; (void)up;
   (void)fast_pair; (void)divide_fast; (void)round_fast;
 #endif
   int range_flags = 0;
