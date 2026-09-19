@@ -6,3 +6,4 @@ src/*/*/check_exhaustive
 src/*/*/check_worst
 src/*/*/check_special
 src/*/*/perf
+src/binary128/tan/check_internal

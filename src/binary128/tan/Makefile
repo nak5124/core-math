@@ -1,0 +1,25 @@
+FUNCTION_UNDER_TEST := tanq
+
+include ../support/Makefile.univariate
+
+CFLAGS += -DMPFR_WANT_FLOAT128 -Dmpfr_float128=__float128
+LDFLAGS += -lquadmath
+
+all:: check_special
+
+check_special: check_special.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
+	$(CC) $(OPENMP) -o $@ $^ -lmpfr -lm $(LDFLAGS)
+
+check_special.o: check_special.c
+	$(CC) $(CFLAGS) $(OPENMP) -o $@ $^ -c
+
+clean::
+	rm -f check_special
+
+# Internal arithmetic is checked against GMP/MPFR, never against a sibling
+# implementation of the same integer algorithms.
+check_internal: check_internal.c tanq.c
+	$(CC) $(CFLAGS) -o $@ $< -lmpfr -lgmp -lm $(LDFLAGS)
+
+clean::
+	rm -f check_internal
