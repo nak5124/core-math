@@ -33213,3 +33213,5 @@
 0x1.fffffffff8000p+37,0x1.0000000000000p+20
 0x1.fffffffffe000p+39,0x1.0000000000000p+21
 0x1.ffffffffff800p+41,0x1.0000000000000p+22
+# the following inputs generate a spurious inexact exception
+0x0.0000280005a7dp-1022,0x0.000060000d92cp-1022
