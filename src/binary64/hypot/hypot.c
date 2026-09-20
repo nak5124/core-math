@@ -81,7 +81,7 @@ static inline double fasttwosum(double x, double y, double *e){
 /* This routine deals with the case where both x and y are subnormal.
    a is the encoding of x, and b is the encoding of y.
    We assume x >= y > 0 thus 2^52 > a >= b > 0. */
-static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
+static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b, const fexcept_t flag){
   double af = (i64)a, bf = (i64)b;
   int underflow = 0;
   // af and bf are x and y multiplied by 2^1074, thus integers
@@ -99,6 +99,7 @@ static double __attribute__((noinline)) as_hypot_denorm(u64 a, u64 b){
     D += 2 * tm - 1;   // (tm-1)^2 = tm^2 - 2*tm + 1
     tm --;
   }
+  if(D==0)set_flags(flag);
   // tm = floor(sqrt(a^2+b^2)) and 0 <= D = a^2+b^2 - tm^2 < 2*tm+1
   // if D=0 and tm is even, the result is exact
   // if D=0 and tm is odd, the result is a midpoint
@@ -243,7 +244,7 @@ double cr_hypot(double x, double y){
     if(__builtin_expect(!(ex>>52),0)) // x is subnormal too
       /* we can't have x=0 here since then y=0 because 0<=y<=x,
          and the case y=0 was tested above */
-      return as_hypot_denorm(ex,ey);
+      return as_hypot_denorm(ex,ey,flag);
     int nz = __builtin_clzll(ey);
     ey <<= nz-11;
     ey &= ~0ull>>12;
