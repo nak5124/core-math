@@ -425,3 +425,27 @@ errno enabled throughout, all four modes unless stated):
 
 As with the initial implementation, the MPFR samples are regression evidence
 and the hard-case corpus is not exhaustive.
+
+## Equivalent limb arithmetic (compiler review, 2026-09-21)
+
+The follow-up compiler changes preserve every intermediate integer result:
+
+* `shr_round` distinguishes shifts below 64, equal to 64, and above 64.
+  The boundary case folds bit 63 of the low limb; all evaluated 64-bit
+  shifts are in `[0,63]`. The result is the same shifted word with the
+  adjacent discarded bit ORed into its low bit.
+* The 192-bit shift and frame normalization explicitly funnel 64-bit limbs.
+  The existing contracts (`0 < shift < 64`, nonzero frame top limb) ensure
+  valid shifts. The split right funnel handles zero normalization shift.
+* In each reduction-product column, with `B=2^64`, `A=low*current`, and
+  `C=high*previous+carry`, the output is `(A+C) mod B` and the next carry is
+  `floor(A/B)+floor(C/B)+floor(((A mod B)+(C mod B))/B)`.
+  This exactly reproduces the original column even when `A+C >= B^2`.
+  The low-limb sum is below `2*B`; `high < 2^49` bounds the incoming carry
+  below `B+2^50` and `C` below `2^114`, so the 128-bit additions cannot
+  overflow. Explicit first/last columns preserve all `W+2` product limbs
+  and the zero sentinel for both the six- and ten-limb windows.
+
+The reciprocal/Newton divider, clamping rules, error radii, and adaptive
+calculation are unchanged. See [the compiler review](compiler_review.md)
+for measurements, verification coverage and reproduction commands.

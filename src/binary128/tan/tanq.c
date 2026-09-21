@@ -440,7 +440,14 @@ static inline u256 sub_256(u256 a, u256 b) {
 
 // x >> shift with the bit below it folded into the last bit, 0 < shift < 128
 static inline u128 shr_round(u128 x, unsigned shift) {
-  return (x >> shift) | ((x >> (shift - 1)) & 1);
+  u64 lo = x, hi = x >> 64;
+  /* The boundary at 64 takes its folded bit from the low limb. */
+  if (shift >= 64) {
+    unsigned s = shift - 64;
+    return (hi >> s) | ((shift == 64 ? lo >> 63 : hi >> (s - 1)) & 1);
+  }
+  return ((u128)(hi >> shift) << 64) | (lo >> shift)
+       | (hi << (64 - shift)) | ((lo >> (shift - 1)) & 1);
 }
 
 static inline u384 add_384(u384 a, u384 b) {
@@ -537,17 +544,23 @@ static inline u256 mul_hi_256(u256 a, u256 b) {
    significant first: the product fills W+2 of them and the spare top limb
    stays zero so the funnels' last read is in range. */
 static inline void product(u128 m, const u64 *win, int W, u64 *p) {
-  u128 low = (u64)m, high = m >> 64, carry = 0;
-  for (int c = 0; c < W + 3; c++) {
-    u128 cur = c < W ? win[W - 1 - c] : 0;
-    u128 prev = (c >= 1 && c <= W) ? win[W - c] : 0;
-    /* high < 2^49 keeps the first sum under 2^114; only the second can
-       spill, and its bit goes straight into the carry. */
-    u128 acc = high * prev + carry, t;
-    int spill = __builtin_add_overflow(acc, low * cur, &t);
-    p[c] = (u64)t;
-    carry = (t >> 64) | ((u128)spill << 64);
+  u64 low = m, high = m >> 64;
+  u128 carry = (u128)low * win[W - 1];
+  p[0] = carry;
+  carry >>= 64;
+  for (int c = 1; c < W; c++) {
+    u128 a = (u128)low * win[W - 1 - c];
+    u128 b = (u128)high * win[W - c] + carry;
+    /* high < 2^49 bounds b below 2^114.  Accumulate the low
+       limbs separately so their carry is at most one. */
+    u128 sum = (u128)(u64)a + (u64)b;
+    p[c] = sum;
+    carry = (a >> 64) + (b >> 64) + (sum >> 64);
   }
+  carry += (u128)high * win[0];
+  p[W] = carry;
+  p[W + 1] = carry >> 64;
+  p[W + 2] = 0;
 }
 
 /* The 2/pi window and the product's alignment for x = m*2^(e-112): bits of
@@ -672,16 +685,21 @@ static inline u192 add_signed_192(u192 a, u192 b, int negative) {
 // x >> shift for 0 < shift < 64
 static inline u192 shr_192(u192 x, unsigned shift) {
   shift &= 63;
-  u192 r = {(x.lo >> shift) | ((u128)x.hi << 64 << (64 - shift)), x.hi >> shift};
+  u64 lo = x.lo, mid = x.lo >> 64;
+  u64 bottom = (lo >> shift) | (mid << (64 - shift));
+  u64 middle = (mid >> shift) | (x.hi << (64 - shift));
+  u192 r = {((u128)middle << 64) | bottom, x.hi >> shift};
   return r;
 }
 
 // the frame normalized to 128 bits; it is above 2^-8, so its top limb is not zero
 static inline u128 frame_top(u192 f, int *e2) {
   int lz = __builtin_clzll(f.hi);
-  u128 top = ((u128)f.hi << 64) | (u64)(f.lo >> 64);
+  u64 mid = f.lo >> 64;
+  u64 hi = (f.hi << lz) | ((mid >> 1) >> (63 - lz));
+  u64 lo = (mid << lz) | (((u64)f.lo >> 1) >> (63 - lz));
   *e2 = -lz;
-  return (top << lz) | (((u64)f.lo >> 1) >> (63 - lz));
+  return ((u128)hi << 64) | lo;
 }
 
 /* One reduction and one residual evaluation for both unrounded outputs.
