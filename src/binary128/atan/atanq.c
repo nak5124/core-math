@@ -1284,7 +1284,7 @@ __float128 as_atanq_accurate(__float128 x){
 
 #ifndef __APPLE__
 // somewhat we need to include that for icx and the Intel math library
-extern __float128 __atanq (__float128, __float128);
+extern __float128 __atanq (__float128);
 
 // atanq is called atanf128 in GNU libc, and __atanq in the Intel math library
 __float128 atanq(__float128 x) {

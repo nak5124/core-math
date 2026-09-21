@@ -1362,7 +1362,7 @@ __float128 as_asinq_accurate(__float128 x){
 
 #ifndef __APPLE__
 // somewhat we need to include that for icx and the Intel math library
-extern __float128 __asinq (__float128, __float128);
+extern __float128 __asinq (__float128);
 
 // asinq is called asinf128 in GNU libc, and __asinq in the Intel math library
 __float128 asinq(__float128 x) {

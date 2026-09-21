@@ -1392,7 +1392,7 @@ __float128 as_acosq_accurate(__float128 x){
 
 #ifndef __APPLE__
 // somewhat we need to include that for icx and the Intel math library
-extern __float128 __acosq (__float128, __float128);
+extern __float128 __acosq (__float128);
 
 // acosq is called acosf128 in GNU libc, and __acosq in the Intel math library
 __float128 acosq(__float128 x) {
