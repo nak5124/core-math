@@ -401,7 +401,6 @@ double cr_atanpi (double x){
   if (__builtin_expect(at < 0x3f7b21c475e6362aull, 0)) { // |x| < 0.006624
     if (at < 0x3c90000000000000ull) // |x| < 2^-54
       return atanpi_small (x);
-    if (__builtin_expect (x == 0, 0)) return x;
     static const double ch2[] = {
       -0x1.5555555555555p-2, 0x1.99999999998c1p-3, -0x1.249249176aecp-3, 0x1.c711fd121ae8p-4};
     double x2 = x*x, x3 = x*x2, x4 = x2*x2;
