@@ -165,7 +165,7 @@ cr_cbrt (double x)
   cvt5.u += (int64_t)it<<52;
   cvt5.u |= sign<<63;
   double zz = cvt5.f;
-  /* cbrt(x) = cbrt(zz)*2^(et-1365) where 1 <= zz < 8 */
+  /* cbrt(x) = cbrt(zz)*2^(et-1365) where 1 <= |zz| < 8 */
   uint64_t isc = ((const uint64_t*)escale)[it];
   isc |= sign<<63;
   b64u64_u cvt2 = {.u = isc};
