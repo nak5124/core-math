@@ -1751,6 +1751,11 @@ double cr_pow (double x, double y) {
   exp_1 (&res_h, &res_l, rh, rl, s); /* 1 <= res_h < 2 */
   /* See Lemma 7 from reference [5] for the error analysis of exp_1(). */
 
+  /* avoid a spurious underflow: if |rh| < 2^-511, then exp(rh+rl) will
+     round to 1 */
+  if (__builtin_expect (rh * rh < 0x1p-1022, 0))
+    set_flag (flag);
+
   /* The error bounds 2^-63.797 and 2^-57.579 are those from Algorithm
      phase_1 from reference [5]. */
   static const double err[] = { 0x1.27p-64, /* 2^-63.797 < 0x1.27p-64 */
