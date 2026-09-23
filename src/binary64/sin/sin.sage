@@ -52,8 +52,7 @@ def computeS1(out=true):
    return S
 
 def out_u128(s):
-   if s==2^128: # cap to 2^128-1
-      s -= 1
+   assert 0<=s<2^128, "0<=s<2^128"
    h, l = divmod(s,2^64)
    print("  U128(" + hex(l) + "," + hex(h) + "),")
 
@@ -76,11 +75,13 @@ def computeS1u():
    R = RealField(128)
    print ("static const u128 S1u[33] = {")
    S = []
-   for i in range(33):
+   for i in range(64):
       s = n(sin(pi*i/2^6), 512)
-      s = round(s*2^128)
+      s = min(round(s*2^128),2^128-1) # cap to 2^128-1
       out_u128(s)
+      S.append(s)
    print ("};")
+   return S
 
 def computeS2u():
    R = RealField(128)
@@ -90,7 +91,9 @@ def computeS2u():
       s = n(sin(pi*i/2^12), 512)
       s = round(s*2^128)
       out_u128(s)
+      S.append(s)
    print ("};")
+   return S
 
 def computeC1(out=true):
    R = RealField(128)
@@ -122,15 +125,30 @@ def computeC2(out=true):
       print ("};")
    return S
 
+# compute absolute value
+def computeC1u():
+   R = RealField(128)
+   print ("static const u128 C1u[64] = {")
+   S = []
+   for i in range(64):
+      s = abs(n(cos(pi*i/2^6), 512))
+      s = min(round(s*2^128),2^128-1) # cap to 2^128-1
+      out_u128(s)
+      S.append(s)
+   print ("};")
+   return S
+
 def computeC2u():
    R = RealField(128)
    print ("static const u128 C2u[64] = {")
    S = []
    for i in range(64):
       s = n(cos(pi*i/2^12), 512)
-      s = round(s*2^128)
+      s = min(round(s*2^128),2^128-1) # cap to 2^128-1
       out_u128(s)
+      S.append(s)
    print ("};")
+   return S
 
 # compute table of cos(2*pi*i/2^11) for 0 <= i < 256
 def computeC(out=true):
@@ -1363,3 +1381,77 @@ def checkU1U2():
             s2h, _ = muldd (R(u2[i2][0]), R(u2[i2][1]), R(u1[i1][2]), R(u1[i1][3]))
             if not fast2sum_ok(s1h,s2h):
                print (i1, i2, s1h, s2h, R.rounding_mode())
+
+def mhUU(a,b):
+   assert a in ZZ and 0<=a<2^128, "a in ZZ and 0<=a<2^128"
+   assert b in ZZ and 0<=b<2^128, "b in ZZ and 0<=b<2^128"
+   ah,al = divmod(a,2^64)
+   bh,bl = divmod(b,2^64)
+   h = ah*bh
+   t1 = ah*bl
+   t2 = al*bh
+   return h + (t1>>64) + (t2>>64)
+
+# compute maximal error for sz
+# i1= 12 i2= 53 err= 1.45607166165817e-38
+# i1= 0 i2= 0 minsz= 0
+# i1= 32 i2= 0 maxsz= 340282366920938463463374607431768211453
+def computeErr_sz():
+   maxerr = 0
+   minsz = infinity
+   maxsz = -infinity
+   S1u = computeS1u()
+   S2u = computeS2u()
+   C1u = computeC1u()
+   C2u = computeC2u()
+   for i1 in range(64):
+      for i2 in range(64):
+         lam = mhUU(S1u[i1],C2u[i2])
+         mu = mhUU(C1u[i1],S2u[i2])
+         if i1<32:
+            sz = lam+mu
+         else:
+            sz = lam-mu
+         z = pi*(i1/2^6+i2/2^12)
+         err = abs(n(sz/2^128-sin(z),200))
+         if err>maxerr:
+            print ("i1=", i1, "i2=", i2, "err=", RR(err))
+            maxerr = err
+         if sz<minsz:
+            print ("i1=", i1, "i2=", i2, "minsz=", sz)
+            minsz = sz
+         if sz>maxsz:
+            print ("i1=", i1, "i2=", i2, "maxsz=", sz)
+            maxsz = sz
+
+# compute maximal error for cz
+# i1= 44 i2= 53 err= 1.45607166165817e-38
+# i1= 32 i2= 0 mincz= 0
+# i1= 0 i2= 0 maxcz= 340282366920938463463374607431768211453
+def computeErr_cz():
+   maxerr = 0
+   mincz = infinity
+   maxcz = -infinity
+   S1u = computeS1u()
+   S2u = computeS2u()
+   C1u = computeC1u()
+   C2u = computeC2u()
+   for i1 in range(64):
+      for i2 in range(64):
+         lam = mhUU(C1u[i1],C2u[i2])
+         mu = mhUU(S1u[i1],S2u[i2])
+         if i1<32:
+            cz = lam-mu
+         else:
+            cz = lam+mu
+         z = pi*(i1/2^6+i2/2^12)
+         err = abs(n(cz/2^128-abs(cos(z)),200))
+         if err>maxerr:
+            print ("i1=", i1, "i2=", i2, "err=", RR(err))
+            maxerr = err
+         if cz<mincz:
+            print ("i1=", i1, "i2=", i2, "mincz=", cz)
+            mincz = cz
+         if cz>maxcz:
+            print ("i1=", i1, "i2=", i2, "maxcz=", cz)
+            maxcz = cz
