@@ -12,6 +12,8 @@ def computeT():
 # given x a 128-bit float, print it
 def out_dint(x):
    s, m, e = x.sign_mantissa_exponent()
+   if m==0: # force exponent to 0 for x=0
+      e=-128
    while m!=0 and m.nbits()<128:
       m *= 2
       e -= 1
@@ -32,6 +34,120 @@ def computeS(out=true):
       S.append(s)
    if out:
       print ("};")
+   return S
+
+def computeS1(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t S1[64] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^6), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+def out_u128(s):
+   assert 0<=s<2^128, "0<=s<2^128"
+   h, l = divmod(s,2^64)
+   print("  U128(" + hex(l) + "," + hex(h) + "),")
+
+def computeS2(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t S2[64] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^12), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+def computeS1u():
+   R = RealField(128)
+   print ("static const u128 S1u[33] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^6), 512)
+      s = min(round(s*2^128),2^128-1) # cap to 2^128-1
+      out_u128(s)
+      S.append(s)
+   print ("};")
+   return S
+
+def computeS2u():
+   R = RealField(128)
+   print ("static const u128 S2u[64] = {")
+   S = []
+   for i in range(64):
+      s = n(sin(pi*i/2^12), 512)
+      s = round(s*2^128)
+      out_u128(s)
+      S.append(s)
+   print ("};")
+   return S
+
+def computeC1(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t C1[64] = {")
+   S = []
+   for i in range(64):
+      s = n(cos(pi*i/2^6), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+def computeC2(out=true):
+   R = RealField(128)
+   if out:
+      print ("static const dint64_t C2[64] = {")
+   S = []
+   for i in range(64):
+      s = n(cos(pi*i/2^12), 512)
+      s = R(s)
+      if out:
+         out_dint(s)
+      S.append(s)
+   if out:
+      print ("};")
+   return S
+
+# compute absolute value
+def computeC1u():
+   R = RealField(128)
+   print ("static const u128 C1u[64] = {")
+   S = []
+   for i in range(64):
+      s = abs(n(cos(pi*i/2^6), 512))
+      s = min(round(s*2^128),2^128-1) # cap to 2^128-1
+      out_u128(s)
+      S.append(s)
+   print ("};")
+   return S
+
+def computeC2u():
+   R = RealField(128)
+   print ("static const u128 C2u[64] = {")
+   S = []
+   for i in range(64):
+      s = n(cos(pi*i/2^12), 512)
+      s = min(round(s*2^128),2^128-1) # cap to 2^128-1
+      out_u128(s)
+      S.append(s)
+   print ("};")
    return S
 
 # compute table of cos(2*pi*i/2^11) for 0 <= i < 256
@@ -1155,3 +1271,187 @@ def wc(e,parity="any"):
    q = bestq
    x = RR(q*2^(e-53))
    return x
+
+# compute double-double tables of sin(j/2^5), cos(j/2^5) for 0 <= j <= 2^7
+def T1():
+   print ("static const double T1[129][4] = {")
+   for j in [0..2^7]:
+      sh = RR(n(sin(j/2^5),200))
+      sl = RR(n(sin(j/2^5)-sh.exact_rational(),200))
+      ch = RR(n(cos(j/2^5),200))
+      cl = RR(n(cos(j/2^5)-ch.exact_rational(),200))
+      print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
+   print ("};")
+
+# compute double-double tables of sin(j/2^12), cos(j/2^12) for 0 <= j < 2^7
+def T2():
+   print ("static const double T2[128][4] = {")
+   for j in range(2^7):
+      sh = RR(n(sin(j/2^12),200))
+      sl = RR(n(sin(j/2^12)-sh.exact_rational(),200))
+      ch = RR(n(cos(j/2^12),200))
+      cl = RR(n(cos(j/2^12)-ch.exact_rational(),200))
+      print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
+   print ("};")
+
+# check if the 2nd operation of fast2sum_ok is exact
+def fast2sum_ok(a,b):
+   s = a+b
+   z = s-a
+   return z.exact_rational()==s.exact_rational()-a.exact_rational()
+
+# determine for which values of i1, i2 we have |s1h| >= |s2h|
+def checkT1T2():
+   t1 = dict()
+   for j in [0..2^7]:
+      sh = RR(n(sin(j/2^5),200))
+      sl = RR(n(sin(j/2^5)-sh.exact_rational(),200))
+      ch = RR(n(cos(j/2^5),200))
+      cl = RR(n(cos(j/2^5)-ch.exact_rational(),200))
+      t1[j] = (sh, sl, ch, cl)
+   t2 = dict()
+   for j in range(2^7):
+      sh = RR(n(sin(j/2^12),200))
+      sl = RR(n(sin(j/2^12)-sh.exact_rational(),200))
+      ch = RR(n(cos(j/2^12),200))
+      cl = RR(n(cos(j/2^12)-ch.exact_rational(),200))
+      t2[j] = (sh, sl, ch, cl)
+   for i1 in [0..2^7]:
+      for i2 in range(2^7):
+         for r in 'NZUD':
+            R = RealField(53,rnd='RND'+r)
+            s1h, _ = muldd (R(t1[i1][0]), R(t1[i1][1]), R(t2[i2][2]), R(t2[i2][3]))
+            s2h, _ = muldd (R(t2[i2][0]), R(t2[i2][1]), R(t1[i1][2]), R(t1[i1][3]))
+            # |s1h| < |s1h| and s1h<>0 for i1=100 and i2 in 68-127,
+            # and for i1=101 and i2 in 61-127
+            # exp(s1h) < exp(s2h) and s1h<>0 only for i1=101 and i2 in 65-127
+            if not fast2sum_ok(s1h,s2h):
+               print (i1, i2, s1h, s2h, R.rounding_mode())
+
+def muldd(xh,xl,ch,cl):
+   h = xh*ch
+   l = (xh*cl + xl*ch) + fma(xh, ch, -h)
+   return h, l
+
+# compute double-double tables of sin(j*pi/2^7), cos(j*pi/2^7)
+# for 0 <= j < 2^7
+def U1():
+   print ("static const double U1[128][4] = {")
+   for j in range(2^7):
+      sh = RR(n(sin(j*pi/2^7),200))
+      sl = RR(n(sin(j*pi/2^7)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^7),200))
+      cl = RR(n(cos(j*pi/2^7)-ch.exact_rational(),200))
+      print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
+   print ("};")
+
+# compute double-double tables of sin(j*pi/2^14), cos(j*pi/2^14)
+# for 0 <= j < 2^7
+def U2():
+   print ("static const double U2[128][4] = {")
+   for j in range(2^7):
+      sh = RR(n(sin(j*pi/2^14),200))
+      sl = RR(n(sin(j*pi/2^14)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^14),200))
+      cl = RR(n(cos(j*pi/2^14)-ch.exact_rational(),200))
+      print ("  {" + get_hex(sh) + ", " + get_hex(sl) + ", " + get_hex(ch) + ", " + get_hex(cl) + "},")
+   print ("};")
+
+# check the fasttwosum condition is satisfied
+def checkU1U2():
+   u1 = dict()
+   for j in range(2^7):
+      sh = RR(n(sin(j*pi/2^7),200))
+      sl = RR(n(sin(j*pi/2^7)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^7),200))
+      cl = RR(n(cos(j*pi/2^7)-ch.exact_rational(),200))
+      u1[j] = (sh, sl, ch, cl)
+   u2 = dict()
+   for j in range(2^7):
+      sh = RR(n(sin(j*pi/2^14),200))
+      sl = RR(n(sin(j*pi/2^14)-sh.exact_rational(),200))
+      ch = RR(n(cos(j*pi/2^14),200))
+      cl = RR(n(cos(j*pi/2^14)-ch.exact_rational(),200))
+      u2[j] = (sh, sl, ch, cl)
+   for i1 in range(2^7):
+      for i2 in range(2^7):
+         for r in 'NZUD':
+            R = RealField(53,rnd='RND'+r)
+            s1h, _ = muldd (R(u1[i1][0]), R(u1[i1][1]), R(u2[i2][2]), R(u2[i2][3]))
+            s2h, _ = muldd (R(u2[i2][0]), R(u2[i2][1]), R(u1[i1][2]), R(u1[i1][3]))
+            if not fast2sum_ok(s1h,s2h):
+               print (i1, i2, s1h, s2h, R.rounding_mode())
+
+def mhUU(a,b):
+   assert a in ZZ and 0<=a<2^128, "a in ZZ and 0<=a<2^128"
+   assert b in ZZ and 0<=b<2^128, "b in ZZ and 0<=b<2^128"
+   ah,al = divmod(a,2^64)
+   bh,bl = divmod(b,2^64)
+   h = ah*bh
+   t1 = ah*bl
+   t2 = al*bh
+   return h + (t1>>64) + (t2>>64)
+
+# compute maximal error for sz
+# i1= 12 i2= 53 err= 1.45607166165817e-38
+# i1= 0 i2= 0 minsz= 0
+# i1= 32 i2= 0 maxsz= 340282366920938463463374607431768211453
+def computeErr_sz():
+   maxerr = 0
+   minsz = infinity
+   maxsz = -infinity
+   S1u = computeS1u()
+   S2u = computeS2u()
+   C1u = computeC1u()
+   C2u = computeC2u()
+   for i1 in range(64):
+      for i2 in range(64):
+         lam = mhUU(S1u[i1],C2u[i2])
+         mu = mhUU(C1u[i1],S2u[i2])
+         if i1<32:
+            sz = lam+mu
+         else:
+            sz = lam-mu
+         z = pi*(i1/2^6+i2/2^12)
+         err = abs(n(sz/2^128-sin(z),200))
+         if err>maxerr:
+            print ("i1=", i1, "i2=", i2, "err=", RR(err))
+            maxerr = err
+         if sz<minsz:
+            print ("i1=", i1, "i2=", i2, "minsz=", sz)
+            minsz = sz
+         if sz>maxsz:
+            print ("i1=", i1, "i2=", i2, "maxsz=", sz)
+            maxsz = sz
+
+# compute maximal error for cz
+# i1= 44 i2= 53 err= 1.45607166165817e-38
+# i1= 32 i2= 0 mincz= 0
+# i1= 0 i2= 0 maxcz= 340282366920938463463374607431768211453
+def computeErr_cz():
+   maxerr = 0
+   mincz = infinity
+   maxcz = -infinity
+   S1u = computeS1u()
+   S2u = computeS2u()
+   C1u = computeC1u()
+   C2u = computeC2u()
+   for i1 in range(64):
+      for i2 in range(64):
+         lam = mhUU(C1u[i1],C2u[i2])
+         mu = mhUU(S1u[i1],S2u[i2])
+         if i1<32:
+            cz = lam-mu
+         else:
+            cz = lam+mu
+         z = pi*(i1/2^6+i2/2^12)
+         err = abs(n(cz/2^128-abs(cos(z)),200))
+         if err>maxerr:
+            print ("i1=", i1, "i2=", i2, "err=", RR(err))
+            maxerr = err
+         if cz<mincz:
+            print ("i1=", i1, "i2=", i2, "mincz=", cz)
+            mincz = cz
+         if cz>maxcz:
+            print ("i1=", i1, "i2=", i2, "maxcz=", cz)
+            maxcz = cz
