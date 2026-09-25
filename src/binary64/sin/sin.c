@@ -132,14 +132,6 @@ static inline u128 mhUU(u128 a, u128 b){
   return ahbh += (ahbl>>64)+(albh>>64);
 }
 
-#if 0
-// Prints a dint64_t value for debugging purposes
-static inline void print_dint(const dint64_t *a) {
-  printf("{.hi=0x%"PRIx64", .lo=0x%"PRIx64", .ex=%"PRId64", .sgn=0x%"PRIx64"}\n", a->hi, a->lo, a->ex,
-         a->sgn);
-}
-#endif
-
 /* Return Sr such that Sr/2^128 approximates sin2pi(r), for 0 <= r < 2^-14,
    where u/2^128 approximates r, u2/2^128 approximates r^2,
    u4/2^128 approximates r^4, and u2h = floor(u2/2^64). */
@@ -790,13 +782,9 @@ sin_large_accurate (double x)
   u128 Cr = evalPC (u2, u2h, u4);    // Cr/2^128 approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
-  // mul_dint (s1, s1, Cr);
   s1u = mhUU(s1u,Cr);
-
-  // mul_dint (c1, c1, Sr);
   c1u = mhUU(c1u,Sr);
 
-  // add_dint (s1, s1, c1);
   /* s1u/2^128 approximates sin(z)*cos(r) which is always >= 0, while
      c1u/2^128 approximates cos(z)*sin(r), where cos(z) > 0 for i1 < 32,
      and cos(z) <= for i1 >= 32, and sign(r) has the sign of r. */
