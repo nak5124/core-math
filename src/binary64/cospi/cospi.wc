@@ -43848,3 +43848,5 @@
 0x1.ffb2117e97295p-1
 0x1.ffcdee8168d6bp-1
 0x1.fff2117e97295p-1
+# the following produced an undefined shift
+3.0

@@ -414711,3 +414711,5 @@ inf,-0x1.000002p+125
 # added test for spurious divbyzero exception
 # https://sympa.inria.fr/sympa/arc/core-math/2026-02/msg00032.html
 2,inf
+# the following test produced an undefined shift
+0x1.ffff36p-1f,0x1.03ac88p+24f
