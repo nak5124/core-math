@@ -315,8 +315,6 @@ __float128 rsqrtq(__float128 x) {
 #ifdef __INTEL_CLANG_COMPILER
   return __rsqrtq (x);
 #else
-/* rsqrtf128 was only added in GNU libc 2.42,
-   thus for now we use the CORE-MATH function */
-  return cr_rsqrtq (x);
+  return rsqrtf128 (x);
 #endif
 }
