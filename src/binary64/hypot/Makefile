@@ -2,7 +2,7 @@ FUNCTION_UNDER_TEST := hypot
 
 include ../support/Makefile.bivariate
 
-CFLAGS += -ffinite-math-only -fno-math-errno
+CFLAGS += -fno-math-errno
 
 all:: check_special
 

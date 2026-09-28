@@ -226,13 +226,6 @@ double cr_hypot(double x, double y){
   x = __builtin_fabs(x), y = __builtin_fabs(y);
   if(__builtin_expect(ex==emsk||ey==emsk, 0)){
     /* Either x or y is NaN or Inf */
-    /* It seems clang 21.1.8 miscompiles this code:
-       when x=y=snan[7ff4000000000000], it yields +inf instead of qnan,
-       and when x=+inf and y=qnan, it yields qnan instead of +inf.
-       Adding volatile seems to fix this issue. */
-#ifdef __clang__
-    volatile
-#endif
     u64 wx = xi.u<<1, wy = yi.u<<1, wm = emsk<<1;
     int ninf = (wx==wm) ^ (wy==wm);
     int nqnn = ((wx>>52)==0xfff) ^ ((wy>>52)==0xfff);
@@ -242,7 +235,8 @@ double cr_hypot(double x, double y){
     if (ninf && nqnn) return (wx==wm) ? x * x : y * y;
     return x + y; /* inf, nan */
   }
-  double u = __builtin_fmax(x,y), v = __builtin_fmin(x,y);
+  // now both x and y are finite (neither NaN nor Inf)
+  double u = x > y ? x : y, v = x > y ? y : x;
   b64u64_u xd = {.f = u}, yd = {.f = v};
   ey = yd.u;
   if(__builtin_expect(!(ey>>52),0)){ // y is subnormal
