@@ -879,3 +879,17 @@ __float128 cr_logq(__float128 x) {
   if(__builtin_expect(oflagp != flagp, 0)) _mm_setcsr(flagp);
   return reinterpret_u128_as_f128(res.a); // put into xmm register
 }
+
+#ifndef __APPLE__
+// somewhat we need to include that for icx and the Intel math library
+extern __float128 __logq (__float128);
+
+// logq is called logf128 in GNU libc, and __logq in the Intel math library
+__float128 logq(__float128 x) {
+#ifdef __INTEL_CLANG_COMPILER
+  return __logq (x);
+#else
+  return logf128 (x);
+#endif
+}
+#endif
