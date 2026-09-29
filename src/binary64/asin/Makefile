@@ -2,6 +2,8 @@ FUNCTION_UNDER_TEST := asin
 
 include ../support/Makefile.univariate
 
+CFLAGS += -fno-math-errno
+
 all:: check_special
 
 check_special: check_special.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
