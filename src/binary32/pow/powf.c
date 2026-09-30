@@ -551,7 +551,7 @@ static float as_powf_accurate2(float x0, float y0, int is_exact, FLAG_T flag){
   eh = polydd(eh, el, 18, ce, &el);
   b64u64_u r = {.u = ((uint64_t)0x3ff+(int64_t)ee)<<52};
   b64u64_u ll = {.f = el}, lh = {.f = eh};
-  if((!is_exact && (lh.u&0xfffffff) == 0) || (is_exact && (lh.u&0xfffffff) == 0xfffffff)){
+  if((!is_exact && (lh.u&0xfffffff) == 0) || (is_exact && ((lh.u+1)&0xfffffff) <= 2)){
     if(__builtin_fabs(ll.f)>0x1p-91){
       if(el<0){
 	lh.u--;
