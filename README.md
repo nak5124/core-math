@@ -170,6 +170,9 @@ double precision. On x86 processors where these computations are performed
 on the x87 FPU, the user should set up the rounding precision to double
 precision (on Linux it is set to double-extended by default).
 
+The CORE-MATH code assumes full support of IEEE 754, in particular
+flush-to-zero should not be activated (for example using -ffast-math).
+
 There might be some contradictions between correct rounding and some optional
 requirements of the POSIX standard. In such a case, CORE-MATH chooses to
 return the correctly rounded result.
