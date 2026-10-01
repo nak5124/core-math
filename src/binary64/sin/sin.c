@@ -886,7 +886,7 @@ cr_sin_large (double x)
   static const double Sgn[] = {1.0, -1.0};
   fh = Sgn[sbit] * fh;
   fl = Sgn[sbit] * fl;
-  static const double eps = 0x1.41p-63;
+  static const double eps = 0x1.01p-63;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (lb == ub, 1)) return lb;
   return sin_large_accurate (x);

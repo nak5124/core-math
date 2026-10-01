@@ -414713,3 +414713,7 @@ inf,-0x1.000002p+125
 2,inf
 # the following test produced an undefined shift
 0x1.ffff36p-1f,0x1.03ac88p+24f
+# regressions in 8ea0949
+10.0,3.0
+0x1.8cp+24,3
+-0x1.a4p+36,2
