@@ -51,7 +51,11 @@ function_type_under_test function_under_test;
 #define CALL_LATENCY(accu,i) do {                           \
   TYPE_UNDER_TEST x, y;                                     \
   p_function_under_test(randoms[i] + 0 * accu, &x, &y);     \
-  accu = x;                                                 \
+  /* As reported by Tue Ly, with accu = x, the compiler might */        \
+  /* perform dead code elimination for most of the computations */      \
+  /* for cos(x). Changing to x + y adds a cycle, but if comparing */    \
+  /* different libraries this does not matter so much. */               \
+  accu = x + y;                                             \
   } while (0)
 
 #define CALL_THROUGHPUT(i) do {                 \
