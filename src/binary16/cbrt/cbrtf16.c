@@ -106,12 +106,9 @@ _Float16 cr_cbrtf16(_Float16 x){
   xf.u = 0x3f800000u | (xf.u & 0x1ffffu);
   float x2 = xf.f - 1.0f;
   // now x = 2^(3k) * 2^i * (x1 + x2) with x1 = 1+j/2^6
-  float r = x2 / x1.f;
-  if (x1.f == 0x1.54p+0f && x2 == 0x1p-10f)
-    r = 0x1.00101p+0f;
-  else
-    r = 1.0f + r * (0x1.5553a2p-2f - 0x1.c1a552p-4f * r);
-  return sgn.f * T0[i] * T1[j] * r;
+  double r = x2 / x1.f;
+  r = 1.0 + r * (0x1.5553a2p-2 - 0x1.c1a552p-4 * r);
+  return (double) sgn.f * T0[i] * (double) T1[j] * r;
 }
 
 // dummy function since GNU libc does not provide it
