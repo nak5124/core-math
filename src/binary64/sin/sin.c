@@ -897,10 +897,11 @@ double
 cr_sin (double x)
 {
   b64u64_u t = {.f = x};
+  int e = (t.u>>52)&0x7ff;
   // deal with tiny x to avoid underflow
-  uint64_t au = t.u<<1;
-  if (__builtin_expect(au <= 0x7cae26e892247decull, 0)) {
-    // |x| <= 0x1.7137449123ef6p-26
+  if (__builtin_expect(e < 0x3ff-26, 0)) {
+    // for |x| <= 0x1.7137449123ef6p-26  |sin(x) - x| < 1/2 ulp
+    uint64_t au = t.u<<1;
     if (au == 0) return x;
     // Taylor expansion of sin(x) is x - x^3/6 around zero
     // for x=-0, fma (x, -0x1p-54, x) returns +0
@@ -908,20 +909,21 @@ cr_sin (double x)
        and rounding towards zero. */
     double res = __builtin_fma (x, -0x1p-54, x);
 #ifdef CORE_MATH_SUPPORT_ERRNO
-    if ((t.u<<1)<(1ull<<53) || __builtin_fabs (res) < 0x1p-1022)
+    if (ax < 1ull<<53 || __builtin_fabs (res) < 0x1p-1022)
       errno = ERANGE; // underflow
 #endif
     return res;
   }
-  int e = (t.u>>52)&0x7ff;
-  if (__builtin_expect(e < 1054, 1)) return cr_sin_moderate(x, t.u>>63); // |x| < 2^31
+  if (__builtin_expect(e < 0x3ff+31, 1)) return cr_sin_moderate(x, t.u>>63); // |x| < 2^31
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
+      uint64_t au = t.u<<1;
 #ifdef CORE_MATH_SUPPORT_ERRNO
-      if ((t.u<<1) == 0x7ffull<<53) // +/-Inf
+      if (au == 0x7ffull<<53) // +/-Inf
         errno = EDOM;
 #endif
-      return x - x; // raises invalid
+      if (au == 0x7ffull<<53 || au < 0x7ff8ull<<49) feraiseexcept (FE_INVALID);
+      return __builtin_nan("sin");
     }
   // now |x| >= 2^31
   return cr_sin_large (x);
