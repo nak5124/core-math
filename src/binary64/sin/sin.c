@@ -152,7 +152,7 @@ static const uint64_t _T[20] = {
    0x5d49eeb1faf97c5e, // i=16
    0xcf41ce7de294a4ba,
    0x9afed7ec47e35742,
-   // 0x1580cc11bf1edaea, // i=19 (only used in reduce_large_acc)
+   0x1580cc11bf1edaea, // i=19 (only used in reduce_large_acc)
    // 0xfc33ef0826bd0d87, // i=20 (unused)
 };
 
