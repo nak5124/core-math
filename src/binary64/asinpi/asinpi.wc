@@ -58420,3 +58420,6 @@
 -0x1.fffffffff1003p-1
 0x1.0000000000000p-1
 0x1.fffffffffffffp-1
+# the following input improves the coverage
+# (contributed by Eric Hennenhoefer using AI)
+0x1.8p+0
