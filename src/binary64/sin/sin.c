@@ -840,13 +840,14 @@ static inline double
 sin_small_accurate (double x)
 {
   /* x + (c3h+c3l)*x^3 + c5*x^5 approximates sin(x) on [0,2^-16] with relative
-     error < 2^-112.743, cf sinsmall_acc.sollya */
-  static const double c3h = -0x1.5555555555555p-3, c3l = -0x1.55554b00de7e8p-57,
-    c5 = 0x1.111111110848p-7;
+     error < 2^-112.743, cf sinsmall_acc.sollya, where c3h = c[0], c3l = c[1]
+     and c5 = c[2]. */
+  static const double c[] = {-0x1.5555555555555p-3, -0x1.55554b00de7e8p-57,
+                             0x1.111111110848p-7};
   double h, l, t, x2h = x * x, x2l = __builtin_fma (x, x, -x2h);
-  h = c5 * x2h; // relative error less than ulp(c5*x^4)/ulp(x) ~ 2^-123
-  h += c3l;     // relative error less than ulp(c3l*x^2)/ulp(x) ~ 2^-141
-  h = fasttwosum (c3h, h, &l);
+  h = c[2] * x2h; // relative error less than ulp(c5*x^4)/ulp(x) ~ 2^-123
+  h += c[1];      // relative error less than ulp(c3l*x^2)/ulp(x) ~ 2^-141
+  h = fasttwosum (c[0], h, &l);
   h = muldd (h, l, x2h, x2l, &l);
   h = muldd (h, l, x, 0, &l);
   h = fasttwosum (x, h, &t);
