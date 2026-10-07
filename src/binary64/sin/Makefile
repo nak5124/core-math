@@ -2,8 +2,6 @@ FUNCTION_UNDER_TEST := sin
 
 include ../support/Makefile.univariate
 
-CFLAGS += -ffinite-math-only
-
 all:: check_special
 
 check_special: check_special.o $(FUNCTION_UNDER_TEST).o $(FUNCTION_UNDER_TEST)_mpfr.o
