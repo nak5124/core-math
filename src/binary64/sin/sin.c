@@ -912,10 +912,10 @@ cr_sin_moderate (double x, int sbit)
   double ch = r2 * (-0.5 + 0x1.55555553bfd3p-5 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
   static const double Sgn[] = {1.0, -1.0};
-  const double eps = 0x1.dep-64, eps2 = 0x1.dep-63;
+  const double eps = 0x1.dep-64;
   fh = Sgn[sbit] * fh;
-  fl = Sgn[sbit] * fl - eps;
-  double lb = fh + fl, ub = fh + (fl + eps2);
+  fl = Sgn[sbit] * fl;
+  double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (ub == lb, 1)) return lb;
   if (__builtin_fabs (x) < 0x1p-16) return sin_small_accurate (x);
   return sin_large_accurate (x);
