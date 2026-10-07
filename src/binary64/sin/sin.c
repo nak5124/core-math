@@ -24,6 +24,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* References:
+   [1] Handbook of Floating-Point Arithmetic (2nd edition),
+   Muller, Jean-Michel and Brunie, Nicolas and de Dinechin, Florent and
+   Jeannerod, Claude-Pierre and Joldes, Mioara and Lefèvre, Vincent and
+   Melquiond, Guillaume and Revol, Nathalie and Torres, Serge,
+   Birkhäuser, 2018.
+   [2] Computing hard-to-round cases of sin, cos, tan in double precision,
+   Vincent Lefèvre, Tue Ly, Paul Zimmermann,
+   ARITH 2026 - 33rd IEEE International Symposium on Computer Arithmetic,
+   2026.
+ */
+
+#include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
@@ -44,6 +57,43 @@ typedef unsigned _BitInt(128) u128;
 typedef unsigned __int128 u128;
 #endif
 
+/* __builtin_roundeven was introduced in gcc 10:
+   https://gcc.gnu.org/gcc-10/changes.html,
+   and in clang 17 */
+#if ((defined(__GNUC__) && __GNUC__ >= 10) || (defined(__clang__) && __clang_major__ >= 17)) && !defined(_MSC_VER) && (defined(__aarch64__) || defined(__x86_64__) || defined(__i386__))
+# define roundeven_finite(x) __builtin_roundeven (x)
+#else
+/* round x to nearest integer, breaking ties to even */
+static double
+roundeven_finite (double x)
+{
+  double ix;
+# if (defined(__GNUC__) || defined(__clang__)) && (defined(__AVX__) || defined(__SSE4_1__) || (__ARM_ARCH >= 8))
+#  if defined __AVX__
+   __asm__("vroundsd $0x8,%1,%1,%0":"=x"(ix):"x"(x));
+#  elif __ARM_ARCH >= 8
+   __asm__ ("frintn %d0, %d1":"=w"(ix):"w"(x));
+#  else /* __SSE4_1__ */
+   __asm__("roundsd $0x8,%1,%0":"=x"(ix):"x"(x));
+#  endif
+# else
+  ix = __builtin_round (x); /* nearest, away from 0 */
+  if (__builtin_fabs (ix - x) == 0.5)
+  {
+    /* if ix is odd, we should return ix-1 if x>0, and ix+1 if x<0 */
+    union { double f; uint64_t n; } u, v;
+    u.f = ix;
+    v.f = ix - __builtin_copysign (1.0, x);
+    /* Warning: v.n is 0 when x=0.5; while u.n cannot be zero since ix
+       is rounded away from zero. */
+    if (v.n == 0 || __builtin_ctzll (v.n) > __builtin_ctzll (u.n))
+      ix = v.f;
+  }
+# endif
+  return ix;
+}
+#endif
+
 typedef uint64_t u64;
 
 typedef union {
@@ -51,18 +101,29 @@ typedef union {
   uint64_t u;
 } f64_u;
 
-// round (-1)^sbit*r/2^128 to double, assuming r is non-zero and not in the
+// round (-1)^s*r/2^128 to double, assuming r is non-zero and not in the
 // subnormal region
-static inline double u128_tod (u128 r, int sbit)
+static inline double u128_tod (u128 r, int s)
 {
   uint64_t h = r >> 64, l = r;
   uint64_t sh = (h != 0) ? __builtin_clzll (h) : 64 + __builtin_clzll (l);
+  /* since the smallest distance from a binary64 number to a multiple of pi/2
+     is 2^-60.888 (see [1]), the smallest value of r/2^128 is about 2^-60.888
+     too (taking into account approximation errors), thus sh <= 60. */
   h = r >> (75 - sh); // upper 53 non-zero bits
   int rbit = (r >> (74 - sh)) & 1; // round bit
   static const double Sgn[] = { 0x1p-53, -0x1p-53 };
-  f64_u v = {.f = Sgn[sbit]};
+  f64_u v = {.f = Sgn[s]};
   v.u -= sh << 52; // scale by 2^-sh
-  double a = h * v.f, b = a * ((rbit) ? 0x1p-53 : 0x1p-54);
+  static const double Low[] = { 0x1.8p-2, 0x1.8p-1 };
+  double a = h * v.f, b = Low[rbit] * v.f;
+  /* Assume sin(x) > 0, thus s=0. When rbit is 0, we have b < ulp(a)/2,
+     and the result is rounded to a to nearest, which is what we want.
+     When rbit is 1, we have b > ulp(a)/2, and the result is rounded to
+     nextup(a), which is what we want too.
+     In both case it is proven in sin.pdf that the approximation error
+     cannot make the result cross a rounding boundary, except maybe for
+     hard-to-round cases, which are checked by sin.wc. */
   return a + b;
 }
 
@@ -91,7 +152,7 @@ static const uint64_t _T[20] = {
    0x5d49eeb1faf97c5e, // i=16
    0xcf41ce7de294a4ba,
    0x9afed7ec47e35742,
-   // 0x1580cc11bf1edaea, // i=19 (only used in reduce_large_acc)
+   0x1580cc11bf1edaea, // i=19 (only used in reduce_large_acc)
    // 0xfc33ef0826bd0d87, // i=20 (unused)
 };
 
@@ -203,7 +264,7 @@ reduce_large (double *r, double x)
   // round r to nearest, where 0x810000000000000 = 2^59 + 2^52
   static const u128 magic = ((u128) 1 << 112) + 0x810000000000000ull;
   u += magic;
-  t.f = (u << 15) >> 75; // next 53 bits of u after the first 15
+  t.f = (uint64_t)((u << 15) >> 75); // next 53 bits of u after the first 15
   *r = t.f * 0x1p-68 - 0x1p-16;
   return u >> 113;
   // since we return 15 bits in i and 53 in h, the accuracy is at most 2^-68
@@ -803,13 +864,14 @@ static inline double
 sin_small_accurate (double x)
 {
   /* x + (c3h+c3l)*x^3 + c5*x^5 approximates sin(x) on [0,2^-16] with relative
-     error < 2^-112.743, cf sinsmall_acc.sollya */
-  static const double c3h = -0x1.5555555555555p-3, c3l = -0x1.55554b00de7e8p-57,
-    c5 = 0x1.111111110848p-7;
+     error < 2^-112.743, cf sinsmall_acc.sollya, where c3h = c[0], c3l = c[1]
+     and c5 = c[2]. */
+  static const double c[] = {-0x1.5555555555555p-3, -0x1.55554b00de7e8p-57,
+                             0x1.111111110848p-7};
   double h, l, t, x2h = x * x, x2l = __builtin_fma (x, x, -x2h);
-  h = c5 * x2h; // relative error less than ulp(c5*x^4)/ulp(x) ~ 2^-123
-  h += c3l;     // relative error less than ulp(c3l*x^2)/ulp(x) ~ 2^-141
-  h = fasttwosum (c3h, h, &l);
+  h = c[2] * x2h; // relative error less than ulp(c5*x^4)/ulp(x) ~ 2^-123
+  h += c[1];      // relative error less than ulp(c3l*x^2)/ulp(x) ~ 2^-141
+  h = fasttwosum (c[0], h, &l);
   h = muldd (h, l, x2h, x2l, &l);
   h = muldd (h, l, x, 0, &l);
   h = fasttwosum (x, h, &t);
@@ -826,7 +888,7 @@ cr_sin_moderate (double x, int sbit)
   double ax = __builtin_fabs(x);
   static const double invpi = 0x1.45f306dc9c883p+12;
   // |invpi/2^14 - 1/pi| < 2^-55.496
-  double k = __builtin_roundeven (invpi * ax);
+  double k = roundeven_finite (invpi * ax);
   // |2^14*(pih + pil) + pi| < 2^-108.041
   double rh = __builtin_fma (k, pih, ax), rl = k * pil; // rh is exact
 
@@ -850,10 +912,10 @@ cr_sin_moderate (double x, int sbit)
   double ch = r2 * (-0.5 + 0x1.55555553bfd3p-5 * r2);
   double fh = Sh, fl = Sl + Sh*ch + Ch*sh;
   static const double Sgn[] = {1.0, -1.0};
-  const double eps = 0x1.dep-64, eps2 = 0x1.dep-63;
+  const double eps = 0x1.dep-64;
   fh = Sgn[sbit] * fh;
-  fl = Sgn[sbit] * fl - eps;
-  double lb = fh + fl, ub = fh + (fl + eps2);
+  fl = Sgn[sbit] * fl;
+  double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (ub == lb, 1)) return lb;
   if (__builtin_fabs (x) < 0x1p-16) return sin_small_accurate (x);
   return sin_large_accurate (x);
