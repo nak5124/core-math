@@ -24,6 +24,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* References:
+   [1] Handbook of Floating-Point Arithmetic (2nd edition),
+   Muller, Jean-Michel and Brunie, Nicolas and de Dinechin, Florent and
+   Jeannerod, Claude-Pierre and Joldes, Mioara and Lefèvre, Vincent and
+   Melquiond, Guillaume and Revol, Nathalie and Torres, Serge,
+   Birkhäuser, 2018.
+   [2] Computing hard-to-round cases of sin, cos, tan in double precision,
+   Vincent Lefèvre, Tue Ly, Paul Zimmermann,
+   ARITH 2026 - 33rd IEEE International Symposium on Computer Arithmetic,
+   2026.
+ */
+
+#include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
@@ -88,18 +101,29 @@ typedef union {
   uint64_t u;
 } f64_u;
 
-// round (-1)^sbit*r/2^128 to double, assuming r is non-zero and not in the
+// round (-1)^s*r/2^128 to double, assuming r is non-zero and not in the
 // subnormal region
-static inline double u128_tod (u128 r, int sbit)
+static inline double u128_tod (u128 r, int s)
 {
   uint64_t h = r >> 64, l = r;
   uint64_t sh = (h != 0) ? __builtin_clzll (h) : 64 + __builtin_clzll (l);
+  /* since the smallest distance from a binary64 number to a multiple of pi/2
+     is 2^-60.888 (see [1]), the smallest value of r/2^128 is about 2^-60.888
+     too (taking into account approximation errors), thus sh <= 60. */
   h = r >> (75 - sh); // upper 53 non-zero bits
   int rbit = (r >> (74 - sh)) & 1; // round bit
   static const double Sgn[] = { 0x1p-53, -0x1p-53 };
-  f64_u v = {.f = Sgn[sbit]};
+  f64_u v = {.f = Sgn[s]};
   v.u -= sh << 52; // scale by 2^-sh
-  double a = h * v.f, b = a * ((rbit) ? 0x1p-53 : 0x1p-54);
+  static const double Low[] = { 0x1.8p-2, 0x1.8p-1 };
+  double a = h * v.f, b = Low[rbit] * v.f;
+  /* Assume sin(x) > 0, thus s=0. When rbit is 0, we have b < ulp(a)/2,
+     and the result is rounded to a to nearest, which is what we want.
+     When rbit is 1, we have b > ulp(a)/2, and the result is rounded to
+     nextup(a), which is what we want too.
+     In both case it is proven in sin.pdf that the approximation error
+     cannot make the result cross a rounding boundary, except maybe for
+     hard-to-round cases, which are checked by sin.wc. */
   return a + b;
 }
 
