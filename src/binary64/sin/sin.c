@@ -970,7 +970,7 @@ cr_sin (double x)
        and rounding towards zero. */
     double res = __builtin_fma (x, -0x1p-54, x);
 #ifdef CORE_MATH_SUPPORT_ERRNO
-    if (ax < 1ull<<53 || __builtin_fabs (res) < 0x1p-1022)
+    if (au < 1ull<<53 || __builtin_fabs (res) < 0x1p-1022)
       errno = ERANGE; // underflow
 #endif
     return res;
