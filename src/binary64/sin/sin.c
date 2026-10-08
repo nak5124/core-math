@@ -104,12 +104,12 @@ typedef union {
 // subnormal region
 static inline double u128_tod (u128 r, int s)
 {
-  uint64_t h = r >> 64, l = r;
-  uint64_t sh = (h != 0) ? __builtin_clzll (h) : 64 + __builtin_clzll (l);
+  uint64_t sh = __builtin_clzll (r >> 64);
   /* since the smallest distance from a binary64 number to a multiple of pi/2
      is 2^-60.888 (see [1]), the smallest value of r/2^128 is about 2^-60.888
-     too (taking into account approximation errors), thus sh <= 60. */
-  h = r >> (75 - sh); // upper 53 non-zero bits
+     too (taking into account approximation errors), thus sh <= 60.
+     This proves that r>>64 cannot be 0, thus __builtin_clzll() is valid. */
+  uint64_t h = r >> (75 - sh); // upper 53 non-zero bits
   int rbit = (r >> (74 - sh)) & 1; // round bit
   static const double Sgn[] = { 0x1p-53, -0x1p-53 };
   f64_u v = {.f = Sgn[s]};
