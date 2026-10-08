@@ -36,7 +36,6 @@ SOFTWARE.
    2026.
  */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
@@ -961,7 +960,7 @@ cr_sin (double x)
   b64u64_u t = {.f = x};
   int e = (t.u>>52)&0x7ff;
   // deal with tiny x to avoid underflow
-  if (__builtin_expect(e < 0x3ff-26, 0)) {
+  if (__builtin_expect(e < 0x3ff-26, 0)) { // |x| < 2^-26
     // for |x| <= 0x1.7137449123ef6p-26  |sin(x) - x| < 1/2 ulp
     uint64_t au = t.u<<1;
     if (au == 0) return x;
