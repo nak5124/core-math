@@ -156,6 +156,8 @@ check_invalid (void)
 #endif
   }
   // check that the signaling bit disappeared
+  // sin(+Inf) = qNaN, see Table 9.1 from 754-2019 which says "invalid"
+  // and 7.2 which says invalid -> qNaN
   if (is_signaling (y))
   {
     fprintf (stderr, "Error, foo(+Inf) should be qNaN, got sNaN=%"PRIx64"\n",
