@@ -36,7 +36,6 @@ SOFTWARE.
    2026.
  */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
@@ -184,7 +183,7 @@ static const u128 PC[] = {
   U128(0x1a0193d9a550c,0),                     // degree 8
 };
 
-static inline u128 mhUU(u128 a, u128 b){
+static inline u128 mhUU (u128 a, u128 b){
   u64 ah = a>>64, al = a;
   u64 bh = b>>64, bl = b;
   u128 ahbh = (u128)ah*bh;
@@ -270,21 +269,21 @@ reduce_large (double *r, double x)
   // since we return 15 bits in i and 53 in h, the accuracy is at most 2^-68
 }
 
-static inline double fasttwosum(double x, double y, double *e){
+static inline double fasttwosum (double x, double y, double *e){
   double s = x + y, z = s - x;
   *e = y - z;
   return s;
 }
 
-static inline double fastsum(double xh, double xl, double yh, double yl, double *e){
-  double sl, sh = fasttwosum(xh, yh, &sl);
+static inline double fastsum (double xh, double xl, double yh, double yl, double *e){
+  double sl, sh = fasttwosum (xh, yh, &sl);
   *e = (xl + yl) + sl;
   return sh;
 }
 
-static inline double muldd(double xh, double xl, double ch, double cl, double *l){
+static inline double muldd (double xh, double xl, double ch, double cl, double *l){
   double ahhh = xh*ch;
-  *l = (xh*cl + xl*ch) + __builtin_fma(xh, ch, -ahhh);
+  *l = (xh*cl + xl*ch) + __builtin_fma (xh, ch, -ahhh);
   return ahhh;
 }
 
@@ -807,8 +806,8 @@ sin_large_accurate (double x)
 
   // twopi/2^128 approximates 2pi/2^3
   static const u128 twopi = U128(0xc4c6628b80dc1cd1,0xc90fdaa22168c234);
-  r = mhUU(twopi, r << 3); // replace r by 2pi*r
-  u128 u2 = mhUU(r,r), u4 = mhUU(u2,u2), u2h = u2 >> 64;
+  r = mhUU (twopi, r << 3); // replace r by 2pi*r
+  u128 u2 = mhUU (r,r), u4 = mhUU (u2,u2), u2h = u2 >> 64;
 
   /* x/(2*pi) mod 1 = k/2^13 + r + eps with |r| <= 2^-14 and 0 <= eps < 2^-127.999
      then sin(x) ~ sin(pi*k/2^12 + 2*pi*r)
@@ -843,8 +842,8 @@ sin_large_accurate (double x)
   u128 Cr = evalPC (u2, u2h, u4);    // Cr/2^128 approximates cos(2*pi*r)
 
   // now combine: sin(x) ~ s1*C + c1*S
-  s1u = mhUU(s1u,Cr);
-  c1u = mhUU(c1u,Sr);
+  s1u = mhUU (s1u,Cr);
+  c1u = mhUU (c1u,Sr);
 
   /* s1u/2^128 approximates sin(z)*cos(r) which is always >= 0, while
      c1u/2^128 approximates cos(z)*sin(r), where cos(z) > 0 for i1 < 32,
@@ -885,7 +884,7 @@ sin_small_accurate (double x)
 static inline double
 cr_sin_moderate (double x, int sbit)
 {
-  double ax = __builtin_fabs(x);
+  double ax = __builtin_fabs (x);
   static const double invpi = 0x1.45f306dc9c883p+12;
   // |invpi/2^14 - 1/pi| < 2^-55.496
   double k = roundeven_finite (invpi * ax);
@@ -926,7 +925,7 @@ cr_sin_moderate (double x, int sbit)
 static double __attribute__((noinline))
 cr_sin_large (double x)
 {
-  double ax = __builtin_fabs(x);
+  double ax = __builtin_fabs (x);
   double r;
   uint64_t j = reduce_large (&r, ax);
   // now x/(2pi) ~ k + j/2^15 + r with 0 <= r < 2^-15
@@ -959,10 +958,11 @@ double
 cr_sin (double x)
 {
   b64u64_u t = {.f = x};
+  int e = (t.u>>52)&0x7ff;
   // deal with tiny x to avoid underflow
-  uint64_t au = t.u<<1;
-  if (__builtin_expect(au <= 0x7cae26e892247decull, 0)) {
-    // |x| <= 0x1.7137449123ef6p-26
+  if (__builtin_expect (e < 0x3ff-26, 0)) { // |x| < 2^-26
+    // for |x| <= 0x1.7137449123ef6p-26  |sin(x) - x| < 1/2 ulp
+    uint64_t au = t.u<<1;
     if (au == 0) return x;
     // Taylor expansion of sin(x) is x - x^3/6 around zero
     // for x=-0, fma (x, -0x1p-54, x) returns +0
@@ -970,20 +970,22 @@ cr_sin (double x)
        and rounding towards zero. */
     double res = __builtin_fma (x, -0x1p-54, x);
 #ifdef CORE_MATH_SUPPORT_ERRNO
-    if ((t.u<<1)<(1ull<<53) || __builtin_fabs (res) < 0x1p-1022)
+    if (ax < 1ull<<53 || __builtin_fabs (res) < 0x1p-1022)
       errno = ERANGE; // underflow
 #endif
     return res;
   }
-  int e = (t.u>>52)&0x7ff;
-  if (__builtin_expect(e < 1054, 1)) return cr_sin_moderate(x, t.u>>63); // |x| < 2^31
+  if (__builtin_expect (e < 0x3ff+31, 1)) return cr_sin_moderate (x, t.u>>63); // |x| < 2^31
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
+      uint64_t au = t.u<<1;
 #ifdef CORE_MATH_SUPPORT_ERRNO
-      if ((t.u<<1) == 0x7ffull<<53) // +/-Inf
+      if (au == 0x7ffull<<53) // +/-Inf
         errno = EDOM;
 #endif
-      return x - x; // raises invalid
+      if (au < 0x7ff8ull<<49) feraiseexcept (FE_INVALID); // Inf or sNaN
+      t.u = 0x7ff8000000000000ull;
+      return t.f;
     }
   // now |x| >= 2^31
   return cr_sin_large (x);
