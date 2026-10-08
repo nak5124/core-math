@@ -432,6 +432,10 @@ static u64 __attribute__((noinline)) as_logq_refine(i64 el, u2x64 m, __float128 
     {0x80446608d32c4ed3, 0xb4d5892fe7709c19, 0xd3840403fcefe8a9, 0x00000003bc4fb6d4, 0x0000000000000000, 0x0000000000000000}};
 
   b128u128_u u = {.a = reinterpret_f128_as_u128(x0)};
+  if(__builtin_expect(!(u.b[1]>>48), 0)){
+    int nz = (u.b[1])?__builtin_clzll(u.b[1]):__builtin_clzll(u.b[0]) + 64;
+    u.a <<= nz - 15;
+  }
   i64 sm = -((el>>15)&1);
   u128 t = (u128)m[1]<<64|m[0];
   u7x64 x; mhu7xu2(x, iln2, t);
@@ -668,6 +672,21 @@ static __float128 as_logq_nearone(b128u128_u x, unsigned flagp){
   return reinterpret_u128_as_f128(res.a); // put into xmm register
 }
 
+static u128 __attribute__((noinline)) polyeval(b128u128_u m){
+  static const b128u128_u c[] = {
+    {.b = {0xffffffffffffffffull, 0xffffffffffffffffull}},
+    {.b = {0xffffffffffffffffull, 0x000007ffffffffffull}},
+    {.b = {0x5555555555555551ull, 0x0000000000555555ull}},
+    {.b = {0xffffffffffffffeaull, 0x0000000000000003ull}},
+    {.b = {0x00003333333332f7ull, 0x0000000000000000ull}},
+    {.b = {0x0000000002aaaa5eull, 0x0000000000000000ull}}
+  };
+  u128 f = (u128)c[3].b[1]<<64|(c[3].b[0] - mhuu(m.b[1], c[4].b[0] - mhuu(m.b[1], c[5].b[0])));
+  int i = 3;
+  while(--i>=0) f = c[i].a - mhUU(m.a, f);
+  return mhUU(m.a, f);
+}
+
 __float128 cr_logq(__float128 x) {
   static const u3x64
     ln2a = {0x3f2f6af40f343267,0x1cf79abc9e3b3980,0xb17217f7d},
@@ -764,14 +783,6 @@ __float128 cr_logq(__float128 x) {
     {0x3f07c144adf4e354,0x686bc54ff5dbb35c,0x13}, {0x288d50e0d51ab78a,0x19eca0777f77067f,0x14},
     {0x3acdd4c172d84d84,0xcb4d8326a9902bfb,0x14}, {0x81f0878a8d99e057,0x7cce6daf3f7a4090,0x15}
   };
-  static const b128u128_u c[] = {
-    {.b = {0xffffffffffffffffull, 0xffffffffffffffffull}},
-    {.b = {0xffffffffffffffffull, 0x000007ffffffffffull}},
-    {.b = {0x5555555555555551ull, 0x0000000000555555ull}},
-    {.b = {0xffffffffffffffeaull, 0x0000000000000003ull}},
-    {.b = {0x00003333333332f7ull, 0x0000000000000000ull}},
-    {.b = {0x0000000002aaaa5eull, 0x0000000000000000ull}}
-  };
 
   unsigned flagp = _mm_getcsr(), oflagp = flagp, rm = flagp&_MM_ROUND_MASK;
   b128u128_u u = {.a = reinterpret_f128_as_u128(x)}, m, res;
@@ -841,10 +852,7 @@ __float128 cr_logq(__float128 x) {
   add3(fs,fs,lt1a[j1]);
   add3(fs,fs,lt2a[j2]);
   add3(fs,fs,lt3a[j3]);
-  int i = 3;
-  u128 f = (u128)c[3].b[1]<<64|(c[3].b[0] - mhuu(m.b[1], c[4].b[0] - mhuu(m.b[1], c[5].b[0])));
-  while(--i>=0) f = c[i].a - mhUU(m.a, f);
-  res.a = mhUU(m.a, f);
+  res.a = polyeval(m);
   u3x64 d = {res.b[0], res.b[1], 0};
   add3(fs,fs,d);
   i64 msk = fs[2]; msk>>=63;
@@ -884,6 +892,7 @@ __float128 cr_logq(__float128 x) {
 // somewhat we need to include that for icx and the Intel math library
 extern __float128 __logq (__float128);
 
+extern __float128 logf128(__float128);
 // logq is called logf128 in GNU libc, and __logq in the Intel math library
 __float128 logq(__float128 x) {
 #ifdef __INTEL_CLANG_COMPILER
