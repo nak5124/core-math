@@ -983,9 +983,11 @@ cr_sin (double x)
       if (au == 0x7ffull<<53) // +/-Inf
         errno = EDOM;
 #endif
-      if (au == 0x7ffull<<53 || au < 0x7ff8ull<<49) feraiseexcept (FE_INVALID);
-      return __builtin_nan("sin");
+      if (au < 0x7ff8ull<<49) feraiseexcept (FE_INVALID); // Inf or sNaN
+      t.u = 0x7ff8000000000000ull;
+      return t.f;
     }
   // now |x| >= 2^31
   return cr_sin_large (x);
 }
+                                                                                   
