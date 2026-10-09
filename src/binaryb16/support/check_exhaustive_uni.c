@@ -61,7 +61,7 @@ int rnd = 0;
 
 typedef union { uint16_t n; __bf16 x; } union_t;
 
-float
+__bf16
 asfloat (uint16_t n)
 {
   union_t u = {.n = n};
