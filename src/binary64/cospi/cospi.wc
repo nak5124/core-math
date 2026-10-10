@@ -43850,3 +43850,6 @@
 0x1.fff2117e97295p-1
 # the following produced an undefined shift
 3.0
+# the following inputs improve coverage
+1.5
+2.0

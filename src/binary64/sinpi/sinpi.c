@@ -147,7 +147,8 @@ static double as_sinpi_refine(int iq, double z){
     iq &= 0x7ff;
     for(unsigned i=0; i<sizeof(db)/sizeof(db[0]); i++)
       // if c1 is the 1st condition below and c2 the 2nd one, we cannot have c1=c2=1,
-      if((x == db[i].x && iq == db[i].iq) || (x == -db[i].x && iq == 2048-db[i].iq)) return sgn*db[i].r + sgn*db[i].d;
+      if((x == db[i].x && iq == db[i].iq) || (x == -db[i].x && iq == 2048-db[i].iq))
+        return sgn*db[i].r + sgn*db[i].d;
   }
   return tsh + tsl;
 }
