@@ -1,6 +1,6 @@
 /* Correctly rounded exponential function for binary64 values.
 
-Copyright (c) 2022-2025 Alexei Sibidanov.
+Copyright (c) 2022-2026 Alexei Sibidanov <sibid@uvic.ca>.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -214,11 +214,10 @@ static double __attribute__((noinline)) as_exp_database(double x, double f){
       const u64 s = 333811522313371;
       b64u64_u jf = {.f = f}, dr = {.u = ((s>>m)<<63)|0x3c90000000000000ull};
       u64 t = (s2[m>>5]>>((m<<1)&63))&3;
-      for(i64 k = -1; ; k++){
+      for(i64 k = -1; k<=1; k++){
 	b64u64_u r = {.u = jf.u + k};
 	if((r.u&3) == t) return r.f + dr.f;
       }
-      // we should never go here
     } else {
       b = m - 1;
     }
@@ -338,7 +337,7 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
       ix.f = fl;
       if((ix.u&(~(u64)0>>12))==0) {
 	b64u64_u v = {.f = e};
-	i64 d = ((u64)(((i64)ix.u>>63)^((i64)v.u>>63))<<1) + 1;
+	i64 d = ((i64)(ix.u^v.u)>>63)*2 + 1;
 	ix.u += d;
 	fl = ix.f;
       }
