@@ -181,8 +181,8 @@ static double __attribute__((noinline)) as_exp10_database(double x, double f){
       jf.u -= 1;
       if(!((jf.u^p)&3)) return jf.f + d.f;
       jf.u += 2;
-      if(!((jf.u^p)&3)) return jf.f + d.f;
-      break;
+      // we always have (jf.u^p)&3 = 0 here
+      return jf.f + d.f;
     } else {
       b = m - 1;
     }
@@ -293,7 +293,13 @@ static double __attribute__((noinline)) as_exp10_accurate(double x){
       fh = muldd(fh,fl, th,tl, &fl);
       fh = fastsum(th,tl, fh,fl, &fl);
       fh = fasttwosum(fh, fl, &ix.f);
-      if( ((ix.u + 4)&(~(u64)0>>12)) <= 4 || ((ix.u>>52)&0x7ff)<918 ) fh = as_exp10_database(x, fh);
+      // let c1 be the first condition below and c2 the 2nd one
+      // (c1,c2) = (0,0) for x=-0x1.a14b569dc2012p+6 (rndn, with/without FMA contraction)
+      // (c1,c2) = (0,1) for x=-0x1.3b95082297ea7p-6 (rndz, with/without FMA contraction)
+      // (c1,c2) = (1,0) for x=-0x1.4cd4af2fca2b4p+4 (rndn, with/without FMA contraction)
+      // (c1,c2) = (1,1) for x=0x1.cbe37694f4d1p+7 (rndz, with/without FMA contraction)
+      if( ((ix.u + 4)&(~(u64)0>>12)) <= 4 || ((ix.u>>52)&0x7ff)<918 )
+        fh = as_exp10_database(x, fh);
     }
     fh = as_ldexp(fh,ie);
   } else {
