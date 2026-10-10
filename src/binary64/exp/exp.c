@@ -214,7 +214,7 @@ static double __attribute__((noinline)) as_exp_database(double x, double f){
       const u64 s = 333811522313371;
       b64u64_u jf = {.f = f}, dr = {.u = ((s>>m)<<63)|0x3c90000000000000ull};
       u64 t = (s2[m>>5]>>((m<<1)&63))&3;
-      for(i64 k = -1; k<=1; k++){
+      for(i64 k = -1; ; k++){
 	b64u64_u r = {.u = jf.u + k};
 	if((r.u&3) == t) return r.f + dr.f;
       }
