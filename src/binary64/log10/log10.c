@@ -859,7 +859,8 @@ static inline double dint_tod(dint64_t *a) {
 
   /* the trailing bits after the rounding bit are always non zero,
      since there is no hard-to-round input with 74 identical bits
-     after the round bit, thus we always set the sticky bit */
+     after the round bit, thus we always set the sticky bit
+     (the inputs such that log10 is exact were already filtered) */
   double rd = 0x1p-54;
   /* if round bit is 1, add 2^-53 */
   if ((a->hi >> 10) & 0x1)
