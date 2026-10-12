@@ -309,14 +309,14 @@ main (int argc, char *argv[])
   ref_init();
   ref_fesetround (rnd);
 
-  printf ("   Checking scaled worst cases\n");
+  printf ("Checking scaled worst cases\n");
   check_scaled_worst_cases ();
 
 #ifndef CORE_MATH_TESTS
 #define CORE_MATH_TESTS 1000000000UL /* total number of tests */
 #endif
 
-  printf ("   Checking random values\n");
+  printf ("Checking random values\n");
 
   unsigned int seed = getpid ();
   for (int i = 0; i < MAX_THREADS; i++)
