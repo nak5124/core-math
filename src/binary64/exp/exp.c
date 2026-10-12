@@ -301,10 +301,15 @@ static const double t1[][2] = {
 /* assume |x| > 2^-54 since the case |x| <= 0x1p-54 is treated directly
    at the beginning of cr_exp() */
 static double __attribute__((cold,noinline)) as_exp_accurate(double x){
+  // Q = ch[0]*x + ch[1]*x^2 + ... + ch[7]*x^7 approximates exp(x)-1 for |x| < 2^-13.528
   static const double ch[][2] =
-    {{0x1p+0, 0}, {0x1p-1, 0x1.712f72ecec2cfp-99}, {0x1.5555555555555p-3, 0x1.5555555554d07p-57},
-     {0x1.5555555555555p-5, 0x1.55194d28275dap-59}, {0x1.1111111111111p-7, 0x1.12faa0e1c0f7bp-63},
-     {0x1.6c16c16da6973p-10, -0x1.4ba45ab25d2a3p-64}, {0x1.a01a019eb7f31p-13, -0x1.9091d845ecd36p-67}};
+    {{0x1p+0, 0}, // degree 1
+     {0x1p-1, 0x1.712f72ecec2cfp-99}, // degree 2
+     {0x1.5555555555555p-3, 0x1.5555555554d07p-57}, // degree 3
+     {0x1.5555555555555p-5, 0x1.55194d28275dap-59}, // degree 4
+     {0x1.1111111111111p-7, 0x1.12faa0e1c0f7bp-63}, // degree 5
+     {0x1.6c16c16da6973p-10, -0x1.4ba45ab25d2a3p-64}, // degree 6
+     {0x1.a01a019eb7f31p-13, -0x1.9091d845ecd36p-67}}; // degree 7
   b64u64_u ix = {.f = x};
   const double s = 0x1.71547652b82fep+12;
   double t = roundeven_finite(x*s);
@@ -315,9 +320,11 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
 
   /* Use Cody-Waite argument reduction: since |x| < 745, we have |t| < 2^23,
      thus since l2h is exactly representable on 29 bits, l2h*t is exact. */
-  const double l2h = 0x1.62e42ffp-13, l2l = 0x1.718432a1b0e26p-47, l2ll = 0x1.9ff0342542fc3p-102;
+  const double l2h = 0x1.62e42ffp-13, l2l = 0x1.718432a1b0e26p-47,
+    l2ll = 0x1.9ff0342542fc3p-102;
   double dx = x - l2h*t, dxl = l2l*t, dxll = l2ll*t + __builtin_fma(l2l,t,-dxl);
-  double dxh = dx + dxl; dxl = (dx - dxh) + dxl + dxll;
+  double dxh = fasttwosum (dx, dxl, &dxl);
+  dxl += dxll;
   double fl, fh = opolydd(dxh,dxl, 7,ch, &fl);
   fh = muldd(dxh,dxl, fh,fl, &fl);
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
