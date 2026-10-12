@@ -111,6 +111,13 @@ In addition, in `src/generic/foo`, you will need the following file:
 - `random_under_test.h`: defining a function `random_under_test`,
   which samples suitable inputs for `foo`
 
+## FMA contraction
+
+The CORE-MATH code is supposed to work with or without FMA contraction.
+However, FMA contraction is assumed to be used either everywhere or nowhere.
+See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106902. In production code,
+it is recommended to use either -ffp-contract=off or -ffp-contract=on.
+
 ## Support of underflow
 
 CORE-MATH always supports underflow, with the rule of "underflow after
@@ -131,13 +138,6 @@ CORE_MATH_NOCHECK_UNDERFLOW=-1 means that underflow is not checked when
 
 If the external library supports underflow before rounding, add
 -DCORE_MATH_UNDERFLOW_BEFORE to EXTRA_CFLAGS in check.sh.
-
-## FMA contraction
-
-The CORE-MATH code is supposed to work with or without FMA contraction.
-However, FMA contraction is assumed to be used either everywhere or nowhere.
-See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106902. In production code,
-it is recommended to use either -ffp-contract=off or -ffp-contract=on.
 
 ## Support of overflow
 
@@ -180,6 +180,8 @@ precision (on Linux it is set to double-extended by default).
 The CORE-MATH code assumes full support of IEEE 754, in particular
 flush-to-zero should not be activated (for example using -ffast-math).
 
+Some routines use __builtin_addcl, which is supported for GCC >= 14.
+
 There might be some contradictions between correct rounding and some optional
 requirements of the POSIX standard. In such a case, CORE-MATH chooses to
 return the correctly rounded result.
@@ -208,3 +210,7 @@ precision (and not in extended double precision).
 Another issue with 32-bit platforms is that some of them miss support
 for __uint128_t or _BitInt(128). The functions using these types are
 thus not available.
+
+GCC <= 13 wrongly converts some BF16 constants,
+see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111867.
+It is thus recommended to use GCC 14 or later.
