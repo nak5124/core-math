@@ -1121475,3 +1121475,5 @@
 0x1.1258f276f6c51p+8
 0x1.12953f3cf8b17p+8
 0x1.12d05a0e3f5cbp+8
+# test case for issue reported by anun333 <anun333@posteo.net>
+0x1.c2678203578e2p+0

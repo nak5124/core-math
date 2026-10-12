@@ -107,7 +107,7 @@ double rand_arg2(){
   return o.f;
 }
 
-static int check (double x){
+static void check (double x){
   b64u64_u yr = {.f = rfun(x)}, yt = {.f = tfun(x)};
 #pragma omp atomic update
   tested ++;
@@ -115,9 +115,10 @@ static int check (double x){
     printf("FAIL: test_fun and ref_fun differ for x=%a\n", x);
     printf("test_fun gives %a\n", yt.f);
     printf(" ref_fun gives %a\n", yr.f);
-    return -1;
+#ifndef DO_NOT_ABORT
+    exit (1);
+#endif
   }
-  return 0;
 }
 
 static void check_random(int seed, double a, double b, int64_t ntests){
@@ -127,25 +128,17 @@ static void check_random(int seed, double a, double b, int64_t ntests){
   if (verbose)
     printf("seed = %d\n",seed);
   srand(seed);
-  int fail = 0, maxfail = 10;
   double s = (b - a)*0.5, m = (a+b)*0.5;
   int64_t count = 0;
   while(1){
     int64_t i = 0, n = 10*1000;
     for(;i<n;i++){
       double x = m + rand_arg(s);
-      if(check(x)) fail++;
-      if(fail>=maxfail) break;
+      check(x);
     }
     count += i;
-    if (verbose)
-      printf("failure(s) %d, total %"PRIx64"\n",fail,count);
     if(count>=ntests) break;
-    if(fail>=maxfail) break;
   }
-  if (verbose)
-    printf("%d fails per %"PRIx64" calls or %.1e %%\n",
-           fail, count, (double)fail/count*100);
 }
 
 static void call_random(int seed, int64_t n, double a, double b){
@@ -271,24 +264,16 @@ static void check_random_p(int seed, int64_t ntests){
   if (verbose)
     printf("seed = %d\n",seed);
   srand(seed);
-  int fail = 0, maxfail = 10;
   int64_t count = 0;
   while(1){
     int64_t i = 0, n = 10*1000;
     for(;i<n;i++){
       double x = rand_arg2();
-      if(check(x)) fail++;
-      if(fail>=maxfail) break;
+      check(x);
     }
     count += i;
-    if (verbose)
-      printf("failure(s) %d, total %"PRIx64"\n",fail,count);
     if(count>=ntests) break;
-    if(fail>=maxfail) break;
   }
-  if (verbose)
-    printf("%d fails per %"PRIx64" calls or %.1e %%\n",
-           fail, count, (double)fail/count*100);
 }
 
 static void check_random_all_p(int seed){
