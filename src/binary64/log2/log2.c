@@ -304,7 +304,7 @@ static double __attribute__((noinline)) as_log2_refine(double x, double a){
   if(__builtin_expect(!(t.u&(~(u64)0>>12)), 0)){
     // even if t and v2 are always of the same sign here, leave it aligned with other functions
     b64u64_u w = {.f = v2};
-    int d = 1 - 2*(int)((t.u^w.u)>>63);
+    int64_t d = 2*((int64_t)(t.u^w.u)>>63) + 1;
     // d=1 if t and v2 are of the same sign, d=-1 otherwise
     t.u += d;
     v1 = t.f;
