@@ -132,6 +132,13 @@ CORE_MATH_NOCHECK_UNDERFLOW=-1 means that underflow is not checked when
 If the external library supports underflow before rounding, add
 -DCORE_MATH_UNDERFLOW_BEFORE to EXTRA_CFLAGS in check.sh.
 
+## FMA contraction
+
+The CORE-MATH code is supposed to work with or without FMA contraction.
+However, FMA contraction is assumed to be used either everywhere or nowhere.
+See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106902. In production code,
+it is recommended to use either -ffp-contract=off or -ffp-contract=on.
+
 ## Support of overflow
 
 CORE-MATH always supports overflow: if the rounded result (with unbounded
