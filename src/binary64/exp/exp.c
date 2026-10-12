@@ -337,12 +337,12 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
     fl += e;
     fh = as_todenormal(fh + fl);
   } else {
-    if(th == 1.0){
+    if(th == 1.0){ // only occurs for i0=i1=0, and then tl=0
       double e;
       fh = fasttwosum(th,fh, &e);
       fl = fasttwosum(e, fl, &e);
       ix.f = fl;
-      if((ix.u&(~(u64)0>>12))==0) {
+      if((ix.u&(~(u64)0>>12))==0) { // fl is a power of 2
 	b64u64_u v = {.f = e};
 	i64 d = ((i64)(ix.u^v.u)>>63)*2 + 1;
 	ix.u += d;
