@@ -70,7 +70,7 @@ float cr_rsqrtf(float x){
        where the returned value is 1 ulp too large. We multiply by a correcting
        factor just below 1, which guarantees correct rounding in these few cases. */
     static const double corr = 0x1.ffffffffffffep-1;
-    return corr*(1.0/xd)*__builtin_sqrt(xd);
+    return (corr/xd)*__builtin_sqrt(xd);
   }
   return (1.0/xd)*__builtin_sqrt(xd);
 }
