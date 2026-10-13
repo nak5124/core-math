@@ -338,6 +338,14 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
     fh = as_todenormal(fh + fl);
   } else {
     if(th == 1.0){ // only occurs for i0=i1=0, and then tl=0
+      /* Avoid a double rounding issue when |fl| = ulp(fh)/2,
+         which only happens with rounding to nearest, and 11 hard-to-round
+         small inputs with 53-55 identical bits after the round bit:
+         -0x1.0401ae48409b5p-28, -0x1.4bd46601ae1efp-31, -0x1.85e60704a3a9cp-30,
+         -0x1.ff171507f8ba5p-30, 0x1p-53, 0x1.282aae3169ee7p-20, 0x1.413f33fe6ce07p-31,
+         0x1.8cd99fffb319cp-34, 0x1.e5ba92aa9b1efp-20, 0x1.f8e165f8388f7p-30,
+         0x1.ffff7fffe0001p-36. All these inputs give d=2 below, thus we could defer
+         them to as_exp_database(). */
       double e;
       fh = fasttwosum(th,fh, &e);
       fl = fasttwosum(e, fl, &e);
