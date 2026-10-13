@@ -1,6 +1,6 @@
 /* Correctly-rounded reciprocal square root of binary32 value.
 
-Copyright (c) 2022-2023 Alexei Sibidanov.
+Copyright (c) 2022-2026 Alexei Sibidanov and Paul Zimmermann
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -65,18 +65,12 @@ float cr_rsqrtf(float x){
   }
   unsigned m = ix.u<<8;
   if(__builtin_expect(ix.u == 0x2f7e2au || m == 0xbdf8a800u || m == 0x55b7bd00u, 0)){
-    // x=0x1.7bf15p-128*2^(2k) or x=0x1.ab6f7ap-125*2^(2k) with k>=0 (both fail for rndu)
-    if(ix.u != 0x0055b7bdu){ // avoid 0x1.56def4p-127
-      unsigned e = ix.u>>23, k = 1;
-      if(ix.u == 0x2f7e2au) e = -1;
-      if(m == 0x55b7bd00u) k = 0;
-      static const b32u32_u tb[] = {{.u = 0x000c1740u}, {.u = 0x005222e0u}};
-      b32u32_u r = tb[k], dr;
-      e = (512 - e)/2 - 578;
-      r.u |= e<<23;
-      dr.u = (e-25)<<23;
-      return r.f - dr.f;
-    }
+    /* The expression 1/xd*sqrt(xd) fails to return the correct rounding for
+       x=0x1.7bf15p-128*2^(2k) and x=0x1.ab6f7ap-125*2^(2k) with k>=0, for rndu,
+       where the returned value is 1 ulp too large. We multiply by a correcting
+       factor just below 1, which guarantees correct rounding in these few cases. */
+    static const double corr = 0x1.ffffffffffffep-1;
+    return corr*(1.0/xd)*__builtin_sqrt(xd);
   }
   return (1.0/xd)*__builtin_sqrt(xd);
 }
