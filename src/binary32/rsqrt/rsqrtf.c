@@ -38,7 +38,6 @@ SOFTWARE.
 #pragma STDC FENV_ACCESS ON
 
 typedef union {float f; uint32_t u;} b32u32_u;
-typedef union {double f; uint64_t u;} b64u64_u;
 
 float cr_rsqrtf(float x){
   double xd = x;
@@ -63,16 +62,16 @@ float cr_rsqrtf(float x){
     if(!(ix.u<<9)) return 0.0f;
     return x + x; // nan
   }
+  double c = 1.0, sq = __builtin_sqrt(xd);
   unsigned m = ix.u<<8;
   if(__builtin_expect(ix.u == 0x2f7e2au || m == 0xbdf8a800u || m == 0x55b7bd00u, 0)){
     /* The expression 1/xd*sqrt(xd) fails to return the correct rounding for
        x=0x1.7bf15p-128*2^(2k) and x=0x1.ab6f7ap-125*2^(2k) with k>=0, for rndu,
        where the returned value is 1 ulp too large. We multiply by a correcting
-       factor just below 1, which guarantees correct rounding in these few cases. */
-    static const double corr = 0x1.ffffffffffffep-1;
-    return (corr/xd)*__builtin_sqrt(xd);
+       factor just below 1, which guarantees correct rounding in these a few cases. */
+    c = 0x1.ffffffffffffep-1;
   }
-  return (1.0/xd)*__builtin_sqrt(xd);
+  return sq*(c/xd);
 }
 
 #ifdef __INTEL_CLANG_COMPILER
