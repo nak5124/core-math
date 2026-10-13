@@ -65,7 +65,8 @@ float cr_rsqrtf(float x){
   }
   unsigned m = ix.u<<8;
   if(__builtin_expect(ix.u == 0x2f7e2au || m == 0xbdf8a800u || m == 0x55b7bd00u, 0)){
-    if(ix.u != 0x0055b7bdu){
+    // x=0x1.7bf15p-128*2^(2k) or x=0x1.ab6f7ap-125*2^(2k) with k>=0 (both fail for rndu)
+    if(ix.u != 0x0055b7bdu){ // avoid 0x1.56def4p-127
       unsigned e = ix.u>>23, k = 1;
       if(ix.u == 0x2f7e2au) e = -1;
       if(m == 0x55b7bd00u) k = 0;
