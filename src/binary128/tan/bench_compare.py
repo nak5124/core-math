@@ -49,8 +49,15 @@ with tempfile.TemporaryDirectory(prefix='tanq-bench.') as tmp:
     executables = {}
     for name, src in [('before', before), ('after', root/source)]:
         obj, exe = work/f'{name}.o', work/name
-        force = ['-DCORE_MATH_TANQ_FORCE_ACCURATE'] if args.force_wide else []
-        run(cc+flags+force+['-c', str(src), '-o', str(obj)])
+        if args.force_wide:
+            # Disable the narrow path in a scratch copy, as tanq_error.md describes.
+            text = src.read_text()
+            gate = 'if (fast_pair(m, e, f, ex, &flip)) {'
+            if text.count(gate) != 1:
+                sys.exit(f'{src}: cannot locate the narrow-path call to disable')
+            src = work/f'{name}-wide.c'
+            src.write_text(text.replace(gate, 'if (0 && fast_pair(m, e, f, ex, &flip)) {'))
+        run(cc+flags+['-c', str(src), '-o', str(obj)])
         run(cc+flags+['-DCORE_MATH_F128', '-DTYPE_UNDER_TEST=__float128',
             '-Dcr_function_under_test=cr_tanq', '-Dfunction_under_test=tanq',
             '-Isrc/generic/tan', 'src/generic/support/perf_univariate.c',

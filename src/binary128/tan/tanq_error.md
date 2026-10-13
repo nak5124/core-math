@@ -8,8 +8,9 @@ evaluation. The quotient uses the **unrounded** component fractions.
 
 This is a new implementation with analytic error bounds and MPFR regression
 coverage. The corpus is not an exhaustive search for tangent's hardest cases.
-The adaptive fallback avoids assuming that a fixed precision resolves every
-rounding boundary. The argument below is not a machine-checked C proof.
+An input that neither gated path decides is printed and the process exits,
+following `binary64/pow/pow.c`; there is no arbitrary-precision fallback.
+The argument below is not a machine-checked C proof.
 
 ## Edges and environment
 
@@ -28,10 +29,10 @@ rounding boundary. The argument below is not a machine-checked C proof.
   Consequently underflow (and optional ERANGE) is required there too.
 * Non-tiny paths use integer arithmetic exclusively. The sign is resolved
   before rounding, and existing flags and the caller's mode are preserved.
-  The fast and wide paths have explicit reduction guards keeping their
-  quotient exponents far from either range limit. The adaptive rounder
-  handles overflow and underflow without needing a global pole-separation
-  theorem. No nonzero finite tangent is exact.
+  Both paths have explicit reduction guards keeping their quotient
+  exponents far from either range limit, so neither can overflow or
+  underflow. An input that neither path decides is reported, not rounded
+  (see below). No nonzero finite tangent is exact.
 
 ## Constants and inherited kernels
 
@@ -40,8 +41,7 @@ Run from the repository root:
 ```
 python3 src/binary128/sin/sinq_tables.py > /tmp/tanq-tables.inc
 python3 src/binary128/tan/tanq_error.py
-python3 src/binary128/tan/tanq_cases.py > /tmp/tanq.wc
-cmp /tmp/tanq.wc src/binary128/tan/tanq.wc
+python3 src/binary128/tan/tanq_cases.py > /tmp/tanq-generated.wc
 ```
 
 The first command reproduces all seven constant arrays/scalars in `tanq.c`
@@ -49,6 +49,10 @@ and checks the sine minimax error and tiered polynomial arithmetic with
 exact rational inequalities. `tanq_error.py` verifies their identity with
 `sinq.c` and the additional rational inequalities below. The accompanying
 `../sin/sinq_error.md` explains the component errors.
+
+`tanq_cases.py` reproduces the original 4,959-record prefix, not the whole
+current corpus: `5f34efa3` appended 57,001 bacsel cases. Keep those additions
+when checking or regenerating the file. The full corpus has 61,960 records.
 
 The narrow path departs from master's reconstruction in two places, neither
 of which changes a bound used below. First, `reduce` normalizes the product
@@ -183,7 +187,7 @@ quotient error below **2^-270**. `tanq_error.py` checks these conservative
 inequalities. The code adds/subtracts `2^114` integer units in the 384-bit
 fraction and rounds both endpoints. It returns only if their rounded
 encodings agree. An interval crossing the normalized fraction's binade
-boundary is sent to the adaptive path instead of wrapping.
+boundary is reported instead of wrapping.
 
 The wide divider generates six exact base-2^64 digits. Put `B = 2^64`, let
 the six-limb divisor be `D = B^5*h + l` with `h >= B/2` and `l < B^5`, and
@@ -200,71 +204,30 @@ followed by the same optional one-bit normalization, give the same truncated
 384-bit quotient as the original 383/384 single-bit restoring steps.
 The wide-path error bound and acceptance test are unchanged.
 
-## Adaptive reduction
+## Undecided inputs
 
-Use base-2^32 integers at scale `2^P`, where the requested working fraction
-has K bits (initially 256) and
-
-```
-P = K + 32*ceil(max(e,0)/32) + 64.
-```
-
-Machin's identity gives `pi/2 = 8*atan(1/5) - 2*atan(1/239)`. Each arctangent
-uses its alternating series. Successive integer powers are divided by
-`q^2`; their error relative to the exact scaled power is below
-`1/(1-1/q^2) < 2` units. Dividing by each odd denominator adds less than
-one unit. Summing N terms therefore costs less than `3*N` units, and the
-omitted tail after the first zero power is below two units. Combining the
-radii produces an explicit integer interval `[p, p+width]` for scaled pi/2,
-with `width < 32*P+64`.
-
-The significand shifted to the wide scale is divided **exactly** by the
-lower endpoint p, retaining the remainder and quotient modulo four.
-The discrepancy from reduction by the true pi/2 is at most the full
-quotient times `width`. This quotient (or its nearest-integer adjustment)
-is below `2^(max(e,0)+2)`. The 64 extra bits make that discrepancy less than
-one QK unit for every representable array size. Choosing the closest
-multiple of p and truncating the residual to K fraction bits adds less
-than one more unit. The represented magnitude t is at most pi/4. If its
-sign is uncertain, the subsequent interval contains zero and forces more
-precision.
-
-This path recomputes pi as precision increases; it does not exhaust a
-finite table of 2/pi digits. Integer precision, term counts, and allocation
-are naturally limited by the C implementation's address space and stack;
-no empirical fixed-precision termination cutoff is used.
-
-## Adaptive sine/cosine and quotient
-
-Let `u = floor(t*t*2^K)/2^K`. Its error is below one QK unit. Generate sine
-and cosine terms using the usual Taylor recurrences, truncating each
-product and division. Compare first to the exact series at represented u:
-for a preceding term error below three units, the next error is bounded by
+`accurate` reports failure instead of a result when wide reduction refuses
+more than 160 leading zeros, when the quotient's radius-`2^114` enclosure
+leaves its normalized binade, or when its two endpoints round differently.
+`cr_tanq` then prints
 
 ```
-(3*(5/8) + 1)/2 + 1 < 3,
+Unexpected worst-case found.
+Please report to core-math@inria.fr:
+Worst-case of tanq found: x=<sign>0x1.<28 hex digits>p<exponent>
 ```
 
-because `u < (pi/4)^2 < 5/8` and every denominator is at least two. When
-both represented terms vanish, the remaining tails are below two units.
-The sum of k term errors is below `3*k` units. Perturbing u by one unit
-changes the complete sine/cosine series by less than one unit; perturbing
-the angle by the reduction error changes either by less than two units.
-The shared conservative radius `4*k + 16` covers all of these contributions.
+and calls `exit(1)`, the convention of `binary64/pow/pow.c`. The input is
+always normal here, and the printed form is the exact hexadecimal notation
+of `tanq.wc`, so it can be appended to the corpus directly.
 
-If either component interval contains zero, double K and restart. Otherwise
-monotonicity of positive division gives a rational enclosure from the
-appropriate numerator and denominator endpoints. Odd quadrants invert the
-quotient and change its sign. `round_ratio` performs exact rational binary
-long division to get 113 significand bits, a rounding bit, and an exact
-sticky remainder. It handles ties, subnormals and overflow explicitly.
-Both endpoints must agree in their rounded encoding **and** range flags.
-
-For a nonzero algebraic x, tan(x) is transcendental: an algebraic value
-would make `exp(2*i*x)` algebraic via the tangent identity, contradicting
-Hermite–Lindemann. It is therefore neither a pole nor a dyadic rounding
-boundary. The enclosing intervals converge, so increasing precision
-resolves the rounding decision without a hard-case completeness assumption.
+No input is known to reach this message: the worst-case corpus and the
+special checks, forced through the wide path, are all decided there. That
+is sampled evidence. The wide gate rejects only quotients whose normalized
+fraction lies within `2^-270` of a rounding boundary, and the reduction
+guard only arguments within `2^-160` of a multiple of pi/2, in units of
+pi/2. Whether any binary128 input meets either condition is not settled
+by this document.
 
 ## Reproducing checks
 
@@ -277,18 +240,20 @@ make -C src/binary128/tan check_internal CFLAGS='-O2 -frounding-math -DMPFR_WANT
 src/binary128/tan/check_internal
 ```
 
-`CORE_MATH_TANQ_FORCE_ACCURATE` skips the narrow path. Define that and
-`CORE_MATH_TANQ_FORCE_ADAPTIVE` together to exercise adaptive refinement.
-The latter is much slower for huge exponents. Setting
-`CORE_MATH_TANQ_ADAPTIVE_BITS=64` starts below the target precision and
-exercises repeated refinement. `check_internal` compares
+To force the wide path, edit a scratch copy only: replace
+`if (fast_pair(m, e, f, ex, &flip)) {` by
+`if (0 && fast_pair(m, e, f, ex, &flip)) {` in `cr_tanq`, as the sine and
+cosine notes do. `bench_compare.py --force-wide` applies the same edit to
+its temporary copies. Special values and the tiny-input shortcut still run
+first. This tests the wide arithmetic, not the narrow gate's rejection rate.
+
+`check_internal` checks 385 leading-zero frames and 10,010 shifts against GMP,
+including zero, limb boundaries and shifts at or beyond 384 bits. It compares
 1,000,000 narrow quotients with their documented error interval and 100,000
 exact wide quotients against GMP. The narrow operands include divisors at
 and beside both ends of the binade and extreme limbs; the wide ones include
-long carry/borrow chains. It reports the extreme narrow errors observed. It checks
-Machin and 3,000 paired Taylor intervals against MPFR, checks 400 signed
-rational rounding/range cases, and samples 10,000 quotient error bounds.
-These tests validate the implementation; sampling does not replace the
+long carry/borrow chains. It reports the extreme narrow errors observed, and
+samples 10,000 quotient error bounds against MPFR. These tests validate the implementation; sampling does not replace the
 analytic inequalities above.
 
 ## Validation recorded on 2026-09-19
@@ -303,19 +268,15 @@ On an Intel Core i9-14900K, GCC 15.2 and Clang 21.1:
 * The one-million special-test setting passed all four modes, plus its
   subnormal, exception, NaN, signed-zero, and environment-preservation checks.
   A final reproducible run used seed 1 and four OpenMP threads.
-* Forced wide special checks passed at the 10,000 setting. Forced adaptive
-  checks passed at 600, both at the default precision and starting at 64 bits
-  to exercise repeated refinement. Inexact and errno were enabled.
+* Forced wide special checks passed at the 10,000 setting, with inexact
+  and errno enabled.
 * The independent internal arithmetic checks passed. Constant regeneration
   and exact-rational bound checks passed, and the corpus regenerated exactly.
-* GCC address/undefined-behavior sanitizers passed forced-adaptive special
-  checks at 60, including refinement from 64 bits; Clang undefined-behavior
-  sanitizer passed normal special
-  checks at 10,000. Clang needed GCC's quadmath include directory, supplied
+* Clang undefined-behavior sanitizer passed normal special checks at
+  10,000. Clang needed GCC's quadmath include directory, supplied
   using `-idirafter "$(gcc -print-file-name=include)"` in CFLAGS.
 * A `-march=core2` build passed special checks at 10,000 in all modes,
-  exercising the conversion helpers without SSE4.1. Clang also compiled
-  the forced-adaptive configuration with `-Wall -Wextra -Werror`.
+  exercising the conversion helpers without SSE4.1.
 * The CI selector schedules both tangent checks, and the CI dry build passed
   with `-march=x86-64-v2 -Wdouble-promotion`. As with the existing pipeline,
   this ISA flag is needed by the repository's quadmath capability probe.
@@ -339,11 +300,35 @@ exists on the base branch. It does not measure latency, other input bands,
 or directed-mode performance, and libc is not the correctness oracle.
 
 
+## Removal of the adaptive fallback (2026-10-13)
+
+The adaptive fixed-point interval tier (Machin pi/2, Taylor enclosures and
+exact rational rounding) and its compile-time test macros were removed in
+favour of the report-and-exit convention above, following review. The
+narrow and wide paths, their gates and every constant are unchanged.
+Validation of the resulting source (GCC 15.2, `-march=x86-64-v2`, inexact
+and errno enabled, `-Werror`, all four rounding modes):
+
+* `check.sh --worst`: 61,980 corpus records passed, normally and with the
+  wide path forced in a scratch copy.
+* `check.sh --special`: the deterministic suite plus 1,000,000 random inputs
+  per mode (seed 1) passed; forced wide, 100,000 per mode (seed 2) passed.
+* GCC address/undefined-behavior sanitizers passed the full corpus and
+  100,000 special inputs per mode (seed 4) on the normal build.
+* `check_internal`: 385 leading-zero frames, 10,010 shifts, 1,000,000
+  narrow quotients (floor error -5 to 1), 100,000 exact wide quotients and
+  10,000 quotient-bound samples passed; largest narrow error 4.0 of 72.
+* `tanq_error.py` passed. Clang 21.1 and GCC `-march=core2` compiled the
+  source with `-Wall -Wextra -Werror`, Clang also with the wide path forced.
+* A scratch copy whose `accurate` always fails printed the three-line
+  message for every tested normal input; each printed value parsed back to
+  the identical binary128 encoding.
+
 ## Optimizations versus fb944b75
 
 The initial implementation was committed as `fb944b75`. The follow-up keeps
-the constants, the residual polynomials, the wide and adaptive paths'
-arithmetic and every rounding rule, and changes:
+the constants, the residual polynomials, the wide path's arithmetic and
+every rounding rule, and changes:
 
 1. wide division: six exact radix-2^64 digits instead of 383/384 single-bit
    restoring steps;
@@ -407,9 +392,8 @@ errno enabled throughout, all four modes unless stated):
 
 * 1,000,000 narrow quotients stayed within the documented interval against
   GMP (observed error relative to the floor: -5 to 1), and 100,000 wide
-  quotients were exact. The internal MPFR interval, rational rounder, and
-  quotient-bound checks passed; the largest sampled narrow error was 4.4 of
-  72 units.
+  quotients were exact. The internal quotient-bound checks passed; the
+  largest sampled narrow error was 4.4 of 72 units.
 * The 4,959-input regression corpus passed normally and with the wide path
   forced.
 * All 196,978 inherited sine/cosine input records passed as tangent inputs.
@@ -418,9 +402,8 @@ errno enabled throughout, all four modes unless stated):
   forced.
 * GCC address/undefined-behavior sanitizers passed normal special checks at
   100,000 (seed 4).
-* Clang 21.1 compiled the normal, forced-wide and forced-adaptive
-  configurations with `-Wall -Wextra -Werror`; GCC compiled `-march=core2`
-  likewise. These two were compile checks only in this round.
+* Clang 21.1 compiled the normal and forced-wide configurations with
+  `-Wall -Wextra -Werror`; GCC compiled `-march=core2` likewise. These two were compile checks only in this round.
 * The exact-rational bound check and `git diff --check` passed.
 
 As with the initial implementation, the MPFR samples are regression evidence
@@ -446,6 +429,6 @@ The follow-up compiler changes preserve every intermediate integer result:
   overflow. Explicit first/last columns preserve all `W+2` product limbs
   and the zero sentinel for both the six- and ten-limb windows.
 
-The reciprocal/Newton divider, clamping rules, error radii, and adaptive
-calculation are unchanged. See [the compiler review](compiler_review.md)
+The reciprocal/Newton divider, clamping rules and error radii are
+unchanged. See [the compiler review](compiler_review.md)
 for measurements, verification coverage and reproduction commands.

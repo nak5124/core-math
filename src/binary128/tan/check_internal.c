@@ -1,4 +1,4 @@
-/* Integer-division and interval regression checks for tanq.
+/* Integer-division and error-bound regression checks for tanq.
    Copyright (c) 2026 Chen-Pang He. MIT license; see tanq.c. */
 #include "tanq.c"
 #include <stdio.h>
@@ -29,6 +29,35 @@ static u64 random64(void) {
   return state * UINT64_C(2685821657736338717);
 }
 static u128 random128(void) { return ((u128)random64() << 64) | random64(); }
+
+/* The function corpora use normalized frames, so they do not exercise the
+   zero/low-limb leading-zero cases or shifts beyond the 384-bit window. */
+static void limb_edges(void) {
+  const unsigned shifts[] = {0, 1, 63, 64, 65, 127, 128, 129,
+                             255, 256, 383, 384, 385};
+  mpz_t x, expected, actual;
+  mpz_inits(x, expected, actual, NULL);
+  for (int bit = -1; bit < 384; bit++) {
+    u384 a = {{0, 0, 0}};
+    if (bit >= 0) a.l[bit/128] = (u128)1 << (bit%128);
+    set384(x, a);
+    int bits = mpz_sgn(x) ? (int)mpz_sizeinbase(x, 2) : 0;
+    require(lz_384(a) == 384-bits, "384-bit leading zeros");
+    if (bit < 128) require(clz128(a.l[0]) == 128-bits, "128-bit leading zeros");
+    for (unsigned j = 0; j < sizeof shifts/sizeof *shifts; j++) {
+      unsigned shift = shifts[j];
+      mpz_fdiv_q_2exp(expected, x, shift);
+      set384(actual, shr_384_sat(a, shift));
+      require(mpz_cmp(actual, expected) == 0, "384-bit right shift");
+      mpz_mul_2exp(expected, x, shift);
+      mpz_fdiv_r_2exp(expected, expected, 384);
+      set384(actual, shl_384(a, shift));
+      require(mpz_cmp(actual, expected) == 0, "384-bit left shift");
+    }
+  }
+  mpz_clears(x, expected, actual, NULL);
+  puts("385 leading-zero frames and 10010 shifts passed");
+}
 
 static void division(void) {
   mpz_t a, b, q, actual;
@@ -88,92 +117,6 @@ static void division(void) {
          "quotients passed\n", lowest, highest);
 }
 
-static void get_fixed(mpfr_t r, const uint32_t *a, int n) {
-  mpz_t z;
-  mpz_init(z);
-  mpz_import(z, n, -1, sizeof(uint32_t), 0, 0, a);
-  mpfr_set_z(r, z, MPFR_RNDN);
-  mpfr_div_2ui(r, r, 32*(n-2), MPFR_RNDN);
-  mpz_clear(z);
-}
-
-static void intervals(void) {
-  for (int n = 10; n <= 34; n = 2*n-2) {
-    uint32_t p[n], t[n], s[n], c[n];
-    mpfr_t ref, lo, hi, x, err;
-    mpfr_inits2(32*n+128, ref, lo, hi, x, err, (mpfr_ptr)0);
-    u64 width = big_pio2(p, n);
-    get_fixed(lo, p, n);
-    mpfr_set_ui(err, width, MPFR_RNDN);
-    mpfr_div_2ui(err, err, 32*(n-2), MPFR_RNDN);
-    mpfr_add(hi, lo, err, MPFR_RNDN);
-    mpfr_const_pi(ref, MPFR_RNDN); mpfr_div_2ui(ref, ref, 1, MPFR_RNDN);
-    require(mpfr_cmp(lo, ref) < 0 && mpfr_cmp(ref, hi) < 0, "Machin interval");
-    for (int i = 0; i < 1000; i++) {
-      memset(t, 0, sizeof t);
-      for (int j = 0; j < n-2; j++) t[j] = random64();
-      t[n-3] >>= 1; // [0,1/2); plus explicit near-pi/4 samples below
-      if (i % 2) t[n-3] = UINT32_C(0xc90fdaa2);
-      u64 radius = adaptive_sincos(s, c, t, n);
-      get_fixed(x, t, n);
-      mpfr_set_ui(err, radius, MPFR_RNDN);
-      mpfr_div_2ui(err, err, 32*(n-2), MPFR_RNDN);
-      for (int cosine = 0; cosine < 2; cosine++) {
-        if (cosine) mpfr_cos(ref, x, MPFR_RNDN); else mpfr_sin(ref, x, MPFR_RNDN);
-        get_fixed(lo, cosine ? c : s, n);
-        mpfr_sub(ref, ref, lo, MPFR_RNDN); mpfr_abs(ref, ref, MPFR_RNDN);
-        require(mpfr_cmp(ref, err) < 0, "Taylor interval");
-      }
-    }
-    mpfr_clears(ref, lo, hi, x, err, (mpfr_ptr)0);
-  }
-  puts("Machin and 3000 paired Taylor intervals passed");
-}
-
-static void rounders(void) {
-  const int exponents[] = {-16500, -16495, -16494, -16383, -16382, -1, 0, 1, 16383, 16384};
-  const unsigned modes[] = {RM_NEAREST, (unsigned)-1, RM_UP, RM_DOWN};
-  const mpfr_rnd_t rounds[] = {MPFR_RNDN, MPFR_RNDZ, MPFR_RNDU, MPFR_RNDD};
-  mpz_t a, b;
-  mpz_inits(a, b, NULL);
-  mpfr_t x, y, z;
-  mpfr_inits2(17000, x, y, (mpfr_ptr)0);
-  mpfr_init2(z, 113);
-  for (unsigned i = 0; i < sizeof exponents/sizeof *exponents; i++)
-    for (int offset = -2; offset <= 2; offset++) {
-      int e = exponents[i];
-      mpz_set_ui(a, 1); mpz_mul_2exp(a, a, 114);
-      if (offset < 0) mpz_sub_ui(a, a, -offset); else mpz_add_ui(a, a, offset);
-      mpz_set_ui(b, 1);
-      if (e < 114) mpz_mul_2exp(b, b, 114-e); else mpz_mul_2exp(a, a, e-114);
-      int n = (mpz_sizeinbase(a, 2) + mpz_sizeinbase(b, 2) + 31)/32 + 2;
-      uint32_t aa[n], bb[n];
-      memset(aa, 0, sizeof aa); memset(bb, 0, sizeof bb);
-      mpz_export(aa, NULL, -1, sizeof(uint32_t), 0, 0, a);
-      mpz_export(bb, NULL, -1, sizeof(uint32_t), 0, 0, b);
-      mpfr_set_emin(-100000); mpfr_set_emax(100000);
-      mpfr_set_z(x, a, MPFR_RNDN); mpfr_set_z(y, b, MPFR_RNDN);
-      for (int sign = 0; sign < 2; sign++) {
-        if (sign) mpfr_neg(x, x, MPFR_RNDN);
-        for (int mode = 0; mode < 4; mode++) {
-          mpfr_set_emin(-16493); mpfr_set_emax(16384);
-          mpfr_clear_flags();
-          int inex = mpfr_div(z, x, y, rounds[mode]);
-          mpfr_subnormalize(z, inex, rounds[mode]);
-          int expected_flags = (mpfr_underflow_p() ? FE_UNDERFLOW : 0)
-                             | (mpfr_overflow_p() ? FE_OVERFLOW : 0);
-          u128 expected = asu128(mpfr_get_float128(z, MPFR_RNDN));
-          int flags;
-          u128 actual = round_ratio(aa, bb, n, sign ? SIGN_MASK : 0, modes[mode], &flags);
-          require(actual == expected && flags == expected_flags, "rational rounder/flags");
-          mpfr_set_emin(-100000); mpfr_set_emax(100000);
-        }
-      }
-    }
-  mpz_clears(a, b, NULL); mpfr_clears(x, y, z, (mpfr_ptr)0);
-  puts("400 signed rational rounding and range-boundary cases passed");
-}
-
 /* Samples validate that the implemented pipelines respect the documented
    bounds. The proof is in tanq_error.md; this check is not that proof. */
 static void kernel_bounds(void) {
@@ -217,6 +160,6 @@ static void kernel_bounds(void) {
 }
 
 int main(void) {
-  division(); intervals(); rounders(); kernel_bounds();
+  limb_edges(); division(); kernel_bounds();
   return 0;
 }

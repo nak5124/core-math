@@ -57,10 +57,4 @@ assert table < F(1, 2**284)
 wide = 3*F(1, 2**284)/(F(1, 2)-F(1, 2**284)) + F(1, 2**384)
 assert wide < F(1, 2**270)
 
-# Adaptive term recurrence: u < (pi/4)^2 < 5/8 and denom >= 2.
-# Product truncation followed by division costs < 1+1/denom.
-assert (F(3)*F(5, 8)+1)/2 + 1 < 3
-# When a represented term first vanishes, the exact term is <3 units;
-# subsequent terms shrink by at least 5/16.
-assert 3*F(5, 16)/(1-F(5, 16)) < 2
-print('Shared constants match; narrow, wide and adaptive rational bounds passed.')
+print('Shared constants match; narrow and wide rational bounds passed.')
