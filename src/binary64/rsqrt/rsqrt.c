@@ -168,46 +168,44 @@ static double __attribute__((noinline)) as_rsqrt_refine(double rf, double a){
 double cr_rsqrt(double x){
   b64u64_u ix = {.f = x};
   double r;
-  if(__builtin_expect(ix.u < 1ll<<52, 0)){ // 0 <= x < 0x1p-1022
-    if(__builtin_expect(ix.u, 1)){ // x <> +0
+  if (__builtin_expect(ix.u - 0x10000000000000ull < 0x7fc0000000000000ull, 1))
+    // common case: 2^-1022 <= x < 2^1022
+    r = (1.0 / x) * __builtin_sqrt(x);
+  else if (ix.u < 1ll<<52) { // 0 <= x < 0x1p-1022
+    if (ix.u) // x <> +0
       r = __builtin_sqrt(x)/x;
-    } else {
+    else {
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE; // pole error
 #endif
       return 1.0 / 0.0; // case x = +0
     }
-  } else if(__builtin_expect(ix.u >= 0x7ffull<<52, 0)){ // NaN, Inf, x <= 0
-    if(!(ix.u<<1)) {
+  } else if (ix.u >= 0x7ffull<<52) { // NaN, Inf, x <= 0
+    if (!(ix.u<<1)) {
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE; // pole error
 #endif
       return 1.0 / -0.0; // x=-0
     }
-    if(ix.u > 0xfff0000000000000ull) return x + x; // -NaN
-    if(ix.u >> 63){ // x < 0
+    if (ix.u > 0xfff0000000000000ull) return x + x; // -NaN
+    if (ix.u >> 63){ // x < 0
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
 #endif
       feraiseexcept (FE_INVALID);
       return __builtin_nan("<0");
     }
-    if(!(ix.u<<12)) return 0.0; // +/-Inf
+    if (!(ix.u<<12)) return 0.0; // +/-Inf
     return x + x; // +NaN
-  } else { // 0x1p-1022 <= x < 2^1024
-    if (__builtin_expect (ix.u > 0x7fd000000000000ull, 0)) // x > 2^1022
-      // avoid spurious underflow in 1/x
+  } else // x >= 2^1022, avoid spurious underflow in 1/x
       r = (4.0 / x) * (0.25 * __builtin_sqrt(x));
-    else
-      r = (1.0 / x) * __builtin_sqrt(x);
-  }
-  double rx = r*x, drx = __builtin_fma(r, x, -rx);
-  double h = __builtin_fma(r,rx,-1.0) + r*drx, dr = (r*0.5)*h;
+  double rx = r*x, drx = __builtin_fma (r, x, -rx);
+  double h = __builtin_fma (r, rx, -1.0) + r * drx, dr = (r * 0.5) * h;
   double rf = r - dr;
   dr -= r - rf;
   b64u64_u idr = {.f = dr}, ir = {.f = rf};
   u64 aidr = (idr.u&(~0ull>>1)) - (ir.u & (0x7ffll<<52)) + (0x3fell<<52), mid = (aidr - 0x3c90000000000000 + 16)>>5;
-  if(__builtin_expect( mid==0 || aidr<0x39b0000000000000ll || aidr>0x3c9fffffffffff80ll, 0))
+  if (__builtin_expect( mid==0 || aidr<0x39b0000000000000ll || aidr>0x3c9fffffffffff80ll, 0))
     rf = as_rsqrt_refine(rf, x);
   return rf;
 }
