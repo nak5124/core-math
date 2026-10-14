@@ -68,7 +68,7 @@ float cr_rsqrtf(float x){
     /* The expression 1/xd*sqrt(xd) fails to return the correct rounding for
        x=0x1.7bf15p-128*2^(2k) and x=0x1.ab6f7ap-125*2^(2k) with k>=0, for rndu,
        where the returned value is 1 ulp too large. We multiply by a correcting
-       factor just below 1, which guarantees correct rounding in these a few cases. */
+       factor just below 1, which guarantees correct rounding in these cases. */
     c = 0x1.ffffffffffffep-1;
   }
   return sq*(c/xd);
