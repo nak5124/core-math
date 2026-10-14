@@ -199,8 +199,12 @@ double cr_rsqrt(double x){
     return x + x; // +NaN
   } else // x >= 2^1022, avoid spurious underflow in 1/x
       r = (4.0 / x) * (0.25 * __builtin_sqrt(x));
+  // use Newton iteration r' = r - r/2*(r^2*x-1)
   double rx = r*x, drx = __builtin_fma (r, x, -rx);
+  // rx + drx approximates r*x with about 106 bits
   double h = __builtin_fma (r, rx, -1.0) + r * drx, dr = (r * 0.5) * h;
+  // h approximates r^2*x-1
+  // dr approximates the correction term r/2*(r^2*x-1)
   double rf = r - dr;
   dr -= r - rf;
   b64u64_u idr = {.f = dr}, ir = {.f = rf};
