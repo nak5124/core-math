@@ -336,18 +336,16 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
   dxl += dxll;
   double fl, fh = opolydd(dxh,dxl, 7,ch, &fl);
   fh = muldd(dxh,dxl, fh,fl, &fl);
+  fh = muldd(fh,fl, th,tl, &fl);
+  fh = fastsum(th,tl, fh,fl, &fl);
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     // x < -0x1.6232bdd7abcd2p+9
     ix.u = (1-ie)<<52;
-    fh = muldd(fh,fl, th,tl, &fl);
-    fh = fastsum(th,tl, fh,fl, &fl);
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
     fh = as_todenormal(fh + fl);
   } else {
-    fh = muldd(fh,fl, th,tl, &fl);
-    fh = fastsum(th,tl, fh,fl, &fl);
     fh = fasttwosum(fh,fl, &fl);
     ix.f = fl;
     u64 d = (ix.u + 2)&(~(u64)0>>12);
