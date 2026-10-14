@@ -1,6 +1,6 @@
 /* Correctly-rounded reciprocal square root of binary64 value.
 
-Copyright (c) 2022-2025 Alexei Sibidanov.
+Copyright (c) 2022-2026 Alexei Sibidanov <sibid@uvic.ca>.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -168,10 +168,8 @@ static double __attribute__((noinline)) as_rsqrt_refine(double rf, double a){
 double cr_rsqrt(double x){
   b64u64_u ix = {.f = x};
   double r;
-  if (__builtin_expect(ix.u - 0x10000000000000ull < 0x7fc0000000000000ull, 1))
-    // common case: 2^-1022 <= x < 2^1022
-    r = (1.0 / x) * __builtin_sqrt(x);
-  else if (ix.u < 1ll<<52) { // 0 <= x < 0x1p-1022
+  int e = ix.u>>52;
+  if(__builtin_expect(!e, 0)) {
     if (ix.u) // x <> +0
       r = __builtin_sqrt(x)/x;
     else {
@@ -180,25 +178,29 @@ double cr_rsqrt(double x){
 #endif
       return 1.0 / 0.0; // case x = +0
     }
-  } else if (ix.u >= 0x7ffull<<52) { // NaN, Inf, x <= 0
-    if (!(ix.u<<1)) {
+  } else if(__builtin_expect(e<0x7fe, 1)){
+    // common case: 2^-1022 <= x < 2^1022
+    r = (1.0 / x) * __builtin_sqrt(x);
+  } else if(__builtin_expect(e<0x7ff, 1)){
+      r = (4.0 / x) * (0.25 * __builtin_sqrt(x));
+  } else {
+    u64 ax = ix.u<<1;
+    if (!ax) {
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = ERANGE; // pole error
 #endif
       return 1.0 / -0.0; // x=-0
     }
-    if (ix.u > 0xfff0000000000000ull) return x + x; // -NaN
-    if (ix.u >> 63){ // x < 0
+    if (ax > 0x7ffull<<53 ) return x + x; // NaN
+    if (e >> 11){ // x < 0
 #ifdef CORE_MATH_SUPPORT_ERRNO
       errno = EDOM;
 #endif
       feraiseexcept (FE_INVALID);
       return __builtin_nan("<0");
     }
-    if (!(ix.u<<12)) return 0.0; // +/-Inf
-    return x + x; // +NaN
-  } else // x >= 2^1022, avoid spurious underflow in 1/x
-      r = (4.0 / x) * (0.25 * __builtin_sqrt(x));
+    return 0.0; // +Inf
+  }
   // use Newton iteration r' = r - r/2*(r^2*x-1)
   double rx = r*x, drx = __builtin_fma (r, x, -rx);
   // rx + drx approximates r*x with about 106 bits
@@ -206,10 +208,10 @@ double cr_rsqrt(double x){
   // h approximates r^2*x-1
   // dr approximates the correction term r/2*(r^2*x-1)
   double rf = r - dr;
-  dr -= r - rf;
-  b64u64_u idr = {.f = dr}, ir = {.f = rf};
-  u64 aidr = (idr.u&(~0ull>>1)) - (ir.u & (0x7ffll<<52)) + (0x3fell<<52), mid = (aidr - 0x3c90000000000000 + 16)>>5;
-  if (__builtin_expect( mid==0 || aidr<0x39b0000000000000ll || aidr>0x3c9fffffffffff80ll, 0))
+  b64u64_u idr = {.f = dr}, ir = {.f = r};
+  int de = (ir.u>>52)-((idr.u>>52)&0x7ff);
+  u64 d = (idr.u + 18)&~0ull>>13;
+  if(__builtin_expect(d<=23||de>100, 0))
     rf = as_rsqrt_refine(rf, x);
   return rf;
 }
