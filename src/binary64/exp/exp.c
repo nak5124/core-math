@@ -337,7 +337,7 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
   }
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     // x < -0x1.6232bdd7abcd2p+9
-    ix.u = (1-ie)<<52;
+    ix.u = (1-ie)<<52; // ix=2^-1022-ie with -1075 <= ie <= -1022
     double e;
     fh = fasttwosum(ix.f, fh, &e);
     fl += e;
