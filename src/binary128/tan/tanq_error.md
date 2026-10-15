@@ -50,9 +50,10 @@ exact rational inequalities. `tanq_error.py` verifies their identity with
 `sinq.c` and the additional rational inequalities below. The accompanying
 `../sin/sinq_error.md` explains the component errors.
 
-`tanq_cases.py` reproduces the original 4,959-record prefix, not the whole
-current corpus: `5f34efa3` appended 57,001 bacsel cases. Keep those additions
-when checking or regenerating the file. The full corpus has 61,960 records.
+`tanq_cases.py` reproduces the first 4,961 records, not the whole current
+corpus: `5f34efa3` appended 57,001 bacsel cases and `d8c2b9ea` appended
+coverage inputs. Keep those additions when checking or regenerating the file.
+The full corpus has 61,983 records.
 
 The narrow path departs from master's reconstruction in two places, neither
 of which changes a bound used below. First, `reduce` normalizes the product

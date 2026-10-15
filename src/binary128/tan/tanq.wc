@@ -26,6 +26,8 @@
 0x1.ffffffffffffffffffffffffffffp+16383
 inf
 nan
++snan
+-snan
 0xfffffffffffffffffffffffffffep-169
 0xffffffffffffffffffffffffffffp-169
 0x10000000000000000000000000000p-169
