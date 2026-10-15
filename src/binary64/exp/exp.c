@@ -187,22 +187,10 @@ static inline double as_todenormal(double x){
 }
 
 static const double db[] = {
-  0x1p-53, 0x1.fffffffffffffp-53, 0x1.ffff7fffe0001p-36, 0x1.8cd99fffb319cp-34,
-  0x1.413f33fe6ce07p-31, 0x1.f8e165f8388f7p-30, 0x1.282aae3169ee7p-20, 0x1.e5ba92aa9b1efp-20,
-  0x1.ba07d73250de7p-14, 0x1.6a4d1af9cc989p-8, 0x1.5a75293a5dcdap-6, 0x1.42ea46949b3c7p-5,
-  0x1.7c8bb0cf5d16p-5, 0x1.0948d39a41695p-3, 0x1.a065fefae814fp-3, 0x1.f6e4c3ced7c72p-3,
-  0x1.1a0408712e00ap-2, 0x1.bcab27d05abdep-2, 0x1.005ae04256babp-1, 0x1.273c188aa7b14p+2,
-  0x1.83d4bcdebb3f4p+2, 0x1.08f51434652c3p+4, 0x1.1d5c2daebe367p+4, 0x1.c44ce0d716a1ap+4,
-  0x1.e07e71bfcf06fp+5, 0x1.f7216c4b435c9p+5, 0x1.54cd1fea7663ap+7, 0x1.d6479eba7c971p+8,
-  -0x1.4bd46601ae1efp-31, -0x1.85e60704a3a9cp-30, -0x1.ff171507f8ba5p-30, -0x1.0401ae48409b5p-28,
-  -0x1.664716b68a409p-14, -0x1.a2fefefd580dfp-13, -0x1.ce3f638d0c742p-12, -0x1.ceff32831e2c2p-12,
-  -0x1.33accae78b371p-11, -0x1.d792b60084f92p-11, -0x1.7fb235d76cce7p-8, -0x1.1ff9b8e8b38bep-7,
-  -0x1.54511e930898cp-7, -0x1.5c5ed0ec83666p-6, -0x1.8c56ff5326197p-6, -0x1.a4187f2ca71f9p-6,
-  -0x1.a8f783d749a8fp-4, -0x1.bd44fdaed819fp-4, -0x1.daf693d64fadap-4, -0x1.290ea09e36479p-3,
-  -0x1.8aeb636f3ce35p-3, -0x1.d3f3799439415p-3, -0x1.ea16274b0109bp-3, -0x1.22e24fa3d5cf9p-1,
-  -0x1.85068c07fbbf6p-1, -0x1.bdc7955d1482cp-1, -0x1.2a9cad9998262p+0, -0x1.cc37ef7de7501p+0,
-  -0x1.02393d5976769p+1, -0x1.65061daf79a78p+1, -0x1.e8bdbfcd9144ep+3, -0x1.8f80e06f3a04cp+4,
-  -0x1.59f038076039cp+6, -0x1.981587ad4542fp+7
+  0x1.6a4d1af9cc989p-8, 0x1.aca7ae8da5a7bp+0, -0x1.664716b68a409p-14,
+  -0x1.a2fefefd580dfp-13, -0x1.40a990279c2cp-6, -0x1.a8f783d749a8fp-4,
+  -0x1.daf693d64fadap-4, -0x1.07e05e6e03b83p-2, -0x1.daf3afee51991p+2,
+  -0x1.8f80e06f3a04cp+4
 };
 
 static double __attribute__((noinline)) as_exp_database(double x, double f){
@@ -213,10 +201,9 @@ static double __attribute__((noinline)) as_exp_database(double x, double f){
     if (c[m].u < ix.u){
       a = m + 1;
     } else if (__builtin_expect(c[m].u == ix.u, 0)) {
-      static const u64 s2[2] = {0xd78b96f7901df7f5, 0xf07c5ae3b55fd7f};
-      const u64 s = 0x97ccc693ace4d5b;
+      const u64 s2 = 0x3cff, s = 0x346;
       b64u64_u jf = {.f = f}, dr = {.u = ((s>>m)<<63)|0x3c80000000000000ull};
-      u64 t = (s2[m>>5]>>((m<<1)&63))&3;
+      u64 t = (s2>>((m<<1)&63))&3;
       for(i64 k = -1; k<=1; k++){
 	b64u64_u r = {.u = jf.u + k};
 	if((r.u&3) == t) return r.f + dr.f;
@@ -336,8 +323,18 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
   dxl += dxll;
   double fl, fh = opolydd(dxh,dxl, 7,ch, &fl);
   fh = muldd(dxh,dxl, fh,fl, &fl);
-  fh = muldd(fh,fl, th,tl, &fl);
-  fh = fastsum(th,tl, fh,fl, &fl);
+
+  if(__builtin_expect(jt==0, 0)){
+    double fll;
+    fh = fasttwosum(1.0,fh, &fll);
+    fl = fasttwosum(fll,fl, &fll);
+    b64u64_u il = {.f = fl}, ill = {.f = fll};
+    il.u |= !((il.u^ill.u)>>63)*!!(ill.u<<1);
+    fl = il.f;
+  } else {
+    fh = muldd(fh,fl, th,tl, &fl);
+    fh = fastsum(th,tl, fh,fl, &fl);
+  }
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     // x < -0x1.6232bdd7abcd2p+9
     ix.u = (1-ie)<<52;
@@ -348,8 +345,8 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
   } else {
     fh = fasttwosum(fh,fl, &fl);
     ix.f = fl;
-    u64 d = (ix.u + 2)&(~(u64)0>>12);
-    if(__builtin_expect(d<=2, 0)) fh = as_exp_database(x, fh);
+    u64 d = (ix.u + 4)&(~(u64)0>>12); // d<=4 due to the single argument x=-0x1.07e05e6e03b83p-2
+    if(__builtin_expect(d<=4, 0)) fh = as_exp_database(x, fh);
     fh = as_ldexp(fh, ie);
   }
   return fh;
