@@ -186,33 +186,48 @@ static inline double as_todenormal(double x){
 #endif
 }
 
-static const double db[] = {
-  0x1.6a4d1af9cc989p-8, 0x1.aca7ae8da5a7bp+0, -0x1.664716b68a409p-14,
-  -0x1.a2fefefd580dfp-13, -0x1.40a990279c2cp-6, -0x1.a8f783d749a8fp-4,
-  -0x1.daf693d64fadap-4, -0x1.07e05e6e03b83p-2, -0x1.daf3afee51991p+2,
-  -0x1.8f80e06f3a04cp+4
+/* list of exceptional cases for which the accurate path does not yield
+   the correctly-rounded value for at least one rounding mode.
+   This list is sorted by increasing first values.
+   Warning: the values will be multiplied by 2^ie afterwards. */
+static const double db[][3] = {
+  {-0x1.8f80e06f3a04cp+4, 0x1.f80aafa92b498p+0, -0x1.191595b7e88edp-106},
+  {-0x1.daf3afee51991p+2, 0x1.39c6240f78d7p+0, -0x1.2b74a3833bf1p-105},
+  {-0x1.07e05e6e03b83p-2, 0x1.8bb0d03b36f1cp+0, 0x1.ffffffffffffep-54},
+  {-0x1.daf693d64fadap-4, 0x1.c7f14af0a08ebp+0, -0x1.2aa7e4ef70195p-108},
+  {-0x1.a8f783d749a8fp-4, 0x1.cd8abd4de5c33p+0, 0x1.fffffffffffffp-54},
+  {-0x1.40a990279c2cp-6, 0x1.f613a44b93cdcp+0, 0x1.ffffffffffffdp-54},
+  {-0x1.a2fefefd580dfp-13, 0x1.ffe5d0bb7eabfp+0, 0x1.81905a57d6a44p-111},
+  {-0x1.664716b68a409p-14, 0x1.fff4cde6a0bfbp+0, -0x1.fffffffffffffp-54},
+  {-0x1.0401ae48409b5p-28, 0x1.ffffffdf7fca3p-1, 0x1.fffffffffffffp-55},
+  {-0x1.ff171507f8ba5p-30, 0x1.fffffff007475p-1, 0x1.fffffffffffffp-55},
+  {-0x1.85e60704a3a9cp-30, 0x1.fffffff3d0cfdp-1, -0x1.fffffffffffffp-55},
+  {-0x1.4bd46601ae1efp-31, 0x1.fffffffad0ae7p-1, -0x1.fffffffffffffp-55},
+  {0x1p-53, 0x1.0000000000001p+0, -0x1.fffffffffffffp-54},
+  {0x1.ffff7fffe0001p-36, 0x1.000000001ffffp+0, 0x1.fffffffffffffp-54},
+  {0x1.8cd99fffb319cp-34, 0x1.0000000063367p+0, -0x1.fffffffffffffp-54},
+  {0x1.413f33fe6ce07p-31, 0x1.00000002827e7p+0, -0x1.fffffffffffffp-54},
+  {0x1.f8e165f8388f7p-30, 0x1.00000007e3859p+0, 0x1.fffffffffffffp-54},
+  {0x1.282aae3169ee7p-20, 0x1.00001282ab8e7p+0, -0x1.fffffffffffffp-54},
+  {0x1.e5ba92aa9b1efp-20, 0x1.00001e5baaf77p+0, 0x1.ffffffffffffep-54},
+  {0x1.6a4d1af9cc989p-8, 0x1.016b4df3299d7p+0, 0x1.ffffffffffffep-54},
+  {0x1.aca7ae8da5a7bp+0, 0x1.557d4acd7e557p+0, -0x1.fffffffffffffp-54},
 };
 
-static double __attribute__((noinline)) as_exp_database(double x, double f){
-  b64u64_u ix = {.f = x};
-  int a = 0, b = sizeof(db)/sizeof(db[0]) - 1, m = (a + b)/2;
-  const b64u64_u *c = (const b64u64_u*)db;
-  while (a <= b) {
-    if (c[m].u < ix.u){
-      a = m + 1;
-    } else if (__builtin_expect(c[m].u == ix.u, 0)) {
-      const u64 s2 = 0x3cff, s = 0x346;
-      b64u64_u jf = {.f = f}, dr = {.u = ((s>>m)<<63)|0x3c80000000000000ull};
-      u64 t = (s2>>((m<<1)&63))&3;
-      for(i64 k = -1; k<=1; k++){
-	b64u64_u r = {.u = jf.u + k};
-	if((r.u&3) == t) return r.f + dr.f;
-      }
-    } else {
-      b = m - 1;
-    }
-    m = (a + b)>>1;
+static double __attribute__((noinline))
+as_exp_database (double x, double f)
+{
+  int a = 0, b = sizeof(db)/sizeof(db[0]);
+  // binary search with invariant db[a][0] <= x < db[b][0]
+  while (a + 1 < b) {
+    int m = (a + b) / 2;
+    if (x < db[m][0])
+      b = m;
+    else
+      a = m;
   }
+  // we have a+1=b thus db[a][0] <= x < db[a+1][0]
+  if (x == db[a][0]) return db[a][1] + db[a][2];
   return f;
 }
 
@@ -323,18 +338,8 @@ static double __attribute__((cold,noinline)) as_exp_accurate(double x){
   dxl += dxll;
   double fl, fh = opolydd(dxh,dxl, 7,ch, &fl);
   fh = muldd(dxh,dxl, fh,fl, &fl);
-
-  if(__builtin_expect(jt==0, 0)){
-    double fll;
-    fh = fasttwosum(1.0,fh, &fll);
-    fl = fasttwosum(fll,fl, &fll);
-    b64u64_u il = {.f = fl}, ill = {.f = fll};
-    il.u |= !((il.u^ill.u)>>63)*!!(ill.u<<1);
-    fl = il.f;
-  } else {
-    fh = muldd(fh,fl, th,tl, &fl);
-    fh = fastsum(th,tl, fh,fl, &fl);
-  }
+  fh = muldd(fh,fl, th,tl, &fl);
+  fh = fastsum(th,tl, fh,fl, &fl);
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     // x < -0x1.6232bdd7abcd2p+9
     ix.u = (1-ie)<<52; // ix=2^-1022-ie with -1075 <= ie <= -1022
