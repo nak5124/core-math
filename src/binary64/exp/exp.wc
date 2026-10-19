@@ -1129475,3 +1129475,5 @@
 -0x1.732e2922e3618p+9
 -0x1.74385446d71c2p+9
 -0x1.74910d52d304fp+9
+# the following input failed with rndz and no FMA contraction
+0x1.5a3a157335f3bp+9

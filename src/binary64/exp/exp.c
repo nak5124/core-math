@@ -404,7 +404,7 @@ double cr_exp(double x){
                               0x1.55555553a12f4p-5};
   double p = (ch[0] + dx*ch[1]) + dx2*(ch[2] + dx*ch[3]);
   double fh = th, tx = th*dx, fl = tl + tx*p;
-  double eps = 1.64e-19;
+  double eps = 0x1.27p-62;
   if(__builtin_expect(ix.u>0xc086232bdd7abcd2ull, 0)){
     // subnormal case: x < -0x1.6232bdd7abcd2p+9
 #ifdef CORE_MATH_SUPPORT_ERRNO
