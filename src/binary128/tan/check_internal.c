@@ -30,8 +30,8 @@ static u64 random64(void) {
 }
 static u128 random128(void) { return ((u128)random64() << 64) | random64(); }
 
-/* The function corpora use normalized frames, so they do not exercise the
-   zero/low-limb leading-zero cases or shifts beyond the 384-bit window. */
+/* The function corpora use normalized frames, so they do not exercise
+   leading zeros below the callers' bound or shifts beyond the 384-bit window. */
 static void limb_edges(void) {
   const unsigned shifts[] = {0, 1, 63, 64, 65, 127, 128, 129,
                              255, 256, 383, 384, 385};
@@ -42,8 +42,8 @@ static void limb_edges(void) {
     if (bit >= 0) a.l[bit/128] = (u128)1 << (bit%128);
     set384(x, a);
     int bits = mpz_sgn(x) ? (int)mpz_sizeinbase(x, 2) : 0;
-    require(lz_384(a) == 384-bits, "384-bit leading zeros");
-    if (bit < 128) require(clz128(a.l[0]) == 128-bits, "128-bit leading zeros");
+    if (bit >= 376) require(lz_384(a) == 384-bits, "384-bit leading zeros");
+    if (bit >= 64 && bit < 128) require(clz128(a.l[0]) == 128-bits, "128-bit leading zeros");
     for (unsigned j = 0; j < sizeof shifts/sizeof *shifts; j++) {
       unsigned shift = shifts[j];
       mpz_fdiv_q_2exp(expected, x, shift);

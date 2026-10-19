@@ -405,12 +405,10 @@ static const u128 COS_COEF[18][3] = {
 
 /* ---------- wide unsigned arithmetic ---------- */
 
-// leading zeros of a 128-bit value, 128 when it is zero
-static inline int clz128(u128 x) {
-  u64 h = x >> 64, l = x;
-  if (h) return __builtin_clzll(h);
-  return l ? 64 + __builtin_clzll(l) : 128;
-}
+/* leading zeros of a 128-bit value whose high half is not zero: callers pass
+   normalized products >= 2^126, or the top limb (>= 2^120) of a 384-bit
+   value >= 2^376 */
+static inline int clz128(u128 x) { return __builtin_clzll(x >> 64); }
 
 // the low 64 bits of (high:low) >> shift, for shift < 64
 static inline u64 funnel_down(u64 low, u64 high, unsigned shift) {
@@ -493,12 +491,10 @@ static inline u384 shr_384_sat(u384 x, unsigned shift) {
   return r;
 }
 
-// leading zeros of a 384-bit value, 384 when it is zero
-static inline int lz_384(u384 x) {
-  if (x.l[2]) return clz128(x.l[2]);
-  if (x.l[1]) return 128 + clz128(x.l[1]);
-  return 256 + clz128(x.l[0]);
-}
+/* leading zeros of a 384-bit value >= 2^376: sin(theta) is at most one bit
+   short of the normalized theta, and sin A or cos A at a breakpoint is at
+   least sin(pi/512) > 2^-8 */
+static inline int lz_384(u384 x) { return clz128(x.l[2]); }
 
 /* high 384 bits of a 384x384-bit product: the dropped tail leaves it up to
    four units short of the exact value, never over */
