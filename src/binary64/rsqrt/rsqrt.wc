@@ -9953,3 +9953,5 @@
 -1
 +0x1.fffffffffffffp+1023
 -0x1.fffffffffffffp+1023
+# the following input gave a spurious underflow
+0x1.0000000000001p+1022

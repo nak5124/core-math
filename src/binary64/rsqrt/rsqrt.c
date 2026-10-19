@@ -178,7 +178,7 @@ double cr_rsqrt(double x){
 #endif
       return 1.0 / 0.0; // case x = +0
     }
-  } else if(__builtin_expect(e<0x7fe, 1)){
+  } else if(__builtin_expect(e<0x7fd, 1)){
     // common case: 2^-1022 <= x < 2^1022
     r = (1.0 / x) * __builtin_sqrt(x);
   } else if(__builtin_expect(e<0x7ff, 1)){
