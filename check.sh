@@ -137,11 +137,11 @@ if [ "$CFLAGS" == "" ]; then
    elif [[ $MACHINE == ppc64* ]]; then
       # -march=native is not supported by gcc 14 on ppc64le
       export CFLAGS="-O3 -mcpu=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans"
-   else
-      # gcc defines trapping-math by default
+   else # gcc
+      # gcc defines trapping-math and -fno-finite-math-only by default
       # we need -frounding-math because #pragma STDC FENV_ACCESS ON is not
       # supported: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
-      export CFLAGS="-O3 -march=native -Wshadow -fno-finite-math-only -frounding-math -fsignaling-nans"
+      export CFLAGS="-O3 -march=native -Wshadow -frounding-math -fsignaling-nans"
    fi
    unset MACHINE
 else
