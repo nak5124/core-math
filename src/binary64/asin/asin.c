@@ -79,7 +79,6 @@ roundeven_finite (double x)
 
 typedef uint64_t u64;
 typedef int64_t i64;
-typedef unsigned short ushort;
 typedef union {double f; uint64_t u;} b64u64_u;
 
 static inline double fasttwosum(double x, double y, double *e){
@@ -196,7 +195,7 @@ double cr_asin(double x){
     static const double off[][2] = {
       {0x1.921fb54442d18p+0, 0x1.1a62633145c07p-54}, {-0x1.921fb54442d18p+0, -0x1.1a62633145c07p-54}
     };
-    i64 k = ix.u>>63;
+    i64 k = (i64)(ix.u>>63);
     f0h = off[k][0];
     f0l = off[k][1];
     if(__builtin_expect(ax>=0x7fe0000000000000ull, 0)){ // |x| >= 1
@@ -266,7 +265,8 @@ double as_asin_refine(double x, double phi){
   double cl = (c2l - __builtin_fma(ch,ch,-c2h))*(0.5/ch);
   // now ch+cl approximates sqrt(1-x^2)
 
-  int64_t jf = roundeven_finite(__builtin_fabs(phi) * 0x1.45f306dc9c883p+4);
+  double jf = roundeven_finite(__builtin_fabs(phi) * 0x1.45f306dc9c883p+4);
+  int64_t j = (int64_t) jf;
   // jf = round(|phi|*64/pi)
   // sin(pi/64*j) in the double-double format (smallest term first)
   // this is the same table as in acos.c
@@ -289,8 +289,8 @@ double as_asin_refine(double x, double phi){
     {-0x1.87df6378811c7p-55, 0x1.fd88da3d12526p-1}, {-0x1.c57bc2e24aa15p-57, 0x1.ff621e3796d7ep-1},
     {0x0p+0, 0x1p+0}
   };
-  // 0 <= jf <= 32
-  double Ch = s[32-jf][1], Cl = s[32-jf][0], Sh = s[jf][1], Sl = s[jf][0];
+  // 0 <= j <= 32
+  double Ch = s[32-j][1], Cl = s[32-j][0], Sh = s[j][1], Sl = s[j][0];
 
   double ax = __builtin_fabs(x);
   double dsh = ax - Sh, dsl = -Sl;
@@ -331,7 +331,7 @@ double as_asin_refine(double x, double phi){
   b64u64_u th = {.f = ph}, tl = {.f = pl}, tn;
   tn.u = (th.u&(0x7ffull<<52)) - (53ull<<52);
   tl.u &= ~0ull>>1;
-  long dn = tl.u-tn.u, de = (tn.u - tl.u)>>52;
+  long dn = (long)tl.u-(long)tn.u, de = (long)((tn.u - tl.u)>>52);
   // dn=-2 for x=0x1.c373ff4aad79bp-14 (rndn)
   // de=48 for x=0x1.da4e0e6c717a5p-2 (rndz)
   int hard = (-2<=dn && dn<=0) || (de>47);
