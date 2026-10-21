@@ -431,10 +431,56 @@ static inline u128 mhi_approx(u128 x, u128 y) {
   return xh * yh + ((xh * yl) >> 64) + ((xl * yh) >> 64);
 }
 
+/* Carry chains on 64-bit limbs for the 256- and 384-bit helpers below.
+   The overflow builtins on unsigned __int128 made GCC re-add each carry
+   through a branch and a two-register addend.  The x86 carry intrinsics
+   give adc/sbb chains in every GCC and Clang version; the portable form is
+   the pattern GCC 14+ and Clang fold into the same chains. */
+#if defined(__x86_64__) && defined(__GNUC__)
+static inline u64 adc(u64 a, u64 b, int *carry) {
+  unsigned long long s;
+  *carry = _addcarry_u64((unsigned char)*carry, a, b, &s);
+  return s;
+}
+
+static inline u64 sbb(u64 a, u64 b, int *borrow) {
+  unsigned long long s;
+  *borrow = _subborrow_u64((unsigned char)*borrow, a, b, &s);
+  return s;
+}
+#else
+static inline u64 adc(u64 a, u64 b, int *carry) {
+  u64 s;
+  int c0 = __builtin_add_overflow(a, b, &s);
+  int c1 = __builtin_add_overflow(s, (u64)*carry, &s);
+  *carry = c0 | c1;
+  return s;
+}
+
+static inline u64 sbb(u64 a, u64 b, int *borrow) {
+  u64 s;
+  int c0 = __builtin_sub_overflow(a, b, &s);
+  int c1 = __builtin_sub_overflow(s, (u64)*borrow, &s);
+  *borrow = c0 | c1;
+  return s;
+}
+#endif
+
+static inline u128 adc128(u128 a, u128 b, int *carry) {
+  u64 lo = adc(a, b, carry), hi = adc(a >> 64, b >> 64, carry);
+  return ((u128)hi << 64) | lo;
+}
+
+static inline u128 sbb128(u128 a, u128 b, int *borrow) {
+  u64 lo = sbb(a, b, borrow), hi = sbb(a >> 64, b >> 64, borrow);
+  return ((u128)hi << 64) | lo;
+}
+
 static inline u256 sub_256(u256 a, u256 b) {
   u256 r;
-  int c = __builtin_sub_overflow(a.l[0], b.l[0], &r.l[0]);
-  r.l[1] = a.l[1] - b.l[1] - c;
+  int c = 0;
+  r.l[0] = sbb128(a.l[0], b.l[0], &c);
+  r.l[1] = sbb128(a.l[1], b.l[1], &c);
   return r;
 }
 
@@ -452,19 +498,15 @@ static inline u128 shr_round(u128 x, unsigned shift) {
 
 static inline u384 add_384(u384 a, u384 b) {
   u384 r;
-  int c0 = __builtin_add_overflow(a.l[0], b.l[0], &r.l[0]);
-  int c1 = __builtin_add_overflow(a.l[1], b.l[1], &r.l[1]);
-  int c2 = __builtin_add_overflow(r.l[1], (u128)c0, &r.l[1]);
-  r.l[2] = a.l[2] + b.l[2] + c1 + c2;
+  int c = 0;
+  for (int i = 0; i < 3; i++) r.l[i] = adc128(a.l[i], b.l[i], &c);
   return r;
 }
 
 static inline u384 sub_384(u384 a, u384 b) {
   u384 r;
-  int c0 = __builtin_sub_overflow(a.l[0], b.l[0], &r.l[0]);
-  int c1 = __builtin_sub_overflow(a.l[1], b.l[1], &r.l[1]);
-  int c2 = __builtin_sub_overflow(r.l[1], (u128)c0, &r.l[1]);
-  r.l[2] = a.l[2] - b.l[2] - c1 - c2;
+  int c = 0;
+  for (int i = 0; i < 3; i++) r.l[i] = sbb128(a.l[i], b.l[i], &c);
   return r;
 }
 
@@ -508,11 +550,12 @@ static inline u384 mul_hi_384(u384 a, u384 b) {
   wmul(a.l[2], b.l[2], &h22, &l22);
   /* The diagonal one limb below the window contributes its high halves plus
      the carry of its low halves; everything further down is the slack above. */
-  int carry_low = __builtin_add_overflow(l02, l11, &sum);
-  int carry_high = __builtin_add_overflow(sum, l20, &sum);
-  int first = __builtin_add_overflow(h02, h11, &diagonal);
-  int second = __builtin_add_overflow(diagonal, h20, &diagonal);
-  int third = __builtin_add_overflow(diagonal, (u128)carry_low + carry_high, &diagonal);
+  int carry_low = 0, carry_high = 0, first = 0, second = 0, third = 0;
+  sum = adc128(l02, l11, &carry_low);
+  sum = adc128(sum, l20, &carry_high);
+  diagonal = adc128(h02, h11, &first);
+  diagonal = adc128(diagonal, h20, &second);
+  diagonal = adc128(diagonal, (u128)carry_low + carry_high, &third);
   u384 t1 = {{l12, h12, 0}}, t2 = {{l21, h21, 0}}, t3 = {{0, l22, h22}};
   u384 t4 = {{diagonal, (u128)first + second + third, 0}};
   return add_384(add_384(t1, t2), add_384(t3, t4));
@@ -527,11 +570,12 @@ static inline u256 mul_hi_256(u256 a, u256 b) {
   wmul(a.l[0], b.l[1], &other_high, &other_low);
   /* The two cross terms and the top of a[0]*b[0] all land one limb below the
      window, so only their carry into it survives. */
-  int carry = __builtin_add_overflow(cross_low, other_low, &sum);
-  int tail_carry = __builtin_add_overflow(sum, mhi_approx(a.l[0], b.l[0]), &sum);
-  int overflow = __builtin_add_overflow(cross_high, other_high, &middle);
-  int spill = __builtin_add_overflow(middle, (u128)carry + tail_carry, &middle);
-  int final_carry = __builtin_add_overflow(low, middle, &low);
+  int carry = 0, tail_carry = 0, overflow = 0, spill = 0, final_carry = 0;
+  sum = adc128(cross_low, other_low, &carry);
+  sum = adc128(sum, mhi_approx(a.l[0], b.l[0]), &tail_carry);
+  middle = adc128(cross_high, other_high, &overflow);
+  middle = adc128(middle, (u128)carry + tail_carry, &spill);
+  low = adc128(low, middle, &final_carry);
   u256 r = {{low, high + overflow + spill + final_carry}};
   return r;
 }
@@ -663,6 +707,9 @@ static inline u128 cos_corr(u128 u1, u128 u, u128 v) {
    64-bit limb keeps every variable shift below narrower than 64 bits. */
 typedef struct { u128 lo; u64 hi; } u192;
 
+/* The two frame helpers keep the 128-bit builtins: one carry into a 64-bit
+   top limb is branchless in every compiler, and on GCC before 14 the limb
+   chains above are longer here. */
 static inline u192 sub_192(u192 a, u192 b) {
   u192 r;
   int c = __builtin_sub_overflow(a.lo, b.lo, &r.lo);
