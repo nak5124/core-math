@@ -41,20 +41,32 @@ for ea, eb in ((F(14), F(158, 10)), (F(158, 10), F(14))):
     above = (ea + 2*eb)/(2*(F(1, 2) - eb*d)) + 4 + 1
     assert max(below, above) < 68 < gate
 assert f'#define ZIV_GATE {gate}u' in tan
+# The wide path keeps five 64-bit limbs: W = 320 fraction bits.
+W = 320
 # Ten-limb window tail and 448-bit extraction, with lz <= 160.
 reduction = (1 + F(1, 2**14))*F(1, 2**448)*2**160*F(11, 7)
-reduction += F(16, 2**384)  # pi/2, normalization and product truncations
+reduction += F(16, 2**W)  # pi/2 and residual truncation, normalization, product
 assert reduction < F(1, 2**286)
-# Existing tiered polynomial error, after multiplying by u.
-poly = F(1, 2**296)
+# Tiered polynomial error as in ../sin/sinq_tables.py, with the top tier at
+# W bits: truncated coefficient, product at most one unit short, under six
+# units per step; then the caller's multiply by u (u < 2^-14.68).
+u = F(3765, 100000000)
+poly = F(2, 2**128)
+for k in range(16, -1, -1):
+    poly = u*poly + F(6, 2**(128 if k >= 11 else 256 if k >= 2 else W))
+assert poly < F(1, 2**282)
+poly = u*poly + F(5, 2**W)
+assert poly < F(1, 2**296)
 # Floating sine can normalize left by one bit.
-floating = 2*(reduction + poly + F(32, 2**384))
+floating = 2*(reduction + poly + F(32, 2**W))
 # Nonzero table breakpoints have normalized magnitude >= 2^-8. Sum both
 # polynomial contributions and all table/product/placement truncations.
-table = 256*(2*poly + F(1, 2**440) + F(64, 2**384))
+table = 256*(2*poly + F(1, 2**440) + F(64, 2**W))
 assert floating < F(1, 2**284)
 assert table < F(1, 2**284)
-wide = 3*F(1, 2**284)/(F(1, 2)-F(1, 2**284)) + F(1, 2**384)
+wide = 3*F(1, 2**284)/(F(1, 2)-F(1, 2**284)) + F(1, 2**W)
 assert wide < F(1, 2**270)
+# The code's radius: 2^-270 in units of 2^-W.
+assert 2**(W - 270) == 2**50 and 'u320 radius = {{(u64)1 << 50, 0, 0, 0, 0}};' in tan
 
-print('Shared constants match; narrow and wide rational bounds passed.')
+print('Shared constants match; narrow and wide (320-bit) rational bounds passed.')

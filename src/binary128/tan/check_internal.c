@@ -15,12 +15,8 @@ static void set128(mpz_t z, u128 a) {
   mpz_import(z, 2, -1, sizeof(u64), 0, 0, words);
 }
 
-static void set384(mpz_t z, u384 a) {
-  u64 words[6];
-  for (int i = 0; i < 3; i++) {
-    words[2*i] = a.l[i]; words[2*i+1] = a.l[i] >> 64;
-  }
-  mpz_import(z, 6, -1, sizeof(u64), 0, 0, words);
+static void set320(mpz_t z, u320 a) {
+  mpz_import(z, 5, -1, sizeof(u64), 0, 0, a.l);
 }
 
 static u64 state = 1;
@@ -31,32 +27,58 @@ static u64 random64(void) {
 static u128 random128(void) { return ((u128)random64() << 64) | random64(); }
 
 /* The function corpora use normalized frames, so they do not exercise
-   leading zeros below the callers' bound or shifts beyond the 384-bit window. */
+   leading zeros below the callers' bound or shifts beyond the 320-bit window. */
 static void limb_edges(void) {
   const unsigned shifts[] = {0, 1, 63, 64, 65, 127, 128, 129,
-                             255, 256, 383, 384, 385};
+                             255, 256, 319, 320, 321};
   mpz_t x, expected, actual;
   mpz_inits(x, expected, actual, NULL);
-  for (int bit = -1; bit < 384; bit++) {
-    u384 a = {{0, 0, 0}};
-    if (bit >= 0) a.l[bit/128] = (u128)1 << (bit%128);
-    set384(x, a);
+  for (int bit = -1; bit < 320; bit++) {
+    u320 a = {{0, 0, 0, 0, 0}};
+    if (bit >= 0) a.l[bit/64] = (u64)1 << (bit%64);
+    set320(x, a);
     int bits = mpz_sgn(x) ? (int)mpz_sizeinbase(x, 2) : 0;
-    if (bit >= 376) require(lz_384(a) == 384-bits, "384-bit leading zeros");
-    if (bit >= 64 && bit < 128) require(clz128(a.l[0]) == 128-bits, "128-bit leading zeros");
+    if (bit >= 312) require(lz_320(a) == 320-bits, "320-bit leading zeros");
+    if (bit >= 64 && bit < 128)
+      require(clz128(((u128)a.l[1] << 64) | a.l[0]) == 128-bits, "128-bit leading zeros");
     for (unsigned j = 0; j < sizeof shifts/sizeof *shifts; j++) {
       unsigned shift = shifts[j];
       mpz_fdiv_q_2exp(expected, x, shift);
-      set384(actual, shr_384_sat(a, shift));
-      require(mpz_cmp(actual, expected) == 0, "384-bit right shift");
+      set320(actual, shr_320_sat(a, shift));
+      require(mpz_cmp(actual, expected) == 0, "320-bit right shift");
       mpz_mul_2exp(expected, x, shift);
-      mpz_fdiv_r_2exp(expected, expected, 384);
-      set384(actual, shl_384(a, shift));
-      require(mpz_cmp(actual, expected) == 0, "384-bit left shift");
+      mpz_fdiv_r_2exp(expected, expected, 320);
+      set320(actual, shl_320(a, shift));
+      require(mpz_cmp(actual, expected) == 0, "320-bit left shift");
     }
   }
   mpz_clears(x, expected, actual, NULL);
-  puts("385 leading-zero frames and 10010 shifts passed");
+  puts("321 leading-zero frames and 4173 shifts passed");
+}
+
+/* mul_hi_320 against GMP: never above the exact high part, at most one
+   unit below it, including all-ones operands and sparse limbs. */
+static void products(void) {
+  mpz_t a, b, actual;
+  mpz_inits(a, b, actual, NULL);
+  long lowest = 0;
+  for (int i = 0; i < 1000000; i++) {
+    u320 x, y;
+    for (int k = 0; k < 5; k++) { x.l[k] = random64(); y.l[k] = random64(); }
+    if (i % 5 == 1) for (int k = 0; k < 5; k++) x.l[k] = y.l[k] = UINT64_MAX;
+    if (i % 5 == 2) for (int k = 0; k < 5; k++) x.l[k] = k % 2 ? UINT64_MAX : 0;
+    if (i % 5 == 3) for (int k = 0; k < 5; k++) y.l[k] = k % 2 ? 0 : UINT64_MAX;
+    if (i % 5 == 4) x = y;
+    set320(a, x); set320(b, y); set320(actual, mul_hi_320(x, y));
+    mpz_mul(a, a, b);
+    mpz_fdiv_q_2exp(a, a, 320);
+    mpz_sub(actual, actual, a);
+    long diff = mpz_get_si(actual);
+    require(mpz_fits_slong_p(actual) && diff >= -1 && diff <= 0, "320-bit product bound");
+    if (diff < lowest) lowest = diff;
+  }
+  mpz_clears(a, b, actual, NULL);
+  printf("1000000 wide products passed (error %ld to 0 units)\n", lowest);
 }
 
 static void division(void) {
@@ -95,21 +117,21 @@ static void division(void) {
     if (i % 10) continue;
     {
       /* Exercise long carry/borrow chains as well as random limb patterns. */
-      u384 x = {{random128(), random128(), aa}};
-      u384 y = {{random128(), random128(), bb}};
-      if (i % 11 == 0) y.l[0] = y.l[1] = ~(u128)0;
-      if (i % 11 == 1) y.l[0] = y.l[1] = 0;
+      u320 x = {{random64(), random64(), random64(), (u64)aa, (u64)(aa >> 64)}};
+      u320 y = {{random64(), random64(), random64(), (u64)bb, (u64)(bb >> 64)}};
+      if (i % 11 == 0) y.l[0] = y.l[1] = y.l[2] = UINT64_MAX;
+      if (i % 11 == 1) y.l[0] = y.l[1] = y.l[2] = 0;
       if (i % 11 == 2) x = y;
       if (i % 11 == 3) {
-        y.l[2] |= 1;
-        u384 one = {{1, 0, 0}};
-        x = sub_384(y, one);
+        y.l[3] |= 1;
+        u320 one = {{1, 0, 0, 0, 0}};
+        x = sub_320(y, one);
       }
-      u384 z = divide_wide(x, y, &up);
-      set384(a, x); set384(b, y); set384(actual, z);
-      mpz_mul_2exp(a, a, 384-up);
+      u320 z = divide_wide(x, y, &up);
+      set320(a, x); set320(b, y); set320(actual, z);
+      mpz_mul_2exp(a, a, 320-up);
       mpz_fdiv_q(q, a, b);
-      require(mpz_cmp(actual, q) == 0, "384-bit quotient");
+      require(mpz_cmp(actual, q) == 0, "320-bit quotient");
     }
   }
   mpz_clears(a, b, q, actual, NULL);
@@ -143,14 +165,14 @@ static void kernel_bounds(void) {
       require(mpfr_cmp_ui(error, ZIV_GATE) < 0, "fast quotient bound");
       if (mpfr_get_d(error, MPFR_RNDU) > worst) worst = mpfr_get_d(error, MPFR_RNDU);
     }
-    u384 w[2];
+    u320 w[2];
     if (wide_pair(m, e, w, ex, sg)) {
-      u384 q = divide_wide(w[0], w[1], &up);
+      u320 q = divide_wide(w[0], w[1], &up);
       require(!!(sg[0] ^ sg[1]) == negative, "wide quotient sign");
-      set384(z, q); mpfr_set_z(value, z, MPFR_RNDN);
-      mpfr_mul_2si(error, ref, 384-ex[0]+ex[1]-up, MPFR_RNDN);
+      set320(z, q); mpfr_set_z(value, z, MPFR_RNDN);
+      mpfr_mul_2si(error, ref, 320-ex[0]+ex[1]-up, MPFR_RNDN);
       mpfr_sub(error, error, value, MPFR_RNDN); mpfr_abs(error, error, MPFR_RNDN);
-      mpfr_div_2ui(error, error, 114, MPFR_RNDN);
+      mpfr_div_2ui(error, error, 50, MPFR_RNDN);
       require(mpfr_cmp_ui(error, 1) < 0, "wide quotient bound");
     }
   }
@@ -160,6 +182,6 @@ static void kernel_bounds(void) {
 }
 
 int main(void) {
-  limb_edges(); division(); kernel_bounds();
+  limb_edges(); products(); division(); kernel_bounds();
   return 0;
 }

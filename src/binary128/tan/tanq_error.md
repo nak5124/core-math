@@ -169,46 +169,57 @@ direction of the increment.
 The wide reduction extracts 448 fraction bits. The missing window tail is
 less than 2^-462, and extraction loses less than 2^-448. Reject `lz > 160`
 **before** normalization; this replaces an implicit global separation
-assumption with a checked condition. Multiplication by pi/2 and normalization
-then give less than 2^-286 error in the normalized residual fraction,
-including the constant and integer-product errors.
+assumption with a checked condition. The wide path works on five
+little-endian 64-bit limbs, that is 320 fraction bits. The residual, pi/2
+and every table entry are the top 320 bits of the 384-bit constants shared
+with `sinq`, so each costs less than one unit of `2^-320` beyond the entry's
+own rounding. `mul_hi_320` keeps the product columns from bit 192 up; the
+three dropped columns sum to less than `2^-62` of a unit, so each product is
+at most one unit short and never over. Multiplication by pi/2 and
+normalization then give less than 2^-286 error in the normalized residual
+fraction, including the constant and integer-product errors.
 
-The inherited exact-rational analysis bounds the polynomial evaluation
-error after multiplying by the squared residual by 2^-296. Including the
-argument and product truncations and the possible one-bit normalization,
-the floating sine's normalized error is less than 2^-284. In table
-reconstruction, nonzero breakpoints have magnitude greater than 2^-8; the
-two polynomial errors and all table, product, and placement errors remain
-below 2^-284 after normalization. The `j=0` sine retains its floating form,
-so cancellation does not destroy relative precision.
+The tiered polynomial evaluation of `../sin/sinq_tables.py`, with its top
+tier at 320 instead of 384 bits, still errs by less than 2^-282 before and
+2^-296 after multiplying by the squared residual: the 320-bit tier
+contributes under `6*2^-320` per step, far below the 256-bit tier's
+`2^-253` slack riding `u^2 < 2^-29`. Including the argument and product
+truncations and the possible one-bit normalization, the floating sine's
+normalized error is less than 2^-284. In table reconstruction, nonzero
+breakpoints have magnitude greater than 2^-8; the two polynomial errors and
+all table, product, and placement errors remain below 2^-284 after
+normalization. The `j=0` sine retains its floating form, so cancellation
+does not destroy relative precision.
 
 Applying the quotient inequality above with component errors 2^-284, plus
-less than 2^-384 for exact radix-2^64 division, leaves the normalized
-quotient error below **2^-270**. `tanq_error.py` checks these conservative
-inequalities. The code adds/subtracts `2^114` integer units in the 384-bit
-fraction and rounds both endpoints. It returns only if their rounded
-encodings agree. An interval crossing the normalized fraction's binade
-boundary is reported instead of wrapping.
+less than 2^-320 for exact radix-2^64 division, leaves the normalized
+quotient error below **2^-270**: the budget is set by the 448-bit
+reduction and its `lz <= 160` guard, not by the limb count, which is why
+the sixth limb could be dropped without loosening the bound.
+`tanq_error.py` checks these conservative inequalities. The code
+adds/subtracts `2^50` integer units in the 320-bit fraction and rounds both
+endpoints. It returns only if their rounded encodings agree. An interval
+crossing the normalized fraction's binade boundary is reported instead of
+wrapping.
 
-The wide divider generates six exact base-2^64 digits. Put `B = 2^64`, let
-the six-limb divisor be `D = B^5*h + l` with `h >= B/2` and `l < B^5`, and
+The wide divider generates five exact base-2^64 digits. Put `B = 2^64`, let
+the five-limb divisor be `D = B^4*h + l` with `h >= B/2` and `l < B^4`, and
 let `R < D` be the remainder before a zero digit is appended. The estimate
-`qhat = min(B-1, floor(floor(R/B^4)/h))` is at least the exact digit
-`floor(R*B/D)`, and `qhat*D - R*B <= qhat*l < B^6 <= 2*D`, so it exceeds
+`qhat = min(B-1, floor(floor(R/B^3)/h))` is at least the exact digit
+`floor(R*B/D)`, and `qhat*D - R*B <= qhat*l < B^5 <= 2*D`, so it exceeds
 that digit by at most two. Clamping can only reduce the excess.
-The code compares the complete seven-limb product against `R*B` and, when
+The code compares the complete six-limb product against `R*B` and, when
 necessary, decrements the estimate and subtracts D from that product.
 The resulting remainder is exact and in `[0,D)`. The product accumulation
 fits in 128 bits: `(B-1)^2 + (B-1) < B^2`. Subtractions keep a 128-bit
-borrow operand so that `UINT64_MAX+1` cannot lose its carry. Six such steps,
-followed by the same optional one-bit normalization, give the same truncated
-384-bit quotient as the original 383/384 single-bit restoring steps.
-The wide-path error bound and acceptance test are unchanged.
+borrow operand so that `UINT64_MAX+1` cannot lose its carry. Five such
+steps, followed by the same optional one-bit normalization, give the
+truncated 320-bit quotient that single-bit restoring steps would.
 
 ## Undecided inputs
 
 `accurate` reports failure instead of a result when wide reduction refuses
-more than 160 leading zeros, when the quotient's radius-`2^114` enclosure
+more than 160 leading zeros, when the quotient's radius-`2^50` enclosure
 leaves its normalized binade, or when its two endpoints round differently.
 `cr_tanq` then prints
 
@@ -248,8 +259,9 @@ cosine notes do. `bench_compare.py --force-wide` applies the same edit to
 its temporary copies. Special values and the tiny-input shortcut still run
 first. This tests the wide arithmetic, not the narrow gate's rejection rate.
 
-`check_internal` checks 385 leading-zero frames and 10,010 shifts against GMP,
-including zero, limb boundaries and shifts at or beyond 384 bits. It compares
+`check_internal` checks 321 leading-zero frames and 4,173 shifts against GMP,
+including zero, limb boundaries and shifts at or beyond 320 bits, and
+1,000,000 wide products against their one-unit bound. It compares
 1,000,000 narrow quotients with their documented error interval and 100,000
 exact wide quotients against GMP. The narrow operands include divisors at
 and beside both ends of the binade and extreme limbs; the wide ones include
@@ -409,6 +421,19 @@ errno enabled throughout, all four modes unless stated):
 
 As with the initial implementation, the MPFR samples are regression evidence
 and the hard-case corpus is not exhaustive.
+
+## Five-limb accurate path (2026-10-22)
+
+Following review, the accurate path was narrowed from three 128-bit
+limbs (384 bits) to five 64-bit limbs (320 bits), the width `log2q` and
+`log10q` use. The constants stay the 384-bit arrays shared with `sinq`;
+`top_320` reads their top five limbs. The adders are plain carry chains on
+the limbs, the product is column-wise, the divider produces five digits,
+and the rounding gate keeps its radius of `2^-270`, now `2^50` units. The
+rational bookkeeping above was redone for this width and `tanq_error.py`
+checks it; the quotient bound is unchanged because the reduction, not the
+limb count, dominates the budget. Validation is recorded in the merge
+request.
 
 ## Equivalent limb arithmetic (compiler review, 2026-09-21)
 
