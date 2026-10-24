@@ -224,7 +224,6 @@ evalPC (u128 u2, u128 u2h, u128 u4)
   // use Estrin's scheme
   u128 sh = PC[3] - u2h * PC[4];
   sh = PC[2] - mhUU (sh, u2);
-  // printf ("sh=%lx,%lx\n", (uint64_t) (sh>>64), (uint64_t) sh);
   u128 s = mhUU (PC[1], u2);
   s = PC[0] - s;
   return s + mhUU (sh, u4);
@@ -804,9 +803,7 @@ sin_large_accurate (double x)
   int neg;
   uint64_t k = reduce_large_acc (&r, &neg, x);
 
-  // twopi/2^128 approximates 2pi/2^3
-  static const u128 twopi = U128(0xc4c6628b80dc1cd1,0xc90fdaa22168c234);
-  r = mhUU (twopi, r << 3); // replace r by 2pi*r
+  r = r << 3; // replace r by 8*r
   u128 u2 = mhUU (r,r), u4 = mhUU (u2,u2), u2h = u2 >> 64;
 
   /* x/(2*pi) mod 1 = k/2^13 + r + eps with |r| <= 2^-14 and 0 <= eps < 2^-127.999
