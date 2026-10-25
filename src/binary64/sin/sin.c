@@ -795,7 +795,7 @@ static const u128 C2u[64] = {
   U128(0xbadfe70a1ef51116,0xffb38194a87a3097),
 };
 
-// accurate path for |x| >= 2^31
+// accurate path for |x| >= 0x1.7137449123ef6p-26
 static double __attribute__((cold,noinline))
 sin_large_accurate (double x)
 {
