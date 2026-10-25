@@ -158,29 +158,29 @@ static const uint64_t _T[20] = {
 #define U128(l,h) (((u128)h)<<64 | (u128)l) // little endian
 
 /* The following is a degree-7 polynomial with odd coefficients
-   approximating sin(x) for 0 <= x < 2^-11.348 with absolute error
-   < 2^-128.601. Coefficients of degree 1, 3, 5 are PS[i]/2^128,
+   approximating sin(2*pi/8*x) for 0 <= x < 2^-11 with absolute error
+   < 2^-128.605. Coefficients of degree 1, 3, 5 are PS[i]/2^128,
    with that of degree 7 is PS[i]/2^64 (fixed point).
    Generated with sinlarge_acc.sollya. */
 static const u128 PS[] = {
   // little-endian format
-  U128(0xffffffffffffc396,0xffffffffffffffff), // degree 1
-  U128(0xaaaaa9646e8f872e,0x2aaaaaaaaaaaaaaa), // degree 3, implicit - sign
-  U128(0x467b898367fb1249,0x222222222222220),  // degree 5
-  U128(0xd00d00bfff5ee,0),                     // degree 7, implicit - sign
+  U128(0xc4c6628b80dbed80,0xc90fdaa22168c234), // degree 1
+  U128(0xabb8e5506ca45b03,0x14abbce625be52be), // degree 3, implicit - sign
+  U128(0x44c54995bb97635,0xa335e33bad570e),    // degree 5
+  U128(0x265a5999d06c4,0),                     // degree 7, implicit - sign
 };
 
 /* The following is a degree-8 polynomial with even coefficients
-   approximating cos(x) for 0 <= x < 2^-11.348, with absolute error < 2^-128.
+   approximating cos(2*pi/8*x) for 0 <= x < 2^-11, with absolute error < 2^-128.
    Coefficients are PC[i]/2^128 (fixed precision),
    except degree-8 coefficient which is PC[i]/2^64.
    Generated with coslarge_acc.sollya. */
 static const u128 PC[] = {
   U128(0xffffffffffffffff,0xffffffffffffffff), // degree 0
-  U128(0xfffffffffa998bf0,0x7fffffffffffffff), // degree 2, implicit - sign
-  U128(0xaaa2caecc94962c7,0xaaaaaaaaaaaaaaa),  // degree 4
-  U128(0x642013bc289028b6,0x5b05b05b05ac1a),   // degree 6, implicit - sign
-  U128(0x1a0193d9a550c,0),                     // degree 8
+  U128(0x2b71366cbcf0b096,0x4ef4f326f9177969), // degree 2, implicit - sign
+  U128(0xd4c9076e3db78fed,0x40f07c206d6b0ec),  // degree 4
+  U128(0xeec6962368fb7c41,0x155d3c7e3cbef9),   // degree 6, implicit - sign
+  U128(0x3c3e845b5510,0),                      // degree 8
 };
 
 static inline u128 mhUU (u128 a, u128 b){
@@ -193,8 +193,8 @@ static inline u128 mhUU (u128 a, u128 b){
 }
 
 /* Return Sr such that Sr/2^128 approximates sin2pi(r), for 0 <= r < 2^-14,
-   where u/2^128 approximates r, u2/2^128 approximates r^2,
-   u4/2^128 approximates r^4, and u2h = floor(u2/2^64). */
+   where u/2^128 approximates r'=8*r, u2/2^128 approximates r'^2,
+   u4/2^128 approximates r'^4, and u2h = floor(u2/2^64). */
 static inline u128
 evalPS (u128 u, u128 u2, u128 u2h, u128 u4)
 {
@@ -216,8 +216,8 @@ evalPS (u128 u, u128 u2, u128 u2h, u128 u4)
 }
 
 /* Return Cr such that Cr/2^128 approximates cos2pi(r), for 0 <= r < 2^-14,
-   where u2/2^128 approximates r^2, u4/2^128 approximates r^4, and
-   u2h = floor(u2/2^64). */
+   where u2/2^128 approximates r'^2, u4/2^128 approximates r'^4, and
+   u2h = floor(u2/2^64), with r'=8*r. */
 static inline u128
 evalPC (u128 u2, u128 u2h, u128 u4)
 {
