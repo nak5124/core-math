@@ -1,6 +1,6 @@
 /* Correctly rounded logarithm of binary64 values.
 
-Copyright (c) 2022 INRIA and CERN.
+Copyright (c) 2022-2026 INRIA and CERN.
 Authors: Paul Zimmermann and Tom Hubrecht.
 
 This file is part of the CORE-MATH project
@@ -516,7 +516,7 @@ static const double P[6] = {0x1p0,                 /* degree 1 */
 static void
 cr_log_fast (double *h, double *l, int e, d64u64 v)
 {
-  uint64_t m = 0x10000000000000 + (v.u & 0xfffffffffffff);
+  uint64_t m = 0x10000000000000 | (v.u & 0xfffffffffffff);
   /* x = m/2^52 */
   /* if x > sqrt(2), we divide it by 2 to avoid cancellation */
   int c = m >= 0x16a09e667f3bcd;
@@ -525,6 +525,7 @@ cr_log_fast (double *h, double *l, int e, d64u64 v)
   static const uint64_t cm[] = {43, 44};
 
   int i = m >> cm[c];
+  /* we have i=511,512 for 0x1.ffp-1 <= x < 0x1.008p+0 */
   double y = v.f * cy[c];
 #define OFFSET 362
   double r = _INVERSE[i-OFFSET];
@@ -647,6 +648,55 @@ cr_log_accurate (double x)
   return dint_tod (&Y);
 }
 
+// fast path for 1-1/512 <= x < 1+1/512 (cases i=511 and i=512 in cr_log_fast)
+static double
+cr_log_tiny (double x)
+{
+  if (__builtin_expect (x == 1, 0)) return 0;
+
+  /* p(r) = r + c[0]*r^2 + ... + c[5]*r^7 is a degree-7 approximation of log(1+r)
+     for |r| <= 1/512 with relative error less than 2^-71.173 (see file
+     logtiny.sollya) */
+  static const double c[] = {-0x1p-1, 0x1.5555555555555p-2, -0x1.fffffffff7999p-3,
+                          0x1.9999999a0bbcfp-3, -0x1.5555b5558ae3p-3, 0x1.24915abb06a9p-3};
+  double r = x - 1, r2 = r * r;
+  double p6 = c[4] + r * c[5];
+  double p4 = c[2] + r * c[3];
+  double p2 = c[0] + r * c[1];
+  p4 = p4 + r2 * p6;
+  p2 = p2 + r2 * p4;
+  // add x
+  double h, l;
+  fast_two_sum (&h, &l, r, r2 * p2);
+  /* Here r is an integer multiple of 2^-53 (even of 2^-52 for r >= 0).
+     All the Gappa proofs below are with file logtiny.g (script logtiny.sh).
+     Gappa proves that the fasttwosum condition is satisfied: if t = o(r2*p2),
+     then |t/r| is in [-1,1] (goal r in [1b-52,1b-9] \/ r in [-1b-9,-1b-53]
+     -> t/r in [-1,1]).
+     It also proves that |t/r| >= 1b-53 for r >= 2^-51 or r <= -2^-52 (goals
+     r in [1b-51,1b-9] -> |t/r| >= 1b-53 and
+     r in [-1b-9,-1b-52] /\ @FIX(r,-53) -> |t/r| >= 1b-53),
+     which implies the exponent difference between t and r is at most 53, thus
+     fasttwosum is exact (the remaining cases x=1+2^-52 and x=1-2^-53 are in log.wc,
+     thus proven by testing).
+     Gappa also proves |h+l - p(r)| < 29*2^-65*|r| (goal |(y-Y)/r| <= 29b-65).
+     Together with the Sollya relative error of 2^-71.173, this yields:
+     |h+l - log(1+r)| < 29*2^-65*|r| + 2^-71.173*|log(1+r)|
+                      < (29*2^-65 + 2^-71.173*1.001)*|r|
+                            [since |log(1+r)| < 1.001*|r| for |r| <= 2^-9]
+                      < 2^-60.141*|r|
+     Gappa also proves that the rounding error in l +/- eps*r is bounded by 2^-103*|r|
+     (goal |err_l/r| <= 1b-103 /\ |err_h/r| <= 1b-103), thus:
+     lb <= log(1+r) - eps*|r| + 2^-60.140*|r| < 0 and
+     ub >= log(1+r) + eps*|r| - 2^-60.140*|r| > 0
+  */
+  // fails with eps=0x1.30p-62, x=0x1.006b89404c919p+0 and rndz (without fma contraction)
+  static const double eps = 0x1.d1p-61;
+  double lb = h + (l - eps*r), ub = h + (l + eps*r);
+  if (lb == ub) return lb;
+  return cr_log_accurate (x);
+}
+
 double
 cr_log (double x)
 {
@@ -678,11 +728,11 @@ cr_log (double x)
     e = (v.u >> 52) - 0x3ff - 52;
   }
   /* now x > 0 */
+  if (0x3feff00000000000ull <= v.u && v.u < 0x3ff0080000000000ull)
+    return cr_log_tiny (x);
   /* normalize v in [1,2) */
   v.u = (0x3ffull << 52) | (v.u & 0xfffffffffffff);
   /* now x = m*2^e with 1 <= m < 2 (m = v.f) and -1074 <= e <= 1023 */
-  if (__builtin_expect (v.u == 0x3ff0000000000000ull && e == 0, 0)) // x=1
-    return 0;
   double h, l;
   cr_log_fast (&h, &l, e, v);
 

@@ -61808,6 +61808,7 @@
 0x1.f88fe06beff3ap+138
 0x1.0000000000001p+0
 0x1.0000000000002p+0
+0x1.0000000000003p+0
 0x1.0000000000004p+0
 0x1.0053e574e792bp+139
 0x1.13eed2adaf52ap+139
@@ -134956,7 +134957,9 @@
 0x1.fa64a78891ad6p-280
 0x1.ffffffffffff8p-1
 0x1.ffffffffffffcp-1
+0x1.ffffffffffffdp-1
 0x1.ffffffffffffep-1
+0x1.fffffffffffffp-1
 0x1
 # special values
 +snan
