@@ -24,7 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
 #ifdef CORE_MATH_SUPPORT_ERRNO
@@ -1336,16 +1335,6 @@ static inline void d_mul(double *hi, double *lo, double ah, double al,
   *lo = __builtin_fma(ah, bl, t);
 }
 
-static inline void
-fast_two_sum(double *hi, double *lo, double a, double b)
-{
-  double e;
-
-  *hi = a + b;
-  e = *hi - a; /* exact */
-  *lo = b - e; /* exact */
-}
-
 static inline double fasttwosum (double x, double y, double *e){
   double s = x + y, z = s - x;
   *e = y - z;
@@ -1365,7 +1354,7 @@ evalPSfast (double *h, double *l, double xh, double xl, double uh, double ul)
   *h = __builtin_fma (*h, uh, PSfast[3]); // degree 5
   *h = __builtin_fma (*h, uh, PSfast[2]); // degree 3
   s_mul (h, l, *h, uh, ul);
-  fast_two_sum (h, &t, PSfast[0], *h);
+  *h = fasttwosum (PSfast[0], *h, &t);
   *l += PSfast[1] + t;
   // multiply by xh+xl
   d_mul (h, l, *h, *l, xh, xl);
@@ -1384,7 +1373,7 @@ evalPCfast (double *h, double *l, double uh, double ul)
   *h = __builtin_fma (*h, uh, PCfast[3]); // degree 4
   *h = __builtin_fma (*h, uh, PCfast[2]); // degree 2
   s_mul (h, l, *h, uh, ul);
-  fast_two_sum (h, &t, PCfast[0], *h);
+  *h = fasttwosum (PCfast[0], *h, &t);
   *l += PCfast[1] + t;
 }
 
@@ -1870,7 +1859,7 @@ cos_fast (double *h, double *l, double x)
     {
       s_mul (&sh, &sl, SC[i][2], sh, sl);
       s_mul (&ch, &cl, SC[i][1], ch, cl);
-      fast_two_sum (h, l, ch, sh);
+      *h = fasttwosum (ch, sh, l);
       *l += sl + cl;
       /* absolute error bounded by 2^-68.588
          from global_error(is_sin=true,rel=false) in sin.sage:
@@ -1884,7 +1873,7 @@ cos_fast (double *h, double *l, double x)
     {
       s_mul (&ch, &cl, SC[i][2], ch, cl);
       s_mul (&sh, &sl, SC[i][1], sh, sl);
-      fast_two_sum (h, l, ch, -sh);
+      *h = fasttwosum (ch, -sh, l);
       *l += cl - sl;
       /* absolute error bounded by 2^-68.414
          from global_error(is_sin=false,rel=false) in sin.sage:
@@ -2359,8 +2348,6 @@ static const double pil = -0x1.1a62633145c07p-67;
 static inline double
 cr_cos_moderate (double x)
 {
-  return cos_accurate (x);
-  int bug = x == -0x1.0066bbcf2cf68p-7;
   int sbit;
   double ax = __builtin_fabs (x);
   static const double invpi = 0x1.45f306dc9c883p+12;
@@ -2370,12 +2357,10 @@ cr_cos_moderate (double x)
   double rh = __builtin_fma (k, pih, ax), rl = k * pil; // rh is exact
 
   double r = rh + rl; // |r| < 2^-13.339 (see sin.pdf)
-  if (bug) printf ("r=%la\n", r);
   double r2 = r * r;
   int64_t j = k;
   sbit = (j >> 14) & 1; // reduction by an odd multiple of pi?
   int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
-  if (bug) printf ("i1=%d i2=%d\n", i1, i2);
   double c1h, c1l, c2h, c2l;
   c1h = muldd (U1[i1][2], U1[i1][3], U2[i2][2], U2[i2][3], &c1l);
   // c1h approximates cos(t1)*cos(t2) where t1=i1*pi/2^7 and t2=i2*pi/2^14
@@ -2383,10 +2368,8 @@ cr_cos_moderate (double x)
   // c2h approximates sin(t1)*sin(t2)
   double Ch, Cl;
   Ch = fastsum (c1h, c1l, -c2h, -c2l, &Cl);
-  if (bug) printf ("Ch=%la Cl=%la\n", Ch, Cl);
   // Ch+Cl approximates cos(t1+t2) = cos(t1)*cos(t2)-sin(t1)*sin(t2)
   double Sh = U1[i1][0] * U2[i2][2] + U1[i1][2] * U2[i2][0];
-  if (bug) printf ("Sh=%la\n", Sh);
   // Sh approximates sin(t1+t2) = sin(t1)*cos(t2)+cos(t1)*sin(t2)
 
   /* for |r| <= 2^-13.339, the polynomial r - 0x1.55555553068fp-3 * r^3
@@ -2394,18 +2377,14 @@ cr_cos_moderate (double x)
      -0.5 * r^2 + 0x1.55555553bfd3p-5 * r^4 approximates cos(r)-1 with
      absolute error < 2^-92.723 (cf sinmoderate.sollya) */
   double sh =  r * ( 1.0 - 0x1.55555553068fp-3 * r2);
-  if (bug) printf ("sh=%la\n", sh);
   double ch = r2 * (-0.5 + 0x1.55555553bfd3p-5 * r2);
-  if (bug) printf ("ch=%la\n", ch);
   double fh = Ch, fl = Cl + Ch*ch - Sh*sh;
-  if (bug) printf ("fh=%la fl=%la\n", fh, fl);
   static const double Sgn[] = {1.0, -1.0};
   const double eps = 0x1.dep-64;
   fh = Sgn[sbit] * fh;
   fl = Sgn[sbit] * fl;
   double lb = fh + (fl - eps), ub = fh + (fl + eps);
   if (__builtin_expect (ub == lb, 1)) return lb;
-  if (bug) printf ("fast path failed\n");
   return cos_accurate (x);
 }
 
@@ -2414,6 +2393,11 @@ cr_cos (double x)
 {
   b64u64_u t = {.f = x};
   int e = (t.u >> 52) & 0x7ff;
+
+  // deal with tiny x to avoid underflow
+  if (__builtin_expect (e < 0x3ff-27, 0)) // |x| < 2^-27
+    // for |x| < 2^-27, cos(x) rounds to 1 to nearest
+    return __builtin_fma (x, -x, 1.0);
 
   if (__builtin_expect (e < 0x3ff+31, 1))
     return cr_cos_moderate (x); // |x| < 2^31
