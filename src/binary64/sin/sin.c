@@ -876,7 +876,7 @@ sin_small_accurate (double x)
 }
 
 // fast path for 0x1.7137449123ef6p-26 < |x| < 2^31
-// ax = |x| and eps is the error bound for the rounding test
+// sbit is the sign bit of x (0 for x > 0, 1 for x < 0)
 // see proof of correctness in sin.pdf
 static inline double
 cr_sin_moderate (double x, int sbit)
@@ -972,7 +972,9 @@ cr_sin (double x)
 #endif
     return res;
   }
-  if (__builtin_expect (e < 0x3ff+31, 1)) return cr_sin_moderate (x, t.u>>63); // |x| < 2^31
+  if (__builtin_expect (e < 0x3ff+31, 1))
+    return cr_sin_moderate (x, t.u>>63); // |x| < 2^31
+
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
       uint64_t au = t.u<<1;
