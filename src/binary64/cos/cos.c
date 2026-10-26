@@ -1856,13 +1856,13 @@ cos_fast (double *h, double *l, double x)
   return err + err1;
 }
 
-/* Assume x is a regular number and x > 0x1.6a09e667f3bccp-27. */
+/* Assume x is a regular number and |x| > 0x1.6a09e667f3bccp-27. */
 __attribute__((cold))
 static double
 cos_accurate (double x)
 {
   dint64_t X[1];
-  dint_fromd (X, x);
+  dint_fromd (X, (x > 0) ? x : -x);
 
   /* reduce argument */
   reduce (X);
@@ -2064,5 +2064,5 @@ cr_cos (double x)
   if (__builtin_expect (left == right, 1))
     return left;
 
-  return cos_accurate (t.f);
+  return cos_accurate (x);
 }
