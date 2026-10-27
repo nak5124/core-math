@@ -1,6 +1,6 @@
 /* Check cos on random inputs.
 
-Copyright (c) 2022-2024 Paul Zimmermann, Inria.
+Copyright (c) 2022-2026 Paul Zimmermann, Inria.
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -74,6 +74,15 @@ get_random (int tid)
   return v.f;
 }
 
+/* define our own is_nan function to avoid depending from math.h */
+static inline int
+is_nan (double x)
+{
+  uint64_t u = asuint64 (x);
+  uint64_t e = u >> 52;
+  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
+}
+
 static void
 check (double x)
 {
@@ -81,10 +90,10 @@ check (double x)
   double y1 = ref_cos (x);
   fesetround (rnd1[rnd]);
   double y2 = cr_cos (x);
-  if (isnan (y1))
-    bug = !isnan (y2);
-  else if (isnan (y2))
-    bug = !isnan (y1);
+  if (is_nan (y1))
+    bug = !is_nan (y2);
+  else if (is_nan (y2))
+    bug = !is_nan (y1);
   else
     bug = asuint64 (y1) != asuint64 (y2);
   if (bug)
@@ -102,15 +111,6 @@ asfloat64 (uint64_t i)
 {
   d64u64 u = {.i = i};
   return u.f;
-}
-
-/* define our own is_nan function to avoid depending from math.h */
-static inline int
-is_nan (double x)
-{
-  uint64_t u = asuint64 (x);
-  uint64_t e = u >> 52;
-  return (e == 0x7ff || e == 0xfff) && (u << 12) != 0;
 }
 
 // When x is a NaN, returns 1 if x is an sNaN and 0 if it is a qNaN
