@@ -865,8 +865,8 @@ cr_cos_moderate (double x)
 double
 cr_cos (double x)
 {
-  b64u64_u t = {.f = x};
-  t.u &= 0x7fffffffffffffffull;
+  double z = __builtin_fabs(x);
+  b64u64_u t = {.f = z};
   int e = t.u >> 52;
 
   // deal with tiny x to avoid underflow
@@ -875,19 +875,19 @@ cr_cos (double x)
     return __builtin_fma (x, -x, 1.0);
 
   if (__builtin_expect (e < 0x3ff+31, 1))
-    return cr_cos_moderate (t.f); // |x| < 2^31
+    return cr_cos_moderate (z); // |x| < 2^31
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
-      uint64_t au = t.u<<1;
 #ifdef CORE_MATH_SUPPORT_ERRNO
-      if (au == 0x7ffull<<53) // +/-Inf
+      if (t.u == 0x7ffull<<52) // +/-Inf
         errno = EDOM;
 #endif
-      if (au < 0x7ff8ull<<49) feraiseexcept (FE_INVALID); // Inf or sNaN
-      t.u = 0x7ff8000000000000ull;
+      if (t.u < 0x7ff8ull<<48) feraiseexcept (FE_INVALID); // Inf or sNaN
+      t.f = x;
+      t.u |= (u64)1<<51; // propagate qnan, inf -> qnan, snan -> qnan
       return t.f;
     }
 
-  return cos_large_accurate (t.f);
+  return cos_large_accurate (z);
 }
