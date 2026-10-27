@@ -673,12 +673,6 @@ cr_log_tiny (double x)
      Gappa proves that the fasttwosum condition is satisfied: if t = o(r2*p2),
      then |t/r| is in [-1,1] (goal r in [1b-52,1b-9] \/ r in [-1b-9,-1b-53]
      -> t/r in [-1,1]).
-     It also proves that |t/r| >= 1b-53 for r >= 2^-51 or r <= -2^-52 (goals
-     r in [1b-51,1b-9] -> |t/r| >= 1b-53 and
-     r in [-1b-9,-1b-52] /\ @FIX(r,-53) -> |t/r| >= 1b-53),
-     which implies the exponent difference between t and r is at most 53, thus
-     fasttwosum is exact (the remaining cases x=1+2^-52 and x=1-2^-53 are in log.wc,
-     thus proven by testing).
      Gappa also proves |h+l - p(r)| < 29*2^-65*|r| (goal |(y-Y)/r| <= 29b-65).
      Together with the Sollya relative error of 2^-71.173, this yields:
      |h+l - log(1+r)| < 29*2^-65*|r| + 2^-71.173*|log(1+r)|
@@ -687,8 +681,8 @@ cr_log_tiny (double x)
                       < 2^-60.141*|r|
      Gappa also proves that the rounding error in l +/- eps*r is bounded by 2^-103*|r|
      (goal |err_l/r| <= 1b-103 /\ |err_h/r| <= 1b-103), thus:
-     lb <= log(1+r) - eps*|r| + 2^-60.140*|r| < 0 and
-     ub >= log(1+r) + eps*|r| - 2^-60.140*|r| > 0
+     lb <= log(1+r) - eps*|r| + 2^-60.141*|r| < log(1+r) and
+     ub >= log(1+r) + eps*|r| - 2^-60.141*|r| > log(1+r)
   */
   // fails with eps=0x1.30p-62, x=0x1.006b89404c919p+0 and rndz (without fma contraction)
   static const double eps = 0x1.d1p-61;
