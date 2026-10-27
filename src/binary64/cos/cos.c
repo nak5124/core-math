@@ -24,8 +24,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* code adapted from sin.c */
+
 #include <stdint.h>
-#include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
 #ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
 #endif
@@ -79,8 +80,6 @@ roundeven_finite (double x)
   return ix;
 }
 #endif
-
-/**************** the following is copied from sin.c *************************/
 
 typedef union {double f; uint64_t u;} b64u64_u;
 typedef uint64_t u64;
