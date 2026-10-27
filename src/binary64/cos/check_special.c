@@ -29,7 +29,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <fenv.h>
-#include <math.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <inttypes.h>
