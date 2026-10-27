@@ -1,0 +1,7 @@
+d = [-1/512,1/512];
+
+p = fpminimax(log(1+x),[|1,2,3,4,5,6,7|],[|1,53...|], d, relative, floating);
+e = dirtyinfnorm(p/log(1+x)-1, d);
+-log(e)/log(2);
+display = hexadecimal;
+p;

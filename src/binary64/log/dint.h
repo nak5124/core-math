@@ -36,7 +36,6 @@ SOFTWARE.
 #define DINT_H
 
 #include <stdint.h>
-#include <stdio.h>
 #include <inttypes.h>
 
 /*
