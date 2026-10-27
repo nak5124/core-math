@@ -36,6 +36,7 @@ SOFTWARE.
    2026.
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
@@ -93,12 +94,8 @@ roundeven_finite (double x)
 }
 #endif
 
+typedef union {double f; uint64_t u;} b64u64_u;
 typedef uint64_t u64;
-
-typedef union {
-  double f;
-  uint64_t u;
-} f64_u;
 
 // round (-1)^s*r/2^128 to double, assuming r is non-zero and not in the
 // subnormal region
@@ -112,7 +109,7 @@ static inline double u128_tod (u128 r, int s)
   uint64_t h = r >> (75 - sh); // upper 53 non-zero bits
   int rbit = (r >> (74 - sh)) & 1; // round bit
   static const double Sgn[] = { 0x1p-53, -0x1p-53 };
-  f64_u v = {.f = Sgn[s]};
+  b64u64_u v = {.f = Sgn[s]};
   v.u -= sh << 52; // scale by 2^-sh
   static const double Low[] = { 0x1.8p-2, 0x1.8p-1 };
   double a = h * v.f, b = Low[rbit] * v.f;
@@ -125,8 +122,6 @@ static inline double u128_tod (u128 r, int s)
      hard-to-round cases, which are checked by sin.wc. */
   return a + b;
 }
-
-typedef union {double f; uint64_t u;} b64u64_u;
 
 /* This table approximates 1/(2pi) downwards with precision 1280:
    1/(2*pi) ~ T[0]/2^0 + T[1]/2^64 + ... + T[i]/2^(i*64) + ...
@@ -795,7 +790,7 @@ static const u128 C2u[64] = {
   U128(0xbadfe70a1ef51116,0xffb38194a87a3097),
 };
 
-// accurate path for |x| >= 0x1.7137449123ef6p-26
+// accurate path for |x| >= 2^-16
 static double __attribute__((cold,noinline))
 sin_large_accurate (double x)
 {
@@ -844,14 +839,14 @@ sin_large_accurate (double x)
 
   /* s1u/2^128 approximates sin(z)*cos(r) which is always >= 0, while
      c1u/2^128 approximates cos(z)*sin(r), where cos(z) > 0 for i1 < 32,
-     and cos(z) <= for i1 >= 32, and sign(r) has the sign of r. */
-  if ((i1 < 32) ^ neg) // r >= 0
+     and cos(z) <= 0 for i1 >= 32, and sign(r) has the sign of r. */
+  if ((i1 < 32) ^ neg) // cos(z) * r > 0
     s1u += c1u;
   else if (s1u < c1u) {
     s1u = c1u - s1u;
     sbit ^= 1;
   } else
-    s1u = s1u - c1u;
+    s1u -= c1u;
   return u128_tod (s1u, sbit);
 }
 
@@ -875,8 +870,8 @@ sin_small_accurate (double x)
   return h + l;
 }
 
-// fast path for 0x1.7137449123ef6p-26 < |x| < 2^31
-// ax = |x| and eps is the error bound for the rounding test
+// fast path for 2^-26 < |x| < 2^31
+// sbit is the sign bit of x (0 for x > 0, 1 for x < 0)
 // see proof of correctness in sin.pdf
 static inline double
 cr_sin_moderate (double x, int sbit)
@@ -958,7 +953,7 @@ cr_sin (double x)
   int e = (t.u>>52)&0x7ff;
   // deal with tiny x to avoid underflow
   if (__builtin_expect (e < 0x3ff-26, 0)) { // |x| < 2^-26
-    // for |x| <= 0x1.7137449123ef6p-26  |sin(x) - x| < 1/2 ulp
+    // for |x| < 2^-26  |sin(x) - x| < 1/2 ulp
     uint64_t au = t.u<<1;
     if (au == 0) return x;
     // Taylor expansion of sin(x) is x - x^3/6 around zero
@@ -972,7 +967,9 @@ cr_sin (double x)
 #endif
     return res;
   }
-  if (__builtin_expect (e < 0x3ff+31, 1)) return cr_sin_moderate (x, t.u>>63); // |x| < 2^31
+  if (__builtin_expect (e < 0x3ff+31, 1))
+    return cr_sin_moderate (x, t.u>>63); // |x| < 2^31
+
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
       uint64_t au = t.u<<1;
