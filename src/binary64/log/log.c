@@ -652,6 +652,8 @@ cr_log_accurate (double x)
 static double
 cr_log_tiny (double x)
 {
+  /* IEEE 754 says that log(1) = +0 for all rounding modes, but the code below yields
+     -0 for rounding down, thus we have to deal with x=1 separately */
   if (__builtin_expect (x == 1, 0)) return 0;
 
   /* p(r) = r + c[0]*r^2 + ... + c[5]*r^7 is a degree-7 approximation of log(1+r)
