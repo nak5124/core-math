@@ -24,7 +24,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
 #ifdef CORE_MATH_SUPPORT_ERRNO
@@ -740,15 +739,28 @@ static inline double u128_tod (u128 r, int s)
   return a + b;
 }
 
+static double
+exceptions (double x, double ret)
+{
+  double ax = __builtin_fabs (x);
+  if (ax == 0x1.8000000000009p-23) // cos(x) has 88 identical bits after round bit
+    return 0x1.fffffffffff7p-1 + 0x1.b56666666666cp-143;
+  if (ax == 0x1.8000000000024p-22) // cos(x) has 82 identical bits after round bit
+    return 0x1.ffffffffffdcp-1 + 0x1.b56666666667ep-137;
+  if (ax == 0x1.800000000009p-21) // cos(x) has 76 identical bits after round bit
+    return 0x1.ffffffffff7p-1 + 0x1.b5666666666c4p-131;
+  if (ax == 0x1.20000000000f3p-20) // cos(x) has 72 identical bits after round bit
+    return 0x1.fffffffffebcp-1 + 0x1.37642666666fdp-127;
+  return ret;
+}
+
 // accurate path for |x| >= 2^-16
 static double __attribute__((cold,noinline))
 cos_large_accurate (double x)
 {
-  int bug = x == 0x1.927bc4fcc9a52p+0;
   u128 r;
   int neg;
   uint64_t k = reduce_large_acc (&r, &neg, x);
-  if (bug) printf ("neg=%d\n", neg);
 
   r = r << 3; // replace r by 8*r
   u128 u2 = mhUU (r,r), u4 = mhUU (u2,u2), u2h = u2 >> 64;
@@ -761,9 +773,7 @@ cos_large_accurate (double x)
      and  cos(pi*k/2^12) = (-1)^s*[cos(t1)*cos(t2)-sin(t1)*sin(t2)]
   */
   int sbit = (k >> 12) & 1;
-  if (bug) printf ("k=%lu\n", k);
   int i1 = (k >> 6) & 0x3f, i2 = k & 0x3f;
-  if (bug) printf ("i1=%d i2=%d\n", i1, i2);
 
   u128 s1u, c1u, t;
   // approximate |sin(z)| in s1u/2^128
@@ -793,17 +803,18 @@ cos_large_accurate (double x)
   /* c1u/2^128 approximates cos(z)*cos(r) where cos(z) > 0 for i1 < 32,
      and cos(z) <= 0 for i1 >= 32;
      s1u/2^128 approximates sin(z)*sin(r), which has the sign of r. */
-  if (bug) printf ("sbit=%d\n", sbit);
-  if ((i1 >= 32) ^ neg) { // cos(z) * r < 0
+  if ((i1 >= 32) ^ neg) // cos(z) * r < 0
     c1u += s1u;
-    sbit ^= (i1 >= 32);
-  }
   else if (c1u < s1u) {
     c1u = s1u - c1u;
     sbit ^= 1;
   } else
     c1u -= s1u;
-  return u128_tod (c1u, sbit);
+  // if i1 >= 32, cos(z) <= 0 thus we should exchange signs
+  double ret = u128_tod (c1u, sbit ^ (i1 >= 32)); 
+  uint64_t d = (uint64_t) c1u + 5;
+  if (d <= 3) return exceptions (x, ret);
+  return ret;
 }
 
 // fast path for |x| < 2^31
