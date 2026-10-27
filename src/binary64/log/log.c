@@ -681,8 +681,8 @@ cr_log_tiny (double x)
                       < 2^-60.141*|r|
      Gappa also proves that the rounding error in l +/- eps*r is bounded by 2^-103*|r|
      (goal |err_l/r| <= 1b-103 /\ |err_h/r| <= 1b-103), thus:
-     lb <= log(1+r) - eps*|r| + 2^-60.141*|r| < log(1+r) and
-     ub >= log(1+r) + eps*|r| - 2^-60.141*|r| > log(1+r)
+     lb <= log(1+r) - eps*|r| + 2^-60.141*|r| + 2^-103*|r| < log(1+r) and
+     ub >= log(1+r) + eps*|r| - 2^-60.141*|r| - 2^-103*|r| > log(1+r)
   */
   // fails with eps=0x1.30p-62, x=0x1.006b89404c919p+0 and rndz (without fma contraction)
   static const double eps = 0x1.d1p-61;
