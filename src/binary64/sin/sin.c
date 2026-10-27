@@ -36,10 +36,8 @@ SOFTWARE.
    2026.
  */
 
-#include <assert.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <fenv.h> // for fegetround, FE_TONEAREST, FE_DOWNWARD, FE_UPWARD
+#include <fenv.h> // for feraiseexcept and FE_INVALID
 #ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
 #endif

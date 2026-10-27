@@ -1,6 +1,6 @@
 /* Correctly-rounded cosine function for binary64 value.
 
-Copyright (c) 2022-2025 Paul Zimmermann and Tom Hubrecht
+Copyright (c) 2026 Paul Zimmermann
 
 This file is part of the CORE-MATH project
 (https://core-math.gitlabpages.inria.fr/).
@@ -27,6 +27,7 @@ SOFTWARE.
 /* code adapted from sin.c */
 
 #include <stdint.h>
+#include <fenv.h> // for feraiseexcept and FE_INVALID
 #ifdef CORE_MATH_SUPPORT_ERRNO
 #include <errno.h>
 #endif
@@ -664,7 +665,7 @@ static const u128 C2u[64] = {
   U128(0xbadfe70a1ef51116,0xffb38194a87a3097),
 };
 
-// argument reduction for accurate path
+// argument reduction for accurate path, assumes 2^-16 <= x
 // return k and r such that
 // x/(2pi) mod 1 = k/2^13 + r/2^128 + eps with |r/2^128| <= 2^-14
 // and 0 <= eps < 2^-128 + 2^-139 < 2^-127.999
@@ -673,7 +674,7 @@ static uint64_t
 reduce_large_acc (u128 *r, int *neg, double x)
 {
   b64u64_u t = {.f = x};
-  int e = (t.u >> 52) & 0x7ff; /* 1054 <= e <= 2046 */
+  int e = t.u >> 52; /* 1054 <= e <= 2046 */
   uint64_t m = (1ull << 52) | (t.u & 0xfffffffffffffull);
   // x = m * 2^(e-1075)
   /* _T[j] corresponds to _T[j]/2^(64*j) thus _T[j]*x corresponds to
@@ -753,7 +754,7 @@ exceptions (double x, double ret)
   return ret;
 }
 
-// accurate path for |x| >= 2^-16
+// accurate path for 2^-16 <= x
 static double __attribute__((cold,noinline))
 cos_large_accurate (double x)
 {
@@ -816,20 +817,18 @@ cos_large_accurate (double x)
   return ret;
 }
 
-// fast path for |x| < 2^31
-// sbit is the sign bit of x (0 for x > 0, 1 for x < 0)
+// fast path for 2^-27 <= x < 2^31
 // adapted from sin.c
 // see proof of correctness in cos.pdf
 static inline double
 cr_cos_moderate (double x)
 {
   int sbit;
-  double ax = __builtin_fabs (x);
   static const double invpi = 0x1.45f306dc9c883p+12;
   // |invpi/2^14 - 1/pi| < 2^-55.496
-  double k = roundeven_finite (invpi * ax);
+  double k = roundeven_finite (invpi * x);
   // |2^14*(pih + pil) + pi| < 2^-108.041
-  double rh = __builtin_fma (k, pih, ax), rl = k * pil; // rh is exact
+  double rh = __builtin_fma (k, pih, x), rl = k * pil; // rh is exact
 
   double r = rh + rl; // |r| < 2^-13.339 (see sin.pdf)
   double r2 = r * r;
@@ -867,7 +866,8 @@ double
 cr_cos (double x)
 {
   b64u64_u t = {.f = x};
-  int e = (t.u >> 52) & 0x7ff;
+  t.u &= 0x7fffffffffffffffull;
+  int e = t.u >> 52;
 
   // deal with tiny x to avoid underflow
   if (__builtin_expect (e < 0x3ff-27, 0)) // |x| < 2^-27
@@ -875,18 +875,19 @@ cr_cos (double x)
     return __builtin_fma (x, -x, 1.0);
 
   if (__builtin_expect (e < 0x3ff+31, 1))
-    return cr_cos_moderate (x); // |x| < 2^31
+    return cr_cos_moderate (t.f); // |x| < 2^31
 
   if (__builtin_expect (e == 0x7ff, 0)) /* NaN, +Inf and -Inf. */
     {
+      uint64_t au = t.u<<1;
 #ifdef CORE_MATH_SUPPORT_ERRNO
-      if ((t.u << 1) == 0x7ffull<<53) // Inf
+      if (au == 0x7ffull<<53) // +/-Inf
         errno = EDOM;
 #endif
-      if ((t.u << 1) == 0x7ffull<<53) // Inf
-        return 0.0 / 0.0; // raise invalid flag
-      return x + x; // return qNaN
+      if (au < 0x7ff8ull<<49) feraiseexcept (FE_INVALID); // Inf or sNaN
+      t.u = 0x7ff8000000000000ull;
+      return t.f;
     }
 
-  return cos_large_accurate (x);
+  return cos_large_accurate (t.f);
 }
