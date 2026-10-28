@@ -680,7 +680,7 @@ reduce_large_acc (u128 *r, int *neg, double x)
   /* _T[j] corresponds to _T[j]/2^(64*j) thus _T[j]*x corresponds to
      m*_T[j]*2^(e-1075-64*j). To get a non-zero fractional value,
      we need e-1075-64*j < 0, thus 64*j > e-1075 or 64*j >= e-1074. */
-  int i = -1 + (e - 947) / 64; // i = ceil((e-1074)/64), 0 <= i <= 16
+  int i = -1 + (e - 947) / 64; // i = ceil((e-1074)/64), -1 <= i <= 16
   int f = (e - 1011) & 0x3f;
   // shift the table entries
   uint64_t V0 = (i >= 0) ? _T[i] : 0, V1 = _T[i+1], V2 = _T[i+2];
@@ -754,7 +754,7 @@ exceptions (double x, double ret)
   return ret;
 }
 
-// accurate path for 2^-16 <= x
+// accurate path for 2^-27 <= x
 static double __attribute__((cold,noinline))
 cos_large_accurate (double x)
 {
@@ -805,7 +805,7 @@ cos_large_accurate (double x)
      s1u/2^128 approximates sin(z)*sin(r), which has the sign of r. */
   if ((i1 >= 32) ^ neg) // cos(z) * r < 0
     c1u += s1u;
-  else if (c1u < s1u) {
+  else if (c1u <= s1u) {
     c1u = s1u - c1u;
     sbit ^= 1;
   } else
