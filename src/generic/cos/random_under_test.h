@@ -1,7 +1,16 @@
 #define pi 0x1.921fb54442d18p+1
 
+// sample in [-pi,pi] by default
+
+#ifndef XMIN
+#define XMIN -pi
+#endif
+
+#ifndef XMAX
+#define XMAX pi
+#endif
+
 static inline TYPE_UNDER_TEST random_under_test (void)
 {
-  /* sample in [0,2pi] */
-  return (TYPE_UNDER_TEST) (2 * pi * ((double) rand() / (double) RAND_MAX));
+  return XMIN + (TYPE_UNDER_TEST) ((XMAX - XMIN) * ((double) rand() / (double) RAND_MAX));
 }

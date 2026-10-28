@@ -222,7 +222,7 @@ evalPC (u128 u2, u128 u2h, u128 u4)
   return s + mhUU (sh, u4);
 }
 
-// argument reduction for |x| >= 2^31
+// argument reduction for x >= 2^31 (x is assumed to be positive)
 // return k and r such that
 // x/(2pi) mod 1 = k/2^15 + r + s with 0 <= r < 2^-15 and 0 <= s < 2^-67.988
 static uint64_t
@@ -911,7 +911,6 @@ cr_sin_moderate (double x, int sbit)
 }
 
 // fast path for |x| >= 2^31
-// ax = |x| and eps is the error bound for the rounding test
 static double __attribute__((noinline))
 cr_sin_large (double x)
 {

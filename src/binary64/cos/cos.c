@@ -862,10 +862,80 @@ cr_cos_moderate (double x)
   return cos_large_accurate (x);
 }
 
+// argument reduction for |x| >= 2^31
+// return k and r such that
+// x/(2pi) mod 1 = k/2^15 + r + s with 0 <= r < 2^-15 and 0 <= s < 2^-67.988
+static uint64_t
+reduce_large (double *r, double x)
+{
+  b64u64_u t = {.f = x};
+  int e = (t.u >> 52) & 0x7ff; /* 1054 <= e <= 2046 */
+  uint64_t m = (1ull << 52) | (t.u & 0xfffffffffffffull);
+  // x = m * 2^(e-1075)
+  /* _T[j] corresponds to _T[j]/2^(64*j) thus _T[j]*x corresponds to
+     m*_T[j]*2^(e-1075-64*j). To get a non-zero fractional value,
+     we need e-1075-64*j < 0, thus 64*j > e-1075 or 64*j >= e-1074. */
+  int i = (e - 1011) / 64; // i = ceil((e-1074)/64), 0 <= i <= 16
+  int f = (e - 1011) & 0x3f;
+  /* the number of fractional bits from m*_T[i] is 64-f, thus we have to
+     shift _T[i] by f bits to get 64 fractional bits */
+  uint64_t V0, V1;
+  if (f == 0) {
+    V0 = _T[i];
+    V1 = _T[i+1];
+  } else {
+    V0 = (_T[i] << f) | (_T[i+1] >> (64-f));
+    V1 = (_T[i+1] << f) | (_T[i+2] >> (64-f));
+  }
+  /* Remark: computing directly u with 128-bit arithmetic from _T[i],
+     _T[i+1] and _T[i+2] is slower (surely because 128-bit arithmetic is
+     emulated.) */
+  u128 u = (u128) V1 | (((u128) V0) << 64);
+  u = (u128) m * u;
+  // round r to nearest, where 0x810000000000000 = 2^59 + 2^52
+  static const u128 magic = ((u128) 1 << 112) + 0x810000000000000ull;
+  u += magic;
+  t.f = (uint64_t)((u << 15) >> 75); // next 53 bits of u after the first 15
+  *r = t.f * 0x1p-68 - 0x1p-16;
+  return u >> 113;
+  // since we return 15 bits in i and 53 in h, the accuracy is at most 2^-68
+}
+
+// fast path for x >= 2^31
+static double __attribute__((noinline))
+cr_cos_large (double x)
+{
+  double r;
+  uint64_t j = reduce_large (&r, x);
+  // now x/(2pi) ~ k + j/2^15 + r with 0 <= r < 2^-15
+
+  double r2 = r * r;
+  int sbit = j >> 14; // reduction by an odd multiple of pi?
+  int i1 = (j >> 7) & 0x7f, i2 = j & 0x7f;
+  double c1h, c1l, c2h, c2l;
+  c1h = muldd (U1[i1][2], U1[i1][3], U2[i2][2], U2[i2][3], &c1l);
+  c2h = muldd (U2[i2][0], U2[i2][1], U1[i1][0], U1[i1][1], &c2l);
+  double Ch, Cl;
+  Ch = fastsum (c1h, c1l, -c2h, -c2l, &Cl);
+  double Sh = U1[i1][0] * U2[i2][2] + U1[i1][2] * U2[i2][0];
+
+  double sh = r * (0x1.921fb54442d18p2 - 0x1.4abbcdb6b26d1p5 * r2);
+  double ch = r2 * (-0x1.3bd3cc9be45dep4 + 0x1.03c1eee483083p6 * r2);
+  double fh = Ch, fl = Cl + Ch*ch - Sh*sh;
+  static const double Sgn[] = {1.0, -1.0};
+  fh = Sgn[sbit] * fh;
+  fl = Sgn[sbit] * fl;
+  // fails with eps=0x1.7fp-64 and x=0x1.64dd7934d0fdfp+953 (rndz, no FMA)
+  static const double eps = 0x1.01p-63;
+  double lb = fh + (fl - eps), ub = fh + (fl + eps);
+  if (__builtin_expect (lb == ub, 1)) return lb;
+  return cos_large_accurate (x);
+}
+
 double
 cr_cos (double x)
 {
-  double z = __builtin_fabs(x);
+  double z = __builtin_fabs (x);
   b64u64_u t = {.f = z};
   int e = t.u >> 52;
 
@@ -889,5 +959,6 @@ cr_cos (double x)
       return t.f;
     }
 
-  return cos_large_accurate (z);
+  // now z >= 2^31
+  return cr_cos_large (z);
 }
