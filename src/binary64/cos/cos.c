@@ -24,7 +24,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* code adapted from sin.c */
+/* This code is adapted from sin.c. It copies the following tables
+   from sin.c, which can be shared between both functions:
+   pih, pil      - argument reduction for x < 2^31
+   _T            - for Payne-Hanek argument reduction
+   PS, PC        - polynomials for the accurate path
+   U1, U2        - tables for the fast path
+   S1u, S2u, C1u - tables for the accurate path
+*/
 
 #include <stdint.h>
 #include <fenv.h> // for feraiseexcept and FE_INVALID
