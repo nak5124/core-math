@@ -39,10 +39,11 @@ affected () {
     fi
     FUNCTION_DIR="${SOURCE_FILE%/*}"
     FORMAT_DIR="${FUNCTION_DIR%/*}"
+    FUNCTION_KIND="${FUNCTION_DIR##*/}"
 
     while IFS= read -r CHANGED; do
         case "$CHANGED" in
-            "$FUNCTION_DIR"/*|"$FORMAT_DIR/support"/*|src/generic/*)
+            "$FUNCTION_DIR"/*|"$FORMAT_DIR/support"/*|"src/generic/$FUNCTION_KIND"/*|src/generic/support/*)
                 # check.sh copies all three trees for this function.
                 return 0
                 ;;
