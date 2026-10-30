@@ -12,6 +12,11 @@ Program compiled with -O3 -mfma produces different result
 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
 #pragma STDC FENV_ACCESS ON is not supported by GCC
 
+clang (21.1.8) miscompiles hypot_bf16 (and other bivariate bf16 functions);
+$ CC=clang ./check.sh pow_bf16
+fatal error: error in backend: Do not know how to soft promote this
+      operator's operand!
+
 Fixed issues (for the record):
 
 GCC <= 13 wrongly converts some BF16 constants:
