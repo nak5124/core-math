@@ -1,0 +1,41 @@
+This file is a list of compiler/library issues that affect CORE-MATH
+correctness or efficiency.
+
+Correctness issues
+==================
+
+Open issues:
+
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106902
+Program compiled with -O3 -mfma produces different result
+
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678
+#pragma STDC FENV_ACCESS ON is not supported by GCC
+
+Fixed issues (for the record):
+
+GCC <= 13 wrongly converts some BF16 constants:
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111867
+aarch64: Wrong code for bf16 literal load when the arch support +fp16
+
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57245
+Floating-point constant truncation ignores -frounding-math
+
+The Apple ldexp() function had a bug in the subnormal range (Darwin 25.1.0).
+For example ldexp(0x1.9192d74f53405p-6, -1027) gave 0x1.9192d74f53p-1033
+instead of 0x1.9192d74f538p-1033. This was reported at FB21774989 and FB21774410,
+and fixed in latest beta of macOS Tahoe 26.4 (build 25E5218f).
+This was found by JohnMather from a failure in CORE-MATH erfc.
+
+Efficiency issues
+=================
+
+https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127870
+Reassociation of __int128 sum costs a callee-saved register on x86-64
+This mainly affects the efficiency of some binary128 functions, where gcc
+is slower than clang:
+$ CORE_MATH_SIMPLE_STAT=true PERF_REPEAT=50 ./perf.sh tanq # gcc 16.2.0
+342.407
+$ CC=clang CORE_MATH_SIMPLE_STAT=true PERF_REPEAT=50 ./perf.sh tanq # clang 21.1.8
+279.652
+

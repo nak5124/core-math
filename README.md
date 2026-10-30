@@ -188,11 +188,6 @@ return the correctly rounded result.
 
 ## Known issues
 
-The Apple ldexp() function has a bug in the subnormal range (Darwin 25.1.0).
-For example ldexp(0x1.9192d74f53405p-6, -1027) gives 0x1.9192d74f53p-1033
-instead of 0x1.9192d74f538p-1033. This was reported at FB21774989 and FB21774410.
-This yields a failure in CORE-MATH erfc. This was fixed in macOS Tahoe 26.4.
-
 For efficiency, some CORE-MATH routines directly play with the fenv.h macros
 (FE_TONEAREST, FE_UPWARD, FE_DOWNWARD). However, these macros might have
 different values under different operating systems, or even between different
@@ -211,6 +206,4 @@ Another issue with 32-bit platforms is that some of them miss support
 for __uint128_t or _BitInt(128). The functions using these types are
 thus not available.
 
-GCC <= 13 wrongly converts some BF16 constants,
-see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111867.
-It is thus recommended to use GCC 14 or later.
+See also file compiler_issues.
