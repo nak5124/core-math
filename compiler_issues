@@ -17,6 +17,9 @@ $ CC=clang ./check.sh pow_bf16
 fatal error: error in backend: Do not know how to soft promote this
       operator's operand!
 
+clang spurious overflow with -frounding-math:
+https://github.com/llvm/llvm-project/issues/157395
+
 Fixed issues (for the record):
 
 GCC <= 13 wrongly converts some BF16 constants:
