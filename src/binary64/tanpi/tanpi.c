@@ -321,6 +321,7 @@ double cr_tanpi(double x){
       ml = dm - ml;
       nh = fasttwosum(nh, th, &dn);
       nl += dn + tl;
+      // divide nh+nl by mh+ml
       double imh = 1/mh;
       th = nh*imh;
       tl = __builtin_fma(nh, imh,-th) + (nl + nh * (__builtin_fma(-mh, imh, 1) - ml * imh)) * imh;
