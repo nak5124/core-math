@@ -164,6 +164,16 @@ static __attribute__((noinline)) double as_tanpi_database(double x, double f){
   return f;
 }
 
+// th, tl <- (nh+nl) / (mh+ml) where th is the return value
+static inline double
+divdd (double nh, double nl, double mh, double ml, double *tl)
+{
+  double imh = 1/mh;
+  double th = nh*imh;
+  *tl = __builtin_fma(nh, imh,-th) + (nl + nh * (__builtin_fma(-mh, imh, 1) - ml * imh)) * imh;
+  return th;
+}
+
 double cr_tanpi(double x){
   static const double T[][2] =
     {{0x0p+0, 0x0p+0},{0x1.ada13ceebab9dp-64, 0x1.927278a3b1162p-5},
@@ -322,9 +332,7 @@ double cr_tanpi(double x){
       nh = fasttwosum(nh, th, &dn);
       nl += dn + tl;
       // divide nh+nl by mh+ml
-      double imh = 1/mh;
-      th = nh*imh;
-      tl = __builtin_fma(nh, imh,-th) + (nl + nh * (__builtin_fma(-mh, imh, 1) - ml * imh)) * imh;
+      th = divdd (nh, nl, mh, ml, &tl);
     }
     th = fasttwosum(th,tl,&tl);
     res = th;
