@@ -275,7 +275,7 @@ static inline double fastsum (double xh, double xl, double yh, double yl, double
 
 static inline double muldd (double xh, double xl, double ch, double cl, double *l){
   double ahhh = xh*ch;
-#if1
+#if 1
   *l = (xh*cl + xl*ch) + __builtin_fma (xh, ch, -ahhh);
 #else
   /* The following code has lower reciprocal throughput with gcc, but larger latency.
