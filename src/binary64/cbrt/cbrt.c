@@ -96,6 +96,9 @@ static inline int get_rounding_mode (fexcept_t *flagp)
       #warning The floating point rounding constants have an unknown value. A slower path will be taken.
       return fegetround();
     #endif
+  #elif defined(__CYGWIN__)
+    static const unsigned lut[4] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
+    mode = lut[(*flagp & _MM_ROUND_MASK)>>13];
   #else
     mode = (*flagp & _MM_ROUND_MASK)>>3;
   #endif

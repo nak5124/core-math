@@ -117,6 +117,9 @@ static inline int get_rounding_mode (void)
       #warning The floating point rounding constants have an unknown value. A slower path will be taken.
       return fegetround();
     #endif
+  #elif defined(__CYGWIN__)
+    static const unsigned lut[4] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
+    return lut[_MM_GET_ROUNDING_MODE()>>13];
   #else
     return _MM_GET_ROUNDING_MODE()>>3;
   #endif
