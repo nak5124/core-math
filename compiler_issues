@@ -47,3 +47,7 @@ $ CORE_MATH_SIMPLE_STAT=true PERF_REPEAT=50 ./perf.sh tanq # gcc 16.2.0
 $ CC=clang CORE_MATH_SIMPLE_STAT=true PERF_REPEAT=50 ./perf.sh tanq # clang 21.1.8
 279.652
 
+GCC versions older than GCC 16 produce inefficient code on aarch64 when
+accessing static arrays:
+https://sympa.inria.fr/sympa/arc/core-math/2026-09/msg00028.html
+
