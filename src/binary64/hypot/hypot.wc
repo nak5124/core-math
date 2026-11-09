@@ -33235,3 +33235,23 @@
 0x1.ffffffffff800p+41,0x1.0000000000000p+22
 # the following inputs generate a spurious inexact exception
 0x0.0000280005a7dp-1022,0x0.000060000d92cp-1022
+# The following are near-midpoint cases contributed by Eric Hennenhoefer
+# using AI.
+# https://github.com/eth100tx/core-math-quality/blob/main/candidates/hypot-midpoint-plus-one/README.md
+# Eight unordered pairs plus swaps; exact residual +1; not failure witnesses.
+0x1.7ffffffffffffp+0,0x1.ffffffffffffdp+0
+0x1.ffffffffffffdp+0,0x1.7ffffffffffffp+0
+0x1.7fffffffffff9p+0,0x1.ffffffffffff5p+0
+0x1.ffffffffffff5p+0,0x1.7fffffffffff9p+0
+0x1.7fffffffffff3p+0,0x1.fffffffffffedp+0
+0x1.fffffffffffedp+0,0x1.7fffffffffff3p+0
+0x1.7ffffffffffedp+0,0x1.fffffffffffe5p+0
+0x1.fffffffffffe5p+0,0x1.7ffffffffffedp+0
+0x1.7ffffffffffe7p+0,0x1.fffffffffffddp+0
+0x1.fffffffffffddp+0,0x1.7ffffffffffe7p+0
+0x1.7ffffffffffe1p+0,0x1.fffffffffffd5p+0
+0x1.fffffffffffd5p+0,0x1.7ffffffffffe1p+0
+0x1.7ffffffffffdbp+0,0x1.fffffffffffcdp+0
+0x1.fffffffffffcdp+0,0x1.7ffffffffffdbp+0
+0x1.7ffffffffffd5p+0,0x1.fffffffffffc5p+0
+0x1.fffffffffffc5p+0,0x1.7ffffffffffd5p+0
