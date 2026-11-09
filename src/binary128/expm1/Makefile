@@ -2,7 +2,7 @@ FUNCTION_UNDER_TEST := expm1q
 
 include ../support/Makefile.univariate
 
-CFLAGS += -DMPFR_WANT_FLOAT128 -I../support
+CFLAGS += -DMPFR_WANT_FLOAT128 -Dmpfr_float128=__float128
 LDFLAGS += -lquadmath
 
 all:: check_special

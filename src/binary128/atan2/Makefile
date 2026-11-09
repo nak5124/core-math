@@ -2,7 +2,7 @@ FUNCTION_UNDER_TEST := atan2q
 
 include ../support/Makefile.bivariate
 
-CFLAGS += -DMPFR_WANT_FLOAT128
+CFLAGS += -DMPFR_WANT_FLOAT128 -Dmpfr_float128=__float128
 LDFLAGS += -lquadmath
 
 all:: check_special
