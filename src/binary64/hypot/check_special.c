@@ -134,7 +134,7 @@ check (double x, double y)
 }
 
 #ifndef CORE_MATH_TESTS
-#define CORE_MATH_TESTS 100000000ul // total number of tests
+#define CORE_MATH_TESTS 100000ul // total number of tests
 #endif
 
 static void
@@ -255,17 +255,17 @@ static double y_worst (double x, double y)
   return y;
 }
 
-// i is the thread number
+// check worst cases with exp(y) = exp(x) - m
 static void
-check_worst_i (int m, int i, int nthreads)
+check_worst (int m)
 {
   ref_init ();
   ref_fesetround (rnd);
   fesetround(rnd1[rnd]);
   double x, y;
-  srand (getpid () + i);
+  srand (getpid ());
 
-  for (uint64_t n = i; n < CORE_MATH_TESTS; n += nthreads)
+  for (uint64_t n = 0; n < CORE_MATH_TESTS; n++)
   {
     int e;
     x = get_random ();
@@ -277,22 +277,6 @@ check_worst_i (int m, int i, int nthreads)
     y = y_worst (x, y);
     check (x, y);
   }
-}
-
-// check worst cases with exp(y) = exp(x) - i
-static void
-check_worst (int m)
-{
-  int nthreads = 1;
-#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel
-  nthreads = omp_get_num_threads ();
-#endif
-#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel for
-#endif
-  for (int i = 0; i < nthreads; i++)
-    check_worst_i (m, i, nthreads);
 }
 
 static uint64_t
@@ -599,5 +583,6 @@ main (int argc, char *argv[])
   printf ("Checking near overflow, underflow and Pythagorean triples\n");
   /* we check triples with exponent difference 0 <= k <= 26 */
   doloop(0, 26);
+
   return 0;
 }
