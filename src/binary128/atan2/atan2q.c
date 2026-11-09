@@ -719,13 +719,22 @@ static inline void sqrhu6(u6x64 o, const u6x64 a){
 }
 
 static inline __float128 reinterpret_u128_as_f128(u128 t){
-#if defined(__SSE4_1__) && !defined(__clang__)
   // put u128 into xmm register
-  __m128i m = {0, 0};
-  m = _mm_insert_epi64 (m, t, 0);
-  m = _mm_insert_epi64 (m, t>>64, 1);
+#if defined(__SSE4_1__)
+  u64 h = t>>64, l = t;
   __float128 r;
+# if !defined(__clang__)
+  __m128i m = {0, 0};
+  m = _mm_insert_epi64 (m, l, 0);
+  m = _mm_insert_epi64 (m, h, 1);
   asm("": "=x"(r): "0"(m));
+# else
+#  if defined(__AVX__)
+  asm("vmovq %2, %0\nvpinsrq $1, %1, %0, %0\n" : "=x"(r) : "r"(h), "r"(l));
+#  else
+  asm("movq %2, %0\npinsrq $1, %1, %0\n" : "=x"(r) : "r"(h), "r"(l));
+#  endif
+# endif
   return r;
 #else
   b128u128_u u = {.a = t};
@@ -734,11 +743,20 @@ static inline __float128 reinterpret_u128_as_f128(u128 t){
 }
 
 static inline u128 reinterpret_f128_as_u128(__float128 z){
-#if defined(__SSE4_1__) && !defined(__clang__)
+#if defined(__SSE4_1__)
+  u64 h, l;
+# if !defined(__clang__)
   __m128i t;
   asm("" : "=x" (t) :"0" (z));
-  u64 h = _mm_extract_epi64(t, 1);
-  u64 l = _mm_extract_epi64(t, 0);
+  h = _mm_extract_epi64(t, 1);
+  l = _mm_extract_epi64(t, 0);
+# else
+#  if defined(__AVX__)
+  asm("vpextrq $1, %2, %0\nvmovq  %2, %1\n" : "=r"(h), "=r"(l) : "x"(z));
+#  else
+  asm("pextrq $1, %2, %0\nmovq  %2, %1\n" : "=r"(h), "=r"(l) : "x"(z));
+#  endif
+# endif
   return ((u128)h<<64)|l;
 #else
   b128u128_u u = {.f = z};
