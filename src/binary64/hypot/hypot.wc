@@ -33255,3 +33255,22 @@
 0x1.fffffffffffcdp+0,0x1.7ffffffffffdbp+0
 0x1.7ffffffffffd5p+0,0x1.fffffffffffc5p+0
 0x1.fffffffffffc5p+0,0x1.7ffffffffffd5p+0
+# The following are near-midpoint cases contributed by Eric Hennenhoefer
+# using AI.
+# https://github.com/eth100tx/core-math-quality/blob/main/weekly/2026-11-08/REPORT.md
+0x1.6b8095f72a600p+0,0x1.e4ab7386f2b80p+0
+0x1.e4ab7386f2b80p+0,0x1.6b8095f72a600p+0
+0x1.6b80993a95916p+0,0x1.e4ab77e0d6faep+0
+0x1.e4ab77e0d6faep+0,0x1.6b80993a95916p+0
+0x1.6b809c7e00c68p+0,0x1.e4ab7c3abb42cp+0
+0x1.e4ab7c3abb42cp+0,0x1.6b809c7e00c68p+0
+0x1.6b809fc16bff6p+0,0x1.e4ab80949f8fap+0
+0x1.e4ab80949f8fap+0,0x1.6b809fc16bff6p+0
+0x1.6b80a304d73c0p+0,0x1.e4ab84ee83e18p+0
+0x1.e4ab84ee83e18p+0,0x1.6b80a304d73c0p+0
+0x1.6b80a648427c6p+0,0x1.e4ab894868386p+0
+0x1.e4ab894868386p+0,0x1.6b80a648427c6p+0
+0x1.6b80a98badc08p+0,0x1.e4ab8da24c944p+0
+0x1.e4ab8da24c944p+0,0x1.6b80a98badc08p+0
+0x1.6b80accf19086p+0,0x1.e4ab91fc30f52p+0
+0x1.e4ab91fc30f52p+0,0x1.6b80accf19086p+0
