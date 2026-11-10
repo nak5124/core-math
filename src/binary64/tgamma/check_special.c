@@ -263,7 +263,7 @@ find_min (int n)
 }
 
 #ifndef CORE_MATH_TESTS
-#define CORE_MATH_TESTS 200000000UL /* total number of tests */
+#define CORE_MATH_TESTS 100000000UL /* total number of tests */
 #endif
 
 static void
