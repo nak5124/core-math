@@ -54,7 +54,6 @@ int rnd1[] = { FE_TONEAREST, FE_TOWARDZERO, FE_UPWARD, FE_DOWNWARD };
 int rnd = 0;
 int verbose = 0;
 unsigned long tested = 0;
-int nthreads;
 
 #define MAX_THREADS 192
 
@@ -520,11 +519,6 @@ main (int argc, char *argv[])
     }
   ref_init ();
   ref_fesetround (rnd);
-
-#if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
-#pragma omp parallel
-#endif
-  nthreads = omp_get_num_threads ();
 
   if (conseq) {
     scan_consecutive (n, a);
