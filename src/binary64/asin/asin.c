@@ -307,7 +307,7 @@ double as_asin_refine(double x, double phi){
   double dv =  (Ch*dsl + Cl*dsh) - (Sh*dcl + Sl*dch) - (dSc - dCs);
   v = fasttwosum(v,dv,&dv);
   double sgn = __builtin_copysign(1.0, x), jt = jf*sgn;
-  // 0 <= jt <= 64
+  // jt is the signed table index: -32 <= jt <= 32
   static const double c[][2] = { // same table as in acos.c
     {0x1p+0, -0x1.fc2c76456515bp-108}, {0x1.5555555555555p-3, 0x1.5555555623513p-57},
     {0x1.3333333333333p-4, 0x1.9997e3427441bp-59}, {0x1.6db6db6db6db7p-5, -0x1.cb95ff08658e6p-62},
@@ -319,9 +319,13 @@ double as_asin_refine(double x, double phi){
   double fl = v2*(ct[0] + v2*(ct[1] + v2*ct[2])), fh = polydd(v2,dv2, 5,c, &fl);
   fh = muldd(v,dv, fh,fl, &fl);
 
-  double ph = jt * 0x1.921fb54442dp-5, pl = 0x1.8469898cc518p-53*jt, ps = -0x1.fc8f8cbb5bf6cp-102*jt;
+  static const double pih = 0x1.921fb54442dp-5;
+  static const double pil = 0x1.8469898cc518p-53;
+  static const double pis = -0x1.fc8f8cbb5bf6cp-102;
+  // pih+pil+pis approximates pi/2^6
+  double ph = jt * pih, pl = jt * pil, ps = jt * pis;
+  // for every integer jt, the initial ph and pl products are exact
 
-  // since 0 <= jt <= 64, ph and pl are exact
   pl = fastsum(fh,fl, pl,ps, &ps);
   ph = fasttwosum(ph,pl, &pl);
   pl = fasttwosum(pl,ps, &ps);
