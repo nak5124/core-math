@@ -647,7 +647,7 @@ double cr_tgamma(double x){
 
   double z = x;
   if(__builtin_expect(__builtin_fabs(x)<0.25, 0)){ /* |x| < 0x1p-2 */
-    if(ax<0x71e0000000000000ul){ // |x| < 0x1p-112
+    if(ax<0x71e0000000000000ull){ // |x| < 0x1p-112
       double r;
       // deal separately with x=2^-1024 to avoid a spurious overflow in 1/x
       if (x == 0x1p-1024) {
