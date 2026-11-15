@@ -183,7 +183,7 @@ static __attribute__((noinline)) double as_exp2_database(double x, double f){
       a = m + 1;
     else if (t == ix.u) {
       static const u64 s2[2] = {0x3b216fbd5fd7665f, 0x34c797};
-      const int64_t k = 8677191773140ul;
+      const int64_t k = 8677191773140ull;
       u64 p = (s2[m>>5]>>((m*2)&63))&3;
       b64u64_u jf = {.f = f}, dy = {.u = (u64)(0x3c90|((k>>m)<<15))<<48};
       for(int64_t i = -1; i<=1; i++){

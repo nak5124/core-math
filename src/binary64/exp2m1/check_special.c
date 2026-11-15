@@ -149,7 +149,7 @@ main (int argc, char *argv[])
   printf ("Checking results in subnormal range\n");
   int64_t n0 = 1;
   // n1 is the smallest integer such that exp2m1(n1*2^-1074) > 2^-1022
-  int64_t n1 = 6497320848556799ul;
+  int64_t n1 = 6497320848556799ull;
   int64_t skip = (n1 - n0) / CORE_MATH_TESTS + 1;
   n0 += getpid () % skip;
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))

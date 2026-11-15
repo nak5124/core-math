@@ -308,7 +308,7 @@ round22 (long double h)
 {
   b96u96_u v = {.f = h};
   uint64_t m = v.m;
-  m = (m + 0x20000000000ul) & 0xfffffc0000000000ul;
+  m = (m + 0x20000000000ull) & 0xfffffc0000000000ull;
   if (m == 0)
   {
     m = (uint64_t)1 << 63;

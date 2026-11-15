@@ -901,7 +901,7 @@ cr_exp2l (long double x)
   {
     if (e == 0x7fff)
     { // NaN or Inf: 2^x = x for x = NaN or +Inf, 2^-Inf = 0
-      if (cvt_x.e == 0xffff && cvt_x.m == 0x8000000000000000ul) // -Inf
+      if (cvt_x.e == 0xffff && cvt_x.m == 0x8000000000000000ull) // -Inf
         return 0;
       return x+x;
     }

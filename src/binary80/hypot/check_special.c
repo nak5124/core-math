@@ -172,7 +172,7 @@ check_exact (void)
 #if (defined(_OPENMP) && !defined(CORE_MATH_NO_OPENMP))
 #pragma omp parallel for schedule(dynamic,1)
 #endif
-  for (uint64_t p = p0; p < 0x100000000ul; p += SKIP)
+  for (uint64_t p = p0; p < 0x100000000ull; p += SKIP)
     for (uint64_t q = q0; q < p; q += SKIP)
     {
       x = (long double) (p * p - q * q);
@@ -193,7 +193,7 @@ check_midpoint (void)
 #pragma omp parallel for schedule(dynamic,1)
 #endif
   // since we want p^2+q^2 >= 2^64 with p > q, we need p > sqrt(2^63)
-  for (uint64_t p = 0xb504f334ul + p0; p < 0x100000000ul; p += SKIP)
+  for (uint64_t p = 0xb504f334ul + p0; p < 0x100000000ull; p += SKIP)
   {
     // we want p^2+q^2 >= 2^64
     uint64_t r = - p * p; // we want q^2 >= r
@@ -281,13 +281,13 @@ check_invalid (void)
 {
   b80u80_t v;
   v.e = 0x7fff;
-  v.m = 0xc000000000000000ul;
+  v.m = 0xc000000000000000ull;
   long double qnan = v.f;
   v.e = 0xffff;
   long double minqnan = v.f;
 
   v.e = 0x7fff;
-  v.m = 0x8000000000000000ul;
+  v.m = 0x8000000000000000ull;
   long double inf = v.f;
   v.e = 0xffff;
   long double minInf = v.f;

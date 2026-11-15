@@ -104,7 +104,7 @@ readstdin(long double **result, int *count)
       b80u80_t v;
       // +snan has encoding m=2^63+1, e=32767 (for example)
       v.e = 0x7fff;
-      v.m = 0x8000000000000001ul;
+      v.m = 0x8000000000000001ull;
       *item = v.f;
       (*count)++;
     }
@@ -113,7 +113,7 @@ readstdin(long double **result, int *count)
       b80u80_t v;
       // -snan has encoding m=2^63+1, e=65535 (for example)
       v.e = 0xffff;
-      v.m = 0x8000000000000001ul;
+      v.m = 0x8000000000000001ull;
       *item = v.f;
       (*count)++;
     }

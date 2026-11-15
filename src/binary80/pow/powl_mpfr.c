@@ -50,7 +50,7 @@ long double ref_powl(long double x, long double y) {
     mpfr_set_nanflag ();
     return x + y;
 		b80u80_t v;
-		v.m = 0x8000000000000001ul;
+		v.m = 0x8000000000000001ull;
 		v.e = 0x7fff;
 		return v.f;
   }

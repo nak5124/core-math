@@ -347,7 +347,7 @@ static inline void tint_fromd (tint_t *a, double x)
   union {double f; uint64_t u;} u;
 	u.f = x;
   a->sgn = u.u >> 63;
-  uint64_t ax = u.u & 0x7ffffffffffffffful;
+  uint64_t ax = u.u & 0x7fffffffffffffffull;
   int64_t e = ax >> 52;
   if (__builtin_expect (e, 1)) { // normal
     // 1 has e=0x3ff
