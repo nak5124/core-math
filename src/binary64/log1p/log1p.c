@@ -433,10 +433,11 @@ static double __attribute__((noinline)) as_log1p_refine(double x, double a){
     i64 j = roundeven_finite(a*0x1.71547652b82fep+16);
     i64 i = j + 34952;
     int j1 = (i>>12)&0xf, j2 = (i>>8)&0xf, j3 = (i>>4)&0xf, j4 = i&0xf, je = i>>16;
-    double L[3];
-    L[0] = (ln[0][j1][0] + ln[1][j2][0]) + (ln[2][j3][0] + ln[3][j4][0]);
-    L[1] = (ln[0][j1][1] + ln[1][j2][1]) + (ln[2][j3][1] + ln[3][j4][1]);
-    L[2] = (ln[0][j1][2] + ln[1][j2][2]) + (ln[2][j3][2] + ln[3][j4][2]);
+    double L[3] = {
+      (ln[0][j1][0] + ln[1][j2][0]) + (ln[2][j3][0] + ln[3][j4][0]),
+      (ln[0][j1][1] + ln[1][j2][1]) + (ln[2][j3][1] + ln[3][j4][1]),
+      (ln[0][j1][2] + ln[1][j2][2]) + (ln[2][j3][2] + ln[3][j4][2])
+    };
 
     b64u64_u t, dt;
     if((i64)ix.u<0x4690000000000000ll && ix.u<0xbfe0000000000000ull ){

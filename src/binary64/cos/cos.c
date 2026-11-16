@@ -900,7 +900,7 @@ reduce_large (double *r, double x)
   u128 u = (u128) V1 | (((u128) V0) << 64);
   u = (u128) m * u;
   // round r to nearest, where 0x810000000000000 = 2^59 + 2^52
-  static const u128 magic = ((u128) 1 << 112) + 0x810000000000000ull;
+  static const u128 magic = ((u128) 1 << 112) + ((u128) 129 << 52);
   u += magic;
   t.f = (uint64_t)((u << 15) >> 75); // next 53 bits of u after the first 15
   *r = t.f * 0x1p-68 - 0x1p-16;
