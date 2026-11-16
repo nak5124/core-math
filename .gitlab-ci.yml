@@ -75,6 +75,7 @@ check_core2:
 # clang __builtin_clzg / __builtin_ctzg: If the first argument is 0,
 # but only one argument is provided, then the behavior is undefined.
 # https://clang.llvm.org/docs/LanguageExtensions.html#builtin-clzg-and-builtin-ctzg
+# we also use this test to check without -fsignaling-nans (default in check.sh)
 check_nolzcnt:
   stage: test
   image: debian:latest
@@ -83,7 +84,7 @@ check_nolzcnt:
   script:
     - apt-get update -qq && apt-get install -qq build-essential git libmpfr-dev
     # x86-64-v2 is needed for rsqrtq
-    - LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH CFLAGS="-march=x86-64-v2 -mno-lzcnt -mno-bmi -I/usr/local/include" LDFLAGS="-L/usr/local/lib" ./ci.sh
+    - LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH CFLAGS="-march=x86-64-v2 -mno-lzcnt -mno-bmi -fno-signaling-nans -I/usr/local/include" LDFLAGS="-L/usr/local/lib" ./ci.sh
 
 check_dry:
   stage: test
