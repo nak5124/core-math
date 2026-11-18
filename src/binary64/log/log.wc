@@ -6370,6 +6370,11 @@
 0x1.00000000000fp+0
 # extra worst cases with 47 identical bits or more after the round bit
 # we should have all worst cases with 47 identical bits or more in this file
+# For example for the binade [2^101,2^102):
+# make DEFSAL="-DLOG -DBASIS=2 -DAUTOMATIC -DMONOTONIC"
+# ./bacsel -rnd_mode all -prec 128 -n 53 -nn 53 -m 48 -t 18
+# -t0 4503599627370496 -t1 9007199254740992 -d 2 -alpha 2 -e_in 102
+# (with -nthreads nnn where nnn is the number of cores of your computer)
 0x1.0082b80ed7916p-281
 0x1.0a1991b34ae42p-281
 0x1.11e764ce98971p-281
