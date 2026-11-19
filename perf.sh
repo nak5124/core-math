@@ -64,7 +64,7 @@ collect_perf_stat () {
     while [ $i -le $S ]; do
         if [ "$(uname -s)" = "Darwin" ]; then
             if command -v mperf-stat >/dev/null 2>&1; then
-                sudo mperf-stat -e cycles -- ./perf $PERF_ARGS >> $LOG_FILE 2>&1
+                sudo mperf-stat -e cycles -- $CORE_MATH_LAUNCHER ./perf $PERF_ARGS >> $LOG_FILE 2>&1
             else
                 echo "mperf-stat not found. Install from https://github.com/tmcgilchrist/mperf"
                 exit 3
@@ -84,7 +84,7 @@ process_perf_stat () {
 perform_perf_stat () {
     if [ "$(uname -s)" = "Darwin" ]; then
         if command -v mperf-stat >/dev/null 2>&1; then
-            sudo mperf-stat -e cycles -- ./perf $PERF_ARGS 2>&1  | awk "/cycles/{print \$1/(${N}*${M})}"
+            sudo mperf-stat -e cycles -- $CORE_MATH_LAUNCHER ./perf $PERF_ARGS 2>&1  | awk "/cycles/{print \$1/(${N}*${M})}"
         else
             echo "mperf-stat not found. Install from https://github.com/tmcgilchrist/mperf"
             exit 3
