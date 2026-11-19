@@ -62,7 +62,16 @@ collect_perf_stat () {
     fi
     local i=1
     while [ $i -le $S ]; do
-        perf stat -e cycles -x " " $CORE_MATH_LAUNCHER ./perf $PERF_ARGS &>> $LOG_FILE
+        if [ "$(uname -s)" = "Darwin" ]; then
+            if command -v mperf-stat >/dev/null 2>&1; then
+                sudo mperf-stat -e cycles -- ./perf $PERF_ARGS >> $LOG_FILE 2>&1
+            else
+                echo "mperf-stat not found. Install from https://github.com/tmcgilchrist/mperf"
+                exit 3
+            fi
+        else
+            perf stat -e cycles -x " " $CORE_MATH_LAUNCHER ./perf $PERF_ARGS >> $LOG_FILE 2>&1
+        fi
         if [ -z "$CORE_MATH_QUIET" ]; then
             prog_bar $S $i
         fi
@@ -73,7 +82,16 @@ process_perf_stat () {
     sort -g -k 1 $LOG_FILE | awk "/cycles/{a[i++]=\$1/(${N}*${M});} ${prog_end}"
 }
 perform_perf_stat () {
-    perf stat -e cycles -x " " $CORE_MATH_LAUNCHER ./perf $PERF_ARGS 2>&1 | awk "/cycles/{print \$1/(${N}*${M})}"
+    if [ "$(uname -s)" = "Darwin" ]; then
+        if command -v mperf-stat >/dev/null 2>&1; then
+            sudo mperf-stat -e cycles -- ./perf $PERF_ARGS 2>&1  | awk "/cycles/{print \$1/(${N}*${M})}"
+        else
+            echo "mperf-stat not found. Install from https://github.com/tmcgilchrist/mperf"
+            exit 3
+        fi
+    else
+        perf stat -e cycles -x " " $CORE_MATH_LAUNCHER ./perf $PERF_ARGS 2>&1 | awk "/cycles/{print \$1/(${N}*${M})}"
+    fi
 }
 proc_perf () {
     if [ -z "$CORE_MATH_SIMPLE_STAT" ]; then
@@ -91,7 +109,7 @@ collect_rdtsc_stat () {
     fi
     local i=1
     while [ $i -le $S ]; do
-        $CORE_MATH_LAUNCHER ./perf $PERF_ARGS &>> $LOG_FILE
+        $CORE_MATH_LAUNCHER ./perf $PERF_ARGS >> $LOG_FILE 2>&1
         if [ -z "$CORE_MATH_QUIET" ]; then
             prog_bar $S $i
         fi
