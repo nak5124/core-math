@@ -165,7 +165,11 @@ fi
 
 # for clang we might want to add -ffp-contract=on to enable FMA
 if [ "$CFLAGS" == "" ]; then
-   CFLAGS="-O3 -march=native -fsignaling-nans"
+   CFLAGS="-O3 -march=native"
+   if [ "$CC" != "clang" ]; then
+      # clang doesn't support -fsignaling-nans
+      CFLAGS+=" -fsignaling-nans"
+   fi
    ROUNDING_MATH="-frounding-math"
    if [ "$CC" == "icx" ]; then
       # for icx we add -fp-model=precise for full IEEE 754 support
