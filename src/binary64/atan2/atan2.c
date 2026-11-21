@@ -24,6 +24,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/* References:
+   [1] Bounds on Runs of Zeros and Ones for Algebraic Functions
+       Tomás Lang, Jean-Michel Muller
+       IEEE Symposium on Computer Arithmetic 2001
+*/
+
 /* This implementation was possible with the help of Silviu-Ioan Filip,
    who designed the code to generate a rational approximation of atan(z)
    over (0,1). See comments before P[] and Q[] below. */
@@ -265,6 +271,26 @@ atan2_accurate (double y, double x)
         return res;
       }
     }
+
+  /* Check for worst-cases with tiny y/x, for example
+     y,x=0x1.8000000000003p-51,0x1.0000000000003p+0 has 151 identical bits after the
+     round bit.
+     For |t| <= 0x1.250bfe1b082f4p-52, we have |atan(t)-t| < 2^-53*ulp(t),
+     which means atan(t) is at distance at most 2^-53*ulp from t.
+     From [1], we know that the maximal number of identical bits in y/x is n-1
+     for n-bit numbers y and x, thus 52 for binary64 (assuming y/x is inexact),
+     which means that y/x is at distance at least 2^-53*ulp from a binary64 number
+     (since t is tiny, atan(t) cannot be near the middle of two binary64 numbers).
+     We conclude there is rounding boundary between t and atan(t), thus the correct
+     rounding of atan2(y,x) is the rounding of y/x.
+  */
+#if 0
+  if (corr != 0 && x > 0 && __builtin_fabs (t) <= 0x1.250bfe1b082f4p-52)
+  {
+    feupdateenv(&env);
+    return t;
+  }
+#endif
 
   int inv = __builtin_fabs (y) > __builtin_fabs (x);
   tint_t z[1], p[1], q[1];
